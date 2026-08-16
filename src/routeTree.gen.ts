@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedDiagnosticosIdRouteImport } from './routes/_authenticated/diagnosticos.$id'
 import { Route as AuthenticatedDiagnosticosNuevoRouteImport } from './routes/_authenticated/diagnosticos.nuevo'
 
@@ -22,6 +23,11 @@ const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDiagnosticosIdRoute =
   AuthenticatedDiagnosticosIdRouteImport.update({
@@ -37,14 +43,14 @@ const AuthenticatedDiagnosticosNuevoRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedRouteRouteWithChildren
+  '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
   '/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/': typeof AuthenticatedIndexRoute
   '/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
   '/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
@@ -52,6 +58,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
   '/_authenticated/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
@@ -59,11 +66,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '/auth' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
+  to: '/auth' | '/' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/'
     | '/_authenticated/diagnosticos/$id'
     | '/_authenticated/diagnosticos/nuevo'
   fileRoutesById: FileRoutesById
@@ -89,6 +97,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/': {
+      id: '/_authenticated/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/diagnosticos/$id': {
       id: '/_authenticated/diagnosticos/$id'
       path: '/diagnosticos/$id'
@@ -107,11 +122,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedDiagnosticosIdRoute: typeof AuthenticatedDiagnosticosIdRoute
   AuthenticatedDiagnosticosNuevoRoute: typeof AuthenticatedDiagnosticosNuevoRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedDiagnosticosIdRoute: AuthenticatedDiagnosticosIdRoute,
   AuthenticatedDiagnosticosNuevoRoute: AuthenticatedDiagnosticosNuevoRoute,
 }
