@@ -75,8 +75,18 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <div className="border-t border-border p-2">
+      <div className="space-y-0.5 border-t border-border p-2">
         <button
+          type="button"
+          onClick={cerrarSesion}
+          title="Cerrar sesión"
+          className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <LogOut className="size-4 shrink-0" strokeWidth={1.75} />
+          {!collapsed && <span>Cerrar sesión</span>}
+        </button>
+        <button
+
           type="button"
           onClick={() => setCollapsed((v) => !v)}
           className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
