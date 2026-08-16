@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedDiagnosticosIdRouteImport } from './routes/_authenticated/diagnosticos.$id'
 import { Route as AuthenticatedDiagnosticosNuevoRouteImport } from './routes/_authenticated/diagnosticos.nuevo'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDiagnosticosIdRoute =
@@ -32,34 +38,39 @@ const AuthenticatedDiagnosticosNuevoRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
   '/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
   '/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
   '/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
   '/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
   '/_authenticated/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
   '/_authenticated/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
+  fullPaths: '/' | '/auth' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
+  to: '/' | '/auth' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
   id:
     | '__root__'
     | '/_authenticated'
+    | '/auth'
     | '/_authenticated/diagnosticos/$id'
     | '/_authenticated/diagnosticos/nuevo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -69,6 +80,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/diagnosticos/$id': {
@@ -103,6 +121,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
