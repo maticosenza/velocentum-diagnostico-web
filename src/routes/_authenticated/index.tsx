@@ -3,15 +3,15 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "Diagnósticos · Velocentum Cockpit" },
       {
         name: "description",
-        content:
-          "Listado de diagnósticos de performance para tiendas e-commerce, uso interno de Velocentum.",
+        content: "Listado de diagnósticos de performance para tiendas e-commerce.",
       },
+      { name: "robots", content: "noindex, nofollow" },
       { property: "og:title", content: "Diagnósticos · Velocentum Cockpit" },
       {
         property: "og:description",
@@ -23,6 +23,8 @@ export const Route = createFileRoute("/")({
 });
 
 function ListadoDiagnosticos() {
+  const { user } = Route.useRouteContext();
+
   return (
     <>
       <PageHeader
@@ -34,7 +36,14 @@ function ListadoDiagnosticos() {
           </Button>
         }
       />
-      <div className="px-6 py-6">
+      <div className="space-y-4 px-6 py-6">
+        <div className="rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-[12px] text-muted-foreground">
+            Sesión activa como{" "}
+            <span className="font-medium text-foreground">{user?.email ?? "—"}</span>
+          </p>
+        </div>
+
         <EmptyState
           title="Todavía no hay diagnósticos"
           description="Cuando cargues el primero, vas a encontrarlo listado en esta pantalla."

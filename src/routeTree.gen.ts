@@ -9,86 +9,136 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as DiagnosticosIdRouteImport } from './routes/diagnosticos.$id'
-import { Route as DiagnosticosNuevoRouteImport } from './routes/diagnosticos.nuevo'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedDiagnosticosIdRouteImport } from './routes/_authenticated/diagnosticos.$id'
+import { Route as AuthenticatedDiagnosticosNuevoRouteImport } from './routes/_authenticated/diagnosticos.nuevo'
 
-const IndexRoute = IndexRouteImport.update({
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const DiagnosticosIdRoute = DiagnosticosIdRouteImport.update({
-  id: '/diagnosticos/$id',
-  path: '/diagnosticos/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DiagnosticosNuevoRoute = DiagnosticosNuevoRouteImport.update({
-  id: '/diagnosticos/nuevo',
-  path: '/diagnosticos/nuevo',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const AuthenticatedDiagnosticosIdRoute =
+  AuthenticatedDiagnosticosIdRouteImport.update({
+    id: '/diagnosticos/$id',
+    path: '/diagnosticos/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDiagnosticosNuevoRoute =
+  AuthenticatedDiagnosticosNuevoRouteImport.update({
+    id: '/diagnosticos/nuevo',
+    path: '/diagnosticos/nuevo',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/diagnosticos/$id': typeof DiagnosticosIdRoute
-  '/diagnosticos/nuevo': typeof DiagnosticosNuevoRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/auth': typeof AuthRoute
+  '/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
+  '/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/diagnosticos/$id': typeof DiagnosticosIdRoute
-  '/diagnosticos/nuevo': typeof DiagnosticosNuevoRoute
+  '/auth': typeof AuthRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
+  '/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/diagnosticos/$id': typeof DiagnosticosIdRoute
-  '/diagnosticos/nuevo': typeof DiagnosticosNuevoRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
+  '/_authenticated/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
+  fullPaths: '/' | '/auth' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
-  id: '__root__' | '/' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
+  to: '/auth' | '/' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
+  id:
+    | '__root__'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/'
+    | '/_authenticated/diagnosticos/$id'
+    | '/_authenticated/diagnosticos/nuevo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  DiagnosticosIdRoute: typeof DiagnosticosIdRoute
-  DiagnosticosNuevoRoute: typeof DiagnosticosNuevoRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/diagnosticos/$id': {
-      id: '/diagnosticos/$id'
+    '/_authenticated/diagnosticos/$id': {
+      id: '/_authenticated/diagnosticos/$id'
       path: '/diagnosticos/$id'
       fullPath: '/diagnosticos/$id'
-      preLoaderRoute: typeof DiagnosticosIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedDiagnosticosIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/diagnosticos/nuevo': {
-      id: '/diagnosticos/nuevo'
+    '/_authenticated/diagnosticos/nuevo': {
+      id: '/_authenticated/diagnosticos/nuevo'
       path: '/diagnosticos/nuevo'
       fullPath: '/diagnosticos/nuevo'
-      preLoaderRoute: typeof DiagnosticosNuevoRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedDiagnosticosNuevoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedDiagnosticosIdRoute: typeof AuthenticatedDiagnosticosIdRoute
+  AuthenticatedDiagnosticosNuevoRoute: typeof AuthenticatedDiagnosticosNuevoRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedDiagnosticosIdRoute: AuthenticatedDiagnosticosIdRoute,
+  AuthenticatedDiagnosticosNuevoRoute: AuthenticatedDiagnosticosNuevoRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  DiagnosticosIdRoute: DiagnosticosIdRoute,
-  DiagnosticosNuevoRoute: DiagnosticosNuevoRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

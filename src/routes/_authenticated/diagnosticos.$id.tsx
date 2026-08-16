@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/diagnosticos/$id")({
+export const Route = createFileRoute("/_authenticated/diagnosticos/$id")({
   head: () => ({
     meta: [
       { title: "Detalle del diagnóstico · Velocentum Cockpit" },

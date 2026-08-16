@@ -1,7 +1,9 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutList, FilePlus2, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { LayoutList, FilePlus2, PanelLeftClose, PanelLeft, LogOut } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 const items = [
   { title: "Diagnósticos", url: "/", icon: LayoutList, exact: true },
@@ -10,7 +12,17 @@ const items = [
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+
+  async function cerrarSesion() {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  }
+
 
   const isActive = (url: string, exact: boolean) =>
     exact ? pathname === url : pathname.startsWith(url);
@@ -63,8 +75,18 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <div className="border-t border-border p-2">
+      <div className="space-y-0.5 border-t border-border p-2">
         <button
+          type="button"
+          onClick={cerrarSesion}
+          title="Cerrar sesión"
+          className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <LogOut className="size-4 shrink-0" strokeWidth={1.75} />
+          {!collapsed && <span>Cerrar sesión</span>}
+        </button>
+        <button
+
           type="button"
           onClick={() => setCollapsed((v) => !v)}
           className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
