@@ -1,24 +1,50 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
+import { Button } from "@/components/ui/button";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "Diagnósticos · Velocentum Cockpit" },
+      {
+        name: "description",
+        content:
+          "Listado de diagnósticos de performance para tiendas e-commerce, uso interno de Velocentum.",
+      },
+      { property: "og:title", content: "Diagnósticos · Velocentum Cockpit" },
+      {
+        property: "og:description",
+        content: "Listado de diagnósticos de performance para tiendas e-commerce.",
+      },
+    ],
+  }),
+  component: ListadoDiagnosticos,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function ListadoDiagnosticos() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
+    <>
+      <PageHeader
+        title="Diagnósticos"
+        description="Acá vas a ver todos los diagnósticos cargados durante las llamadas con prospectos."
+        actions={
+          <Button asChild size="sm">
+            <Link to="/diagnosticos/nuevo">Nuevo diagnóstico</Link>
+          </Button>
+        }
       />
-    </div>
+      <div className="px-6 py-6">
+        <EmptyState
+          title="Todavía no hay diagnósticos"
+          description="Cuando cargues el primero, vas a encontrarlo listado en esta pantalla."
+          action={
+            <Button asChild size="sm" variant="outline">
+              <Link to="/diagnosticos/nuevo">Crear el primero</Link>
+            </Button>
+          }
+        />
+      </div>
+    </>
   );
 }
