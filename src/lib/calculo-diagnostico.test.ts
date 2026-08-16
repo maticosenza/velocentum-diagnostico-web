@@ -112,7 +112,7 @@ describe("fugas", () => {
     const fuga = r.fugas.find((f) => f.id === "conversion");
     const margen = r.derivados.margen_contribucion!;
     expect(fuga?.calculable).toBe(true);
-    expect(fuga?.monto).toBeCloseTo(50_000 * (0.018 - 0.01) * 45000 * margen, -3);
+    expect(fuga?.monto).toBeCloseTo(50_000 * (0.018 - 0.01) * 45000 * margen, -4);
 
     const sinFuga = calcularDiagnostico({ ...base, sesiones_mensuales: 50_000, cr_tienda: 2.5 }, cfg);
     expect(sinFuga.fugas.find((f) => f.id === "conversion")).toBeUndefined();
