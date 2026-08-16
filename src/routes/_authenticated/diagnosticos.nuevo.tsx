@@ -206,6 +206,9 @@ function NuevoDiagnostico() {
         .single();
       if (errOp || !oportunidad) throw errOp ?? new Error("No se pudo crear la oportunidad.");
 
+      const cfg = await cargarConfiguracion();
+      const resultado = calcularDiagnostico(datos, cfg);
+
       const { data: diagnostico, error: errDiag } = await supabase
         .from("diagnostico")
         .insert({
@@ -214,6 +217,10 @@ function NuevoDiagnostico() {
           fecha: new Date().toISOString().slice(0, 10),
           datos: datos as never,
           notas: notas as never,
+          derivados: resultado.derivados as never,
+          estados_bloque: resultado.estados_bloque as never,
+          fugas: resultado.fugas as never,
+          oportunidad_total: resultado.oportunidad_total,
         })
         .select("id")
         .single();
