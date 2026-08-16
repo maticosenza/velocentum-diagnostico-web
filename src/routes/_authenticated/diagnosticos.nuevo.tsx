@@ -27,6 +27,8 @@ import {
   type DatosDiagnostico,
   type NotasDiagnostico,
 } from "@/lib/diagnostico-form";
+import { calcularDiagnostico } from "@/lib/calculo-diagnostico";
+import { cargarConfiguracion } from "@/lib/configuracion";
 
 export const Route = createFileRoute("/_authenticated/diagnosticos/nuevo")({
   head: () => ({
