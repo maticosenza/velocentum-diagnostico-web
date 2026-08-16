@@ -168,7 +168,7 @@ function DetalleDiagnostico() {
 
   return (
     <>
-      <PageHeader title={tienda} description={subtitulo || undefined} actions={volver} />
+      <PageHeader title={tienda} {...(subtitulo ? { description: subtitulo } : {})} actions={volver} />
 
       <div className="space-y-6 px-6 py-6">
         <NumeroPrincipal medicionRota={medicionRota} total={total} conservador={conservador} />
