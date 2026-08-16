@@ -22,11 +22,12 @@ export function Campo({
   htmlFor,
 }: {
   label: string;
-  ayuda?: string;
-  obligatorio?: boolean;
+  ayuda?: string | undefined;
+  obligatorio?: boolean | undefined;
   children: React.ReactNode;
-  htmlFor?: string;
+  htmlFor?: string | undefined;
 }) {
+
   return (
     <div className="space-y-1.5">
       <Label htmlFor={htmlFor} className="text-[13px] font-normal text-muted-foreground">
