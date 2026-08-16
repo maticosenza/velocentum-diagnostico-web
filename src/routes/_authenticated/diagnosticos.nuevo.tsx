@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/diagnosticos/nuevo")({
+export const Route = createFileRoute("/_authenticated/diagnosticos/nuevo")({
   head: () => ({
     meta: [
       { title: "Nuevo diagnóstico · Velocentum Cockpit" },
