@@ -9,68 +9,73 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DiagnosticosIdRouteImport } from './routes/diagnosticos.$id'
-import { Route as DiagnosticosNuevoRouteImport } from './routes/diagnosticos.nuevo'
+import { Route as AuthenticatedDiagnosticosIdRouteImport } from './routes/_authenticated/diagnosticos.$id'
+import { Route as AuthenticatedDiagnosticosNuevoRouteImport } from './routes/_authenticated/diagnosticos.nuevo'
 
-const DiagnosticosIdRoute = DiagnosticosIdRouteImport.update({
-  id: '/diagnosticos/$id',
-  path: '/diagnosticos/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DiagnosticosNuevoRoute = DiagnosticosNuevoRouteImport.update({
-  id: '/diagnosticos/nuevo',
-  path: '/diagnosticos/nuevo',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const AuthenticatedDiagnosticosIdRoute =
+  AuthenticatedDiagnosticosIdRouteImport.update({
+    id: '/_authenticated/diagnosticos/$id',
+    path: '/diagnosticos/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedDiagnosticosNuevoRoute =
+  AuthenticatedDiagnosticosNuevoRouteImport.update({
+    id: '/_authenticated/diagnosticos/nuevo',
+    path: '/diagnosticos/nuevo',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/diagnosticos/$id': typeof DiagnosticosIdRoute
-  '/diagnosticos/nuevo': typeof DiagnosticosNuevoRoute
+  '/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
+  '/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
 export interface FileRoutesByTo {
-  '/diagnosticos/$id': typeof DiagnosticosIdRoute
-  '/diagnosticos/nuevo': typeof DiagnosticosNuevoRoute
+  '/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
+  '/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/diagnosticos/$id': typeof DiagnosticosIdRoute
-  '/diagnosticos/nuevo': typeof DiagnosticosNuevoRoute
+  '/_authenticated/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
+  '/_authenticated/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/diagnosticos/$id' | '/diagnosticos/nuevo'
   fileRoutesByTo: FileRoutesByTo
   to: '/diagnosticos/$id' | '/diagnosticos/nuevo'
-  id: '__root__' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
+  id:
+    | '__root__'
+    | '/_authenticated/diagnosticos/$id'
+    | '/_authenticated/diagnosticos/nuevo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  DiagnosticosIdRoute: typeof DiagnosticosIdRoute
-  DiagnosticosNuevoRoute: typeof DiagnosticosNuevoRoute
+  AuthenticatedDiagnosticosIdRoute: typeof AuthenticatedDiagnosticosIdRoute
+  AuthenticatedDiagnosticosNuevoRoute: typeof AuthenticatedDiagnosticosNuevoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/diagnosticos/$id': {
-      id: '/diagnosticos/$id'
+    '/_authenticated/diagnosticos/$id': {
+      id: '/_authenticated/diagnosticos/$id'
       path: '/diagnosticos/$id'
       fullPath: '/diagnosticos/$id'
-      preLoaderRoute: typeof DiagnosticosIdRouteImport
+      preLoaderRoute: typeof AuthenticatedDiagnosticosIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/diagnosticos/nuevo': {
-      id: '/diagnosticos/nuevo'
+    '/_authenticated/diagnosticos/nuevo': {
+      id: '/_authenticated/diagnosticos/nuevo'
       path: '/diagnosticos/nuevo'
       fullPath: '/diagnosticos/nuevo'
-      preLoaderRoute: typeof DiagnosticosNuevoRouteImport
+      preLoaderRoute: typeof AuthenticatedDiagnosticosNuevoRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  DiagnosticosIdRoute: DiagnosticosIdRoute,
-  DiagnosticosNuevoRoute: DiagnosticosNuevoRoute,
+  AuthenticatedDiagnosticosIdRoute: AuthenticatedDiagnosticosIdRoute,
+  AuthenticatedDiagnosticosNuevoRoute: AuthenticatedDiagnosticosNuevoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
