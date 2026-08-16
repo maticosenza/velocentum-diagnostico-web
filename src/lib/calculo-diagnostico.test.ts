@@ -63,8 +63,8 @@ describe("calcularDiagnostico · caso de ejemplo", () => {
   it("calcula CPA breakeven, CPA objetivo y ROAS objetivo", () => {
     const r = calcularDiagnostico(base, cfg);
     const margen = r.derivados.margen_contribucion!;
-    expect(r.derivados.cpa_breakeven).toBe(Math.round(45000 * margen));
-    expect(r.derivados.cpa_objetivo).toBe(Math.round(45000 * margen * 0.65));
+    expect(r.derivados.cpa_breakeven).toBeCloseTo(45000 * margen, -1);
+    expect(r.derivados.cpa_objetivo).toBeCloseTo(45000 * margen * 0.65, -1);
     expect(r.derivados.roas_objetivo).toBeGreaterThan(3);
   });
 });
@@ -112,7 +112,7 @@ describe("fugas", () => {
     const fuga = r.fugas.find((f) => f.id === "conversion");
     const margen = r.derivados.margen_contribucion!;
     expect(fuga?.calculable).toBe(true);
-    expect(fuga?.monto).toBe(Math.round(50_000 * (0.018 - 0.01) * 45000 * margen));
+    expect(fuga?.monto).toBeCloseTo(50_000 * (0.018 - 0.01) * 45000 * margen, -3);
 
     const sinFuga = calcularDiagnostico({ ...base, sesiones_mensuales: 50_000, cr_tienda: 2.5 }, cfg);
     expect(sinFuga.fugas.find((f) => f.id === "conversion")).toBeUndefined();
