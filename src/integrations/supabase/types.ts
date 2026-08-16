@@ -14,7 +14,143 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      configuracion: {
+        Row: {
+          actualizado_en: string
+          clave: string
+          descripcion: string | null
+          valor: Json
+        }
+        Insert: {
+          actualizado_en?: string
+          clave: string
+          descripcion?: string | null
+          valor: Json
+        }
+        Update: {
+          actualizado_en?: string
+          clave?: string
+          descripcion?: string | null
+          valor?: Json
+        }
+        Relationships: []
+      }
+      diagnostico: {
+        Row: {
+          creado_en: string
+          creado_por: string
+          datos: Json
+          derivados: Json
+          estados_bloque: Json
+          fecha: string
+          fugas: Json
+          id: string
+          notas: Json
+          oportunidad_id: string
+          oportunidad_total: number
+        }
+        Insert: {
+          creado_en?: string
+          creado_por: string
+          datos?: Json
+          derivados?: Json
+          estados_bloque?: Json
+          fecha?: string
+          fugas?: Json
+          id?: string
+          notas?: Json
+          oportunidad_id: string
+          oportunidad_total?: number
+        }
+        Update: {
+          creado_en?: string
+          creado_por?: string
+          datos?: Json
+          derivados?: Json
+          estados_bloque?: Json
+          fecha?: string
+          fugas?: Json
+          id?: string
+          notas?: Json
+          oportunidad_id?: string
+          oportunidad_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostico_oportunidad_id_fkey"
+            columns: ["oportunidad_id"]
+            isOneToOne: false
+            referencedRelation: "oportunidad"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oportunidad: {
+        Row: {
+          actualizado_en: string
+          contacto_email: string | null
+          contacto_nombre: string | null
+          contacto_telefono: string | null
+          creado_en: string
+          creado_por: string
+          estado: Database["public"]["Enums"]["estado_oportunidad_enum"]
+          id: string
+          monto_cerrado: number | null
+          monto_propuesto: number | null
+          motivo_perdida:
+            | Database["public"]["Enums"]["motivo_perdida_enum"]
+            | null
+          nombre_tienda: string
+          origen_lead: string | null
+          plan_plataforma: string | null
+          plataforma: Database["public"]["Enums"]["plataforma_enum"] | null
+          servicios_contratados: string[]
+          vertical: Database["public"]["Enums"]["vertical_enum"] | null
+        }
+        Insert: {
+          actualizado_en?: string
+          contacto_email?: string | null
+          contacto_nombre?: string | null
+          contacto_telefono?: string | null
+          creado_en?: string
+          creado_por: string
+          estado?: Database["public"]["Enums"]["estado_oportunidad_enum"]
+          id?: string
+          monto_cerrado?: number | null
+          monto_propuesto?: number | null
+          motivo_perdida?:
+            | Database["public"]["Enums"]["motivo_perdida_enum"]
+            | null
+          nombre_tienda: string
+          origen_lead?: string | null
+          plan_plataforma?: string | null
+          plataforma?: Database["public"]["Enums"]["plataforma_enum"] | null
+          servicios_contratados?: string[]
+          vertical?: Database["public"]["Enums"]["vertical_enum"] | null
+        }
+        Update: {
+          actualizado_en?: string
+          contacto_email?: string | null
+          contacto_nombre?: string | null
+          contacto_telefono?: string | null
+          creado_en?: string
+          creado_por?: string
+          estado?: Database["public"]["Enums"]["estado_oportunidad_enum"]
+          id?: string
+          monto_cerrado?: number | null
+          monto_propuesto?: number | null
+          motivo_perdida?:
+            | Database["public"]["Enums"]["motivo_perdida_enum"]
+            | null
+          nombre_tienda?: string
+          origen_lead?: string | null
+          plan_plataforma?: string | null
+          plataforma?: Database["public"]["Enums"]["plataforma_enum"] | null
+          servicios_contratados?: string[]
+          vertical?: Database["public"]["Enums"]["vertical_enum"] | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +159,35 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      estado_oportunidad_enum:
+        | "en_curso"
+        | "propuesta_enviada"
+        | "cerrado"
+        | "perdido"
+        | "en_seguimiento"
+      motivo_perdida_enum:
+        | "precio"
+        | "timing"
+        | "no_era_decisor"
+        | "se_fue_con_otro"
+        | "no_respondio"
+        | "otro"
+      plataforma_enum:
+        | "tiendanube"
+        | "shopify"
+        | "empretienda"
+        | "woocommerce"
+        | "vtex"
+        | "desarrollo_propio"
+        | "otro"
+      vertical_enum:
+        | "indumentaria"
+        | "cosmetica"
+        | "deco_hogar"
+        | "electronica"
+        | "deportes"
+        | "alimentos"
+        | "otro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +314,40 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      estado_oportunidad_enum: [
+        "en_curso",
+        "propuesta_enviada",
+        "cerrado",
+        "perdido",
+        "en_seguimiento",
+      ],
+      motivo_perdida_enum: [
+        "precio",
+        "timing",
+        "no_era_decisor",
+        "se_fue_con_otro",
+        "no_respondio",
+        "otro",
+      ],
+      plataforma_enum: [
+        "tiendanube",
+        "shopify",
+        "empretienda",
+        "woocommerce",
+        "vtex",
+        "desarrollo_propio",
+        "otro",
+      ],
+      vertical_enum: [
+        "indumentaria",
+        "cosmetica",
+        "deco_hogar",
+        "electronica",
+        "deportes",
+        "alimentos",
+        "otro",
+      ],
+    },
   },
 } as const
