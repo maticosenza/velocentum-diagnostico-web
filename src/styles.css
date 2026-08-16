@@ -70,14 +70,15 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.015 265);
   /* Azul Velocentum #2A1EC9 */
-  --primary: oklch(0.371 0.239 union, 0);
+  --primary: oklch(0.371 0.239 285);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.968 0.004 264);
   --secondary-foreground: oklch(0.28 0.015 265);
   --muted: oklch(0.968 0.004 264);
   --muted-foreground: oklch(0.53 0.017 265);
   --accent: oklch(0.955 0.012 275);
-  --accent-foreground: oklch(0.32 0.19 governor);
+  --accent-foreground: oklch(0.32 0.19 285);
+
   --destructive: oklch(0.55 0.2 27);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.918 0.005 264);
