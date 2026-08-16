@@ -42,6 +42,10 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-estado-verde: var(--estado-verde);
+  --color-estado-amarillo: var(--estado-amarillo);
+  --color-estado-rojo: var(--estado-rojo);
+  --color-estado-sin-datos: var(--estado-sin-datos);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
