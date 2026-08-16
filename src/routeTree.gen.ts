@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DiagnosticosIdRouteImport } from './routes/diagnosticos.$id'
+import { Route as DiagnosticosNuevoRouteImport } from './routes/diagnosticos.nuevo'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DiagnosticosIdRoute = DiagnosticosIdRouteImport.update({
+  id: '/diagnosticos/$id',
+  path: '/diagnosticos/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiagnosticosNuevoRoute = DiagnosticosNuevoRouteImport.update({
+  id: '/diagnosticos/nuevo',
+  path: '/diagnosticos/nuevo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/diagnosticos/$id': typeof DiagnosticosIdRoute
+  '/diagnosticos/nuevo': typeof DiagnosticosNuevoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/diagnosticos/$id': typeof DiagnosticosIdRoute
+  '/diagnosticos/nuevo': typeof DiagnosticosNuevoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/diagnosticos/$id': typeof DiagnosticosIdRoute
+  '/diagnosticos/nuevo': typeof DiagnosticosNuevoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
+  id: '__root__' | '/' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DiagnosticosIdRoute: typeof DiagnosticosIdRoute
+  DiagnosticosNuevoRoute: typeof DiagnosticosNuevoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/diagnosticos/$id': {
+      id: '/diagnosticos/$id'
+      path: '/diagnosticos/$id'
+      fullPath: '/diagnosticos/$id'
+      preLoaderRoute: typeof DiagnosticosIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/diagnosticos/nuevo': {
+      id: '/diagnosticos/nuevo'
+      path: '/diagnosticos/nuevo'
+      fullPath: '/diagnosticos/nuevo'
+      preLoaderRoute: typeof DiagnosticosNuevoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DiagnosticosIdRoute: DiagnosticosIdRoute,
+  DiagnosticosNuevoRoute: DiagnosticosNuevoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
