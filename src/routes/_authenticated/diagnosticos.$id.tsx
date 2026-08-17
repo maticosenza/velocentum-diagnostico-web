@@ -157,11 +157,13 @@ function DetalleDiagnostico() {
   const fugas = Array.isArray(data.fugas) ? data.fugas : [];
   const medicionRota = estados.medicion === "rojo";
 
+  const version = typeof data.version === "number" ? data.version : 1;
   const tienda = data.oportunidad?.nombre_tienda ?? datos.nombre_tienda ?? "Tienda sin nombre";
   const subtitulo = [
     etiqueta(VERTICALES, data.oportunidad?.vertical ?? datos.vertical),
     etiqueta(PLATAFORMAS, data.oportunidad?.plataforma ?? datos.plataforma),
     data.fecha ? formatFecha(data.fecha) : null,
+    version > 1 ? `Versión ${version}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -169,9 +171,33 @@ function DetalleDiagnostico() {
   const total = data.oportunidad_total ?? 0;
   const conservador = Math.round(total * 0.6);
 
+  const acciones = (
+    <div className="flex items-center gap-3">
+      <Button asChild size="sm">
+        <Link to="/diagnosticos/nuevo" search={{ desde: data.id }}>
+          Editar y recalcular
+        </Link>
+      </Button>
+      {volver}
+    </div>
+  );
+
   return (
     <>
-      <PageHeader title={tienda} {...(subtitulo ? { description: subtitulo } : {})} actions={volver} />
+      <PageHeader title={tienda} {...(subtitulo ? { description: subtitulo } : {})} actions={acciones} />
+
+      {version > 1 && data.origen_diagnostico_id && (
+        <div className="border-b border-border bg-card px-6 py-2 text-[12px] text-muted-foreground">
+          Esta es la versión {version}.{" "}
+          <Link
+            to="/diagnosticos/$id"
+            params={{ id: data.origen_diagnostico_id }}
+            className="text-primary underline-offset-2 hover:underline"
+          >
+            Ver la versión anterior
+          </Link>
+        </div>
+      )}
 
       <div className="space-y-6 px-6 py-6">
         <NumeroPrincipal medicionRota={medicionRota} total={total} conservador={conservador} />
