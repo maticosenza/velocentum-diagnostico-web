@@ -14,11 +14,15 @@ import {
   CampoSiNo,
   CampoTexto,
 } from "@/components/campos-formulario";
+import { CargaCsvMeta } from "@/components/carga-csv-meta";
 import {
   BLOQUES,
   CAMPOS_EXCLUSIVOS,
   CANTIDAD_CAMPANAS,
   CLAVE_BORRADOR,
+  ESTADOS_CAPI,
+  ORIGEN_DATOS,
+
   DATOS_INICIALES,
   MODOS,
   PASARELAS,
