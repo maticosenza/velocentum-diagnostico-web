@@ -9,16 +9,22 @@ import type { DatosDiagnostico } from "./diagnostico-form";
 
 export type TramoFatiga = { hasta: number | null; factor: number };
 export type Umbral = { verde: number; rojo: number };
+/** Umbral de conversión por tramo de ticket promedio. `hasta: null` = tramo final. */
+export type TramoCr = { hasta: number | null; verde: number; rojo: number };
 
 export type ConfiguracionCalculo = {
   reserva_default?: number;
   comision_plataforma?: Record<string, number>;
   comision_pasarela?: Record<string, number>;
   umbrales_funnel_web?: Record<string, Umbral>;
+  umbrales_cr_por_ticket?: TramoCr[];
   umbrales_creativos?: Record<string, Umbral>;
   factor_fatiga?: TramoFatiga[];
   delta_medicion?: Umbral;
+  tope_fuga_individual?: number;
+  tope_fuga_total?: number;
 };
+
 
 /** Arma el objeto de configuración a partir de las filas crudas de la tabla. */
 export function armarConfiguracion(
