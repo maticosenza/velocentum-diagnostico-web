@@ -226,7 +226,7 @@ const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
 /** Campos que cuentan para el indicador de completitud de cada pestaña, según el modo. */
 export function camposPorBloque(modo: Modo, bloque: BloqueId): (keyof DatosDiagnostico)[] {
   const base = CAMPOS_COMUNES[bloque];
-  if (bloque === "medicion") return modo === "A" ? ["facturacion_pixel"] : [];
+  if (bloque === "medicion") return modo === "A" ? ["facturacion_pixel", "capi_estado"] : [];
   if (bloque === "productos") {
     const nombres: (keyof DatosDiagnostico)[] = [
       "producto_1_nombre",
@@ -288,3 +288,23 @@ export const CAMPOS_EXCLUSIVOS: Record<Modo, (keyof DatosDiagnostico)[]> = {
 };
 
 export const CLAVE_BORRADOR = "velocentum:borrador-diagnostico";
+
+export const ESTADOS_CAPI = [
+  { value: "activa", label: "Activa" },
+  { value: "ausente", label: "Ausente" },
+  { value: "no_se_sabe", label: "No se sabe" },
+] as const;
+
+/** Dónde sale cada dato: ayuda para el vendedor arriba de los campos. */
+export const ORIGEN_DATOS: Record<BloqueId, string> = {
+  identificacion: "Conversado. El plan se ve en el panel del cliente.",
+  medicion:
+    "Events Manager, pestaña Resumen. Ojo que Meta solo guarda unos dos meses de historial.",
+  economia: "Tiendanube: Estadísticas, Visión general.",
+  productos: "Tiendanube: Estadísticas, Productos. Ahí están las unidades vendidas de cada uno.",
+  cuenta:
+    "Meta Ads Manager: filtrá el mes, activá 'Con entrega', desglosá por conjunto de anuncios y exportá.",
+  web: "Las visitas salen de Tiendanube, Estadísticas, Visión general.",
+  contenido: "Todo conversado.",
+  mercado_libre: "Conversado, más el panel de Product Ads si lo tiene.",
+};
