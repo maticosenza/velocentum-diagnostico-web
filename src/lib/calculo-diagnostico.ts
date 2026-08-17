@@ -38,6 +38,9 @@ export type Derivados = {
   margen_contribucion: number | null;
   comision_plataforma: number | null;
   comision_pasarela: number | null;
+  margenes_producto: (number | null)[];
+  pedidos_mensuales: number | null;
+  cr_tienda: number | null;
   breakeven_roas: number | null;
   cpa_breakeven: number | null;
   reserva: number | null;
@@ -49,8 +52,8 @@ export type Derivados = {
   conjuntos_sostenibles: number | null;
   piso_mensual_un_conjunto: number | null;
   inversion_actual_mensual: number | null;
-  techo_operativo_inversion: number | null;
 };
+
 
 export type Fuga = {
   id: string;
