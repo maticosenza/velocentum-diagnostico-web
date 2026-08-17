@@ -144,6 +144,44 @@ function comisionPlataformaDe(cfg: ConfiguracionCalculo, datos: DatosDiagnostico
   return null;
 }
 
+/**
+ * Umbral de conversión de tienda según el tramo de ticket promedio.
+ * Sin ticket cargado no se puede evaluar la conversión (devuelve null).
+ * `umbrales_funnel_web.cr_tienda` queda como respaldo si la clave nueva no existe.
+ */
+export function umbralCr(cfg: ConfiguracionCalculo, ticket: number | null): Umbral | null {
+  if (!finito(ticket) || ticket <= 0) return null;
+  const tramos = cfg.umbrales_cr_por_ticket;
+  if (Array.isArray(tramos) && tramos.length > 0) {
+    const ordenados = [...tramos].sort(
+      (a, b) => (a.hasta ?? Number.POSITIVE_INFINITY) - (b.hasta ?? Number.POSITIVE_INFINITY),
+    );
+    const tramo = ordenados.find((t) => t.hasta === null || ticket <= t.hasta) ?? ordenados.at(-1)!;
+    if (finito(tramo.verde) && finito(tramo.rojo)) return { verde: tramo.verde, rojo: tramo.rojo };
+  }
+  const respaldo = cfg.umbrales_funnel_web?.["cr_tienda"];
+  return respaldo && finito(respaldo.verde) && finito(respaldo.rojo) ? respaldo : null;
+}
+
+/**
+ * Lectura textual del presupuesto. Si el negocio no tiene volumen de compras
+ * suficiente, el diagnóstico no es de subinversión sino de falta de señal.
+ */
+export function lecturaPresupuesto(d: Derivados): string | null {
+  if (d.volumen_suficiente === false) {
+    return "El volumen de compras del negocio no alcanza para que un conjunto optimizado por compra salga del aprendizaje, invierta lo que invierta. La salida es consolidar en un solo conjunto y optimizar por un evento intermedio (agregar al carrito o iniciar checkout) hasta juntar señal.";
+  }
+  const piso = d.piso_mensual_un_conjunto;
+  const actual = d.inversion_actual_mensual;
+  if (typeof piso !== "number" || typeof actual !== "number") return null;
+  if (actual < piso) {
+    return "Subinversión estructural: el presupuesto está por debajo del piso que necesita un solo conjunto para aprender. Hay que consolidar conjuntos o subir el presupuesto.";
+  }
+  return "El presupuesto alcanza el piso que necesita un conjunto para aprender. El problema no es de plata, es de estructura de cuenta o de creativo.";
+}
+
+
+
 // ---------------------------------------------------------------- productos
 
 export type ProductoCargado = {
