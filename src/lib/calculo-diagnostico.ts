@@ -316,7 +316,10 @@ export function calcularDiagnostico(
     conjuntos_sostenibles: red(conjuntosSostenibles, 1),
     piso_mensual_un_conjunto: red(pisoMensualUnConjunto, 0),
     inversion_actual_mensual: red(inversionActualMensual, 0),
+    pedidos_semanales: red(pedidosSemanales, 1),
+    volumen_suficiente: volumenSuficiente,
   };
+
 
   // --- Estados por bloque
   const uDelta = cfg.delta_medicion;
