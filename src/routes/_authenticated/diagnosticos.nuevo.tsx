@@ -323,12 +323,20 @@ function NuevoDiagnostico() {
   return (
     <>
       <PageHeader
-        title="Nuevo diagnóstico"
-        description="Cargá los datos mientras hablás con el prospecto. Atajos: Alt + número, Alt + ← / →."
+        title={origen ? "Editar y recalcular" : "Nuevo diagnóstico"}
+        description={
+          origen
+            ? `Al guardar se crea la versión ${origen.version + 1} del mismo prospecto. El diagnóstico original queda intacto.`
+            : "Cargá los datos mientras hablás con el prospecto. Atajos: Alt + número, Alt + ← / →."
+        }
         actions={
           <div className="flex items-center gap-3">
             <span className="text-[12px] text-muted-foreground">
-              {guardadoEn ? `Borrador guardado ${guardadoEn}` : "Borrador sin guardar"}
+              {origen
+                ? `Versión nueva a partir de la ${origen.version}`
+                : guardadoEn
+                  ? `Borrador guardado ${guardadoEn}`
+                  : "Borrador sin guardar"}
             </span>
             <Button asChild size="sm" variant="outline">
               <Link to="/">Cancelar</Link>
