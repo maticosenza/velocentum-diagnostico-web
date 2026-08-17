@@ -375,10 +375,21 @@ function NuevoDiagnostico() {
 
           {bloque === "medicion" && modo === "A" && (
             <div className="grid gap-4 sm:grid-cols-2">
+              <CampoSiNo
+                label="¿Tiene el Pixel instalado?"
+                value={datos.tiene_pixel}
+                onChange={(v) => set("tiene_pixel", v)}
+              />
               <CampoPesos
                 label="Facturación que reporta el Pixel"
                 value={datos.facturacion_pixel}
                 onChange={(v) => set("facturacion_pixel", v)}
+              />
+              <CampoSelect
+                label="Estado de la CAPI"
+                value={datos.capi_estado}
+                onChange={(v) => set("capi_estado", v)}
+                opciones={ESTADOS_CAPI}
               />
               <div className="rounded-md border border-border px-3 py-2.5">
                 <p className="text-[12px] text-muted-foreground">
@@ -388,21 +399,6 @@ function NuevoDiagnostico() {
                   {desvioMedicion === null ? "—" : formatPorcentaje(desvioMedicion, 1)}
                 </p>
               </div>
-              <CampoSiNo
-                label="¿CAPI activa?"
-                value={datos.capi_activa}
-                onChange={(v) => set("capi_activa", v)}
-              />
-              <CampoSiNo
-                label="¿Hay eventos manuales duplicados?"
-                value={datos.eventos_duplicados}
-                onChange={(v) => set("eventos_duplicados", v)}
-              />
-              <CampoSiNo
-                label="¿Catálogo sincronizado?"
-                value={datos.catalogo_sincronizado}
-                onChange={(v) => set("catalogo_sincronizado", v)}
-              />
             </div>
           )}
 
@@ -425,6 +421,7 @@ function NuevoDiagnostico() {
               />
             </div>
           )}
+
 
           {bloque === "economia" && (
             <div className="grid gap-4 sm:grid-cols-2">
