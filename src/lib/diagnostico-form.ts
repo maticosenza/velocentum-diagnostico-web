@@ -220,7 +220,9 @@ export function camposPorBloque(modo: Modo, bloque: BloqueId): (keyof DatosDiagn
       "producto_1_nombre",
       "producto_2_nombre",
       "producto_3_nombre",
-      "productos_pct_facturacion",
+      "producto_1_pct_facturacion",
+      "producto_2_pct_facturacion",
+      "producto_3_pct_facturacion",
     ];
     return modo === "A"
       ? [
