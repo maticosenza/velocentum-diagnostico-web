@@ -145,15 +145,16 @@ export type ProductoCargado = {
 /** Devuelve los productos que tienen costo y precio válidos cargados. */
 export function productosCargados(d: DatosDiagnostico) {
   const crudos = [
-    { indice: 1, nombre: d.producto_1_nombre, costo: d.producto_1_costo, precio: d.producto_1_precio },
-    { indice: 2, nombre: d.producto_2_nombre, costo: d.producto_2_costo, precio: d.producto_2_precio },
-    { indice: 3, nombre: d.producto_3_nombre, costo: d.producto_3_costo, precio: d.producto_3_precio },
+    { indice: 1, nombre: d.producto_1_nombre, costo: d.producto_1_costo, precio: d.producto_1_precio, pct: d.producto_1_pct_facturacion },
+    { indice: 2, nombre: d.producto_2_nombre, costo: d.producto_2_costo, precio: d.producto_2_precio, pct: d.producto_2_pct_facturacion },
+    { indice: 3, nombre: d.producto_3_nombre, costo: d.producto_3_costo, precio: d.producto_3_precio, pct: d.producto_3_pct_facturacion },
   ];
   return crudos.filter((p) => finito(p.costo) && finito(p.precio) && (p.precio as number) > 0) as {
     indice: number;
     nombre: string;
     costo: number;
     precio: number;
+    pct: number | null;
   }[];
 }
 
