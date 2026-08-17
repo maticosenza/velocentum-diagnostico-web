@@ -84,6 +84,8 @@ const EXPLICACION_FUGA: Record<string, string> = {
 type FilaDiagnostico = {
   id: string;
   fecha: string;
+  version: number | null;
+  origen_diagnostico_id: string | null;
   datos: DatosDiagnostico;
   derivados: Derivados;
   estados_bloque: Partial<EstadosBloque>;
