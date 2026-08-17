@@ -271,8 +271,20 @@ export function contarCompletos(datos: DatosDiagnostico, modo: Modo, bloque: Blo
 
 /** Campos que NO se conservan al cambiar de modo (son exclusivos del otro modo). */
 export const CAMPOS_EXCLUSIVOS: Record<Modo, (keyof DatosDiagnostico)[]> = {
-  A: ["facturacion_pixel", "capi_activa", "eventos_duplicados", "catalogo_sincronizado", "conjuntos_activos", "presupuesto_diario", "visitas_mensuales"],
-  B: ["tiene_pixel", "tiene_analytics", "numeros_meta_coinciden", "gasto_diario", "cantidad_campanas"],
+  A: [
+    "facturacion_pixel",
+    "capi_estado",
+    "conjuntos_activos",
+    "presupuesto_diario",
+    "visitas_mensuales",
+    "csv_gasto_total",
+    "csv_frecuencia_promedio",
+    "csv_ctr_global",
+    "csv_conjuntos_bajo_gasto",
+    "csv_dias_periodo",
+  ],
+  B: ["tiene_analytics", "numeros_meta_coinciden", "gasto_diario", "cantidad_campanas"],
+
 };
 
 export const CLAVE_BORRADOR = "velocentum:borrador-diagnostico";
