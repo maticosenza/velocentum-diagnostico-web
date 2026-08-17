@@ -58,14 +58,13 @@ function pct(n: number | null | undefined, decimales = 1) {
 }
 
 const ETIQUETAS_CAMPO: Record<string, string> = {
-  sesiones_mensuales: "sesiones mensuales",
+  visitas_mensuales: "visitas mensuales",
   cr_tienda: "tasa de conversión",
   ticket_promedio: "ticket promedio",
   margen_contribucion: "margen de contribución",
   inversion_meta: "inversión en Meta",
   inversion_google: "inversión en Google",
   facturacion_mensual: "facturación mensual",
-  frecuencia_30d: "frecuencia de los últimos 30 días",
   conjuntos_activos: "conjuntos activos",
   presupuesto_diario: "presupuesto diario",
   cpa_objetivo: "CPA objetivo",
@@ -254,7 +253,7 @@ function Semaforo({
     {
       id: "medicion",
       titulo: "Medición",
-      dato: `Desvío Pixel vs. backoffice: ${pct(derivados.delta_medicion)}`,
+      dato: `Desvío Pixel vs. facturación real: ${pct(derivados.delta_medicion)}`,
     },
     {
       id: "economia",
@@ -273,13 +272,17 @@ function Semaforo({
       id: "funnel_web",
       titulo: "Funnel web",
       dato: `Conversión de la tienda: ${
-        typeof datos.cr_tienda === "number" ? formatPorcentaje(datos.cr_tienda, 2) : GUION
+        typeof derivados.cr_tienda === "number"
+          ? formatPorcentaje(derivados.cr_tienda * 100, 2)
+          : GUION
       }`,
     },
     {
       id: "creativos",
-      titulo: "Creativos",
-      dato: `${numero(datos.creativos_nuevos_mes, 0)} creativos nuevos por mes`,
+      titulo: "Contenido",
+      dato: datos.frecuencia_creativos?.trim()
+        ? `Creativos nuevos: ${datos.frecuencia_creativos}`
+        : "Sin datos de contenido",
     },
   ];
 
@@ -426,6 +429,7 @@ function EconomiaDetalle({
         <Fila label="CPA objetivo" value={pesos(derivados.cpa_objetivo)} />
         <Fila label="ROAS objetivo" value={numero(derivados.roas_objetivo)} />
         <Fila label="MER actual" value={numero(derivados.mer_actual)} />
+        <Fila label="Pedidos mensuales estimados" value={numero(derivados.pedidos_mensuales, 0)} />
       </dl>
     </section>
   );
@@ -435,20 +439,13 @@ function EconomiaDetalle({
 
 function lecturaPresupuesto(d: Derivados): string | null {
   const piso = d.piso_mensual_un_conjunto;
-  const techo = d.techo_operativo_inversion;
   const actual = d.inversion_actual_mensual;
   if (typeof piso !== "number" || typeof actual !== "number") return null;
 
-  if (typeof techo === "number" && piso > techo) {
-    return "El piso de inversión necesario es más alto que lo que la operación puede sostener: hoy la tienda no está en condiciones de pautar con esta estructura. Primero hay que trabajar sobre margen y capacidad operativa.";
-  }
   if (actual < piso) {
     return "Subinversión estructural: el presupuesto está por debajo del piso que necesita un solo conjunto para aprender. Hay que consolidar conjuntos o subir el presupuesto.";
   }
-  if (typeof techo === "number" && actual > techo) {
-    return "La inversión supera el techo operativo: si escalamos así, vamos a estar empujando volumen sobre una operación que no acompaña.";
-  }
-  return "El presupuesto es correcto: alcanza el piso y no supera el techo operativo. El problema no es de plata, es de estructura de cuenta o de creativo.";
+  return "El presupuesto alcanza el piso que necesita un conjunto para aprender. El problema no es de plata, es de estructura de cuenta o de creativo.";
 }
 
 function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosDiagnostico }) {
@@ -468,7 +465,6 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
           label="Conjuntos activos vs. sostenibles"
           value={`${numero(datos.conjuntos_activos, 0)} / ${numero(derivados.conjuntos_sostenibles, 1)}`}
         />
-        <Fila label="Techo operativo en inversión" value={pesos(derivados.techo_operativo_inversion)} />
       </dl>
       <p className="border-t border-border px-5 py-4 text-[14px] leading-6 text-foreground">
         {lectura ?? "Faltan datos de presupuesto para dar una lectura."}
