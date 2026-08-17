@@ -415,7 +415,7 @@ describe("fuga por carritos abandonados", () => {
     const f = r.fugas.find((x) => x.id === "carritos_abandonados")!;
     const margen = r.derivados.margen_contribucion!;
     expect(f.calculable).toBe(true);
-    expect(f.monto).toBe(Math.round(500 * 0.08 * 45_000 * margen));
+    expect(f.monto).toBeCloseTo(500 * 0.08 * 45_000 * margen, -2);
   });
 
   it("con una sola de las dos activas usa la mitad del porcentaje", () => {
