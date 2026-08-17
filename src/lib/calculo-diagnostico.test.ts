@@ -58,30 +58,84 @@ describe("margen ponderado por productos", () => {
     expect(r.derivados.breakeven_roas).toBeLessThan(2.7);
   });
 
-  it("pondera los márgenes de varios productos por su participación", () => {
+  it("pondera los márgenes por el porcentaje de facturación de cada producto", () => {
+    const r = calcularDiagnostico(
+      {
+        ...base,
+        producto_1_pct_facturacion: 5,
+        producto_2_nombre: "Campera",
+        producto_2_costo: 45000,
+        producto_2_precio: 100000,
+        producto_2_pct_facturacion: 15,
+        producto_3_nombre: "Remera",
+        producto_3_costo: 14000,
+        producto_3_precio: 20000,
+        producto_3_pct_facturacion: 80,
+      },
+      cfg,
+    );
+    const [m1, m2, m3] = r.derivados.margenes_producto;
+    const ponderado = r.derivados.margen_contribucion!;
+    const esperado = (m1! * 5 + m2! * 15 + m3! * 80) / 100;
+    expect(ponderado).toBeCloseTo(esperado, 3);
+    expect(r.derivados.pesos_producto).toEqual([0.05, 0.15, 0.8]);
+  });
+
+  it("la remera que factura el 80% manda sobre la campera cara", () => {
+    const r = calcularDiagnostico(
+      {
+        ...DATOS_INICIALES,
+        nombre_tienda: "Tienda de prueba",
+        plataforma: "tiendanube",
+        plan_plataforma: "esencial",
+        pasarela: "mercado_pago",
+        costo_envio_promedio: 3000,
+        ticket_promedio: 25000,
+        producto_1_nombre: "Remera",
+        producto_1_costo: 14000,
+        producto_1_precio: 20000,
+        producto_1_pct_facturacion: 80,
+        producto_2_nombre: "Campera",
+        producto_2_costo: 45000,
+        producto_2_precio: 100000,
+        producto_2_pct_facturacion: 15,
+      },
+      cfg,
+    );
+    const [mRemera, mCampera] = r.derivados.margenes_producto;
+    const ponderado = r.derivados.margen_contribucion!;
+    expect(Math.abs(ponderado - mRemera!)).toBeLessThan(Math.abs(ponderado - mCampera!));
+    expect(ponderado).toBeCloseTo((mRemera! * 80 + mCampera! * 15) / 95, 4);
+  });
+
+  it("sin porcentajes cargados usa el promedio simple de los márgenes", () => {
     const r = calcularDiagnostico(
       {
         ...base,
         producto_2_nombre: "Campera",
         producto_2_costo: 45000,
         producto_2_precio: 100000,
-        producto_3_nombre: "Remera",
-        producto_3_costo: 14000,
-        producto_3_precio: 20000,
       },
       cfg,
     );
-    const [m1, m2, m3] = r.derivados.margenes_producto;
-    expect(m1).not.toBeNull();
-    expect(m2).not.toBeNull();
-    expect(m3).not.toBeNull();
-    const ponderado = r.derivados.margen_contribucion!;
-    // Queda entre el peor y el mejor margen, y más cerca del producto caro.
-    expect(ponderado).toBeGreaterThan(Math.min(m1!, m2!, m3!));
-    expect(ponderado).toBeLessThan(Math.max(m1!, m2!, m3!));
-    const esperado =
-      (m1! * 45000 + m2! * 100000 + m3! * 20000) / (45000 + 100000 + 20000);
-    expect(ponderado).toBeCloseTo(esperado, 3);
+    const [m1, m2] = r.derivados.margenes_producto;
+    expect(r.derivados.margen_contribucion).toBeCloseTo((m1! + m2!) / 2, 4);
+    expect(r.derivados.pesos_producto).toEqual([0.5, 0.5, null]);
+  });
+
+  it("un producto con costo y precio pero sin porcentaje queda fuera del ponderado", () => {
+    const r = calcularDiagnostico(
+      {
+        ...base,
+        producto_1_pct_facturacion: 60,
+        producto_2_nombre: "Campera",
+        producto_2_costo: 45000,
+        producto_2_precio: 100000,
+      },
+      cfg,
+    );
+    expect(r.derivados.margen_contribucion).toBeCloseTo(r.derivados.margenes_producto[0]!, 4);
+    expect(r.derivados.pesos_producto[1]).toBeNull();
   });
 
   it("sin productos con costo y precio el margen queda en null", () => {
