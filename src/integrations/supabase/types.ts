@@ -45,6 +45,7 @@ export type Database = {
           fecha: string
           fugas: Json
           id: string
+          modo: string
           notas: Json
           oportunidad_id: string
           oportunidad_total: number
@@ -58,6 +59,7 @@ export type Database = {
           fecha?: string
           fugas?: Json
           id?: string
+          modo?: string
           notas?: Json
           oportunidad_id: string
           oportunidad_total?: number
@@ -71,6 +73,7 @@ export type Database = {
           fecha?: string
           fugas?: Json
           id?: string
+          modo?: string
           notas?: Json
           oportunidad_id?: string
           oportunidad_total?: number
