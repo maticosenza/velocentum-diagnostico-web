@@ -297,19 +297,19 @@ function NuevoDiagnostico() {
           }
         />
         <div className="px-8 py-8">
-          <div className="grid max-w-3xl gap-5 sm:grid-cols-2">
+          <div className="grid max-w-4xl gap-6 sm:grid-cols-2">
             {MODOS.map((m) => (
               <button
                 key={m.value}
                 type="button"
                 onClick={() => setModo(m.value)}
-                className="rounded-lg border border-border bg-card p-7 text-left transition-colors hover:border-violet"
+                className="rounded-xl border border-border bg-card p-10 text-left transition-colors hover:border-violet"
               >
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                <p className="text-[12px] uppercase tracking-wide text-muted-foreground">
                   Modo {m.value}
                 </p>
-                <p className="mt-1 text-[16px] font-medium text-foreground">{m.titulo}</p>
-                <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">{m.detalle}</p>
+                <p className="mt-2 text-[22px] font-medium leading-7 text-foreground">{m.titulo}</p>
+                <p className="mt-3 text-[14px] leading-6 text-muted-foreground">{m.detalle}</p>
               </button>
             ))}
           </div>
