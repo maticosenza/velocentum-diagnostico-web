@@ -110,7 +110,7 @@ function DetalleDiagnostico() {
       const { data, error } = await supabase
         .from("diagnostico")
         .select(
-          "id, fecha, datos, derivados, estados_bloque, fugas, oportunidad_total, oportunidad:oportunidad_id(nombre_tienda, vertical, plataforma, estado)",
+          "id, fecha, version, origen_diagnostico_id, datos, derivados, estados_bloque, fugas, oportunidad_total, oportunidad:oportunidad_id(nombre_tienda, vertical, plataforma, estado)",
         )
         .eq("id", id)
         .maybeSingle();
