@@ -344,7 +344,7 @@ export function calcularDiagnostico(
     estadoCuenta = ratio >= 1 ? "verde" : ratio >= 0.6 ? "amarillo" : "rojo";
   }
 
-  const uCr = cfg.umbrales_funnel_web?.["cr_tienda"];
+  // uCr ya viene resuelto por tramo de ticket
   const estadoFunnel: EstadoBloque =
     crTienda !== null && uCr ? porUmbral(crTienda, uCr, true) : "sin_datos";
 
