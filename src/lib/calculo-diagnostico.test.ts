@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularDiagnostico, type ConfiguracionCalculo } from "./calculo-diagnostico";
+import { calcularDiagnostico, lecturaPresupuesto, type ConfiguracionCalculo } from "./calculo-diagnostico";
 import { DATOS_INICIALES, type DatosDiagnostico } from "./diagnostico-form";
 
 const cfg: ConfiguracionCalculo = {
@@ -280,5 +280,116 @@ describe("fugas", () => {
       if (v !== null) expect(Number.isFinite(v as number)).toBe(true);
     }
     expect(Number.isFinite(r.oportunidad_total)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------- caso real
+// Tienda de indumentaria de ticket alto: los tres problemas del motor.
+
+const cfgReal: ConfiguracionCalculo = {
+  ...cfg,
+  umbrales_cr_por_ticket: [
+    { hasta: 30000, verde: 0.025, rojo: 0.012 },
+    { hasta: 80000, verde: 0.018, rojo: 0.009 },
+    { hasta: 150000, verde: 0.012, rojo: 0.006 },
+    { hasta: 300000, verde: 0.007, rojo: 0.0035 },
+    { hasta: null, verde: 0.005, rojo: 0.0025 },
+  ],
+  tope_fuga_individual: 0.25,
+  tope_fuga_total: 0.4,
+};
+
+const real: DatosDiagnostico = {
+  ...DATOS_INICIALES,
+  nombre_tienda: "Indumentaria ticket alto",
+  vertical: "indumentaria",
+  plataforma: "tiendanube",
+  plan_plataforma: "esencial",
+  pasarela: "mercado_pago",
+  costo_envio_promedio: 8000,
+  ticket_promedio: 225226,
+  facturacion_mensual: 33_108_279,
+  visitas_mensuales: 28_550,
+  inversion_meta: 5_705_433,
+  presupuesto_diario: 190_181,
+  conjuntos_activos: 27,
+  producto_1_nombre: "Producto principal",
+  producto_1_costo: 96_284,
+  producto_1_precio: 225_226,
+};
+
+describe("caso real de ticket alto", () => {
+  it("reproduce el margen, el MER y el CPA objetivo del caso", () => {
+    const r = calcularDiagnostico(real, cfgReal);
+    expect(r.derivados.margen_contribucion).toBeCloseTo(0.477, 3);
+    expect(r.derivados.mer_actual).toBeCloseTo(5.8, 1);
+    expect(r.derivados.pedidos_mensuales).toBe(147);
+    expect(r.derivados.cpa_objetivo).toBeGreaterThan(69_000);
+    expect(r.derivados.cpa_objetivo).toBeLessThan(70_500);
+  });
+
+  it("usa el umbral de conversión del tramo de ticket, no el fijo de 1,8%", () => {
+    const r = calcularDiagnostico(real, cfgReal);
+    expect(r.derivados.cr_umbral_verde).toBe(0.007);
+    expect(r.derivados.cr_tienda).toBeCloseTo(147 / 28_550, 5);
+  });
+
+  it("sin ticket cargado la conversión no se puede evaluar", () => {
+    const r = calcularDiagnostico({ ...real, ticket_promedio: null }, cfgReal);
+    expect(r.derivados.cr_umbral_verde).toBeNull();
+    expect(r.estados_bloque.funnel_web).toBe("sin_datos");
+  });
+
+  it("la economía da verde porque la tienda fue rentable", () => {
+    const r = calcularDiagnostico(real, cfgReal);
+    expect(r.estados_bloque.economia).toBe("verde");
+  });
+
+  it("topea las fugas desproporcionadas y las marca como sospechosas", () => {
+    const r = calcularDiagnostico(real, cfgReal);
+    const conversion = r.fugas.find((f) => f.id === "conversion")!;
+    const sobre = r.fugas.find((f) => f.id === "sobrefragmentacion")!;
+
+    expect(sobre.sospechosa).toBe(true);
+    expect(sobre.monto!).toBeLessThanOrEqual(33_108_279 * 0.25);
+    expect(sobre.detalle).toMatch(/rango razonable/);
+
+    expect(conversion.sospechosa).toBe(true);
+    expect(conversion.monto!).toBeLessThanOrEqual(33_108_279 * 0.25);
+
+    expect(r.oportunidad_total).toBeLessThanOrEqual(Math.round(33_108_279 * 0.4));
+    expect(r.oportunidad_total).toBeLessThan(33_108_279);
+  });
+
+  it("con el umbral fijo de respaldo la fuga por conversión queda topeada al 25%", () => {
+    const sinTramos: ConfiguracionCalculo = { ...cfgReal };
+    delete sinTramos.umbrales_cr_por_ticket;
+    const r = calcularDiagnostico(real, sinTramos);
+    const conversion = r.fugas.find((f) => f.id === "conversion")!;
+    expect(conversion.sospechosa).toBe(true);
+    expect(conversion.monto!).toBeLessThanOrEqual(33_108_279 * 0.25);
+  });
+
+  it("detecta que el volumen no alcanza y cambia la lectura de presupuesto", () => {
+    const r = calcularDiagnostico(real, cfgReal);
+    expect(r.derivados.pedidos_semanales).toBeCloseTo(147 / 4.3, 0);
+    expect(r.derivados.volumen_suficiente).toBe(false);
+    const lectura = lecturaPresupuesto(r.derivados)!;
+    expect(lectura).toMatch(/volumen de compras/);
+    expect(lectura).not.toMatch(/Subinversión/);
+  });
+
+  it("con volumen suficiente vuelve la lectura de subinversión", () => {
+    const r = calcularDiagnostico(
+      { ...real, ticket_promedio: 30_000, facturacion_mensual: 33_108_279 },
+      cfgReal,
+    );
+    expect(r.derivados.volumen_suficiente).toBe(true);
+    expect(lecturaPresupuesto(r.derivados)).toMatch(/Subinversión|alcanza el piso/);
+  });
+
+  it("la sobrefragmentación se sigue reportando", () => {
+    const r = calcularDiagnostico(real, cfgReal);
+    expect(r.fugas.find((f) => f.id === "sobrefragmentacion")?.calculable).toBe(true);
   });
 });
