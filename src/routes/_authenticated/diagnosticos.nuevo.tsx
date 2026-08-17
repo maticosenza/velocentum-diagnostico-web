@@ -273,6 +273,17 @@ function NuevoDiagnostico() {
     }
   }
 
+  if (cargandoOrigen) {
+    return (
+      <>
+        <PageHeader title="Editar y recalcular" />
+        <div className="px-6 py-6">
+          <p className="text-[13px] text-muted-foreground">Cargando el diagnóstico original…</p>
+        </div>
+      </>
+    );
+  }
+
   if (!modo) {
     return (
       <>
