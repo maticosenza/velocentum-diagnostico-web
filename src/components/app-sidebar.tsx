@@ -4,6 +4,7 @@ import { LayoutList, FilePlus2, PanelLeftClose, PanelLeft, LogOut } from "lucide
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import logoVelocentum from "@/assets/velocentum-icon.png";
 
 const items = [
   { title: "Diagnósticos", url: "/", icon: LayoutList, exact: true },
@@ -31,26 +32,28 @@ export function AppSidebar() {
     <aside
       className={cn(
         "flex shrink-0 flex-col border-r border-border bg-sidebar transition-[width] duration-200",
-        collapsed ? "w-14" : "w-60",
+        collapsed ? "w-16" : "w-64",
       )}
     >
-      <div className="flex h-14 items-center gap-2 border-b border-border px-3">
-        <span className="grid size-6 shrink-0 place-items-center rounded-[5px] bg-primary text-[11px] font-medium text-primary-foreground">
-          V
-        </span>
+      <div className="flex h-16 items-center gap-2.5 border-b border-border px-4">
+        <img
+          src={logoVelocentum}
+          alt="Velocentum"
+          className="size-7 shrink-0 rounded-[6px] object-contain"
+        />
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-medium leading-4 text-foreground">Velocentum</p>
-            <p className="truncate text-[11px] leading-4 text-muted-foreground">
+            <p className="truncate text-[14px] font-medium leading-5 text-foreground">Velocentum</p>
+            <p className="truncate text-[11.5px] leading-4 text-muted-foreground">
               Cockpit de Diagnóstico
             </p>
           </div>
         )}
       </div>
 
-      <nav className="flex-1 space-y-0.5 p-2">
+      <nav className="flex-1 space-y-1 p-3">
         {!collapsed && (
-          <p className="px-2 pb-1 pt-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+          <p className="px-2 pb-2 pt-2 text-[11px] uppercase tracking-wide text-muted-foreground">
             Trabajo
           </p>
         )}
@@ -62,40 +65,40 @@ export function AppSidebar() {
               to={item.url}
               title={item.title}
               className={cn(
-                "flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] transition-colors",
+                "relative flex items-center gap-3 rounded-md px-2.5 py-2.5 text-[14px] transition-colors",
                 active
-                  ? "bg-accent font-medium text-accent-foreground"
+                  ? "bg-violet-soft font-medium text-violet"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
-              <item.icon className="size-4 shrink-0" strokeWidth={1.75} />
+              <item.icon className="size-[18px] shrink-0" strokeWidth={1.75} />
               {!collapsed && <span className="truncate">{item.title}</span>}
             </Link>
           );
         })}
       </nav>
 
-      <div className="space-y-0.5 border-t border-border p-2">
+      <div className="space-y-1 border-t border-border p-3">
         <button
           type="button"
           onClick={cerrarSesion}
           title="Cerrar sesión"
-          className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          <LogOut className="size-4 shrink-0" strokeWidth={1.75} />
+          <LogOut className="size-[18px] shrink-0" strokeWidth={1.75} />
           {!collapsed && <span>Cerrar sesión</span>}
         </button>
         <button
 
           type="button"
           onClick={() => setCollapsed((v) => !v)}
-          className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           aria-label={collapsed ? "Expandir barra lateral" : "Contraer barra lateral"}
         >
           {collapsed ? (
-            <PanelLeft className="size-4" strokeWidth={1.75} />
+            <PanelLeft className="size-[18px]" strokeWidth={1.75} />
           ) : (
-            <PanelLeftClose className="size-4" strokeWidth={1.75} />
+            <PanelLeftClose className="size-[18px]" strokeWidth={1.75} />
           )}
           {!collapsed && <span>Contraer</span>}
         </button>
