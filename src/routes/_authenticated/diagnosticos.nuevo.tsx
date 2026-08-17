@@ -334,52 +334,76 @@ function NuevoDiagnostico() {
   ).length;
   const avance = bloquesConCampos === 0 ? 0 : (bloquesCompletos / bloquesConCampos) * 100;
 
+  const verticalLabel = VERTICALES.find((v) => v.value === datos.vertical)?.label ?? "";
+  const subtitulo = [datos.nombre_tienda.trim(), verticalLabel].filter(Boolean).join(" · ");
+  const bloqueActual = bloquesVisibles.find((b) => b.id === bloque);
+
   return (
     <>
-      <PageHeader
-        title={origen ? "Editar y recalcular" : "Nuevo diagnóstico"}
-        description={
-          origen
-            ? `Al guardar se crea la versión ${origen.version + 1} del mismo prospecto. El diagnóstico original queda intacto.`
-            : "Cargá los datos mientras hablás con el prospecto. Atajos: Alt + número, Alt + ← / →."
-        }
-        actions={
-          <div className="flex items-center gap-3">
-            <span className="text-[12px] text-muted-foreground">
-              {origen
-                ? `Versión nueva a partir de la ${origen.version}`
-                : guardadoEn
-                  ? `Borrador guardado ${guardadoEn}`
-                  : "Borrador sin guardar"}
-            </span>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/">Cancelar</Link>
-            </Button>
-            <Button size="sm" onClick={() => void guardar()} disabled={guardando}>
-              {guardando
-                ? "Guardando…"
-                : origen
-                  ? "Guardar versión nueva"
-                  : "Guardar diagnóstico"}
-            </Button>
-          </div>
-        }
-      />
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border bg-card px-8 py-5">
+        <div className="min-w-0">
+          <h1 className="text-[19px] font-medium leading-7 tracking-[-0.01em] text-foreground">
+            {origen ? "Editar y recalcular" : "Nuevo diagnóstico"}
+          </h1>
+          <p className="mt-1 truncate text-[13px] leading-5 text-muted-foreground">
+            {subtitulo ||
+              (origen
+                ? `Se va a crear la versión ${origen.version + 1} del mismo prospecto`
+                : "Cargá los datos mientras hablás con el prospecto")}
+          </p>
+        </div>
 
-      <div className="flex items-center gap-3 border-b border-border bg-card px-8 py-3">
-        <span className="text-[13px] text-muted-foreground">
-          Modo {modo} · {modo === "A" ? "con pantalla compartida" : "solo conversado"}
-        </span>
-        <button
-          type="button"
-          onClick={() => cambiarModo(otroModo)}
-          className="text-[13px] font-medium text-violet underline-offset-4 hover:underline"
-        >
-          Cambiar a modo {otroModo}
-        </button>
-      </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex items-center gap-2 rounded-full bg-violet-soft px-3.5 py-1.5 text-[13px] text-violet">
+            Modo {modo} · {modo === "A" ? "pantalla compartida" : "solo conversado"}
+            <button
+              type="button"
+              onClick={() => cambiarModo(otroModo)}
+              className="font-medium underline underline-offset-2"
+            >
+              cambiar
+            </button>
+          </span>
 
-      <div className="border-b border-border bg-card px-8 pt-5">
+          <span className="text-[12px] text-muted-foreground">
+            {origen
+              ? `Versión nueva a partir de la ${origen.version}`
+              : guardadoEn
+                ? `Borrador guardado ${guardadoEn}`
+                : "Borrador sin guardar"}
+          </span>
+
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Atajos de teclado"
+                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Keyboard className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-[12px] leading-5">
+                Alt + número: ir a un bloque
+                <br />
+                Alt + ← / →: bloque anterior o siguiente
+                <br />
+                Tab: pasar de campo en campo
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <Button asChild size="sm" variant="outline">
+            <Link to="/">Cancelar</Link>
+          </Button>
+          <Button size="sm" onClick={() => void guardar()} disabled={guardando}>
+            {guardando ? "Guardando…" : origen ? "Guardar versión nueva" : "Guardar diagnóstico"}
+          </Button>
+        </div>
+      </header>
+
+      <div className="border-b border-border bg-card px-8 py-4">
         <div className="flex items-center gap-4">
           <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
             <div
@@ -393,47 +417,60 @@ function NuevoDiagnostico() {
         </div>
       </div>
 
-      <nav className="flex items-stretch gap-2 overflow-x-auto border-b border-border bg-card px-8">
-        {bloquesVisibles.map((b, i) => {
-          const { completos, total } = contarCompletos(datos, modo, b.id);
-          const activo = b.id === bloque;
-          return (
-            <button
-              key={b.id}
-              type="button"
-              onClick={() => setBloque(b.id)}
-              aria-current={activo ? "page" : undefined}
-              className={cn(
-                "-mb-px flex items-center gap-2.5 whitespace-nowrap border-b-2 px-3 py-4 text-[14px] transition-colors",
-                activo
-                  ? "border-violet font-medium text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <span className="text-[12px] tabular-nums text-muted-foreground/70">{i + 1}</span>
-              <span>{b.label}</span>
-              {camposPorBloque(modo, b.id).length > 0 && (
+      <div className="flex flex-col min-[760px]:flex-row">
+        <nav
+          aria-label="Bloques del diagnóstico"
+          className="flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-muted/40 p-2 min-[760px]:w-[236px] min-[760px]:flex-col min-[760px]:gap-0.5 min-[760px]:overflow-visible min-[760px]:border-b-0 min-[760px]:border-r min-[760px]:p-3"
+        >
+          {bloquesVisibles.map((b, i) => {
+            const { completos, total } = contarCompletos(datos, modo, b.id);
+            const activo = b.id === bloque;
+            const tieneCampos = camposPorBloque(modo, b.id).length > 0;
+            const completo = tieneCampos && completos === total;
+            return (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setBloque(b.id)}
+                aria-current={activo ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-2.5 whitespace-nowrap rounded-md px-3 py-2.5 text-left text-[14px] transition-colors min-[760px]:w-full",
+                  activo
+                    ? "bg-violet-soft font-medium text-violet"
+                    : "text-muted-foreground hover:bg-card hover:text-foreground",
+                )}
+              >
                 <span
                   className={cn(
-                    "rounded-full border px-2 py-0.5 text-[12px] tabular-nums",
-                    completos === total
-                      ? "border-violet/40 bg-violet-soft text-violet"
-                      : "border-border text-muted-foreground",
+                    "text-[12px] tabular-nums",
+                    activo ? "text-violet/70" : "text-muted-foreground/70",
                   )}
                 >
-                  {completos}/{total}
+                  {i + 1}
                 </span>
-              )}
-            </button>
-          );
-        })}
-      </nav>
+                <span className="min-w-0 flex-1 truncate">{b.label}</span>
+                {tieneCampos &&
+                  (completo ? (
+                    <Check className="size-4 shrink-0 text-[var(--estado-verde)]" />
+                  ) : (
+                    <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
+                      {completos}/{total}
+                    </span>
+                  ))}
+              </button>
+            );
+          })}
+        </nav>
 
-      <div className="px-8 py-8">
-        <div className="max-w-4xl rounded-lg border border-border bg-card p-8">
-          <p className="mb-7 text-[13px] leading-5 text-muted-foreground">
-            {ORIGEN_DATOS[bloque]}
-          </p>
+        <div className="min-w-0 flex-1 px-8 py-8">
+          <div className="max-w-4xl rounded-lg border border-border bg-card p-8">
+            <h2 className="text-[17px] font-medium leading-6 text-foreground">
+              {bloqueActual?.label}
+            </h2>
+            <p className="mb-7 mt-1.5 text-[13px] leading-5 text-muted-foreground">
+              {ORIGEN_DATOS[bloque]}
+            </p>
+
 
           {bloque === "identificacion" && (
             <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
