@@ -277,8 +277,8 @@ function NuevoDiagnostico() {
     return (
       <>
         <PageHeader title="Editar y recalcular" />
-        <div className="px-6 py-6">
-          <p className="text-[13px] text-muted-foreground">Cargando el diagnóstico original…</p>
+        <div className="px-8 py-8">
+          <p className="text-[14px] text-muted-foreground">Cargando el diagnóstico original…</p>
         </div>
       </>
     );
@@ -296,14 +296,14 @@ function NuevoDiagnostico() {
             </Button>
           }
         />
-        <div className="px-6 py-6">
-          <div className="grid max-w-3xl gap-3 sm:grid-cols-2">
+        <div className="px-8 py-8">
+          <div className="grid max-w-3xl gap-5 sm:grid-cols-2">
             {MODOS.map((m) => (
               <button
                 key={m.value}
                 type="button"
                 onClick={() => setModo(m.value)}
-                className="rounded-lg border border-border bg-card p-5 text-left transition-colors hover:border-primary"
+                className="rounded-lg border border-border bg-card p-7 text-left transition-colors hover:border-violet"
               >
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                   Modo {m.value}
@@ -319,6 +319,20 @@ function NuevoDiagnostico() {
   }
 
   const otroModo: Modo = modo === "A" ? "B" : "A";
+  const indiceBloque = bloquesVisibles.findIndex((b) => b.id === bloque);
+  const bloqueAnterior = indiceBloque > 0 ? bloquesVisibles[indiceBloque - 1] : undefined;
+  const bloqueSiguiente =
+    indiceBloque >= 0 && indiceBloque < bloquesVisibles.length - 1
+      ? bloquesVisibles[indiceBloque + 1]
+      : undefined;
+  const bloquesCompletos = bloquesVisibles.filter((b) => {
+    const { completos, total } = contarCompletos(datos, modo, b.id);
+    return total > 0 && completos === total;
+  }).length;
+  const bloquesConCampos = bloquesVisibles.filter(
+    (b) => camposPorBloque(modo, b.id).length > 0,
+  ).length;
+  const avance = bloquesConCampos === 0 ? 0 : (bloquesCompletos / bloquesConCampos) * 100;
 
   return (
     <>
@@ -352,20 +366,34 @@ function NuevoDiagnostico() {
         }
       />
 
-      <div className="flex items-center gap-3 border-b border-border bg-card px-6 py-2">
-        <span className="text-[12px] text-muted-foreground">
+      <div className="flex items-center gap-3 border-b border-border bg-card px-8 py-3">
+        <span className="text-[13px] text-muted-foreground">
           Modo {modo} · {modo === "A" ? "con pantalla compartida" : "solo conversado"}
         </span>
         <button
           type="button"
           onClick={() => cambiarModo(otroModo)}
-          className="text-[12px] text-primary underline-offset-2 hover:underline"
+          className="text-[13px] font-medium text-violet underline-offset-4 hover:underline"
         >
           Cambiar a modo {otroModo}
         </button>
       </div>
 
-      <nav className="flex items-stretch gap-0 overflow-x-auto border-b border-border bg-card px-6">
+      <div className="border-b border-border bg-card px-8 pt-5">
+        <div className="flex items-center gap-4">
+          <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-violet transition-[width] duration-300"
+              style={{ width: `${avance}%` }}
+            />
+          </div>
+          <span className="shrink-0 text-[13px] tabular-nums text-muted-foreground">
+            {bloquesCompletos} de {bloquesConCampos} bloques completos
+          </span>
+        </div>
+      </div>
+
+      <nav className="flex items-stretch gap-2 overflow-x-auto border-b border-border bg-card px-8">
         {bloquesVisibles.map((b, i) => {
           const { completos, total } = contarCompletos(datos, modo, b.id);
           const activo = b.id === bloque;
@@ -376,19 +404,21 @@ function NuevoDiagnostico() {
               onClick={() => setBloque(b.id)}
               aria-current={activo ? "page" : undefined}
               className={cn(
-                "-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] transition-colors",
+                "-mb-px flex items-center gap-2.5 whitespace-nowrap border-b-2 px-3 py-4 text-[14px] transition-colors",
                 activo
-                  ? "border-primary text-foreground"
+                  ? "border-violet font-medium text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
-              <span className="text-[11px] tabular-nums text-muted-foreground/70">{i + 1}</span>
+              <span className="text-[12px] tabular-nums text-muted-foreground/70">{i + 1}</span>
               <span>{b.label}</span>
               {camposPorBloque(modo, b.id).length > 0 && (
                 <span
                   className={cn(
-                    "rounded border border-border px-1 text-[11px] tabular-nums",
-                    completos === total ? "text-primary" : "text-muted-foreground",
+                    "rounded-full border px-2 py-0.5 text-[12px] tabular-nums",
+                    completos === total
+                      ? "border-violet/40 bg-violet-soft text-violet"
+                      : "border-border text-muted-foreground",
                   )}
                 >
                   {completos}/{total}
@@ -399,14 +429,14 @@ function NuevoDiagnostico() {
         })}
       </nav>
 
-      <div className="px-6 py-6">
-        <div className="max-w-4xl rounded-lg border border-border bg-card p-5">
-          <p className="mb-4 text-[12px] leading-4 text-muted-foreground">
+      <div className="px-8 py-8">
+        <div className="max-w-4xl rounded-lg border border-border bg-card p-8">
+          <p className="mb-7 text-[13px] leading-5 text-muted-foreground">
             {ORIGEN_DATOS[bloque]}
           </p>
 
           {bloque === "identificacion" && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
               <CampoTexto
                 label="Nombre de la tienda"
                 obligatorio
@@ -451,7 +481,7 @@ function NuevoDiagnostico() {
           )}
 
           {bloque === "medicion" && modo === "A" && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
               <CampoSiNo
                 label="¿Tiene el Pixel instalado?"
                 value={datos.tiene_pixel}
@@ -480,7 +510,7 @@ function NuevoDiagnostico() {
           )}
 
           {bloque === "medicion" && modo === "B" && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
               <CampoSiNo
                 label="¿Tiene el Pixel instalado?"
                 value={datos.tiene_pixel}
@@ -501,7 +531,7 @@ function NuevoDiagnostico() {
 
 
           {bloque === "economia" && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
               <CampoPesos
                 label="Facturación mensual"
                 value={datos.facturacion_mensual}
@@ -538,7 +568,7 @@ function NuevoDiagnostico() {
           )}
 
           {bloque === "productos" && (
-            <div className="space-y-5">
+            <div className="space-y-7">
               <p className="text-[12px] text-muted-foreground">
                 {modo === "A"
                   ? "Los tres productos que más vende, con costo y precio de cada uno. De acá sale el margen."
@@ -551,7 +581,7 @@ function NuevoDiagnostico() {
                 const pctKey = `producto_${n}_pct_facturacion` as keyof DatosDiagnostico;
                 const conMontos = modo === "A" || n === 1;
                 return (
-                  <div key={n} className="grid gap-4 sm:grid-cols-4">
+                  <div key={n} className="grid gap-x-7 gap-y-6 sm:grid-cols-4">
                     <CampoTexto
                       label={`Producto ${n}${n === 1 ? " (principal)" : ""}`}
                       value={datos[nombreKey] as string}
@@ -605,7 +635,7 @@ function NuevoDiagnostico() {
                 <div>
                   <label
                     htmlFor="reparto-pauta"
-                    className="text-[13px] font-normal text-muted-foreground"
+                    className="text-[14px] font-medium text-foreground/85"
                   >
                     ¿Le pauta por igual a todos o hay alguno que empuja más?
                   </label>
@@ -613,7 +643,7 @@ function NuevoDiagnostico() {
                     id="reparto-pauta"
                     rows={2}
                     maxLength={1000}
-                    className="mt-1.5 resize-y text-[13px]"
+                    className="mt-2 resize-y text-[14px]"
                     value={datos.reparto_pauta}
                     onChange={(e) => set("reparto_pauta", e.target.value)}
                   />
@@ -623,7 +653,7 @@ function NuevoDiagnostico() {
           )}
 
           {bloque === "cuenta" && modo === "A" && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <CargaCsvMeta
                 hayDatosCargados={
                   datos.conjuntos_activos !== null || datos.presupuesto_diario !== null
@@ -641,7 +671,7 @@ function NuevoDiagnostico() {
                   }))
                 }
               />
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
                 <CampoNumero
                   label="Conjuntos activos"
                   value={datos.conjuntos_activos}
@@ -658,7 +688,7 @@ function NuevoDiagnostico() {
 
 
           {bloque === "cuenta" && modo === "B" && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
               <CampoPesos
                 label="¿Cuánto gasta por día?"
                 value={datos.gasto_diario}
@@ -674,7 +704,7 @@ function NuevoDiagnostico() {
           )}
 
           {bloque === "web" && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
               {modo === "A" && (
                 <CampoNumero
                   label="Visitas mensuales"
@@ -697,7 +727,7 @@ function NuevoDiagnostico() {
           )}
 
           {bloque === "contenido" && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
               <CampoTexto
                 label="¿Cada cuánto sube creativos nuevos?"
                 value={datos.frecuencia_creativos}
@@ -727,7 +757,7 @@ function NuevoDiagnostico() {
           )}
 
           {bloque === "mercado_libre" && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
               <CampoPorcentaje
                 label="Porcentaje de la facturación"
                 value={datos.ml_pct_facturacion}
@@ -751,10 +781,10 @@ function NuevoDiagnostico() {
             </div>
           )}
 
-          <div className="mt-5 border-t border-border pt-4">
+          <div className="mt-8 border-t border-border pt-6">
             <label
               htmlFor={`notas-${bloque}`}
-              className="text-[13px] font-normal text-muted-foreground"
+              className="text-[14px] font-medium text-foreground/85"
             >
               Notas de esta pestaña
             </label>
@@ -763,15 +793,53 @@ function NuevoDiagnostico() {
               rows={3}
               maxLength={2000}
               placeholder="Anotá rápido lo que dice el cliente."
-              className="mt-1.5 resize-y text-[13px]"
+              className="mt-2 resize-y text-[14px]"
               value={notas[bloque] ?? ""}
               onChange={(e) => setNotas((prev) => ({ ...prev, [bloque]: e.target.value }))}
             />
           </div>
         </div>
 
+        <div className="mt-6 flex max-w-4xl flex-wrap items-center justify-between gap-3">
+          <Button
+            type="button"
+            size="lg"
+            variant="outline"
+            className="h-12 min-w-40 text-[15px]"
+            disabled={!bloqueAnterior}
+            onClick={() => bloqueAnterior && setBloque(bloqueAnterior.id)}
+          >
+            {bloqueAnterior ? `Anterior · ${bloqueAnterior.label}` : "Anterior"}
+          </Button>
+
+          {bloqueSiguiente ? (
+            <Button
+              type="button"
+              size="lg"
+              className="h-12 min-w-40 text-[15px]"
+              onClick={() => setBloque(bloqueSiguiente.id)}
+            >
+              Siguiente · {bloqueSiguiente.label}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="lg"
+              className="h-12 min-w-40 text-[15px]"
+              disabled={guardando}
+              onClick={() => void guardar()}
+            >
+              {guardando
+                ? "Guardando…"
+                : origen
+                  ? "Guardar versión nueva"
+                  : "Guardar diagnóstico"}
+            </Button>
+          )}
+        </div>
+
         {error && (
-          <p className="mt-3 max-w-4xl text-[13px] text-destructive" role="alert">
+          <p className="mt-4 max-w-4xl text-[14px] text-destructive" role="alert">
             {error}
           </p>
         )}
