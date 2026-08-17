@@ -167,6 +167,12 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   presupuesto_diario: null,
   gasto_diario: null,
   cantidad_campanas: "",
+  csv_gasto_total: null,
+  csv_frecuencia_promedio: null,
+  csv_ctr_global: null,
+  csv_conjuntos_bajo_gasto: null,
+  csv_dias_periodo: null,
+
   visitas_mensuales: null,
   recuperacion_carrito: false,
   retargeting_abandono: false,
