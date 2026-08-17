@@ -51,6 +51,7 @@ const ESTADOS: Record<string, string> = {
 type Fila = {
   id: string;
   fecha: string;
+  oportunidad_id: string;
   oportunidad_total: number | null;
   oportunidad: {
     nombre_tienda: string;
@@ -60,19 +61,52 @@ type Fila = {
 };
 
 function ListadoDiagnosticos() {
+  const queryClient = useQueryClient();
+  const [aEliminar, setAEliminar] = useState<Fila | null>(null);
+  const [errorBorrado, setErrorBorrado] = useState<string | null>(null);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["diagnosticos"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("diagnostico")
         .select(
-          "id, fecha, oportunidad_total, oportunidad:oportunidad_id(nombre_tienda, vertical, estado)",
+          "id, fecha, oportunidad_id, oportunidad_total, oportunidad:oportunidad_id(nombre_tienda, vertical, estado)",
         )
         .order("creado_en", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Fila[];
     },
   });
+
+  const eliminar = useMutation({
+    mutationFn: async (fila: Fila) => {
+      const { error: errDiag } = await supabase.from("diagnostico").delete().eq("id", fila.id);
+      if (errDiag) throw errDiag;
+
+      // Si la oportunidad se queda sin diagnósticos, la borramos también.
+      const { data: restantes, error: errCount } = await supabase
+        .from("diagnostico")
+        .select("id")
+        .eq("oportunidad_id", fila.oportunidad_id)
+        .limit(1);
+      if (errCount) throw errCount;
+      if ((restantes ?? []).length === 0) {
+        const { error: errOp } = await supabase
+          .from("oportunidad")
+          .delete()
+          .eq("id", fila.oportunidad_id);
+        if (errOp) throw errOp;
+      }
+    },
+    onSuccess: () => {
+      setAEliminar(null);
+      setErrorBorrado(null);
+      void queryClient.invalidateQueries({ queryKey: ["diagnosticos"] });
+    },
+    onError: () => setErrorBorrado("No pudimos eliminar el diagnóstico. Probá de nuevo."),
+  });
+
 
   return (
     <>
