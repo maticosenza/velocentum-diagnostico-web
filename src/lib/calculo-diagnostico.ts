@@ -48,6 +48,7 @@ export type Derivados = {
   pesos_producto: (number | null)[];
   pedidos_mensuales: number | null;
   cr_tienda: number | null;
+  cr_umbral_verde: number | null;
   breakeven_roas: number | null;
   cpa_breakeven: number | null;
   reserva: number | null;
@@ -59,6 +60,8 @@ export type Derivados = {
   conjuntos_sostenibles: number | null;
   piso_mensual_un_conjunto: number | null;
   inversion_actual_mensual: number | null;
+  pedidos_semanales: number | null;
+  volumen_suficiente: boolean | null;
 };
 
 
@@ -70,7 +73,10 @@ export type Fuga = {
   calculable: boolean;
   faltantes: string[];
   detalle?: string;
+  /** true cuando el monto superó el rango razonable y quedó topeado. */
+  sospechosa?: boolean;
 };
+
 
 export type EstadosBloque = {
   medicion: EstadoBloque;
