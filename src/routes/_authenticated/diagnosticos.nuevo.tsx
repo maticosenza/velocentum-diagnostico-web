@@ -750,6 +750,13 @@ function NuevoDiagnostico() {
                   ayuda="Con esto se calcula la conversión de la tienda."
                 />
               )}
+              <CampoNumero
+                label="Carritos abandonados en el mes"
+                value={datos.carritos_abandonados}
+                onChange={(v) => set("carritos_abandonados", v)}
+                ayuda="Tiendanube, sección Carritos abandonados."
+              />
+
               <CampoSiNo
                 label="¿Tiene recuperación de carrito?"
                 value={datos.recuperacion_carrito}
@@ -880,7 +887,9 @@ function NuevoDiagnostico() {
             {error}
           </p>
         )}
+        </div>
       </div>
     </>
+
   );
 }
