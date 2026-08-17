@@ -546,19 +546,39 @@ function NuevoDiagnostico() {
           )}
 
           {bloque === "cuenta" && modo === "A" && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <CampoNumero
-                label="Conjuntos activos"
-                value={datos.conjuntos_activos}
-                onChange={(v) => set("conjuntos_activos", v)}
+            <div className="space-y-4">
+              <CargaCsvMeta
+                hayDatosCargados={
+                  datos.conjuntos_activos !== null || datos.presupuesto_diario !== null
+                }
+                onAplicar={(r) =>
+                  setDatos((p) => ({
+                    ...p,
+                    conjuntos_activos: r.conjuntos_activos,
+                    presupuesto_diario: r.presupuesto_diario,
+                    csv_gasto_total: r.gasto_total,
+                    csv_frecuencia_promedio: r.frecuencia_promedio,
+                    csv_ctr_global: r.ctr_global,
+                    csv_conjuntos_bajo_gasto: r.conjuntos_bajo_gasto,
+                    csv_dias_periodo: r.dias,
+                  }))
+                }
               />
-              <CampoPesos
-                label="Presupuesto diario total"
-                value={datos.presupuesto_diario}
-                onChange={(v) => set("presupuesto_diario", v)}
-              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <CampoNumero
+                  label="Conjuntos activos"
+                  value={datos.conjuntos_activos}
+                  onChange={(v) => set("conjuntos_activos", v)}
+                />
+                <CampoPesos
+                  label="Presupuesto diario total"
+                  value={datos.presupuesto_diario}
+                  onChange={(v) => set("presupuesto_diario", v)}
+                />
+              </div>
             </div>
           )}
+
 
           {bloque === "cuenta" && modo === "B" && (
             <div className="grid gap-4 sm:grid-cols-2">
