@@ -515,10 +515,44 @@ export function calcularDiagnostico(
     });
   }
 
-  const total = fugas.reduce(
+  // --- Red de seguridad: ninguna fuga puede salirse del rango razonable
+  const DETALLE_SOSPECHOSA =
+    "El cálculo superó el rango razonable para la facturación de la tienda. El umbral usado puede no aplicar a este tipo de negocio: el monto quedó topeado.";
+  const facturacion = finito(d.facturacion_mensual) && d.facturacion_mensual > 0 ? d.facturacion_mensual : null;
+  const topeInd = finito(cfg.tope_fuga_individual) ? (cfg.tope_fuga_individual as number) : null;
+  const topeTot = finito(cfg.tope_fuga_total) ? (cfg.tope_fuga_total as number) : null;
+
+  if (facturacion !== null && topeInd !== null) {
+    const limite = facturacion * topeInd;
+    for (const f of fugas) {
+      if (f.tipo === "monto" && finito(f.monto) && (f.monto as number) > limite) {
+        f.monto = red(limite, 0) ?? 0;
+        f.sospechosa = true;
+        f.detalle = DETALLE_SOSPECHOSA;
+      }
+    }
+  }
+
+  let total = fugas.reduce(
     (acc, f) => (f.tipo === "monto" && finito(f.monto) ? acc + (f.monto as number) : acc),
     0,
   );
+
+  if (facturacion !== null && topeTot !== null && total > facturacion * topeTot && total > 0) {
+    const factor = (facturacion * topeTot) / total;
+    for (const f of fugas) {
+      if (f.tipo === "monto" && finito(f.monto)) {
+        f.monto = red((f.monto as number) * factor, 0) ?? 0;
+        f.sospechosa = true;
+        f.detalle = DETALLE_SOSPECHOSA;
+      }
+    }
+    total = fugas.reduce(
+      (acc, f) => (f.tipo === "monto" && finito(f.monto) ? acc + (f.monto as number) : acc),
+      0,
+    );
+  }
+
 
   return {
     derivados,
