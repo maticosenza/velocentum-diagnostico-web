@@ -287,6 +287,13 @@ export function calcularDiagnostico(
   const pisoMensualUnConjunto = cpaObjetivo !== null ? 50 * cpaObjetivo * 4.3 : null;
   const inversionActualMensual = presupuestoDiario !== null ? presupuestoDiario * 30 : null;
 
+  // --- Volumen del negocio: ¿alcanza para sostener un conjunto optimizado por compra?
+  const pedidosSemanales = pedidos !== null ? pedidos / 4.3 : null;
+  const volumenSuficiente = pedidosSemanales !== null ? pedidosSemanales >= 50 : null;
+
+  // --- Umbral de conversión escalado por tramo de ticket promedio
+  const uCr = umbralCr(cfg, d.ticket_promedio);
+
   const derivados: Derivados = {
     delta_medicion: red(delta, 4),
     margen_contribucion: red(margen, 4),
@@ -296,8 +303,10 @@ export function calcularDiagnostico(
     pesos_producto: pesosProducto,
     pedidos_mensuales: red(pedidos, 0),
     cr_tienda: red(crTienda, 4),
+    cr_umbral_verde: uCr ? uCr.verde : null,
     breakeven_roas: red(breakevenRoas, 2),
     cpa_breakeven: red(cpaBreakeven, 0),
+
     reserva,
     cpa_objetivo: red(cpaObjetivo, 0),
     roas_objetivo: red(roasObjetivo, 2),
