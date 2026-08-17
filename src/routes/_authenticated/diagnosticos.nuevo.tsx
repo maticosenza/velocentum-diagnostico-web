@@ -332,6 +332,10 @@ function NuevoDiagnostico() {
 
       <div className="px-6 py-6">
         <div className="max-w-4xl rounded-lg border border-border bg-card p-5">
+          <p className="mb-4 text-[12px] leading-4 text-muted-foreground">
+            {ORIGEN_DATOS[bloque]}
+          </p>
+
           {bloque === "identificacion" && (
             <div className="grid gap-4 sm:grid-cols-2">
               <CampoTexto
