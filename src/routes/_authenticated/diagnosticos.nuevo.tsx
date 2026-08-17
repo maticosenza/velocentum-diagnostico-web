@@ -40,6 +40,9 @@ import { calcularDiagnostico } from "@/lib/calculo-diagnostico";
 import { cargarConfiguracion } from "@/lib/configuracion";
 
 export const Route = createFileRoute("/_authenticated/diagnosticos/nuevo")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    desde: typeof search['desde'] === "string" ? (search['desde'] as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Nuevo diagnóstico · Velocentum Cockpit" },
