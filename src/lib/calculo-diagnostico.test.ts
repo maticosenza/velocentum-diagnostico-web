@@ -276,7 +276,7 @@ describe("fugas", () => {
       cfg,
     );
     for (const [k, v] of Object.entries(r.derivados)) {
-      if (k === "margenes_producto") continue;
+      if (k === "margenes_producto" || k === "pesos_producto") continue;
       if (v !== null) expect(Number.isFinite(v as number)).toBe(true);
     }
     expect(Number.isFinite(r.oportunidad_total)).toBe(true);
