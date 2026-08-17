@@ -115,7 +115,7 @@ function ListadoDiagnosticos() {
         description="Todos los diagnósticos cargados durante las llamadas con prospectos."
         actions={
           <Button asChild size="sm">
-            <Link to="/diagnosticos/nuevo">Nuevo diagnóstico</Link>
+            <Link to="/diagnosticos/nuevo" search={{}}>Nuevo diagnóstico</Link>
           </Button>
         }
       />
@@ -134,7 +134,7 @@ function ListadoDiagnosticos() {
             description="Cuando cargues el primero, vas a encontrarlo listado en esta pantalla."
             action={
               <Button asChild size="sm" variant="outline">
-                <Link to="/diagnosticos/nuevo">Crear el primero</Link>
+                <Link to="/diagnosticos/nuevo" search={{}}>Crear el primero</Link>
               </Button>
             }
           />
