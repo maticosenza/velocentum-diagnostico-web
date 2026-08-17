@@ -281,6 +281,7 @@ export function calcularDiagnostico(
     comision_plataforma: comPlataforma,
     comision_pasarela: comPasarela,
     margenes_producto: margenesProducto,
+    pesos_producto: pesosProducto,
     pedidos_mensuales: red(pedidos, 0),
     cr_tienda: red(crTienda, 4),
     breakeven_roas: red(breakevenRoas, 2),
