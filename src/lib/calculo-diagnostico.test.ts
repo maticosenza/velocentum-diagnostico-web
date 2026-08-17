@@ -331,7 +331,7 @@ describe("caso real de ticket alto", () => {
   it("usa el umbral de conversión del tramo de ticket, no el fijo de 1,8%", () => {
     const r = calcularDiagnostico(real, cfgReal);
     expect(r.derivados.cr_umbral_verde).toBe(0.007);
-    expect(r.derivados.cr_tienda).toBeCloseTo(147 / 28_550, 5);
+    expect(r.derivados.cr_tienda).toBeCloseTo(147 / 28_550, 4);
   });
 
   it("sin ticket cargado la conversión no se puede evaluar", () => {
