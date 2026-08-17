@@ -90,13 +90,15 @@ export type DatosDiagnostico = {
   producto_1_nombre: string;
   producto_1_costo: number | null;
   producto_1_precio: number | null;
+  producto_1_pct_facturacion: number | null;
   producto_2_nombre: string;
   producto_2_costo: number | null;
   producto_2_precio: number | null;
+  producto_2_pct_facturacion: number | null;
   producto_3_nombre: string;
   producto_3_costo: number | null;
   producto_3_precio: number | null;
-  productos_pct_facturacion: number | null;
+  producto_3_pct_facturacion: number | null;
   reparto_pauta: string;
   // Cuenta · modo A
   conjuntos_activos: number | null;
@@ -145,13 +147,15 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   producto_1_nombre: "",
   producto_1_costo: null,
   producto_1_precio: null,
+  producto_1_pct_facturacion: null,
   producto_2_nombre: "",
   producto_2_costo: null,
   producto_2_precio: null,
+  producto_2_pct_facturacion: null,
   producto_3_nombre: "",
   producto_3_costo: null,
   producto_3_precio: null,
-  productos_pct_facturacion: null,
+  producto_3_pct_facturacion: null,
   reparto_pauta: "",
   conjuntos_activos: null,
   presupuesto_diario: null,
@@ -216,7 +220,9 @@ export function camposPorBloque(modo: Modo, bloque: BloqueId): (keyof DatosDiagn
       "producto_1_nombre",
       "producto_2_nombre",
       "producto_3_nombre",
-      "productos_pct_facturacion",
+      "producto_1_pct_facturacion",
+      "producto_2_pct_facturacion",
+      "producto_3_pct_facturacion",
     ];
     return modo === "A"
       ? [

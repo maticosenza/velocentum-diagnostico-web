@@ -39,6 +39,7 @@ export type Derivados = {
   comision_plataforma: number | null;
   comision_pasarela: number | null;
   margenes_producto: (number | null)[];
+  pesos_producto: (number | null)[];
   pedidos_mensuales: number | null;
   cr_tienda: number | null;
   breakeven_roas: number | null;
@@ -144,15 +145,16 @@ export type ProductoCargado = {
 /** Devuelve los productos que tienen costo y precio válidos cargados. */
 export function productosCargados(d: DatosDiagnostico) {
   const crudos = [
-    { indice: 1, nombre: d.producto_1_nombre, costo: d.producto_1_costo, precio: d.producto_1_precio },
-    { indice: 2, nombre: d.producto_2_nombre, costo: d.producto_2_costo, precio: d.producto_2_precio },
-    { indice: 3, nombre: d.producto_3_nombre, costo: d.producto_3_costo, precio: d.producto_3_precio },
+    { indice: 1, nombre: d.producto_1_nombre, costo: d.producto_1_costo, precio: d.producto_1_precio, pct: d.producto_1_pct_facturacion },
+    { indice: 2, nombre: d.producto_2_nombre, costo: d.producto_2_costo, precio: d.producto_2_precio, pct: d.producto_2_pct_facturacion },
+    { indice: 3, nombre: d.producto_3_nombre, costo: d.producto_3_costo, precio: d.producto_3_precio, pct: d.producto_3_pct_facturacion },
   ];
   return crudos.filter((p) => finito(p.costo) && finito(p.precio) && (p.precio as number) > 0) as {
     indice: number;
     nombre: string;
     costo: number;
     precio: number;
+    pct: number | null;
   }[];
 }
 
@@ -181,31 +183,41 @@ export function calcularDiagnostico(
   const envio = finito(d.costo_envio_promedio) ? d.costo_envio_promedio : null;
 
   const margenesProducto: (number | null)[] = [null, null, null];
-  const margenes: number[] = [];
-  const pesos: number[] = [];
+  const pesosProducto: (number | null)[] = [null, null, null];
+  const calculables: { indice: number; margen: number; pct: number | null }[] = [];
 
   if (comPlataforma !== null && comPasarela !== null && envio !== null) {
     for (const p of cargados) {
       const m = 1 - p.costo / p.precio - comPlataforma - comPasarela - envio / p.precio;
       if (!finito(m)) continue;
       margenesProducto[p.indice - 1] = red(m, 4);
-      margenes.push(m);
-      // Participación relativa en la facturación de los tres: a falta de dato
-      // por producto, cada uno pesa por su precio de venta.
-      pesos.push(p.precio);
+      calculables.push({
+        indice: p.indice,
+        margen: m,
+        pct: finito(p.pct) && (p.pct as number) > 0 ? (p.pct as number) : null,
+      });
     }
   }
 
   let margen: number | null = null;
-  if (margenes.length === 1) {
-    margen = margenes[0] as number;
-  } else if (margenes.length > 1) {
-    const sumaPesos = pesos.reduce((a, b) => a + b, 0);
-    const m =
-      sumaPesos > 0
-        ? margenes.reduce((acc, mm, i) => acc + mm * (pesos[i] as number), 0) / sumaPesos
-        : margenes.reduce((a, b) => a + b, 0) / margenes.length;
-    margen = finito(m) ? m : null;
+  if (calculables.length === 1) {
+    const uno = calculables[0]!;
+    margen = uno.margen;
+    pesosProducto[uno.indice - 1] = 1;
+  } else if (calculables.length > 1) {
+    // Peso = participación de cada producto en la facturación mensual.
+    const conPct = calculables.filter((c) => c.pct !== null);
+    const usados = conPct.length > 0 ? conPct : calculables;
+    const sumaPesos = usados.reduce((a, c) => a + (conPct.length > 0 ? (c.pct as number) : 1), 0);
+    if (sumaPesos > 0) {
+      let acumulado = 0;
+      for (const c of usados) {
+        const peso = (conPct.length > 0 ? (c.pct as number) : 1) / sumaPesos;
+        pesosProducto[c.indice - 1] = red(peso, 4);
+        acumulado += c.margen * peso;
+      }
+      margen = finito(acumulado) ? acumulado : null;
+    }
   }
 
   const margenPositivo = margen !== null && margen > 0 ? margen : null;
@@ -269,6 +281,7 @@ export function calcularDiagnostico(
     comision_plataforma: comPlataforma,
     comision_pasarela: comPasarela,
     margenes_producto: margenesProducto,
+    pesos_producto: pesosProducto,
     pedidos_mensuales: red(pedidos, 0),
     cr_tienda: red(crTienda, 4),
     breakeven_roas: red(breakevenRoas, 2),

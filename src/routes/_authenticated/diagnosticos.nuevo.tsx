@@ -474,9 +474,10 @@ function NuevoDiagnostico() {
                 const nombreKey = `producto_${n}_nombre` as keyof DatosDiagnostico;
                 const costoKey = `producto_${n}_costo` as keyof DatosDiagnostico;
                 const precioKey = `producto_${n}_precio` as keyof DatosDiagnostico;
+                const pctKey = `producto_${n}_pct_facturacion` as keyof DatosDiagnostico;
                 const conMontos = modo === "A" || n === 1;
                 return (
-                  <div key={n} className="grid gap-4 sm:grid-cols-3">
+                  <div key={n} className="grid gap-4 sm:grid-cols-4">
                     <CampoTexto
                       label={`Producto ${n}${n === 1 ? " (principal)" : ""}`}
                       value={datos[nombreKey] as string}
@@ -497,16 +498,35 @@ function NuevoDiagnostico() {
                         />
                       </>
                     )}
+                    <CampoPorcentaje
+                      label="% de la facturación"
+                      value={datos[pctKey] as number | null}
+                      onChange={(v) => set(pctKey, v as never)}
+                    />
                   </div>
                 );
               })}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <CampoPorcentaje
-                  label="Qué porcentaje de la facturación son esos tres juntos"
-                  value={datos.productos_pct_facturacion}
-                  onChange={(v) => set("productos_pct_facturacion", v)}
-                />
-              </div>
+              {(() => {
+                const pcts = [
+                  datos.producto_1_pct_facturacion,
+                  datos.producto_2_pct_facturacion,
+                  datos.producto_3_pct_facturacion,
+                ].filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+                if (pcts.length === 0) return null;
+                const suma = pcts.reduce((a, b) => a + b, 0);
+                const excede = suma > 100;
+                return (
+                  <p className="text-[13px] tabular-nums">
+                    <span className="text-muted-foreground">Suma de los tres: </span>
+                    <span className={excede ? "text-[var(--estado-rojo)]" : "text-foreground"}>
+                      {Math.round(suma * 10) / 10}%
+                    </span>
+                    {excede && (
+                      <span className="ml-2 text-[var(--estado-rojo)]">La suma supera el 100%</span>
+                    )}
+                  </p>
+                );
+              })()}
               {modo === "A" && (
                 <div>
                   <label
