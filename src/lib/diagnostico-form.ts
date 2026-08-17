@@ -90,13 +90,15 @@ export type DatosDiagnostico = {
   producto_1_nombre: string;
   producto_1_costo: number | null;
   producto_1_precio: number | null;
+  producto_1_pct_facturacion: number | null;
   producto_2_nombre: string;
   producto_2_costo: number | null;
   producto_2_precio: number | null;
+  producto_2_pct_facturacion: number | null;
   producto_3_nombre: string;
   producto_3_costo: number | null;
   producto_3_precio: number | null;
-  productos_pct_facturacion: number | null;
+  producto_3_pct_facturacion: number | null;
   reparto_pauta: string;
   // Cuenta · modo A
   conjuntos_activos: number | null;
