@@ -38,6 +38,9 @@ export type Derivados = {
   margen_contribucion: number | null;
   comision_plataforma: number | null;
   comision_pasarela: number | null;
+  margenes_producto: (number | null)[];
+  pedidos_mensuales: number | null;
+  cr_tienda: number | null;
   breakeven_roas: number | null;
   cpa_breakeven: number | null;
   reserva: number | null;
@@ -49,8 +52,8 @@ export type Derivados = {
   conjuntos_sostenibles: number | null;
   piso_mensual_un_conjunto: number | null;
   inversion_actual_mensual: number | null;
-  techo_operativo_inversion: number | null;
 };
+
 
 export type Fuga = {
   id: string;
@@ -128,15 +131,29 @@ function comisionPlataformaDe(cfg: ConfiguracionCalculo, datos: DatosDiagnostico
   return null;
 }
 
-function factorFatigaDe(cfg: ConfiguracionCalculo, frecuencia: number): number | null {
-  const tramos = cfg.factor_fatiga;
-  if (!Array.isArray(tramos) || tramos.length === 0) return null;
-  for (const t of tramos) {
-    if (t.hasta === null || t.hasta === undefined) return finito(t.factor) ? t.factor : null;
-    if (frecuencia <= t.hasta) return finito(t.factor) ? t.factor : null;
-  }
-  const ultimo = tramos[tramos.length - 1];
-  return finito(ultimo?.factor) ? (ultimo!.factor as number) : null;
+// ---------------------------------------------------------------- productos
+
+export type ProductoCargado = {
+  indice: number;
+  nombre: string;
+  costo: number;
+  precio: number;
+  margen: number;
+};
+
+/** Devuelve los productos que tienen costo y precio válidos cargados. */
+export function productosCargados(d: DatosDiagnostico) {
+  const crudos = [
+    { indice: 1, nombre: d.producto_1_nombre, costo: d.producto_1_costo, precio: d.producto_1_precio },
+    { indice: 2, nombre: d.producto_2_nombre, costo: d.producto_2_costo, precio: d.producto_2_precio },
+    { indice: 3, nombre: d.producto_3_nombre, costo: d.producto_3_costo, precio: d.producto_3_precio },
+  ];
+  return crudos.filter((p) => finito(p.costo) && finito(p.precio) && (p.precio as number) > 0) as {
+    indice: number;
+    nombre: string;
+    costo: number;
+    precio: number;
+  }[];
 }
 
 // ---------------------------------------------------------------- cálculo
@@ -147,33 +164,47 @@ export function calcularDiagnostico(
 ): ResultadoCalculo {
   const d = datos;
 
-  // --- Delta de medición
+  // --- Delta de medición: Pixel contra la facturación real declarada
   let delta: number | null = null;
-  if (finito(d.ventas_backoffice) && d.ventas_backoffice !== 0 && finito(d.facturacion_pixel)) {
-    delta = Math.abs(d.facturacion_pixel - d.ventas_backoffice) / d.ventas_backoffice;
+  if (finito(d.facturacion_mensual) && d.facturacion_mensual !== 0 && finito(d.facturacion_pixel)) {
+    delta = Math.abs(d.facturacion_pixel - d.facturacion_mensual) / d.facturacion_mensual;
   }
 
-  // --- Margen de contribución
+  // --- Comisiones
   const comPlataforma = comisionPlataformaDe(cfg, d);
   const comPasarela = finito(cfg.comision_pasarela?.[d.pasarela])
     ? (cfg.comision_pasarela![d.pasarela] as number)
     : null;
 
+  // --- Margen de contribución ponderado por los productos más vendidos
+  const cargados = productosCargados(d);
+  const envio = finito(d.costo_envio_promedio) ? d.costo_envio_promedio : null;
+
+  const margenesProducto: (number | null)[] = [null, null, null];
+  const margenes: number[] = [];
+  const pesos: number[] = [];
+
+  if (comPlataforma !== null && comPasarela !== null && envio !== null) {
+    for (const p of cargados) {
+      const m = 1 - p.costo / p.precio - comPlataforma - comPasarela - envio / p.precio;
+      if (!finito(m)) continue;
+      margenesProducto[p.indice - 1] = red(m, 4);
+      margenes.push(m);
+      // Participación relativa en la facturación de los tres: a falta de dato
+      // por producto, cada uno pesa por su precio de venta.
+      pesos.push(p.precio);
+    }
+  }
+
   let margen: number | null = null;
-  if (
-    finito(d.costo_producto_pct) &&
-    finito(d.costo_envio_promedio) &&
-    finito(d.ticket_promedio) &&
-    d.ticket_promedio !== 0 &&
-    comPlataforma !== null &&
-    comPasarela !== null
-  ) {
+  if (margenes.length === 1) {
+    margen = margenes[0] as number;
+  } else if (margenes.length > 1) {
+    const sumaPesos = pesos.reduce((a, b) => a + b, 0);
     const m =
-      1 -
-      (d.costo_producto_pct / 100 +
-        comPlataforma +
-        comPasarela +
-        d.costo_envio_promedio / d.ticket_promedio);
+      sumaPesos > 0
+        ? margenes.reduce((acc, mm, i) => acc + mm * (pesos[i] as number), 0) / sumaPesos
+        : margenes.reduce((a, b) => a + b, 0) / margenes.length;
     margen = finito(m) ? m : null;
   }
 
@@ -189,6 +220,16 @@ export function calcularDiagnostico(
   const roasObjetivo =
     cpaObjetivo !== null && cpaObjetivo > 0 && finito(d.ticket_promedio)
       ? d.ticket_promedio / cpaObjetivo
+      : null;
+
+  // --- Pedidos y conversión (ya no se cargan: se calculan)
+  const pedidos =
+    finito(d.facturacion_mensual) && finito(d.ticket_promedio) && d.ticket_promedio > 0
+      ? d.facturacion_mensual / d.ticket_promedio
+      : null;
+  const crTienda =
+    pedidos !== null && finito(d.visitas_mensuales) && d.visitas_mensuales > 0
+      ? pedidos / d.visitas_mensuales
       : null;
 
   const inversionAds =
@@ -207,24 +248,29 @@ export function calcularDiagnostico(
       ? d.facturacion_mensual * margen - inversionAds
       : null;
 
-  // --- Presupuesto
+  // --- Presupuesto (modo A: presupuesto observado; modo B: gasto declarado)
+  const presupuestoDiario = finito(d.presupuesto_diario)
+    ? d.presupuesto_diario
+    : finito(d.gasto_diario)
+      ? d.gasto_diario
+      : null;
+
   const pisoSemanalPorConjunto = cpaObjetivo !== null ? 50 * cpaObjetivo : null;
   const conjuntosSostenibles =
-    pisoSemanalPorConjunto !== null && pisoSemanalPorConjunto > 0 && finito(d.presupuesto_diario)
-      ? (d.presupuesto_diario * 7) / pisoSemanalPorConjunto
+    pisoSemanalPorConjunto !== null && pisoSemanalPorConjunto > 0 && presupuestoDiario !== null
+      ? (presupuestoDiario * 7) / pisoSemanalPorConjunto
       : null;
   const pisoMensualUnConjunto = cpaObjetivo !== null ? 50 * cpaObjetivo * 4.3 : null;
-  const inversionActualMensual = finito(d.presupuesto_diario) ? d.presupuesto_diario * 30 : null;
-  const techoOperativoInversion =
-    finito(d.techo_operativo) && roasObjetivo !== null && roasObjetivo > 0
-      ? d.techo_operativo / roasObjetivo
-      : null;
+  const inversionActualMensual = presupuestoDiario !== null ? presupuestoDiario * 30 : null;
 
   const derivados: Derivados = {
     delta_medicion: red(delta, 4),
     margen_contribucion: red(margen, 4),
     comision_plataforma: comPlataforma,
     comision_pasarela: comPasarela,
+    margenes_producto: margenesProducto,
+    pedidos_mensuales: red(pedidos, 0),
+    cr_tienda: red(crTienda, 4),
     breakeven_roas: red(breakevenRoas, 2),
     cpa_breakeven: red(cpaBreakeven, 0),
     reserva,
@@ -236,7 +282,6 @@ export function calcularDiagnostico(
     conjuntos_sostenibles: red(conjuntosSostenibles, 1),
     piso_mensual_un_conjunto: red(pisoMensualUnConjunto, 0),
     inversion_actual_mensual: red(inversionActualMensual, 0),
-    techo_operativo_inversion: red(techoOperativoInversion, 0),
   };
 
   // --- Estados por bloque
@@ -254,27 +299,30 @@ export function calcularDiagnostico(
 
   let estadoCuenta: EstadoBloque = "sin_datos";
   if (
-    finito(d.presupuesto_diario) &&
+    presupuestoDiario !== null &&
     finito(d.conjuntos_activos) &&
     d.conjuntos_activos > 0 &&
     pisoSemanalPorConjunto !== null &&
     pisoSemanalPorConjunto > 0
   ) {
-    const real = (d.presupuesto_diario * 7) / d.conjuntos_activos;
+    const real = (presupuestoDiario * 7) / d.conjuntos_activos;
     const ratio = real / pisoSemanalPorConjunto;
     estadoCuenta = ratio >= 1 ? "verde" : ratio >= 0.6 ? "amarillo" : "rojo";
   }
 
   const uCr = cfg.umbrales_funnel_web?.["cr_tienda"];
-  const crNormalizado = finito(d.cr_tienda) ? d.cr_tienda / 100 : null;
   const estadoFunnel: EstadoBloque =
-    crNormalizado !== null && uCr ? porUmbral(crNormalizado, uCr, true) : "sin_datos";
+    crTienda !== null && uCr ? porUmbral(crTienda, uCr, true) : "sin_datos";
 
-  const uCreativos = cfg.umbrales_creativos?.["creativos_nuevos_mes"];
+  // Contenido: cualitativo, no se semaforiza con umbrales numéricos.
+  const camposContenido = [
+    d.frecuencia_creativos,
+    d.formato_creativos,
+    d.angulo_que_funciona,
+    d.dolor_cliente,
+  ].filter((t) => typeof t === "string" && t.trim() !== "").length;
   const estadoCreativos: EstadoBloque =
-    finito(d.creativos_nuevos_mes) && uCreativos
-      ? porUmbral(d.creativos_nuevos_mes, uCreativos, true)
-      : "sin_datos";
+    camposContenido === 0 ? "sin_datos" : camposContenido >= 3 ? "verde" : "amarillo";
 
   const estados_bloque: EstadosBloque = {
     medicion: estadoMedicion,
@@ -289,10 +337,11 @@ export function calcularDiagnostico(
 
   // Conversión
   {
-    const faltan = faltantes(datos, ["sesiones_mensuales", "cr_tienda", "ticket_promedio"]);
+    const faltan = faltantes(datos, ["visitas_mensuales", "facturacion_mensual", "ticket_promedio"]);
     if (margen === null) faltan.push("margen_contribucion");
     if (!uCr) faltan.push("umbrales_funnel_web.cr_tienda");
-    if (faltan.length > 0) {
+    if (faltan.length > 0 || crTienda === null) {
+      if (crTienda === null && faltan.length === 0) faltan.push("visitas_mensuales");
       fugas.push({
         id: "conversion",
         etiqueta: "Fuga por conversión",
@@ -301,10 +350,10 @@ export function calcularDiagnostico(
         calculable: false,
         faltantes: faltan,
       });
-    } else if (crNormalizado !== null && crNormalizado < uCr!.verde) {
+    } else if (crTienda < uCr!.verde) {
       const monto =
-        (d.sesiones_mensuales as number) *
-        (uCr!.verde - crNormalizado) *
+        (d.visitas_mensuales as number) *
+        (uCr!.verde - crTienda) *
         (d.ticket_promedio as number) *
         (margen as number);
       fugas.push({
@@ -346,35 +395,10 @@ export function calcularDiagnostico(
     }
   }
 
-  // Fatiga creativa
-  {
-    const faltan = faltantes(datos, ["inversion_meta", "frecuencia_30d"]);
-    const factor = finito(d.frecuencia_30d) ? factorFatigaDe(cfg, d.frecuencia_30d) : null;
-    if (factor === null) faltan.push("factor_fatiga");
-    if (faltan.length > 0) {
-      fugas.push({
-        id: "fatiga_creativa",
-        etiqueta: "Fuga por fatiga creativa",
-        tipo: "monto",
-        monto: null,
-        calculable: false,
-        faltantes: faltan,
-      });
-    } else if ((factor as number) > 0) {
-      fugas.push({
-        id: "fatiga_creativa",
-        etiqueta: "Fuga por fatiga creativa",
-        tipo: "monto",
-        monto: Math.max(0, red((d.inversion_meta as number) * (factor as number), 0) ?? 0),
-        calculable: true,
-        faltantes: [],
-      });
-    }
-  }
-
   // Sobrefragmentación
   {
-    const faltan = faltantes(datos, ["conjuntos_activos", "presupuesto_diario"]);
+    const faltan = faltantes(datos, ["conjuntos_activos"]);
+    if (presupuestoDiario === null) faltan.push("presupuesto_diario");
     if (cpaObjetivo === null) faltan.push("cpa_objetivo");
     if (faltan.length > 0) {
       fugas.push({
@@ -412,7 +436,7 @@ export function calcularDiagnostico(
       monto: null,
       calculable: true,
       faltantes: [],
-      detalle: "El desvío entre backoffice y Pixel invalida cualquier valorización en pesos.",
+      detalle: "El desvío entre la facturación real y el Pixel invalida cualquier valorización en pesos.",
     });
   }
 

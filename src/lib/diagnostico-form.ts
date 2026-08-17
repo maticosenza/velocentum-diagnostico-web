@@ -1,5 +1,20 @@
 /** Definiciones compartidas del formulario de carga de diagnóstico. */
 
+export type Modo = "A" | "B";
+
+export const MODOS = [
+  {
+    value: "A" as const,
+    titulo: "Con pantalla compartida",
+    detalle: "Tengo acceso a su panel de Meta Ads y a su tienda. Puedo verificar los números.",
+  },
+  {
+    value: "B" as const,
+    titulo: "Solo conversado",
+    detalle: "Sin acceso al panel. Los datos salen de lo que cuenta el prospecto.",
+  },
+];
+
 export const VERTICALES = [
   { value: "indumentaria", label: "Indumentaria" },
   { value: "cosmetica", label: "Cosmética" },
@@ -42,35 +57,68 @@ export const PASARELAS = [
   { value: "otra", label: "Otra" },
 ] as const;
 
+export const CANTIDAD_CAMPANAS = [
+  { value: "pocas", label: "Pocas" },
+  { value: "varias", label: "Varias" },
+  { value: "muchas", label: "Muchas" },
+] as const;
+
 export type DatosDiagnostico = {
-  // Identificación
+  // Identificación (compartido)
   nombre_tienda: string;
   vertical: string;
   plataforma: string;
   plan_plataforma: string;
   vende_mercado_libre: boolean;
-  // Medición
-  ventas_backoffice: number | null;
+  // Medición · modo A (observado en pantalla)
   facturacion_pixel: number | null;
-  // Economía
+  capi_activa: boolean;
+  eventos_duplicados: boolean;
+  catalogo_sincronizado: boolean;
+  // Medición · modo B (declarado)
+  tiene_pixel: boolean;
+  tiene_analytics: boolean;
+  numeros_meta_coinciden: boolean;
+  // Economía (compartido)
   facturacion_mensual: number | null;
   ticket_promedio: number | null;
-  costo_producto_pct: number | null;
   costo_envio_promedio: number | null;
   pasarela: string;
   inversion_meta: number | null;
   inversion_google: number | null;
-  // Cuenta
+  // Productos (compartido; en modo B sólo el principal lleva costo y precio)
+  producto_1_nombre: string;
+  producto_1_costo: number | null;
+  producto_1_precio: number | null;
+  producto_2_nombre: string;
+  producto_2_costo: number | null;
+  producto_2_precio: number | null;
+  producto_3_nombre: string;
+  producto_3_costo: number | null;
+  producto_3_precio: number | null;
+  productos_pct_facturacion: number | null;
+  reparto_pauta: string;
+  // Cuenta · modo A
   conjuntos_activos: number | null;
   presupuesto_diario: number | null;
-  frecuencia_30d: number | null;
-  // Web y creativos
-  sesiones_mensuales: number | null;
-  cr_tienda: number | null;
-  creativos_nuevos_mes: number | null;
-  techo_operativo: number | null;
-  // Mercado Libre
+  // Cuenta · modo B
+  gasto_diario: number | null;
+  cantidad_campanas: string;
+  // Web
+  visitas_mensuales: number | null;
+  recuperacion_carrito: boolean;
+  retargeting_abandono: boolean;
+  // Contenido (compartido, cualitativo)
+  frecuencia_creativos: string;
+  formato_creativos: string;
+  angulo_que_funciona: string;
+  dolor_cliente: string;
+  consultas_por_organico: boolean;
+  // Mercado Libre (compartido, condicional)
   ml_pct_facturacion: number | null;
+  ml_productos_publicados: number | null;
+  ml_product_ads: boolean;
+  ml_inversion_product_ads: number | null;
 };
 
 export type NotasDiagnostico = Record<string, string>;
@@ -81,53 +129,113 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   plataforma: "",
   plan_plataforma: "",
   vende_mercado_libre: false,
-  ventas_backoffice: null,
   facturacion_pixel: null,
+  capi_activa: false,
+  eventos_duplicados: false,
+  catalogo_sincronizado: false,
+  tiene_pixel: false,
+  tiene_analytics: false,
+  numeros_meta_coinciden: false,
   facturacion_mensual: null,
   ticket_promedio: null,
-  costo_producto_pct: null,
   costo_envio_promedio: null,
   pasarela: "",
   inversion_meta: null,
   inversion_google: null,
+  producto_1_nombre: "",
+  producto_1_costo: null,
+  producto_1_precio: null,
+  producto_2_nombre: "",
+  producto_2_costo: null,
+  producto_2_precio: null,
+  producto_3_nombre: "",
+  producto_3_costo: null,
+  producto_3_precio: null,
+  productos_pct_facturacion: null,
+  reparto_pauta: "",
   conjuntos_activos: null,
   presupuesto_diario: null,
-  frecuencia_30d: null,
-  sesiones_mensuales: null,
-  cr_tienda: null,
-  creativos_nuevos_mes: null,
-  techo_operativo: null,
+  gasto_diario: null,
+  cantidad_campanas: "",
+  visitas_mensuales: null,
+  recuperacion_carrito: false,
+  retargeting_abandono: false,
+  frecuencia_creativos: "",
+  formato_creativos: "",
+  angulo_que_funciona: "",
+  dolor_cliente: "",
+  consultas_por_organico: false,
   ml_pct_facturacion: null,
+  ml_productos_publicados: null,
+  ml_product_ads: false,
+  ml_inversion_product_ads: null,
 };
 
 export const BLOQUES = [
   { id: "identificacion", label: "Identificación" },
   { id: "medicion", label: "Medición" },
   { id: "economia", label: "Economía" },
+  { id: "productos", label: "Productos" },
   { id: "cuenta", label: "Cuenta" },
-  { id: "web_creativos", label: "Web y creativos" },
+  { id: "web", label: "Web" },
+  { id: "contenido", label: "Contenido" },
   { id: "mercado_libre", label: "Mercado Libre" },
 ] as const;
 
 export type BloqueId = (typeof BLOQUES)[number]["id"];
 
-/** Campos que cuentan para el indicador de completitud de cada pestaña. */
-export const CAMPOS_POR_BLOQUE: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
+const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
   identificacion: ["nombre_tienda", "vertical", "plataforma", "plan_plataforma"],
-  medicion: ["ventas_backoffice", "facturacion_pixel"],
+  medicion: [],
   economia: [
     "facturacion_mensual",
     "ticket_promedio",
-    "costo_producto_pct",
     "costo_envio_promedio",
     "pasarela",
     "inversion_meta",
     "inversion_google",
   ],
-  cuenta: ["conjuntos_activos", "presupuesto_diario", "frecuencia_30d"],
-  web_creativos: ["sesiones_mensuales", "cr_tienda", "creativos_nuevos_mes", "techo_operativo"],
-  mercado_libre: ["ml_pct_facturacion"],
+  productos: [],
+  cuenta: [],
+  web: [],
+  contenido: [
+    "frecuencia_creativos",
+    "formato_creativos",
+    "angulo_que_funciona",
+    "dolor_cliente",
+  ],
+  mercado_libre: ["ml_pct_facturacion", "ml_productos_publicados", "ml_inversion_product_ads"],
 };
+
+/** Campos que cuentan para el indicador de completitud de cada pestaña, según el modo. */
+export function camposPorBloque(modo: Modo, bloque: BloqueId): (keyof DatosDiagnostico)[] {
+  const base = CAMPOS_COMUNES[bloque];
+  if (bloque === "medicion") return modo === "A" ? ["facturacion_pixel"] : [];
+  if (bloque === "productos") {
+    const nombres: (keyof DatosDiagnostico)[] = [
+      "producto_1_nombre",
+      "producto_2_nombre",
+      "producto_3_nombre",
+      "productos_pct_facturacion",
+    ];
+    return modo === "A"
+      ? [
+          ...nombres,
+          "producto_1_costo",
+          "producto_1_precio",
+          "producto_2_costo",
+          "producto_2_precio",
+          "producto_3_costo",
+          "producto_3_precio",
+        ]
+      : [...nombres, "producto_1_costo", "producto_1_precio"];
+  }
+  if (bloque === "cuenta") {
+    return modo === "A" ? ["conjuntos_activos", "presupuesto_diario"] : ["gasto_diario", "cantidad_campanas"];
+  }
+  if (bloque === "web") return modo === "A" ? ["visitas_mensuales"] : [];
+  return base;
+}
 
 export function estaCompleto(valor: unknown) {
   if (valor === null || valor === undefined) return false;
@@ -135,12 +243,18 @@ export function estaCompleto(valor: unknown) {
   return true;
 }
 
-export function contarCompletos(datos: DatosDiagnostico, bloque: BloqueId) {
-  const campos = CAMPOS_POR_BLOQUE[bloque];
+export function contarCompletos(datos: DatosDiagnostico, modo: Modo, bloque: BloqueId) {
+  const campos = camposPorBloque(modo, bloque);
   return {
     completos: campos.filter((c) => estaCompleto(datos[c])).length,
     total: campos.length,
   };
 }
+
+/** Campos que NO se conservan al cambiar de modo (son exclusivos del otro modo). */
+export const CAMPOS_EXCLUSIVOS: Record<Modo, (keyof DatosDiagnostico)[]> = {
+  A: ["facturacion_pixel", "capi_activa", "eventos_duplicados", "catalogo_sincronizado", "conjuntos_activos", "presupuesto_diario", "visitas_mensuales"],
+  B: ["tiene_pixel", "tiene_analytics", "numeros_meta_coinciden", "gasto_diario", "cantidad_campanas"],
+};
 
 export const CLAVE_BORRADOR = "velocentum:borrador-diagnostico";
