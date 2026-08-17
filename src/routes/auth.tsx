@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import logoVelocentum from "@/assets/velocentum-icon.png";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -52,18 +53,16 @@ function PantallaLogin() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6">
-        <div className="flex items-center gap-2">
-          <span className="grid size-6 place-items-center rounded-[5px] bg-primary text-[11px] font-medium text-primary-foreground">
-            V
-          </span>
+      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-8">
+        <div className="flex items-center gap-2.5">
+          <img src={logoVelocentum} alt="Velocentum" className="size-7 shrink-0 object-contain" />
           <div>
-            <p className="text-[13px] font-medium leading-4 text-foreground">Velocentum</p>
-            <p className="text-[11px] leading-4 text-muted-foreground">Cockpit de Diagnóstico</p>
+            <p className="text-[14px] font-medium leading-5 text-foreground">Velocentum</p>
+            <p className="text-[11.5px] leading-4 text-muted-foreground">Cockpit de Diagnóstico</p>
           </div>
         </div>
 
-        <h1 className="mt-6 text-[15px] font-medium text-foreground">Ingresá a tu cuenta</h1>
+        <h1 className="mt-7 text-[18px] font-medium text-foreground">Ingresá a tu cuenta</h1>
         <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
           Herramienta interna. El acceso lo da el administrador del equipo.
         </p>

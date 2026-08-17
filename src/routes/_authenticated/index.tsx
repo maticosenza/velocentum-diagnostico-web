@@ -126,7 +126,7 @@ function ListadoDiagnosticos() {
           </Button>
         }
       />
-      <div className="space-y-4 px-6 py-6">
+      <div className="space-y-4 px-8 py-8">
         {isLoading && <p className="text-[13px] text-muted-foreground">Cargando diagnósticos…</p>}
 
         {error && (
@@ -152,12 +152,12 @@ function ListadoDiagnosticos() {
             <table className="w-full text-[14px]">
               <thead>
                 <tr className="border-b border-border text-left text-[12px] uppercase tracking-wide text-muted-foreground">
-                  <th className="px-4 py-2.5 font-medium">Tienda</th>
-                  <th className="px-4 py-2.5 font-medium">Vertical</th>
-                  <th className="px-4 py-2.5 font-medium">Fecha</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Oportunidad</th>
-                  <th className="px-4 py-2.5 font-medium">Estado</th>
-                  <th className="px-4 py-2.5 text-right font-medium">
+                  <th className="px-5 py-4 font-medium">Tienda</th>
+                  <th className="px-5 py-4 font-medium">Vertical</th>
+                  <th className="px-5 py-4 font-medium">Fecha</th>
+                  <th className="px-5 py-4 text-right font-medium">Oportunidad</th>
+                  <th className="px-5 py-4 font-medium">Estado</th>
+                  <th className="px-5 py-4 text-right font-medium">
                     <span className="sr-only">Acciones</span>
                   </th>
                 </tr>
@@ -165,7 +165,7 @@ function ListadoDiagnosticos() {
               <tbody>
                 {data!.map((f) => (
                   <tr key={f.id} className="border-b border-border last:border-b-0 hover:bg-muted/60">
-                    <td className="px-4 py-2.5">
+                    <td className="px-5 py-4">
                       <Link
                         to="/diagnosticos/$id"
                         params={{ id: f.id }}
@@ -179,21 +179,21 @@ function ListadoDiagnosticos() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
+                    <td className="px-5 py-4 text-muted-foreground">
                       {VERTICALES.find((v) => v.value === f.oportunidad?.vertical)?.label ?? "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
+                    <td className="px-5 py-4 text-muted-foreground">
                       {f.fecha ? formatFecha(f.fecha) : "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
+                    <td className="px-5 py-4 text-right tabular-nums text-foreground">
                       {typeof f.oportunidad_total === "number"
                         ? formatARS(f.oportunidad_total)
                         : "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
+                    <td className="px-5 py-4 text-muted-foreground">
                       {ESTADOS[f.oportunidad?.estado ?? ""] ?? "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-5 py-4 text-right">
                       <button
                         type="button"
                         onClick={() => {

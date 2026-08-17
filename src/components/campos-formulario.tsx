@@ -29,13 +29,13 @@ export function Campo({
 }) {
 
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={htmlFor} className="text-[13px] font-normal text-muted-foreground">
+    <div className="space-y-2">
+      <Label htmlFor={htmlFor} className="text-[14px] font-medium leading-5 text-foreground/85">
         {label}
         {obligatorio && <span className="ml-0.5 text-primary">*</span>}
       </Label>
       {children}
-      {ayuda && <p className="text-[12px] leading-4 text-muted-foreground/80">{ayuda}</p>}
+      {ayuda && <p className="text-[12.5px] leading-4 text-muted-foreground">{ayuda}</p>}
     </div>
   );
 }
@@ -56,14 +56,14 @@ export function CampoPesos({
   return (
     <Campo label={label} ayuda={ayuda} htmlFor={id}>
       <div className="relative">
-        <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-muted-foreground">
           $
         </span>
         <Input
           id={id}
           inputMode="numeric"
           autoComplete="off"
-          className="h-9 pl-6 text-[13px] tabular-nums"
+          className="h-11 pl-7 text-[14px] tabular-nums"
           value={value === null ? "" : conMiles(value)}
           onChange={(e) => onChange(parseNumero(e.target.value))}
         />
@@ -93,7 +93,7 @@ export function CampoNumero({
         inputMode="decimal"
         autoComplete="off"
         step={decimales > 0 ? 1 / 10 ** decimales : 1}
-        className="h-9 text-[13px] tabular-nums"
+        className="h-11 text-[14px] tabular-nums"
         value={value === null ? "" : String(value)}
         onChange={(e) => onChange(parseNumero(e.target.value))}
       />
@@ -121,11 +121,11 @@ export function CampoPorcentaje({
           id={id}
           inputMode="decimal"
           autoComplete="off"
-          className="h-9 text-[13px] tabular-nums"
+          className="h-11 text-[14px] tabular-nums"
           value={value === null ? "" : String(value)}
           onChange={(e) => onChange(parseNumero(e.target.value))}
         />
-        <span className="shrink-0 text-[13px] text-muted-foreground">%</span>
+        <span className="shrink-0 text-[14px] text-muted-foreground">%</span>
       </div>
     </Campo>
   );
@@ -154,7 +154,7 @@ export function CampoTexto({
         autoComplete="off"
         maxLength={160}
         placeholder={placeholder}
-        className="h-9 text-[13px]"
+        className="h-11 text-[14px]"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -186,7 +186,7 @@ export function CampoSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "h-9 w-full rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground",
+          "h-11 w-full rounded-md border border-input bg-background px-3 text-[14px] text-foreground",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
           value === "" && "text-muted-foreground",
         )}
@@ -215,7 +215,7 @@ export function CampoSiNo({
 }) {
   return (
     <Campo label={label} ayuda={ayuda}>
-      <div className="flex gap-1.5">
+      <div className="flex gap-2">
         {[
           { v: true, l: "Sí" },
           { v: false, l: "No" },
@@ -226,9 +226,9 @@ export function CampoSiNo({
             onClick={() => onChange(o.v)}
             aria-pressed={value === o.v}
             className={cn(
-              "h-9 flex-1 rounded-md border text-[13px] transition-colors",
+              "h-11 flex-1 rounded-md border text-[14px] transition-colors",
               value === o.v
-                ? "border-primary bg-primary/5 text-primary"
+                ? "border-violet bg-violet-soft font-medium text-violet"
                 : "border-input text-muted-foreground hover:bg-muted",
             )}
           >
