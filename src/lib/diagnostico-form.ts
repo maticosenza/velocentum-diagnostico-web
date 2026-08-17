@@ -72,12 +72,10 @@ export type DatosDiagnostico = {
   vende_mercado_libre: boolean;
   // Medición · modo A (observado en pantalla)
   facturacion_pixel: number | null;
-  capi_activa: boolean;
-  eventos_duplicados: boolean;
-  catalogo_sincronizado: boolean;
+  capi_estado: string;
   // Medición · modo B (declarado)
-  tiene_pixel: boolean;
   tiene_analytics: boolean;
+
   numeros_meta_coinciden: boolean;
   // Economía (compartido)
   facturacion_mensual: number | null;
