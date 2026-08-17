@@ -393,3 +393,41 @@ describe("caso real de ticket alto", () => {
     expect(r.fugas.find((f) => f.id === "sobrefragmentacion")?.calculable).toBe(true);
   });
 });
+
+describe("fuga por carritos abandonados", () => {
+  const cfgCarrito: ConfiguracionCalculo = { ...cfg, recuperacion_carrito_esperada: 0.08 };
+  const conCarritos: DatosDiagnostico = {
+    ...base,
+    facturacion_mensual: 10_000_000,
+    carritos_abandonados: 500,
+  };
+  const fugaDe = (d: DatosDiagnostico) =>
+    calcularDiagnostico(d, cfgCarrito).fugas.find((f) => f.id === "carritos_abandonados");
+
+  it("no hay fuga si ya tiene recuperación y retargeting", () => {
+    expect(
+      fugaDe({ ...conCarritos, recuperacion_carrito: true, retargeting_abandono: true }),
+    ).toBeUndefined();
+  });
+
+  it("sin recuperación ni retargeting usa el porcentaje completo", () => {
+    const r = calcularDiagnostico(conCarritos, cfgCarrito);
+    const f = r.fugas.find((x) => x.id === "carritos_abandonados")!;
+    const margen = r.derivados.margen_contribucion!;
+    expect(f.calculable).toBe(true);
+    expect(f.monto).toBe(Math.round(500 * 0.08 * 45_000 * margen));
+  });
+
+  it("con una sola de las dos activas usa la mitad del porcentaje", () => {
+    const completa = fugaDe(conCarritos)!.monto!;
+    const mitad = fugaDe({ ...conCarritos, recuperacion_carrito: true })!.monto!;
+    expect(mitad).toBeGreaterThan(0);
+    expect(Math.abs(mitad - completa / 2)).toBeLessThanOrEqual(1);
+  });
+
+  it("sin el dato de carritos queda como no calculable", () => {
+    const f = fugaDe({ ...conCarritos, carritos_abandonados: null })!;
+    expect(f.calculable).toBe(false);
+    expect(f.faltantes).toContain("carritos_abandonados");
+  });
+});
