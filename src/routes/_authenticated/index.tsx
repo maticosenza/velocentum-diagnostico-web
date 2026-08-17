@@ -51,6 +51,7 @@ const ESTADOS: Record<string, string> = {
 type Fila = {
   id: string;
   fecha: string;
+  version: number | null;
   oportunidad_id: string;
   oportunidad_total: number | null;
   oportunidad: {
@@ -71,7 +72,7 @@ function ListadoDiagnosticos() {
       const { data, error } = await supabase
         .from("diagnostico")
         .select(
-          "id, fecha, oportunidad_id, oportunidad_total, oportunidad:oportunidad_id(nombre_tienda, vertical, estado)",
+          "id, fecha, version, oportunidad_id, oportunidad_total, oportunidad:oportunidad_id(nombre_tienda, vertical, estado)",
         )
         .order("creado_en", { ascending: false });
       if (error) throw error;
@@ -108,6 +109,12 @@ function ListadoDiagnosticos() {
   });
 
 
+  const conVarias = new Set(
+    (data ?? [])
+      .map((f) => f.oportunidad_id)
+      .filter((id, _i, arr) => arr.filter((o) => o === id).length > 1),
+  );
+
   return (
     <>
       <PageHeader
@@ -115,7 +122,7 @@ function ListadoDiagnosticos() {
         description="Todos los diagnósticos cargados durante las llamadas con prospectos."
         actions={
           <Button asChild size="sm">
-            <Link to="/diagnosticos/nuevo">Nuevo diagnóstico</Link>
+            <Link to="/diagnosticos/nuevo" search={{}}>Nuevo diagnóstico</Link>
           </Button>
         }
       />
@@ -134,7 +141,7 @@ function ListadoDiagnosticos() {
             description="Cuando cargues el primero, vas a encontrarlo listado en esta pantalla."
             action={
               <Button asChild size="sm" variant="outline">
-                <Link to="/diagnosticos/nuevo">Crear el primero</Link>
+                <Link to="/diagnosticos/nuevo" search={{}}>Crear el primero</Link>
               </Button>
             }
           />
@@ -166,6 +173,11 @@ function ListadoDiagnosticos() {
                       >
                         {f.oportunidad?.nombre_tienda ?? "Tienda sin nombre"}
                       </Link>
+                      {conVarias.has(f.oportunidad_id) && (
+                        <span className="ml-2 rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                          v{f.version ?? 1}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {VERTICALES.find((v) => v.value === f.oportunidad?.vertical)?.label ?? "—"}

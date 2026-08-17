@@ -49,6 +49,8 @@ export type Database = {
           notas: Json
           oportunidad_id: string
           oportunidad_total: number
+          origen_diagnostico_id: string | null
+          version: number
         }
         Insert: {
           creado_en?: string
@@ -63,6 +65,8 @@ export type Database = {
           notas?: Json
           oportunidad_id: string
           oportunidad_total?: number
+          origen_diagnostico_id?: string | null
+          version?: number
         }
         Update: {
           creado_en?: string
@@ -77,6 +81,8 @@ export type Database = {
           notas?: Json
           oportunidad_id?: string
           oportunidad_total?: number
+          origen_diagnostico_id?: string | null
+          version?: number
         }
         Relationships: [
           {
@@ -84,6 +90,13 @@ export type Database = {
             columns: ["oportunidad_id"]
             isOneToOne: false
             referencedRelation: "oportunidad"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostico_origen_diagnostico_id_fkey"
+            columns: ["origen_diagnostico_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostico"
             referencedColumns: ["id"]
           },
         ]

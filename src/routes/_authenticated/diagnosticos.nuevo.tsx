@@ -40,6 +40,8 @@ import { calcularDiagnostico } from "@/lib/calculo-diagnostico";
 import { cargarConfiguracion } from "@/lib/configuracion";
 
 export const Route = createFileRoute("/_authenticated/diagnosticos/nuevo")({
+  validateSearch: (search: Record<string, unknown>): { desde?: string } =>
+    typeof search['desde'] === "string" ? { desde: search['desde'] as string } : {},
   head: () => ({
     meta: [
       { title: "Nuevo diagnóstico · Velocentum Cockpit" },
@@ -78,9 +80,12 @@ function leerBorrador(): Borrador | null {
   }
 }
 
+type Origen = { id: string; oportunidad_id: string; version: number };
+
 function NuevoDiagnostico() {
   const navigate = useNavigate();
   const { user } = Route.useRouteContext();
+  const { desde } = Route.useSearch();
 
   const [modo, setModo] = useState<Modo | null>(null);
   const [datos, setDatos] = useState<DatosDiagnostico>(DATOS_INICIALES);
@@ -89,26 +94,60 @@ function NuevoDiagnostico() {
   const [guardadoEn, setGuardadoEn] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [origen, setOrigen] = useState<Origen | null>(null);
+  const [cargandoOrigen, setCargandoOrigen] = useState(Boolean(desde));
+
+  // Precarga desde un diagnóstico existente (editar y recalcular)
+  useEffect(() => {
+    if (!desde) return;
+    let vivo = true;
+    void (async () => {
+      const { data, error: err } = await supabase
+        .from("diagnostico")
+        .select("id, oportunidad_id, modo, version, datos, notas")
+        .eq("id", desde)
+        .maybeSingle();
+      if (!vivo) return;
+      if (err || !data) {
+        setError("No pudimos abrir el diagnóstico original.");
+        setCargandoOrigen(false);
+        return;
+      }
+      setOrigen({
+        id: data.id,
+        oportunidad_id: data.oportunidad_id,
+        version: typeof data.version === "number" ? data.version : 1,
+      });
+      setModo(data.modo === "B" ? "B" : "A");
+      setDatos({ ...DATOS_INICIALES, ...((data.datos ?? {}) as Partial<DatosDiagnostico>) });
+      setNotas((data.notas ?? {}) as NotasDiagnostico);
+      setCargandoOrigen(false);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [desde]);
 
   // Recuperar borrador
   useEffect(() => {
+    if (desde) return;
     const b = leerBorrador();
     if (b) {
       setModo(b.modo);
       setDatos(b.datos);
       setNotas(b.notas);
     }
-  }, []);
+  }, [desde]);
 
   // Autoguardado del borrador cada 3 segundos
   useEffect(() => {
-    if (!modo) return;
+    if (!modo || desde) return;
     const t = setTimeout(() => {
       window.localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({ modo, datos, notas }));
       setGuardadoEn(new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }));
     }, 3000);
     return () => clearTimeout(t);
-  }, [modo, datos, notas]);
+  }, [modo, datos, notas, desde]);
 
   const set = useCallback(<K extends keyof DatosDiagnostico>(k: K, v: DatosDiagnostico[K]) => {
     setDatos((prev) => ({ ...prev, [k]: v }));
@@ -185,18 +224,23 @@ function NuevoDiagnostico() {
     }
     setGuardando(true);
     try {
-      const { data: oportunidad, error: errOp } = await supabase
-        .from("oportunidad")
-        .insert({
-          creado_por: user.id,
-          nombre_tienda: datos.nombre_tienda.trim(),
-          vertical: (datos.vertical || null) as never,
-          plataforma: (datos.plataforma || null) as never,
-          plan_plataforma: datos.plan_plataforma || null,
-        })
-        .select("id")
-        .single();
-      if (errOp || !oportunidad) throw errOp ?? new Error("No se pudo crear la oportunidad.");
+      let oportunidadId = origen?.oportunidad_id ?? null;
+
+      if (!oportunidadId) {
+        const { data: oportunidad, error: errOp } = await supabase
+          .from("oportunidad")
+          .insert({
+            creado_por: user.id,
+            nombre_tienda: datos.nombre_tienda.trim(),
+            vertical: (datos.vertical || null) as never,
+            plataforma: (datos.plataforma || null) as never,
+            plan_plataforma: datos.plan_plataforma || null,
+          })
+          .select("id")
+          .single();
+        if (errOp || !oportunidad) throw errOp ?? new Error("No se pudo crear la oportunidad.");
+        oportunidadId = oportunidad.id;
+      }
 
       const cfg = await cargarConfiguracion();
       const resultado = calcularDiagnostico(datos, cfg);
@@ -204,9 +248,11 @@ function NuevoDiagnostico() {
       const { data: diagnostico, error: errDiag } = await supabase
         .from("diagnostico")
         .insert({
-          oportunidad_id: oportunidad.id,
+          oportunidad_id: oportunidadId,
           creado_por: user.id,
           modo,
+          version: origen ? origen.version + 1 : 1,
+          origen_diagnostico_id: origen?.id ?? null,
           fecha: new Date().toISOString().slice(0, 10),
           datos: datos as never,
           notas: notas as never,
@@ -219,12 +265,23 @@ function NuevoDiagnostico() {
         .single();
       if (errDiag || !diagnostico) throw errDiag ?? new Error("No se pudo guardar el diagnóstico.");
 
-      window.localStorage.removeItem(CLAVE_BORRADOR);
+      if (!origen) window.localStorage.removeItem(CLAVE_BORRADOR);
       void navigate({ to: "/diagnosticos/$id", params: { id: diagnostico.id } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar. Probá de nuevo.");
       setGuardando(false);
     }
+  }
+
+  if (cargandoOrigen) {
+    return (
+      <>
+        <PageHeader title="Editar y recalcular" />
+        <div className="px-6 py-6">
+          <p className="text-[13px] text-muted-foreground">Cargando el diagnóstico original…</p>
+        </div>
+      </>
+    );
   }
 
   if (!modo) {
@@ -266,18 +323,30 @@ function NuevoDiagnostico() {
   return (
     <>
       <PageHeader
-        title="Nuevo diagnóstico"
-        description="Cargá los datos mientras hablás con el prospecto. Atajos: Alt + número, Alt + ← / →."
+        title={origen ? "Editar y recalcular" : "Nuevo diagnóstico"}
+        description={
+          origen
+            ? `Al guardar se crea la versión ${origen.version + 1} del mismo prospecto. El diagnóstico original queda intacto.`
+            : "Cargá los datos mientras hablás con el prospecto. Atajos: Alt + número, Alt + ← / →."
+        }
         actions={
           <div className="flex items-center gap-3">
             <span className="text-[12px] text-muted-foreground">
-              {guardadoEn ? `Borrador guardado ${guardadoEn}` : "Borrador sin guardar"}
+              {origen
+                ? `Versión nueva a partir de la ${origen.version}`
+                : guardadoEn
+                  ? `Borrador guardado ${guardadoEn}`
+                  : "Borrador sin guardar"}
             </span>
             <Button asChild size="sm" variant="outline">
               <Link to="/">Cancelar</Link>
             </Button>
             <Button size="sm" onClick={() => void guardar()} disabled={guardando}>
-              {guardando ? "Guardando…" : "Guardar diagnóstico"}
+              {guardando
+                ? "Guardando…"
+                : origen
+                  ? "Guardar versión nueva"
+                  : "Guardar diagnóstico"}
             </Button>
           </div>
         }
