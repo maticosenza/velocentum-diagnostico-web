@@ -224,18 +224,23 @@ function NuevoDiagnostico() {
     }
     setGuardando(true);
     try {
-      const { data: oportunidad, error: errOp } = await supabase
-        .from("oportunidad")
-        .insert({
-          creado_por: user.id,
-          nombre_tienda: datos.nombre_tienda.trim(),
-          vertical: (datos.vertical || null) as never,
-          plataforma: (datos.plataforma || null) as never,
-          plan_plataforma: datos.plan_plataforma || null,
-        })
-        .select("id")
-        .single();
-      if (errOp || !oportunidad) throw errOp ?? new Error("No se pudo crear la oportunidad.");
+      let oportunidadId = origen?.oportunidad_id ?? null;
+
+      if (!oportunidadId) {
+        const { data: oportunidad, error: errOp } = await supabase
+          .from("oportunidad")
+          .insert({
+            creado_por: user.id,
+            nombre_tienda: datos.nombre_tienda.trim(),
+            vertical: (datos.vertical || null) as never,
+            plataforma: (datos.plataforma || null) as never,
+            plan_plataforma: datos.plan_plataforma || null,
+          })
+          .select("id")
+          .single();
+        if (errOp || !oportunidad) throw errOp ?? new Error("No se pudo crear la oportunidad.");
+        oportunidadId = oportunidad.id;
+      }
 
       const cfg = await cargarConfiguracion();
       const resultado = calcularDiagnostico(datos, cfg);
@@ -243,9 +248,11 @@ function NuevoDiagnostico() {
       const { data: diagnostico, error: errDiag } = await supabase
         .from("diagnostico")
         .insert({
-          oportunidad_id: oportunidad.id,
+          oportunidad_id: oportunidadId,
           creado_por: user.id,
           modo,
+          version: origen ? origen.version + 1 : 1,
+          origen_diagnostico_id: origen?.id ?? null,
           fecha: new Date().toISOString().slice(0, 10),
           datos: datos as never,
           notas: notas as never,
@@ -258,7 +265,7 @@ function NuevoDiagnostico() {
         .single();
       if (errDiag || !diagnostico) throw errDiag ?? new Error("No se pudo guardar el diagnóstico.");
 
-      window.localStorage.removeItem(CLAVE_BORRADOR);
+      if (!origen) window.localStorage.removeItem(CLAVE_BORRADOR);
       void navigate({ to: "/diagnosticos/$id", params: { id: diagnostico.id } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar. Probá de nuevo.");
