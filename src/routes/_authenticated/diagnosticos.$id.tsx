@@ -129,8 +129,8 @@ function DetalleDiagnostico() {
     return (
       <>
         <PageHeader title="Diagnóstico" actions={volver} />
-        <div className="px-6 py-6">
-          <p className="text-[13px] text-muted-foreground">Cargando el diagnóstico…</p>
+        <div className="px-8 py-10">
+          <p className="text-[14px] text-muted-foreground">Cargando el diagnóstico…</p>
         </div>
       </>
     );
@@ -140,7 +140,7 @@ function DetalleDiagnostico() {
     return (
       <>
         <PageHeader title="Diagnóstico" actions={volver} />
-        <div className="px-6 py-6">
+        <div className="px-8 py-10">
           <EmptyState
             title="No encontramos este diagnóstico"
             description="Puede que se haya borrado o que el enlace esté mal. Volvé al listado y buscalo de nuevo."
@@ -199,14 +199,14 @@ function DetalleDiagnostico() {
         </div>
       )}
 
-      <div className="space-y-6 px-6 py-6">
+      <div className="space-y-10 px-8 py-10">
         <NumeroPrincipal medicionRota={medicionRota} total={total} conservador={conservador} />
 
         <Semaforo estados={estados} derivados={d} datos={datos} />
 
         <SeccionFugas fugas={fugas} />
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-8 lg:grid-cols-2">
           <EconomiaDetalle derivados={d} datos={datos} />
           <Presupuesto derivados={d} datos={datos} />
         </div>
@@ -228,14 +228,14 @@ function NumeroPrincipal({
 }) {
   if (medicionRota) {
     return (
-      <section className="rounded-lg border border-estado-rojo/40 bg-card px-8 py-10">
+      <section className="rounded-lg border border-estado-rojo/40 bg-card px-10 py-14">
         <div className="flex items-start gap-3">
-          <EstadoPunto estado="rojo" className="mt-2 size-3" />
+          <EstadoPunto estado="rojo" className="mt-3 size-3.5" />
           <div>
-            <h2 className="text-[24px] font-medium leading-8 text-foreground">
+            <h2 className="text-[30px] font-medium leading-9 text-foreground">
               No podemos valorizar la oportunidad todavía
             </h2>
-            <p className="mt-3 max-w-2xl text-[15px] leading-6 text-muted-foreground">
+            <p className="mt-4 max-w-2xl text-[16px] leading-7 text-muted-foreground">
               El desvío entre lo que mide la cuenta de anuncios y lo que factura realmente la tienda
               es demasiado grande. Con esa diferencia, cualquier monto que pongamos acá sería falso.
               Arreglar la medición es el primer problema a resolver: sin eso, no hay diagnóstico
@@ -248,20 +248,20 @@ function NumeroPrincipal({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card px-8 py-10">
-      <p className="text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
+    <section className="rounded-lg border border-border bg-card px-10 py-14">
+      <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
         Oportunidad mensual estimada
       </p>
-      <p className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-foreground">
-        <span className="text-[44px] font-medium leading-[1.1] tabular-nums sm:text-[56px]">
+      <p className="mt-6 flex flex-wrap items-baseline gap-x-5 gap-y-2 text-foreground">
+        <span className="text-[56px] font-medium leading-[1.05] tabular-nums sm:text-[72px]">
           {pesos(conservador)}
         </span>
-        <span className="text-[22px] leading-[1.1] text-muted-foreground">a</span>
-        <span className="text-[44px] font-medium leading-[1.1] tabular-nums sm:text-[56px]">
+        <span className="text-[26px] leading-[1.1] text-muted-foreground">a</span>
+        <span className="text-[56px] font-medium leading-[1.05] tabular-nums sm:text-[72px]">
           {pesos(total)}
         </span>
       </p>
-      <p className="mt-4 text-[13px] text-muted-foreground">
+      <p className="mt-6 text-[14px] text-muted-foreground">
         Estimación mensual sobre los datos cargados en esta llamada.
       </p>
     </section>
@@ -317,25 +317,25 @@ function Semaforo({
   ];
 
   return (
-    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
       {tarjetas.map((t) => {
         const estado: EstadoBloque = estados[t.id] ?? "sin_datos";
         const sinDatos = estado === "sin_datos";
         return (
           <article
             key={t.id}
-            className="rounded-lg border border-border bg-card px-4 py-4"
+            className="rounded-lg border border-border bg-card px-6 py-6"
             aria-label={`${t.titulo}: ${ETIQUETA_ESTADO[estado]}`}
           >
             <div className="flex items-center gap-2">
               <EstadoPunto estado={estado} />
-              <h3 className="text-[15px] font-medium text-foreground">{t.titulo}</h3>
+              <h3 className="text-[16px] font-medium text-foreground">{t.titulo}</h3>
             </div>
             <p
               className={
                 sinDatos
-                  ? "mt-2 text-[13px] leading-5 text-muted-foreground"
-                  : "mt-2 text-[13px] leading-5 text-foreground"
+                  ? "mt-3 text-[14px] leading-5 text-muted-foreground"
+                  : "mt-3 text-[14px] leading-5 text-foreground"
               }
             >
               {sinDatos ? "Sin datos" : t.dato}
@@ -363,35 +363,35 @@ function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
 
   return (
     <section className="rounded-lg border border-border bg-card">
-      <header className="border-b border-border px-5 py-3">
-        <h2 className="text-[15px] font-medium text-foreground">Fugas detectadas</h2>
+      <header className="border-b border-border px-7 py-5">
+        <h2 className="text-[17px] font-medium text-foreground">Fugas detectadas</h2>
       </header>
 
       {conMonto.length === 0 && riesgos.length === 0 && noCalculables.length === 0 && (
-        <p className="px-5 py-6 text-[13px] text-muted-foreground">
+        <p className="px-7 py-8 text-[14px] text-muted-foreground">
           No se detectaron fugas con los datos cargados.
         </p>
       )}
 
       <ul className="divide-y divide-border">
         {visibles.map((f) => (
-          <li key={f.id} className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-5 py-4">
+          <li key={f.id} className="flex flex-wrap items-baseline gap-x-8 gap-y-2 px-7 py-7">
             <div className="min-w-0 flex-1">
-              <p className="text-[16px] font-medium text-foreground">{f.etiqueta}</p>
-              <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
+              <p className="text-[17px] font-medium text-foreground">{f.etiqueta}</p>
+              <p className="mt-1.5 text-[14px] leading-5 text-muted-foreground">
                 {f.detalle ?? EXPLICACION_FUGA[f.id] ?? ""}
               </p>
             </div>
-            <p className="text-[20px] font-medium tabular-nums text-foreground">{pesos(f.monto)}</p>
+            <p className="text-[24px] font-medium tabular-nums text-foreground">{pesos(f.monto)}</p>
           </li>
         ))}
 
         {riesgos.map((f) => (
-          <li key={f.id} className="flex items-start gap-3 px-5 py-4">
+          <li key={f.id} className="flex items-start gap-3 px-7 py-7">
             <EstadoPunto estado="rojo" className="mt-1.5" />
             <div>
-              <p className="text-[16px] font-medium text-foreground">{f.etiqueta}</p>
-              <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
+              <p className="text-[17px] font-medium text-foreground">{f.etiqueta}</p>
+              <p className="mt-1.5 text-[14px] leading-5 text-muted-foreground">
                 {f.detalle ?? "Hallazgo de riesgo: no se valoriza en pesos."}
               </p>
             </div>
@@ -399,7 +399,7 @@ function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
         ))}
 
         {noCalculables.map((f) => (
-          <li key={`nc-${f.id}`} className="px-5 py-4 text-muted-foreground">
+          <li key={`nc-${f.id}`} className="px-7 py-6 text-muted-foreground">
             <p className="text-[15px]">{f.etiqueta}</p>
             <p className="mt-0.5 text-[13px] leading-5">
               No se pudo calcular. Faltan:{" "}
@@ -410,11 +410,11 @@ function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
       </ul>
 
       {conMonto.length > 3 && (
-        <div className="border-t border-border px-5 py-3">
+        <div className="border-t border-border px-7 py-5">
           <button
             type="button"
             onClick={() => setExpandido((v) => !v)}
-            className="text-[13px] font-medium text-primary underline-offset-4 hover:underline"
+            className="text-[14px] font-medium text-violet underline-offset-4 hover:underline"
           >
             {expandido ? "Mostrar solo las tres principales" : `Ver las otras ${ocultas} fugas`}
           </button>
@@ -428,9 +428,9 @@ function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
 
 function Fila({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-border px-5 py-2.5 last:border-b-0">
-      <dt className="text-[14px] text-muted-foreground">{label}</dt>
-      <dd className="text-[15px] font-medium tabular-nums text-foreground">{value}</dd>
+    <div className="flex items-baseline justify-between gap-6 border-b border-border px-7 py-4 last:border-b-0">
+      <dt className="text-[14.5px] text-muted-foreground">{label}</dt>
+      <dd className="text-[16px] font-medium tabular-nums text-foreground">{value}</dd>
     </div>
   );
 }
@@ -444,9 +444,9 @@ function EconomiaDetalle({
 }) {
   return (
     <section className="rounded-lg border border-border bg-card">
-      <header className="border-b border-border px-5 py-3">
-        <h2 className="text-[15px] font-medium text-foreground">Economía de la tienda</h2>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
+      <header className="border-b border-border px-7 py-5">
+        <h2 className="text-[17px] font-medium text-foreground">Economía de la tienda</h2>
+        <p className="mt-1 text-[13px] text-muted-foreground">
           Ticket {pesos(datos.ticket_promedio)} ·{" "}
           {etiqueta(PASARELAS, datos.pasarela) ?? "Pasarela sin definir"}
         </p>
@@ -472,8 +472,8 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
   const lectura = lecturaPresupuesto(derivados);
   return (
     <section className="rounded-lg border border-border bg-card">
-      <header className="border-b border-border px-5 py-3">
-        <h2 className="text-[15px] font-medium text-foreground">Presupuesto recomendado</h2>
+      <header className="border-b border-border px-7 py-5">
+        <h2 className="text-[17px] font-medium text-foreground">Presupuesto recomendado</h2>
       </header>
       <dl>
         <Fila
@@ -488,7 +488,7 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
         <Fila label="Compras semanales estimadas" value={numero(derivados.pedidos_semanales, 1)} />
 
       </dl>
-      <p className="border-t border-border px-5 py-4 text-[14px] leading-6 text-foreground">
+      <p className="border-t border-border px-7 py-6 text-[15px] leading-6 text-foreground">
         {lectura ?? "Faltan datos de presupuesto para dar una lectura."}
       </p>
     </section>
