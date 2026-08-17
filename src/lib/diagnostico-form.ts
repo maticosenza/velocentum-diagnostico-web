@@ -106,6 +106,13 @@ export type DatosDiagnostico = {
   // Cuenta · modo B
   gasto_diario: number | null;
   cantidad_campanas: string;
+  // Cuenta · datos leídos del CSV de Meta (modo A)
+  csv_gasto_total: number | null;
+  csv_frecuencia_promedio: number | null;
+  csv_ctr_global: number | null;
+  csv_conjuntos_bajo_gasto: number | null;
+  csv_dias_periodo: number | null;
+
   // Web
   visitas_mensuales: number | null;
   recuperacion_carrito: boolean;
