@@ -9,16 +9,22 @@ import type { DatosDiagnostico } from "./diagnostico-form";
 
 export type TramoFatiga = { hasta: number | null; factor: number };
 export type Umbral = { verde: number; rojo: number };
+/** Umbral de conversión por tramo de ticket promedio. `hasta: null` = tramo final. */
+export type TramoCr = { hasta: number | null; verde: number; rojo: number };
 
 export type ConfiguracionCalculo = {
   reserva_default?: number;
   comision_plataforma?: Record<string, number>;
   comision_pasarela?: Record<string, number>;
   umbrales_funnel_web?: Record<string, Umbral>;
+  umbrales_cr_por_ticket?: TramoCr[];
   umbrales_creativos?: Record<string, Umbral>;
   factor_fatiga?: TramoFatiga[];
   delta_medicion?: Umbral;
+  tope_fuga_individual?: number;
+  tope_fuga_total?: number;
 };
+
 
 /** Arma el objeto de configuración a partir de las filas crudas de la tabla. */
 export function armarConfiguracion(
@@ -42,6 +48,7 @@ export type Derivados = {
   pesos_producto: (number | null)[];
   pedidos_mensuales: number | null;
   cr_tienda: number | null;
+  cr_umbral_verde: number | null;
   breakeven_roas: number | null;
   cpa_breakeven: number | null;
   reserva: number | null;
@@ -53,6 +60,8 @@ export type Derivados = {
   conjuntos_sostenibles: number | null;
   piso_mensual_un_conjunto: number | null;
   inversion_actual_mensual: number | null;
+  pedidos_semanales: number | null;
+  volumen_suficiente: boolean | null;
 };
 
 
@@ -64,7 +73,10 @@ export type Fuga = {
   calculable: boolean;
   faltantes: string[];
   detalle?: string;
+  /** true cuando el monto superó el rango razonable y quedó topeado. */
+  sospechosa?: boolean;
 };
+
 
 export type EstadosBloque = {
   medicion: EstadoBloque;
@@ -131,6 +143,44 @@ function comisionPlataformaDe(cfg: ConfiguracionCalculo, datos: DatosDiagnostico
   if (finito(tabla[simple])) return tabla[simple] as number;
   return null;
 }
+
+/**
+ * Umbral de conversión de tienda según el tramo de ticket promedio.
+ * Sin ticket cargado no se puede evaluar la conversión (devuelve null).
+ * `umbrales_funnel_web.cr_tienda` queda como respaldo si la clave nueva no existe.
+ */
+export function umbralCr(cfg: ConfiguracionCalculo, ticket: number | null): Umbral | null {
+  if (!finito(ticket) || ticket <= 0) return null;
+  const tramos = cfg.umbrales_cr_por_ticket;
+  if (Array.isArray(tramos) && tramos.length > 0) {
+    const ordenados = [...tramos].sort(
+      (a, b) => (a.hasta ?? Number.POSITIVE_INFINITY) - (b.hasta ?? Number.POSITIVE_INFINITY),
+    );
+    const tramo = ordenados.find((t) => t.hasta === null || ticket <= t.hasta) ?? ordenados.at(-1)!;
+    if (finito(tramo.verde) && finito(tramo.rojo)) return { verde: tramo.verde, rojo: tramo.rojo };
+  }
+  const respaldo = cfg.umbrales_funnel_web?.["cr_tienda"];
+  return respaldo && finito(respaldo.verde) && finito(respaldo.rojo) ? respaldo : null;
+}
+
+/**
+ * Lectura textual del presupuesto. Si el negocio no tiene volumen de compras
+ * suficiente, el diagnóstico no es de subinversión sino de falta de señal.
+ */
+export function lecturaPresupuesto(d: Derivados): string | null {
+  if (d.volumen_suficiente === false) {
+    return "El volumen de compras del negocio no alcanza para que un conjunto optimizado por compra salga del aprendizaje, invierta lo que invierta. La salida es consolidar en un solo conjunto y optimizar por un evento intermedio (agregar al carrito o iniciar checkout) hasta juntar señal.";
+  }
+  const piso = d.piso_mensual_un_conjunto;
+  const actual = d.inversion_actual_mensual;
+  if (typeof piso !== "number" || typeof actual !== "number") return null;
+  if (actual < piso) {
+    return "Subinversión estructural: el presupuesto está por debajo del piso que necesita un solo conjunto para aprender. Hay que consolidar conjuntos o subir el presupuesto.";
+  }
+  return "El presupuesto alcanza el piso que necesita un conjunto para aprender. El problema no es de plata, es de estructura de cuenta o de creativo.";
+}
+
+
 
 // ---------------------------------------------------------------- productos
 
@@ -275,6 +325,13 @@ export function calcularDiagnostico(
   const pisoMensualUnConjunto = cpaObjetivo !== null ? 50 * cpaObjetivo * 4.3 : null;
   const inversionActualMensual = presupuestoDiario !== null ? presupuestoDiario * 30 : null;
 
+  // --- Volumen del negocio: ¿alcanza para sostener un conjunto optimizado por compra?
+  const pedidosSemanales = pedidos !== null ? pedidos / 4.3 : null;
+  const volumenSuficiente = pedidosSemanales !== null ? pedidosSemanales >= 50 : null;
+
+  // --- Umbral de conversión escalado por tramo de ticket promedio
+  const uCr = umbralCr(cfg, d.ticket_promedio);
+
   const derivados: Derivados = {
     delta_medicion: red(delta, 4),
     margen_contribucion: red(margen, 4),
@@ -284,8 +341,10 @@ export function calcularDiagnostico(
     pesos_producto: pesosProducto,
     pedidos_mensuales: red(pedidos, 0),
     cr_tienda: red(crTienda, 4),
+    cr_umbral_verde: uCr ? uCr.verde : null,
     breakeven_roas: red(breakevenRoas, 2),
     cpa_breakeven: red(cpaBreakeven, 0),
+
     reserva,
     cpa_objetivo: red(cpaObjetivo, 0),
     roas_objetivo: red(roasObjetivo, 2),
@@ -295,7 +354,10 @@ export function calcularDiagnostico(
     conjuntos_sostenibles: red(conjuntosSostenibles, 1),
     piso_mensual_un_conjunto: red(pisoMensualUnConjunto, 0),
     inversion_actual_mensual: red(inversionActualMensual, 0),
+    pedidos_semanales: red(pedidosSemanales, 1),
+    volumen_suficiente: volumenSuficiente,
   };
+
 
   // --- Estados por bloque
   const uDelta = cfg.delta_medicion;
@@ -323,7 +385,7 @@ export function calcularDiagnostico(
     estadoCuenta = ratio >= 1 ? "verde" : ratio >= 0.6 ? "amarillo" : "rojo";
   }
 
-  const uCr = cfg.umbrales_funnel_web?.["cr_tienda"];
+  // uCr ya viene resuelto por tramo de ticket
   const estadoFunnel: EstadoBloque =
     crTienda !== null && uCr ? porUmbral(crTienda, uCr, true) : "sin_datos";
 
@@ -453,10 +515,44 @@ export function calcularDiagnostico(
     });
   }
 
-  const total = fugas.reduce(
+  // --- Red de seguridad: ninguna fuga puede salirse del rango razonable
+  const DETALLE_SOSPECHOSA =
+    "El cálculo superó el rango razonable para la facturación de la tienda. El umbral usado puede no aplicar a este tipo de negocio: el monto quedó topeado.";
+  const facturacion = finito(d.facturacion_mensual) && d.facturacion_mensual > 0 ? d.facturacion_mensual : null;
+  const topeInd = finito(cfg.tope_fuga_individual) ? (cfg.tope_fuga_individual as number) : null;
+  const topeTot = finito(cfg.tope_fuga_total) ? (cfg.tope_fuga_total as number) : null;
+
+  if (facturacion !== null && topeInd !== null) {
+    const limite = facturacion * topeInd;
+    for (const f of fugas) {
+      if (f.tipo === "monto" && finito(f.monto) && (f.monto as number) > limite) {
+        f.monto = red(limite, 0) ?? 0;
+        f.sospechosa = true;
+        f.detalle = DETALLE_SOSPECHOSA;
+      }
+    }
+  }
+
+  let total = fugas.reduce(
     (acc, f) => (f.tipo === "monto" && finito(f.monto) ? acc + (f.monto as number) : acc),
     0,
   );
+
+  if (facturacion !== null && topeTot !== null && total > facturacion * topeTot && total > 0) {
+    const factor = (facturacion * topeTot) / total;
+    for (const f of fugas) {
+      if (f.tipo === "monto" && finito(f.monto)) {
+        f.monto = red((f.monto as number) * factor, 0) ?? 0;
+        f.sospechosa = true;
+        f.detalle = DETALLE_SOSPECHOSA;
+      }
+    }
+    total = fugas.reduce(
+      (acc, f) => (f.tipo === "monto" && finito(f.monto) ? acc + (f.monto as number) : acc),
+      0,
+    );
+  }
+
 
   return {
     derivados,

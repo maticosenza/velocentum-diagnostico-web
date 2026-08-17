@@ -8,12 +8,14 @@ import { EstadoPunto, ETIQUETA_ESTADO } from "@/components/estado-punto";
 import { supabase } from "@/integrations/supabase/client";
 import { formatARS, formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
 import { PASARELAS, PLATAFORMAS, VERTICALES, type DatosDiagnostico } from "@/lib/diagnostico-form";
+import { lecturaPresupuesto } from "@/lib/calculo-diagnostico";
 import type {
   Derivados,
   EstadoBloque,
   EstadosBloque,
   Fuga,
 } from "@/lib/calculo-diagnostico";
+
 
 export const Route = createFileRoute("/_authenticated/diagnosticos/$id")({
   head: () => ({
@@ -437,18 +439,8 @@ function EconomiaDetalle({
 
 // ---------------------------------------------------------------- 6 · presupuesto
 
-function lecturaPresupuesto(d: Derivados): string | null {
-  const piso = d.piso_mensual_un_conjunto;
-  const actual = d.inversion_actual_mensual;
-  if (typeof piso !== "number" || typeof actual !== "number") return null;
-
-  if (actual < piso) {
-    return "Subinversión estructural: el presupuesto está por debajo del piso que necesita un solo conjunto para aprender. Hay que consolidar conjuntos o subir el presupuesto.";
-  }
-  return "El presupuesto alcanza el piso que necesita un conjunto para aprender. El problema no es de plata, es de estructura de cuenta o de creativo.";
-}
-
 function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosDiagnostico }) {
+
   const lectura = lecturaPresupuesto(derivados);
   return (
     <section className="rounded-lg border border-border bg-card">
@@ -465,6 +457,8 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
           label="Conjuntos activos vs. sostenibles"
           value={`${numero(datos.conjuntos_activos, 0)} / ${numero(derivados.conjuntos_sostenibles, 1)}`}
         />
+        <Fila label="Compras semanales estimadas" value={numero(derivados.pedidos_semanales, 1)} />
+
       </dl>
       <p className="border-t border-border px-5 py-4 text-[14px] leading-6 text-foreground">
         {lectura ?? "Faltan datos de presupuesto para dar una lectura."}
