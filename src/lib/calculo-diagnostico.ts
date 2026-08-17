@@ -21,6 +21,7 @@ export type ConfiguracionCalculo = {
   umbrales_creativos?: Record<string, Umbral>;
   factor_fatiga?: TramoFatiga[];
   delta_medicion?: Umbral;
+  recuperacion_carrito_esperada?: number;
   tope_fuga_individual?: number;
   tope_fuga_total?: number;
 };
@@ -499,6 +500,52 @@ export function calcularDiagnostico(
         calculable: true,
         faltantes: [],
       });
+    }
+  }
+
+  // Carritos abandonados sin flujo de recuperación
+  {
+    const tieneRecuperacion = d.recuperacion_carrito === true;
+    const tieneRetargeting = d.retargeting_abandono === true;
+    const activos = (tieneRecuperacion ? 1 : 0) + (tieneRetargeting ? 1 : 0);
+    const pctEsperado = finito(cfg.recuperacion_carrito_esperada)
+      ? (cfg.recuperacion_carrito_esperada as number)
+      : null;
+    const DETALLE_CARRITO =
+      "Son compradores que ya eligieron el producto y quedaron a un paso, sin ningún flujo que los traiga de vuelta.";
+
+    if (activos < 2) {
+      const faltan = faltantes(datos, ["carritos_abandonados", "ticket_promedio"]);
+      if (margen === null) faltan.push("margen_contribucion");
+      if (pctEsperado === null) faltan.push("recuperacion_carrito_esperada");
+      if (faltan.length > 0) {
+        fugas.push({
+          id: "carritos_abandonados",
+          etiqueta: "Fuga por carritos abandonados",
+          tipo: "monto",
+          monto: null,
+          calculable: false,
+          faltantes: faltan,
+          detalle: DETALLE_CARRITO,
+        });
+      } else {
+        // Si ya trabaja una de las dos puntas, sólo queda la mitad por recuperar.
+        const pct = activos === 1 ? (pctEsperado as number) / 2 : (pctEsperado as number);
+        const monto =
+          (d.carritos_abandonados as number) *
+          pct *
+          (d.ticket_promedio as number) *
+          (margen as number);
+        fugas.push({
+          id: "carritos_abandonados",
+          etiqueta: "Fuga por carritos abandonados",
+          tipo: "monto",
+          monto: Math.max(0, red(monto, 0) ?? 0),
+          calculable: true,
+          faltantes: [],
+          detalle: DETALLE_CARRITO,
+        });
+      }
     }
   }
 
