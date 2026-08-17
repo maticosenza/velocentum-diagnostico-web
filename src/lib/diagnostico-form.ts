@@ -115,6 +115,7 @@ export type DatosDiagnostico = {
 
   // Web
   visitas_mensuales: number | null;
+  carritos_abandonados: number | null;
   recuperacion_carrito: boolean;
   retargeting_abandono: boolean;
   // Contenido (compartido, cualitativo)
@@ -174,6 +175,7 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   csv_dias_periodo: null,
 
   visitas_mensuales: null,
+  carritos_abandonados: null,
   recuperacion_carrito: false,
   retargeting_abandono: false,
   frecuencia_creativos: "",
@@ -251,7 +253,8 @@ export function camposPorBloque(modo: Modo, bloque: BloqueId): (keyof DatosDiagn
   if (bloque === "cuenta") {
     return modo === "A" ? ["conjuntos_activos", "presupuesto_diario"] : ["gasto_diario", "cantidad_campanas"];
   }
-  if (bloque === "web") return modo === "A" ? ["visitas_mensuales"] : [];
+  if (bloque === "web")
+    return modo === "A" ? ["visitas_mensuales", "carritos_abandonados"] : ["carritos_abandonados"];
   return base;
 }
 
@@ -304,7 +307,7 @@ export const ORIGEN_DATOS: Record<BloqueId, string> = {
   productos: "Tiendanube: Estadísticas, Productos. Ahí están las unidades vendidas de cada uno.",
   cuenta:
     "Meta Ads Manager: filtrá el mes, activá 'Con entrega', desglosá por conjunto de anuncios y exportá.",
-  web: "Las visitas salen de Tiendanube, Estadísticas, Visión general.",
+  web: "Las visitas salen de Tiendanube, Estadísticas, Visión general. Los carritos abandonados, de Tiendanube, sección Carritos abandonados.",
   contenido: "Todo conversado.",
   mercado_libre: "Conversado, más el panel de Product Ads si lo tiene.",
 };

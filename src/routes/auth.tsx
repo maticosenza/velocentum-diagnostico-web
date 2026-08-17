@@ -10,11 +10,11 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Ingresar · Velocentum Cockpit" },
-      { name: "description", content: "Acceso interno al Cockpit de Diagnóstico de Velocentum." },
+      { title: "Ingresar · Velocentum · Diagnóstico e-commerce" },
+      { name: "description", content: "Acceso interno al Diagnóstico e-commerce de Velocentum." },
       { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "Ingresar · Velocentum Cockpit" },
-      { property: "og:description", content: "Acceso interno al Cockpit de Diagnóstico." },
+      { property: "og:title", content: "Ingresar · Velocentum · Diagnóstico e-commerce" },
+      { property: "og:description", content: "Acceso interno al Diagnóstico e-commerce." },
     ],
   }),
   component: PantallaLogin,
@@ -58,7 +58,7 @@ function PantallaLogin() {
           <img src={logoVelocentum} alt="Velocentum" className="size-7 shrink-0 object-contain" />
           <div>
             <p className="text-[14px] font-medium leading-5 text-foreground">Velocentum</p>
-            <p className="text-[11.5px] leading-4 text-muted-foreground">Cockpit de Diagnóstico</p>
+            <p className="text-[11.5px] leading-4 text-muted-foreground">Diagnóstico e-commerce</p>
           </div>
         </div>
 
