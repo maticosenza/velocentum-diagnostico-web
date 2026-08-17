@@ -8,12 +8,14 @@ import { EstadoPunto, ETIQUETA_ESTADO } from "@/components/estado-punto";
 import { supabase } from "@/integrations/supabase/client";
 import { formatARS, formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
 import { PASARELAS, PLATAFORMAS, VERTICALES, type DatosDiagnostico } from "@/lib/diagnostico-form";
+import { lecturaPresupuesto } from "@/lib/calculo-diagnostico";
 import type {
   Derivados,
   EstadoBloque,
   EstadosBloque,
   Fuga,
 } from "@/lib/calculo-diagnostico";
+
 
 export const Route = createFileRoute("/_authenticated/diagnosticos/$id")({
   head: () => ({
