@@ -150,6 +150,9 @@ function ListadoDiagnosticos() {
                   <th className="px-4 py-2.5 font-medium">Fecha</th>
                   <th className="px-4 py-2.5 text-right font-medium">Oportunidad</th>
                   <th className="px-4 py-2.5 font-medium">Estado</th>
+                  <th className="px-4 py-2.5 text-right font-medium">
+                    <span className="sr-only">Acciones</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -178,6 +181,18 @@ function ListadoDiagnosticos() {
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {ESTADOS[f.oportunidad?.estado ?? ""] ?? "—"}
                     </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErrorBorrado(null);
+                          setAEliminar(f);
+                        }}
+                        className="text-[13px] text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -185,6 +200,37 @@ function ListadoDiagnosticos() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={aEliminar !== null} onOpenChange={(o) => !o && setAEliminar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este diagnóstico?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vas a eliminar el diagnóstico de{" "}
+              {aEliminar?.oportunidad?.nombre_tienda ?? "esta tienda"}. La acción no se puede
+              deshacer. Si era el único de esa oportunidad, también se elimina la oportunidad.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {errorBorrado && (
+            <p className="text-[13px] text-destructive" role="alert">
+              {errorBorrado}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={eliminar.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={eliminar.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (aEliminar) eliminar.mutate(aEliminar);
+              }}
+            >
+              {eliminar.isPending ? "Eliminando…" : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
+
 }
