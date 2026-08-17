@@ -115,6 +115,7 @@ export type DatosDiagnostico = {
 
   // Web
   visitas_mensuales: number | null;
+  carritos_abandonados: number | null;
   recuperacion_carrito: boolean;
   retargeting_abandono: boolean;
   // Contenido (compartido, cualitativo)
@@ -174,6 +175,7 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   csv_dias_periodo: null,
 
   visitas_mensuales: null,
+  carritos_abandonados: null,
   recuperacion_carrito: false,
   retargeting_abandono: false,
   frecuencia_creativos: "",
