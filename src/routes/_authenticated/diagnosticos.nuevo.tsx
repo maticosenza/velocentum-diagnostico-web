@@ -342,7 +342,11 @@ function NuevoDiagnostico() {
               <Link to="/">Cancelar</Link>
             </Button>
             <Button size="sm" onClick={() => void guardar()} disabled={guardando}>
-              {guardando ? "Guardando…" : "Guardar diagnóstico"}
+              {guardando
+                ? "Guardando…"
+                : origen
+                  ? "Guardar versión nueva"
+                  : "Guardar diagnóstico"}
             </Button>
           </div>
         }
