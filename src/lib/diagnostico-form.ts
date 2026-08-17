@@ -70,13 +70,15 @@ export type DatosDiagnostico = {
   plataforma: string;
   plan_plataforma: string;
   vende_mercado_libre: boolean;
+  // Medición (compartido)
+  tiene_pixel: boolean;
   // Medición · modo A (observado en pantalla)
   facturacion_pixel: number | null;
   capi_estado: string;
   // Medición · modo B (declarado)
   tiene_analytics: boolean;
-
   numeros_meta_coinciden: boolean;
+
   // Economía (compartido)
   facturacion_mensual: number | null;
   ticket_promedio: number | null;
