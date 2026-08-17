@@ -439,18 +439,8 @@ function EconomiaDetalle({
 
 // ---------------------------------------------------------------- 6 · presupuesto
 
-function lecturaPresupuesto(d: Derivados): string | null {
-  const piso = d.piso_mensual_un_conjunto;
-  const actual = d.inversion_actual_mensual;
-  if (typeof piso !== "number" || typeof actual !== "number") return null;
-
-  if (actual < piso) {
-    return "Subinversión estructural: el presupuesto está por debajo del piso que necesita un solo conjunto para aprender. Hay que consolidar conjuntos o subir el presupuesto.";
-  }
-  return "El presupuesto alcanza el piso que necesita un conjunto para aprender. El problema no es de plata, es de estructura de cuenta o de creativo.";
-}
-
 function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosDiagnostico }) {
+
   const lectura = lecturaPresupuesto(derivados);
   return (
     <section className="rounded-lg border border-border bg-card">
