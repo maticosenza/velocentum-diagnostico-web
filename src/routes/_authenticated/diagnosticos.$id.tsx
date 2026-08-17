@@ -457,6 +457,8 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
           label="Conjuntos activos vs. sostenibles"
           value={`${numero(datos.conjuntos_activos, 0)} / ${numero(derivados.conjuntos_sostenibles, 1)}`}
         />
+        <Fila label="Compras semanales estimadas" value={numero(derivados.pedidos_semanales, 1)} />
+
       </dl>
       <p className="border-t border-border px-5 py-4 text-[14px] leading-6 text-foreground">
         {lectura ?? "Faltan datos de presupuesto para dar una lectura."}
