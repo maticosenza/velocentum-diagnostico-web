@@ -70,15 +70,15 @@ export type DatosDiagnostico = {
   plataforma: string;
   plan_plataforma: string;
   vende_mercado_libre: boolean;
+  // Medición (compartido)
+  tiene_pixel: boolean;
   // Medición · modo A (observado en pantalla)
   facturacion_pixel: number | null;
-  capi_activa: boolean;
-  eventos_duplicados: boolean;
-  catalogo_sincronizado: boolean;
+  capi_estado: string;
   // Medición · modo B (declarado)
-  tiene_pixel: boolean;
   tiene_analytics: boolean;
   numeros_meta_coinciden: boolean;
+
   // Economía (compartido)
   facturacion_mensual: number | null;
   ticket_promedio: number | null;
@@ -106,6 +106,13 @@ export type DatosDiagnostico = {
   // Cuenta · modo B
   gasto_diario: number | null;
   cantidad_campanas: string;
+  // Cuenta · datos leídos del CSV de Meta (modo A)
+  csv_gasto_total: number | null;
+  csv_frecuencia_promedio: number | null;
+  csv_ctr_global: number | null;
+  csv_conjuntos_bajo_gasto: number | null;
+  csv_dias_periodo: number | null;
+
   // Web
   visitas_mensuales: number | null;
   recuperacion_carrito: boolean;
@@ -131,13 +138,12 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   plataforma: "",
   plan_plataforma: "",
   vende_mercado_libre: false,
-  facturacion_pixel: null,
-  capi_activa: false,
-  eventos_duplicados: false,
-  catalogo_sincronizado: false,
   tiene_pixel: false,
+  facturacion_pixel: null,
+  capi_estado: "",
   tiene_analytics: false,
   numeros_meta_coinciden: false,
+
   facturacion_mensual: null,
   ticket_promedio: null,
   costo_envio_promedio: null,
@@ -161,6 +167,12 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   presupuesto_diario: null,
   gasto_diario: null,
   cantidad_campanas: "",
+  csv_gasto_total: null,
+  csv_frecuencia_promedio: null,
+  csv_ctr_global: null,
+  csv_conjuntos_bajo_gasto: null,
+  csv_dias_periodo: null,
+
   visitas_mensuales: null,
   recuperacion_carrito: false,
   retargeting_abandono: false,
@@ -214,7 +226,7 @@ const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
 /** Campos que cuentan para el indicador de completitud de cada pestaña, según el modo. */
 export function camposPorBloque(modo: Modo, bloque: BloqueId): (keyof DatosDiagnostico)[] {
   const base = CAMPOS_COMUNES[bloque];
-  if (bloque === "medicion") return modo === "A" ? ["facturacion_pixel"] : [];
+  if (bloque === "medicion") return modo === "A" ? ["facturacion_pixel", "capi_estado"] : [];
   if (bloque === "productos") {
     const nombres: (keyof DatosDiagnostico)[] = [
       "producto_1_nombre",
@@ -259,8 +271,40 @@ export function contarCompletos(datos: DatosDiagnostico, modo: Modo, bloque: Blo
 
 /** Campos que NO se conservan al cambiar de modo (son exclusivos del otro modo). */
 export const CAMPOS_EXCLUSIVOS: Record<Modo, (keyof DatosDiagnostico)[]> = {
-  A: ["facturacion_pixel", "capi_activa", "eventos_duplicados", "catalogo_sincronizado", "conjuntos_activos", "presupuesto_diario", "visitas_mensuales"],
-  B: ["tiene_pixel", "tiene_analytics", "numeros_meta_coinciden", "gasto_diario", "cantidad_campanas"],
+  A: [
+    "facturacion_pixel",
+    "capi_estado",
+    "conjuntos_activos",
+    "presupuesto_diario",
+    "visitas_mensuales",
+    "csv_gasto_total",
+    "csv_frecuencia_promedio",
+    "csv_ctr_global",
+    "csv_conjuntos_bajo_gasto",
+    "csv_dias_periodo",
+  ],
+  B: ["tiene_analytics", "numeros_meta_coinciden", "gasto_diario", "cantidad_campanas"],
+
 };
 
 export const CLAVE_BORRADOR = "velocentum:borrador-diagnostico";
+
+export const ESTADOS_CAPI = [
+  { value: "activa", label: "Activa" },
+  { value: "ausente", label: "Ausente" },
+  { value: "no_se_sabe", label: "No se sabe" },
+] as const;
+
+/** Dónde sale cada dato: ayuda para el vendedor arriba de los campos. */
+export const ORIGEN_DATOS: Record<BloqueId, string> = {
+  identificacion: "Conversado. El plan se ve en el panel del cliente.",
+  medicion:
+    "Events Manager, pestaña Resumen. Ojo que Meta solo guarda unos dos meses de historial.",
+  economia: "Tiendanube: Estadísticas, Visión general.",
+  productos: "Tiendanube: Estadísticas, Productos. Ahí están las unidades vendidas de cada uno.",
+  cuenta:
+    "Meta Ads Manager: filtrá el mes, activá 'Con entrega', desglosá por conjunto de anuncios y exportá.",
+  web: "Las visitas salen de Tiendanube, Estadísticas, Visión general.",
+  contenido: "Todo conversado.",
+  mercado_libre: "Conversado, más el panel de Product Ads si lo tiene.",
+};

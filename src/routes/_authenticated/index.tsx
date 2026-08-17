@@ -1,11 +1,23 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { formatARS, formatFecha } from "@/lib/format";
 import { VERTICALES } from "@/lib/diagnostico-form";
+
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -39,6 +51,7 @@ const ESTADOS: Record<string, string> = {
 type Fila = {
   id: string;
   fecha: string;
+  oportunidad_id: string;
   oportunidad_total: number | null;
   oportunidad: {
     nombre_tienda: string;
@@ -48,19 +61,52 @@ type Fila = {
 };
 
 function ListadoDiagnosticos() {
+  const queryClient = useQueryClient();
+  const [aEliminar, setAEliminar] = useState<Fila | null>(null);
+  const [errorBorrado, setErrorBorrado] = useState<string | null>(null);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["diagnosticos"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("diagnostico")
         .select(
-          "id, fecha, oportunidad_total, oportunidad:oportunidad_id(nombre_tienda, vertical, estado)",
+          "id, fecha, oportunidad_id, oportunidad_total, oportunidad:oportunidad_id(nombre_tienda, vertical, estado)",
         )
         .order("creado_en", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Fila[];
     },
   });
+
+  const eliminar = useMutation({
+    mutationFn: async (fila: Fila) => {
+      const { error: errDiag } = await supabase.from("diagnostico").delete().eq("id", fila.id);
+      if (errDiag) throw errDiag;
+
+      // Si la oportunidad se queda sin diagnósticos, la borramos también.
+      const { data: restantes, error: errCount } = await supabase
+        .from("diagnostico")
+        .select("id")
+        .eq("oportunidad_id", fila.oportunidad_id)
+        .limit(1);
+      if (errCount) throw errCount;
+      if ((restantes ?? []).length === 0) {
+        const { error: errOp } = await supabase
+          .from("oportunidad")
+          .delete()
+          .eq("id", fila.oportunidad_id);
+        if (errOp) throw errOp;
+      }
+    },
+    onSuccess: () => {
+      setAEliminar(null);
+      setErrorBorrado(null);
+      void queryClient.invalidateQueries({ queryKey: ["diagnosticos"] });
+    },
+    onError: () => setErrorBorrado("No pudimos eliminar el diagnóstico. Probá de nuevo."),
+  });
+
 
   return (
     <>
@@ -104,6 +150,9 @@ function ListadoDiagnosticos() {
                   <th className="px-4 py-2.5 font-medium">Fecha</th>
                   <th className="px-4 py-2.5 text-right font-medium">Oportunidad</th>
                   <th className="px-4 py-2.5 font-medium">Estado</th>
+                  <th className="px-4 py-2.5 text-right font-medium">
+                    <span className="sr-only">Acciones</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -132,6 +181,18 @@ function ListadoDiagnosticos() {
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {ESTADOS[f.oportunidad?.estado ?? ""] ?? "—"}
                     </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErrorBorrado(null);
+                          setAEliminar(f);
+                        }}
+                        className="text-[13px] text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -139,6 +200,37 @@ function ListadoDiagnosticos() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={aEliminar !== null} onOpenChange={(o) => !o && setAEliminar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este diagnóstico?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vas a eliminar el diagnóstico de{" "}
+              {aEliminar?.oportunidad?.nombre_tienda ?? "esta tienda"}. La acción no se puede
+              deshacer. Si era el único de esa oportunidad, también se elimina la oportunidad.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {errorBorrado && (
+            <p className="text-[13px] text-destructive" role="alert">
+              {errorBorrado}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={eliminar.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={eliminar.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (aEliminar) eliminar.mutate(aEliminar);
+              }}
+            >
+              {eliminar.isPending ? "Eliminando…" : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
+
 }

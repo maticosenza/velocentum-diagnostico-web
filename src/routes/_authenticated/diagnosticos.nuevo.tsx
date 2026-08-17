@@ -14,11 +14,15 @@ import {
   CampoSiNo,
   CampoTexto,
 } from "@/components/campos-formulario";
+import { CargaCsvMeta } from "@/components/carga-csv-meta";
 import {
   BLOQUES,
   CAMPOS_EXCLUSIVOS,
   CANTIDAD_CAMPANAS,
   CLAVE_BORRADOR,
+  ESTADOS_CAPI,
+  ORIGEN_DATOS,
+
   DATOS_INICIALES,
   MODOS,
   PASARELAS,
@@ -328,6 +332,10 @@ function NuevoDiagnostico() {
 
       <div className="px-6 py-6">
         <div className="max-w-4xl rounded-lg border border-border bg-card p-5">
+          <p className="mb-4 text-[12px] leading-4 text-muted-foreground">
+            {ORIGEN_DATOS[bloque]}
+          </p>
+
           {bloque === "identificacion" && (
             <div className="grid gap-4 sm:grid-cols-2">
               <CampoTexto
@@ -375,10 +383,21 @@ function NuevoDiagnostico() {
 
           {bloque === "medicion" && modo === "A" && (
             <div className="grid gap-4 sm:grid-cols-2">
+              <CampoSiNo
+                label="¿Tiene el Pixel instalado?"
+                value={datos.tiene_pixel}
+                onChange={(v) => set("tiene_pixel", v)}
+              />
               <CampoPesos
                 label="Facturación que reporta el Pixel"
                 value={datos.facturacion_pixel}
                 onChange={(v) => set("facturacion_pixel", v)}
+              />
+              <CampoSelect
+                label="Estado de la CAPI"
+                value={datos.capi_estado}
+                onChange={(v) => set("capi_estado", v)}
+                opciones={ESTADOS_CAPI}
               />
               <div className="rounded-md border border-border px-3 py-2.5">
                 <p className="text-[12px] text-muted-foreground">
@@ -388,21 +407,6 @@ function NuevoDiagnostico() {
                   {desvioMedicion === null ? "—" : formatPorcentaje(desvioMedicion, 1)}
                 </p>
               </div>
-              <CampoSiNo
-                label="¿CAPI activa?"
-                value={datos.capi_activa}
-                onChange={(v) => set("capi_activa", v)}
-              />
-              <CampoSiNo
-                label="¿Hay eventos manuales duplicados?"
-                value={datos.eventos_duplicados}
-                onChange={(v) => set("eventos_duplicados", v)}
-              />
-              <CampoSiNo
-                label="¿Catálogo sincronizado?"
-                value={datos.catalogo_sincronizado}
-                onChange={(v) => set("catalogo_sincronizado", v)}
-              />
             </div>
           )}
 
@@ -425,6 +429,7 @@ function NuevoDiagnostico() {
               />
             </div>
           )}
+
 
           {bloque === "economia" && (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -549,19 +554,39 @@ function NuevoDiagnostico() {
           )}
 
           {bloque === "cuenta" && modo === "A" && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <CampoNumero
-                label="Conjuntos activos"
-                value={datos.conjuntos_activos}
-                onChange={(v) => set("conjuntos_activos", v)}
+            <div className="space-y-4">
+              <CargaCsvMeta
+                hayDatosCargados={
+                  datos.conjuntos_activos !== null || datos.presupuesto_diario !== null
+                }
+                onAplicar={(r) =>
+                  setDatos((p) => ({
+                    ...p,
+                    conjuntos_activos: r.conjuntos_activos,
+                    presupuesto_diario: r.presupuesto_diario,
+                    csv_gasto_total: r.gasto_total,
+                    csv_frecuencia_promedio: r.frecuencia_promedio,
+                    csv_ctr_global: r.ctr_global,
+                    csv_conjuntos_bajo_gasto: r.conjuntos_bajo_gasto,
+                    csv_dias_periodo: r.dias,
+                  }))
+                }
               />
-              <CampoPesos
-                label="Presupuesto diario total"
-                value={datos.presupuesto_diario}
-                onChange={(v) => set("presupuesto_diario", v)}
-              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <CampoNumero
+                  label="Conjuntos activos"
+                  value={datos.conjuntos_activos}
+                  onChange={(v) => set("conjuntos_activos", v)}
+                />
+                <CampoPesos
+                  label="Presupuesto diario total"
+                  value={datos.presupuesto_diario}
+                  onChange={(v) => set("presupuesto_diario", v)}
+                />
+              </div>
             </div>
           )}
+
 
           {bloque === "cuenta" && modo === "B" && (
             <div className="grid gap-4 sm:grid-cols-2">
