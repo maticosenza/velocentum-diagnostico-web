@@ -162,11 +162,13 @@
 :root {
   --violet: oklch(0.58 0.19 288); /* #7B5CFF */
   --violet-foreground: oklch(0.99 0 0);
+  --violet-soft: oklch(0.96 0.02 288);
   --surface: oklch(1 0 0);
 }
 
 @theme inline {
   --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
   --color-violet-foreground: var(--violet-foreground);
   --color-surface: var(--surface);
   --font-sans: "Inter Tight", "Helvetica Neue", Arial, sans-serif;
@@ -178,7 +180,7 @@
     -webkit-font-smoothing: antialiased;
   }
   body {
-    font-size: 13px;
+    font-size: 14px;
   }
   /* Solo dos pesos: regular (400) y medium (500) */
   b,
