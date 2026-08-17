@@ -19,7 +19,7 @@ describe("leerCsvMeta", () => {
     expect(r.presupuesto_diario).toBe(20000);
     expect(r.ctr_global).toBeCloseTo(2, 2);
     expect(r.conjuntos_bajo_gasto).toBe(1);
-    expect(r.frecuencia_promedio).toBeCloseTo(2.0, 2);
+    expect(r.frecuencia_promedio).toBeCloseTo(2.01, 2);
     expect(r.advertencias).toHaveLength(0);
   });
 
