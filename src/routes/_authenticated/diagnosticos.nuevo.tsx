@@ -80,9 +80,12 @@ function leerBorrador(): Borrador | null {
   }
 }
 
+type Origen = { id: string; oportunidad_id: string; version: number };
+
 function NuevoDiagnostico() {
   const navigate = useNavigate();
   const { user } = Route.useRouteContext();
+  const { desde } = Route.useSearch();
 
   const [modo, setModo] = useState<Modo | null>(null);
   const [datos, setDatos] = useState<DatosDiagnostico>(DATOS_INICIALES);
@@ -91,26 +94,60 @@ function NuevoDiagnostico() {
   const [guardadoEn, setGuardadoEn] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [origen, setOrigen] = useState<Origen | null>(null);
+  const [cargandoOrigen, setCargandoOrigen] = useState(Boolean(desde));
+
+  // Precarga desde un diagnóstico existente (editar y recalcular)
+  useEffect(() => {
+    if (!desde) return;
+    let vivo = true;
+    void (async () => {
+      const { data, error: err } = await supabase
+        .from("diagnostico")
+        .select("id, oportunidad_id, modo, version, datos, notas")
+        .eq("id", desde)
+        .maybeSingle();
+      if (!vivo) return;
+      if (err || !data) {
+        setError("No pudimos abrir el diagnóstico original.");
+        setCargandoOrigen(false);
+        return;
+      }
+      setOrigen({
+        id: data.id,
+        oportunidad_id: data.oportunidad_id,
+        version: typeof data.version === "number" ? data.version : 1,
+      });
+      setModo(data.modo === "B" ? "B" : "A");
+      setDatos({ ...DATOS_INICIALES, ...((data.datos ?? {}) as Partial<DatosDiagnostico>) });
+      setNotas((data.notas ?? {}) as NotasDiagnostico);
+      setCargandoOrigen(false);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [desde]);
 
   // Recuperar borrador
   useEffect(() => {
+    if (desde) return;
     const b = leerBorrador();
     if (b) {
       setModo(b.modo);
       setDatos(b.datos);
       setNotas(b.notas);
     }
-  }, []);
+  }, [desde]);
 
   // Autoguardado del borrador cada 3 segundos
   useEffect(() => {
-    if (!modo) return;
+    if (!modo || desde) return;
     const t = setTimeout(() => {
       window.localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({ modo, datos, notas }));
       setGuardadoEn(new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }));
     }, 3000);
     return () => clearTimeout(t);
-  }, [modo, datos, notas]);
+  }, [modo, datos, notas, desde]);
 
   const set = useCallback(<K extends keyof DatosDiagnostico>(k: K, v: DatosDiagnostico[K]) => {
     setDatos((prev) => ({ ...prev, [k]: v }));
