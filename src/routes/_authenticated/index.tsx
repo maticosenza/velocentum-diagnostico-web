@@ -22,13 +22,13 @@ import { VERTICALES } from "@/lib/diagnostico-form";
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
-      { title: "Diagnósticos · Velocentum Cockpit" },
+      { title: "Diagnósticos · Velocentum · Diagnóstico e-commerce" },
       {
         name: "description",
         content: "Listado de diagnósticos de performance para tiendas e-commerce.",
       },
       { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "Diagnósticos · Velocentum Cockpit" },
+      { property: "og:title", content: "Diagnósticos · Velocentum · Diagnóstico e-commerce" },
       {
         property: "og:description",
         content: "Listado de diagnósticos de performance para tiendas e-commerce.",

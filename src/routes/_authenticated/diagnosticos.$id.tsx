@@ -20,13 +20,13 @@ import type {
 export const Route = createFileRoute("/_authenticated/diagnosticos/$id")({
   head: () => ({
     meta: [
-      { title: "Detalle del diagnóstico · Velocentum Cockpit" },
+      { title: "Detalle del diagnóstico · Velocentum · Diagnóstico e-commerce" },
       {
         name: "description",
         content: "Resultado del diagnóstico de performance para la tienda del prospecto.",
       },
       { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "Detalle del diagnóstico · Velocentum Cockpit" },
+      { property: "og:title", content: "Detalle del diagnóstico · Velocentum · Diagnóstico e-commerce" },
       {
         property: "og:description",
         content: "Resultado del diagnóstico de performance para la tienda del prospecto.",

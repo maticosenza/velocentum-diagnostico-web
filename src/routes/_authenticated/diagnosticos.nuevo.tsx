@@ -44,14 +44,14 @@ export const Route = createFileRoute("/_authenticated/diagnosticos/nuevo")({
     typeof search['desde'] === "string" ? { desde: search['desde'] as string } : {},
   head: () => ({
     meta: [
-      { title: "Nuevo diagnóstico · Velocentum Cockpit" },
+      { title: "Nuevo diagnóstico · Velocentum · Diagnóstico e-commerce" },
       {
         name: "description",
         content:
           "Cargá los datos del negocio del prospecto para generar un diagnóstico de performance.",
       },
       { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "Nuevo diagnóstico · Velocentum Cockpit" },
+      { property: "og:title", content: "Nuevo diagnóstico · Velocentum · Diagnóstico e-commerce" },
       {
         property: "og:description",
         content: "Cargá los datos del negocio del prospecto para generar un diagnóstico.",

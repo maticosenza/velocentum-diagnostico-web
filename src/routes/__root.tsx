@@ -80,14 +80,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Velocentum · Cockpit de Diagnóstico" },
+      { title: "Velocentum · Diagnóstico e-commerce" },
       {
         name: "description",
         content:
           "Herramienta interna de Velocentum para diagnosticar la performance de tiendas e-commerce.",
       },
       { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "Velocentum · Cockpit de Diagnóstico" },
+      { property: "og:title", content: "Velocentum · Diagnóstico e-commerce" },
       {
         property: "og:description",
         content: "Herramienta interna de diagnóstico para tiendas e-commerce.",

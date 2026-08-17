@@ -45,7 +45,7 @@ export function AppSidebar() {
           <div className="min-w-0">
             <p className="truncate text-[14px] font-medium leading-5 text-foreground">Velocentum</p>
             <p className="truncate text-[11.5px] leading-4 text-muted-foreground">
-              Cockpit de Diagnóstico
+              Diagnóstico e-commerce
             </p>
           </div>
         )}
