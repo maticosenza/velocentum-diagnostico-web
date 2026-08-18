@@ -93,6 +93,7 @@ type FilaDiagnostico = {
   estados_bloque: Partial<EstadosBloque>;
   fugas: Fuga[];
   oportunidad_total: number;
+  propuesta: unknown;
   oportunidad: {
     nombre_tienda: string;
     vertical: string | null;
@@ -112,7 +113,7 @@ function DetalleDiagnostico() {
       const { data, error } = await supabase
         .from("diagnostico")
         .select(
-          "id, fecha, version, origen_diagnostico_id, datos, derivados, estados_bloque, fugas, oportunidad_total, oportunidad:oportunidad_id(nombre_tienda, vertical, plataforma, estado)",
+          "id, fecha, version, origen_diagnostico_id, datos, derivados, estados_bloque, fugas, oportunidad_total, propuesta, oportunidad:oportunidad_id(nombre_tienda, vertical, plataforma, estado)",
         )
         .eq("id", id)
         .maybeSingle();
@@ -212,6 +213,12 @@ function DetalleDiagnostico() {
           <EconomiaDetalle derivados={d} datos={datos} />
           <Presupuesto derivados={d} datos={datos} />
         </div>
+
+        <PropuestaSeccion
+          diagnosticoId={data.id}
+          propuestaGuardada={normalizarPropuesta(data.propuesta)}
+          fugas={fugas}
+        />
       </div>
     </>
   );
