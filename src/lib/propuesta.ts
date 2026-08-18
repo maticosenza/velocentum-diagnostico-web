@@ -23,6 +23,8 @@ export type HallazgoMapeado = {
   capa: Capa;
   servicio: string | null;
   nota?: string;
+  /** Condiciones que dispararon el hallazgo, para que el modelo redacte con todo el cuadro. */
+  contexto?: string[];
 };
 
 export type PropuestaGenerada = {
@@ -143,7 +145,7 @@ export function mapearHallazgos(
     });
   }
 
-  if (conMonto("carritos_abandonados") && datos.recuperacion_carrito !== true) {
+  if (conMonto("carritos_abandonados") && datos.recuperacion_carrito === false) {
     h.push({
       id: "carritos_abandonados",
       titulo: "Carritos abandonados sin flujo de recuperación",
@@ -152,7 +154,7 @@ export function mapearHallazgos(
     });
   }
 
-  if (datos.retargeting_abandono !== true) {
+  if (datos.retargeting_abandono === false) {
     h.push({
       id: "sin_retargeting",
       titulo: "Sin retargeting a abandonos",
@@ -170,7 +172,11 @@ export function mapearHallazgos(
     });
   }
 
-  if (!texto(datos.angulo_que_funciona) || !texto(datos.dolor_cliente)) {
+  // Solo si al menos uno de los dos tiene texto: nunca se señala un campo vacío.
+  if (
+    (texto(datos.angulo_que_funciona) || texto(datos.dolor_cliente)) &&
+    (!texto(datos.angulo_que_funciona) || !texto(datos.dolor_cliente))
+  ) {
     h.push({
       id: "angulo",
       titulo: "Sin ángulo identificado o sin dolor del cliente definido",
@@ -186,7 +192,7 @@ export function mapearHallazgos(
       capa: "servicio",
       servicio: "Planificación de contenido",
     });
-    if (datos.ml_product_ads) {
+    if (datos.ml_product_ads === true) {
       h.push({
         id: "product_ads",
         titulo: "Product Ads sin ROAS objetivo por familia",
@@ -278,7 +284,8 @@ export function armarInsumoPropuesta(args: {
       formato_creativos: texto(datos.formato_creativos),
       angulo_que_funciona: texto(datos.angulo_que_funciona),
       dolor_cliente: texto(datos.dolor_cliente),
-      consultas_por_organico: datos.consultas_por_organico === true,
+      consultas_por_organico:
+        typeof datos.consultas_por_organico === "boolean" ? datos.consultas_por_organico : null,
     },
     notas_del_cliente: Object.fromEntries(
       Object.entries(notas ?? {}).filter(([, v]) => texto(v) !== null),
@@ -309,6 +316,8 @@ Reglas duras:
 - Si un bloque está en verde, decilo. Un diagnóstico donde todo está mal no es creíble.
 - No prometas resultados ni cifras de mejora que no estén en los datos de entrada.
 - No menciones precios ni honorarios. Eso se conversa aparte.
+- Nunca menciones que un dato no fue cargado, que un campo llegó vacío o que falta
+  información. Si no tenés un dato, simplemente no hables de ese tema.
 - Un hallazgo, un párrafo corto. Qué encontramos, qué significa en plata, qué se hace.
 
 Devolvé únicamente un objeto JSON, sin markdown ni texto alrededor, con esta forma:
