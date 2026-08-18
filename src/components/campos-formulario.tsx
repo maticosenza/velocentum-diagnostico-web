@@ -202,6 +202,10 @@ export function CampoSelect({
   );
 }
 
+/**
+ * Sí/No de tres estados: arranca sin nada seleccionado (null) para no dar por
+ * respondido lo que nunca se preguntó. Tocar la opción activa la deselecciona.
+ */
 export function CampoSiNo({
   label,
   value,
@@ -209,8 +213,8 @@ export function CampoSiNo({
   ayuda,
 }: {
   label: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
+  value: boolean | null;
+  onChange: (v: boolean | null) => void;
   ayuda?: string;
 }) {
   return (
