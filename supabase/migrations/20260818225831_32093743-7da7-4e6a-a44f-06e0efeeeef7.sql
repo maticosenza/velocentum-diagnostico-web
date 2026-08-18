@@ -1,0 +1,1 @@
+ALTER TABLE public.diagnostico ADD COLUMN IF NOT EXISTS propuesta jsonb;
