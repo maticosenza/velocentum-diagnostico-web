@@ -50,6 +50,7 @@ export type Database = {
           oportunidad_id: string
           oportunidad_total: number
           origen_diagnostico_id: string | null
+          propuesta: Json | null
           version: number
         }
         Insert: {
@@ -66,6 +67,7 @@ export type Database = {
           oportunidad_id: string
           oportunidad_total?: number
           origen_diagnostico_id?: string | null
+          propuesta?: Json | null
           version?: number
         }
         Update: {
@@ -82,6 +84,7 @@ export type Database = {
           oportunidad_id?: string
           oportunidad_total?: number
           origen_diagnostico_id?: string | null
+          propuesta?: Json | null
           version?: number
         }
         Relationships: [
