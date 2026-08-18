@@ -77,35 +77,38 @@ export function mapearHallazgos(
     });
   }
 
-  if (conMonto("sobrefragmentacion")) {
-    h.push({
-      id: "sobrefragmentacion",
-      titulo: "Sobrefragmentación de conjuntos",
-      capa: "servicio",
-      servicio: "Meta Ads",
-    });
-  }
-
-  if (derivados.volumen_suficiente === false) {
-    h.push({
-      id: "volumen",
-      titulo: "Volumen insuficiente para optimizar por compra",
-      capa: "servicio",
-      servicio: "Meta Ads",
-    });
-  }
-
-  if (
-    typeof derivados.inversion_actual_mensual === "number" &&
-    typeof derivados.piso_mensual_un_conjunto === "number" &&
-    derivados.inversion_actual_mensual < derivados.piso_mensual_un_conjunto
-  ) {
-    h.push({
-      id: "presupuesto_bajo_piso",
-      titulo: "Presupuesto por debajo del piso de aprendizaje",
-      capa: "servicio",
-      servicio: "Meta Ads",
-    });
+  // Los tres síntomas de estructura de cuenta se leen como un solo problema.
+  {
+    const condiciones: string[] = [];
+    if (conMonto("sobrefragmentacion")) {
+      condiciones.push(
+        "Hay más conjuntos activos que los que el presupuesto puede sostener por encima del piso de aprendizaje.",
+      );
+    }
+    if (derivados.volumen_suficiente === false) {
+      condiciones.push(
+        "El volumen de compras del negocio no alcanza para que un conjunto optimizado por compra salga del aprendizaje.",
+      );
+    }
+    if (
+      typeof derivados.inversion_actual_mensual === "number" &&
+      typeof derivados.piso_mensual_un_conjunto === "number" &&
+      derivados.inversion_actual_mensual < derivados.piso_mensual_un_conjunto
+    ) {
+      condiciones.push(
+        "La inversión mensual actual está por debajo del piso que necesita un solo conjunto para aprender.",
+      );
+    }
+    if (condiciones.length > 0) {
+      h.push({
+        id: "estructura_cuenta",
+        titulo: "Estructura de cuenta fragmentada para el volumen del negocio",
+        capa: "servicio",
+        servicio: "Meta Ads",
+        contexto: condiciones,
+        nota: "Redactalo como un único hallazgo, en un solo párrafo, integrando todas las condiciones del contexto.",
+      });
+    }
   }
 
   // Mix desalineado: el producto que más factura tiene margen por debajo del ponderado.
