@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calcularDiagnostico, lecturaPresupuesto, type ConfiguracionCalculo } from "./calculo-diagnostico";
 import { DATOS_INICIALES, type DatosDiagnostico } from "./diagnostico-form";
+import { mapearHallazgos } from "./propuesta";
 
 const cfg: ConfiguracionCalculo = {
   reserva_default: 0.35,
