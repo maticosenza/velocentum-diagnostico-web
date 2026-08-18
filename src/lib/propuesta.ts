@@ -172,11 +172,14 @@ export function mapearHallazgos(
     });
   }
 
-  // Solo si al menos uno de los dos tiene texto: nunca se señala un campo vacío.
-  if (
-    (texto(datos.angulo_que_funciona) || texto(datos.dolor_cliente)) &&
-    (!texto(datos.angulo_que_funciona) || !texto(datos.dolor_cliente))
-  ) {
+  // Solo si algo se cargó y lo cargado dice que no lo tienen claro.
+  // Con los dos campos vacíos no hay hallazgo: no anunciamos lo que no preguntamos.
+  {
+    const angulo = texto(datos.angulo_que_funciona);
+    const dolor = texto(datos.dolor_cliente);
+    const cargados = [angulo, dolor].filter((t): t is string => t !== null);
+    const sinClaridad = cargados.some((t) => INDICA_FALTA.test(t));
+    if (cargados.length > 0 && (sinClaridad || cargados.length === 1)) {
     h.push({
       id: "angulo",
       titulo: "Sin ángulo identificado o sin dolor del cliente definido",
