@@ -518,7 +518,7 @@ function NuevoDiagnostico() {
               <CampoSiNo
                 label="¿Vende en Mercado Libre?"
                 value={datos.vende_mercado_libre}
-                onChange={(v) => set("vende_mercado_libre", v)}
+                onChange={(v) => set("vende_mercado_libre", v === true)}
                 ayuda="Si es que sí, se habilita la pestaña de Mercado Libre."
               />
             </div>

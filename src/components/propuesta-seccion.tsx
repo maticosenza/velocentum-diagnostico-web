@@ -11,7 +11,7 @@ import type { Fuga } from "@/lib/calculo-diagnostico";
 const CLAVES_FUGA: Record<string, string[]> = {
   conversion: ["conversión", "conversion", "tasa de conversión"],
   gasto_no_rentable: ["mer", "breakeven", "gasto no rentable", "rentab"],
-  sobrefragmentacion: ["fragment", "conjuntos"],
+  sobrefragmentacion: ["fragment", "conjuntos", "estructura de cuenta"],
   carritos_abandonados: ["carrito"],
 };
 

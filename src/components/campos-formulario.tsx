@@ -202,6 +202,10 @@ export function CampoSelect({
   );
 }
 
+/**
+ * Sí/No de tres estados: arranca sin nada seleccionado (null) para no dar por
+ * respondido lo que nunca se preguntó. Tocar la opción activa la deselecciona.
+ */
 export function CampoSiNo({
   label,
   value,
@@ -209,8 +213,8 @@ export function CampoSiNo({
   ayuda,
 }: {
   label: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
+  value: boolean | null;
+  onChange: (v: boolean | null) => void;
   ayuda?: string;
 }) {
   return (
@@ -223,7 +227,7 @@ export function CampoSiNo({
           <button
             key={o.l}
             type="button"
-            onClick={() => onChange(o.v)}
+            onClick={() => onChange(value === o.v ? null : o.v)}
             aria-pressed={value === o.v}
             className={cn(
               "h-11 flex-1 rounded-md border text-[14px] transition-colors",

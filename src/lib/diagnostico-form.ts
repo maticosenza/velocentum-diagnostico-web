@@ -71,13 +71,13 @@ export type DatosDiagnostico = {
   plan_plataforma: string;
   vende_mercado_libre: boolean;
   // Medición (compartido)
-  tiene_pixel: boolean;
+  tiene_pixel: boolean | null;
   // Medición · modo A (observado en pantalla)
   facturacion_pixel: number | null;
   capi_estado: string;
   // Medición · modo B (declarado)
-  tiene_analytics: boolean;
-  numeros_meta_coinciden: boolean;
+  tiene_analytics: boolean | null;
+  numeros_meta_coinciden: boolean | null;
 
   // Economía (compartido)
   facturacion_mensual: number | null;
@@ -116,18 +116,18 @@ export type DatosDiagnostico = {
   // Web
   visitas_mensuales: number | null;
   carritos_abandonados: number | null;
-  recuperacion_carrito: boolean;
-  retargeting_abandono: boolean;
+  recuperacion_carrito: boolean | null;
+  retargeting_abandono: boolean | null;
   // Contenido (compartido, cualitativo)
   frecuencia_creativos: string;
   formato_creativos: string;
   angulo_que_funciona: string;
   dolor_cliente: string;
-  consultas_por_organico: boolean;
+  consultas_por_organico: boolean | null;
   // Mercado Libre (compartido, condicional)
   ml_pct_facturacion: number | null;
   ml_productos_publicados: number | null;
-  ml_product_ads: boolean;
+  ml_product_ads: boolean | null;
   ml_inversion_product_ads: number | null;
 };
 
@@ -139,11 +139,11 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   plataforma: "",
   plan_plataforma: "",
   vende_mercado_libre: false,
-  tiene_pixel: false,
+  tiene_pixel: null,
   facturacion_pixel: null,
   capi_estado: "",
-  tiene_analytics: false,
-  numeros_meta_coinciden: false,
+  tiene_analytics: null,
+  numeros_meta_coinciden: null,
 
   facturacion_mensual: null,
   ticket_promedio: null,
@@ -176,16 +176,16 @@ export const DATOS_INICIALES: DatosDiagnostico = {
 
   visitas_mensuales: null,
   carritos_abandonados: null,
-  recuperacion_carrito: false,
-  retargeting_abandono: false,
+  recuperacion_carrito: null,
+  retargeting_abandono: null,
   frecuencia_creativos: "",
   formato_creativos: "",
   angulo_que_funciona: "",
   dolor_cliente: "",
-  consultas_por_organico: false,
+  consultas_por_organico: null,
   ml_pct_facturacion: null,
   ml_productos_publicados: null,
-  ml_product_ads: false,
+  ml_product_ads: null,
   ml_inversion_product_ads: null,
 };
 
@@ -221,8 +221,14 @@ const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
     "formato_creativos",
     "angulo_que_funciona",
     "dolor_cliente",
+    "consultas_por_organico",
   ],
-  mercado_libre: ["ml_pct_facturacion", "ml_productos_publicados", "ml_inversion_product_ads"],
+  mercado_libre: [
+    "ml_pct_facturacion",
+    "ml_productos_publicados",
+    "ml_product_ads",
+    "ml_inversion_product_ads",
+  ],
 };
 
 /** Campos que cuentan para el indicador de completitud de cada pestaña, según el modo. */

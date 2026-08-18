@@ -23,6 +23,8 @@ export type HallazgoMapeado = {
   capa: Capa;
   servicio: string | null;
   nota?: string;
+  /** Condiciones que dispararon el hallazgo, para que el modelo redacte con todo el cuadro. */
+  contexto?: string[];
 };
 
 export type PropuestaGenerada = {
@@ -43,6 +45,10 @@ export type PropuestaGenerada = {
 function texto(v: unknown): string | null {
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
 }
+
+/** Respuestas que, aunque estén cargadas, dicen que el cliente no lo tiene claro. */
+const INDICA_FALTA =
+  /(^|\W)(no s[eé]|no sabe|ni idea|ninguno|ninguna|nada|no tiene|no hay|no lo tiene|no est[aá] claro|sin definir|todav[ií]a no)(\W|$)/i;
 
 /** Hallazgos detectados a partir del diagnóstico, con su capa y servicio mapeados. */
 export function mapearHallazgos(
@@ -77,35 +83,38 @@ export function mapearHallazgos(
     });
   }
 
-  if (conMonto("sobrefragmentacion")) {
-    h.push({
-      id: "sobrefragmentacion",
-      titulo: "Sobrefragmentación de conjuntos",
-      capa: "servicio",
-      servicio: "Meta Ads",
-    });
-  }
-
-  if (derivados.volumen_suficiente === false) {
-    h.push({
-      id: "volumen",
-      titulo: "Volumen insuficiente para optimizar por compra",
-      capa: "servicio",
-      servicio: "Meta Ads",
-    });
-  }
-
-  if (
-    typeof derivados.inversion_actual_mensual === "number" &&
-    typeof derivados.piso_mensual_un_conjunto === "number" &&
-    derivados.inversion_actual_mensual < derivados.piso_mensual_un_conjunto
-  ) {
-    h.push({
-      id: "presupuesto_bajo_piso",
-      titulo: "Presupuesto por debajo del piso de aprendizaje",
-      capa: "servicio",
-      servicio: "Meta Ads",
-    });
+  // Los tres síntomas de estructura de cuenta se leen como un solo problema.
+  {
+    const condiciones: string[] = [];
+    if (conMonto("sobrefragmentacion")) {
+      condiciones.push(
+        "Hay más conjuntos activos que los que el presupuesto puede sostener por encima del piso de aprendizaje.",
+      );
+    }
+    if (derivados.volumen_suficiente === false) {
+      condiciones.push(
+        "El volumen de compras del negocio no alcanza para que un conjunto optimizado por compra salga del aprendizaje.",
+      );
+    }
+    if (
+      typeof derivados.inversion_actual_mensual === "number" &&
+      typeof derivados.piso_mensual_un_conjunto === "number" &&
+      derivados.inversion_actual_mensual < derivados.piso_mensual_un_conjunto
+    ) {
+      condiciones.push(
+        "La inversión mensual actual está por debajo del piso que necesita un solo conjunto para aprender.",
+      );
+    }
+    if (condiciones.length > 0) {
+      h.push({
+        id: "estructura_cuenta",
+        titulo: "Estructura de cuenta fragmentada para el volumen del negocio",
+        capa: "servicio",
+        servicio: "Meta Ads",
+        contexto: condiciones,
+        nota: "Redactalo como un único hallazgo, en un solo párrafo, integrando todas las condiciones del contexto.",
+      });
+    }
   }
 
   // Mix desalineado: el producto que más factura tiene margen por debajo del ponderado.
@@ -140,7 +149,7 @@ export function mapearHallazgos(
     });
   }
 
-  if (conMonto("carritos_abandonados") && datos.recuperacion_carrito !== true) {
+  if (conMonto("carritos_abandonados") && datos.recuperacion_carrito === false) {
     h.push({
       id: "carritos_abandonados",
       titulo: "Carritos abandonados sin flujo de recuperación",
@@ -149,7 +158,7 @@ export function mapearHallazgos(
     });
   }
 
-  if (datos.retargeting_abandono !== true) {
+  if (datos.retargeting_abandono === false) {
     h.push({
       id: "sin_retargeting",
       titulo: "Sin retargeting a abandonos",
@@ -167,13 +176,21 @@ export function mapearHallazgos(
     });
   }
 
-  if (!texto(datos.angulo_que_funciona) || !texto(datos.dolor_cliente)) {
-    h.push({
-      id: "angulo",
-      titulo: "Sin ángulo identificado o sin dolor del cliente definido",
-      capa: "servicio",
-      servicio: "Planificación de contenido",
-    });
+  // Solo si algo se cargó y lo cargado dice que no lo tienen claro.
+  // Con los dos campos vacíos no hay hallazgo: no anunciamos lo que no preguntamos.
+  {
+    const angulo = texto(datos.angulo_que_funciona);
+    const dolor = texto(datos.dolor_cliente);
+    const cargados = [angulo, dolor].filter((t): t is string => t !== null);
+    const sinClaridad = cargados.some((t) => INDICA_FALTA.test(t));
+    if (cargados.length > 0 && (sinClaridad || cargados.length === 1)) {
+      h.push({
+        id: "angulo",
+        titulo: "Sin ángulo identificado o sin dolor del cliente definido",
+        capa: "servicio",
+        servicio: "Planificación de contenido",
+      });
+    }
   }
 
   if (datos.vende_mercado_libre) {
@@ -183,7 +200,7 @@ export function mapearHallazgos(
       capa: "servicio",
       servicio: "Planificación de contenido",
     });
-    if (datos.ml_product_ads) {
+    if (datos.ml_product_ads === true) {
       h.push({
         id: "product_ads",
         titulo: "Product Ads sin ROAS objetivo por familia",
@@ -275,7 +292,8 @@ export function armarInsumoPropuesta(args: {
       formato_creativos: texto(datos.formato_creativos),
       angulo_que_funciona: texto(datos.angulo_que_funciona),
       dolor_cliente: texto(datos.dolor_cliente),
-      consultas_por_organico: datos.consultas_por_organico === true,
+      consultas_por_organico:
+        typeof datos.consultas_por_organico === "boolean" ? datos.consultas_por_organico : null,
     },
     notas_del_cliente: Object.fromEntries(
       Object.entries(notas ?? {}).filter(([, v]) => texto(v) !== null),
@@ -306,6 +324,8 @@ Reglas duras:
 - Si un bloque está en verde, decilo. Un diagnóstico donde todo está mal no es creíble.
 - No prometas resultados ni cifras de mejora que no estén en los datos de entrada.
 - No menciones precios ni honorarios. Eso se conversa aparte.
+- Nunca menciones que un dato no fue cargado, que un campo llegó vacío o que falta
+  información. Si no tenés un dato, simplemente no hables de ese tema.
 - Un hallazgo, un párrafo corto. Qué encontramos, qué significa en plata, qué se hace.
 
 Devolvé únicamente un objeto JSON, sin markdown ni texto alrededor, con esta forma:
