@@ -505,16 +505,30 @@ export function calcularDiagnostico(
 
   // Carritos abandonados sin flujo de recuperación
   {
-    const tieneRecuperacion = d.recuperacion_carrito === true;
-    const tieneRetargeting = d.retargeting_abandono === true;
-    const activos = (tieneRecuperacion ? 1 : 0) + (tieneRetargeting ? 1 : 0);
+    // Un booleano sin responder no es un "no": sin ambos valores cargados la fuga no se calcula.
+    const recuperacionCargada = typeof d.recuperacion_carrito === "boolean";
+    const retargetingCargado = typeof d.retargeting_abandono === "boolean";
+    const activos = (d.recuperacion_carrito === true ? 1 : 0) + (d.retargeting_abandono === true ? 1 : 0);
     const pctEsperado = finito(cfg.recuperacion_carrito_esperada)
       ? (cfg.recuperacion_carrito_esperada as number)
       : null;
     const DETALLE_CARRITO =
       "Son compradores que ya eligieron el producto y quedaron a un paso, sin ningún flujo que los traiga de vuelta.";
 
-    if (activos < 2) {
+    if (!recuperacionCargada || !retargetingCargado) {
+      const faltan: string[] = [];
+      if (!recuperacionCargada) faltan.push("recuperacion_carrito");
+      if (!retargetingCargado) faltan.push("retargeting_abandono");
+      fugas.push({
+        id: "carritos_abandonados",
+        etiqueta: "Fuga por carritos abandonados",
+        tipo: "monto",
+        monto: null,
+        calculable: false,
+        faltantes: faltan,
+        detalle: DETALLE_CARRITO,
+      });
+    } else if (activos < 2) {
       const faltan = faltantes(datos, ["carritos_abandonados", "ticket_promedio"]);
       if (margen === null) faltan.push("margen_contribucion");
       if (pctEsperado === null) faltan.push("recuperacion_carrito_esperada");
