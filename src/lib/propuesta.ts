@@ -48,7 +48,7 @@ function texto(v: unknown): string | null {
 
 /** Respuestas que, aunque estén cargadas, dicen que el cliente no lo tiene claro. */
 const INDICA_FALTA =
-  /\b(no s[eé]|no sabe|ni idea|ninguno|ninguna|nada|no tiene|no hay|no lo tiene|no est[aá] claro|sin definir|todav[ií]a no)\b/i;
+  /(^|\W)(no s[eé]|no sabe|ni idea|ninguno|ninguna|nada|no tiene|no hay|no lo tiene|no est[aá] claro|sin definir|todav[ií]a no)(\W|$)/i;
 
 /** Hallazgos detectados a partir del diagnóstico, con su capa y servicio mapeados. */
 export function mapearHallazgos(
