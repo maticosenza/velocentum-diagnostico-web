@@ -227,7 +227,7 @@ export function CampoSiNo({
           <button
             key={o.l}
             type="button"
-            onClick={() => onChange(o.v)}
+            onClick={() => onChange(value === o.v ? null : o.v)}
             aria-pressed={value === o.v}
             className={cn(
               "h-11 flex-1 rounded-md border text-[14px] transition-colors",
