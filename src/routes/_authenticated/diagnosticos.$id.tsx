@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatARS, formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
 import { PASARELAS, PLATAFORMAS, VERTICALES, type DatosDiagnostico } from "@/lib/diagnostico-form";
 import { lecturaPresupuesto } from "@/lib/calculo-diagnostico";
+import { PropuestaSeccion } from "@/components/propuesta-seccion";
+import { normalizarPropuesta } from "@/lib/propuesta";
 import type {
   Derivados,
   EstadoBloque,
