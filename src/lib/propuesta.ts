@@ -180,12 +180,13 @@ export function mapearHallazgos(
     const cargados = [angulo, dolor].filter((t): t is string => t !== null);
     const sinClaridad = cargados.some((t) => INDICA_FALTA.test(t));
     if (cargados.length > 0 && (sinClaridad || cargados.length === 1)) {
-    h.push({
-      id: "angulo",
-      titulo: "Sin ángulo identificado o sin dolor del cliente definido",
-      capa: "servicio",
-      servicio: "Planificación de contenido",
-    });
+      h.push({
+        id: "angulo",
+        titulo: "Sin ángulo identificado o sin dolor del cliente definido",
+        capa: "servicio",
+        servicio: "Planificación de contenido",
+      });
+    }
   }
 
   if (datos.vende_mercado_libre) {
