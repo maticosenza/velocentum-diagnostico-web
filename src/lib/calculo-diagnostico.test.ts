@@ -396,10 +396,13 @@ describe("caso real de ticket alto", () => {
 
 describe("fuga por carritos abandonados", () => {
   const cfgCarrito: ConfiguracionCalculo = { ...cfg, recuperacion_carrito_esperada: 0.08 };
+  // Los dos booleanos vienen respondidos: sin respuesta la fuga no se calcula.
   const conCarritos: DatosDiagnostico = {
     ...base,
     facturacion_mensual: 10_000_000,
     carritos_abandonados: 500,
+    recuperacion_carrito: false,
+    retargeting_abandono: false,
   };
   const fugaDe = (d: DatosDiagnostico) =>
     calcularDiagnostico(d, cfgCarrito).fugas.find((f) => f.id === "carritos_abandonados");
@@ -429,5 +432,72 @@ describe("fuga por carritos abandonados", () => {
     const f = fugaDe({ ...conCarritos, carritos_abandonados: null })!;
     expect(f.calculable).toBe(false);
     expect(f.faltantes).toContain("carritos_abandonados");
+  });
+
+  it("si un booleano quedó sin responder la fuga no se calcula", () => {
+    const f = fugaDe({ ...conCarritos, retargeting_abandono: null })!;
+    expect(f.calculable).toBe(false);
+    expect(f.faltantes).toContain("retargeting_abandono");
+    expect(f.monto).toBeNull();
+  });
+
+  it("con los dos booleanos sin responder lista ambos como faltantes", () => {
+    const f = fugaDe({
+      ...conCarritos,
+      recuperacion_carrito: null,
+      retargeting_abandono: null,
+    })!;
+    expect(f.calculable).toBe(false);
+    expect(f.faltantes).toEqual(["recuperacion_carrito", "retargeting_abandono"]);
+  });
+});
+
+describe("hallazgos que dependen de booleanos sin responder", () => {
+  const cfgCarrito: ConfiguracionCalculo = { ...cfg, recuperacion_carrito_esperada: 0.08 };
+  const conDatos: DatosDiagnostico = {
+    ...base,
+    facturacion_mensual: 10_000_000,
+    carritos_abandonados: 500,
+  };
+  const hallazgosDe = (d: DatosDiagnostico) => {
+    const r = calcularDiagnostico(d, cfgCarrito);
+    return mapearHallazgos(d, r.derivados, r.estados_bloque, r.fugas).map((x) => x.id);
+  };
+
+  it("no afirma que no hay retargeting cuando el campo quedó en null", () => {
+    expect(hallazgosDe(conDatos)).not.toContain("sin_retargeting");
+  });
+
+  it("genera el hallazgo solo cuando el retargeting es un no explícito", () => {
+    expect(
+      hallazgosDe({ ...conDatos, recuperacion_carrito: false, retargeting_abandono: false }),
+    ).toContain("sin_retargeting");
+  });
+
+  it("no genera el hallazgo de ángulo si los dos campos de contenido están vacíos", () => {
+    expect(hallazgosDe({ ...conDatos, angulo_que_funciona: "", dolor_cliente: "" })).not.toContain(
+      "angulo",
+    );
+  });
+
+  it("genera el hallazgo de ángulo si lo cargado dice que no lo tienen claro", () => {
+    expect(
+      hallazgosDe({ ...conDatos, angulo_que_funciona: "No sé, probamos de todo", dolor_cliente: "Precio alto" }),
+    ).toContain("angulo");
+  });
+
+  it("fusiona los tres síntomas de estructura de cuenta en un solo hallazgo", () => {
+    const r = calcularDiagnostico(conDatos, cfgCarrito);
+    const hallazgos = mapearHallazgos(conDatos, r.derivados, r.estados_bloque, r.fugas);
+    const ids = hallazgos.map((x) => x.id);
+    expect(ids).not.toContain("sobrefragmentacion");
+    expect(ids).not.toContain("volumen");
+    expect(ids).not.toContain("presupuesto_bajo_piso");
+    const estructura = hallazgos.filter((x) => x.id === "estructura_cuenta");
+    expect(estructura.length).toBeLessThanOrEqual(1);
+    if (estructura[0]) {
+      expect(estructura[0].servicio).toBe("Meta Ads");
+      expect((estructura[0].contexto ?? []).length).toBeGreaterThan(0);
+    }
   });
 });
