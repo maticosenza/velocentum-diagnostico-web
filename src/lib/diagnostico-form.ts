@@ -221,8 +221,14 @@ const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
     "formato_creativos",
     "angulo_que_funciona",
     "dolor_cliente",
+    "consultas_por_organico",
   ],
-  mercado_libre: ["ml_pct_facturacion", "ml_productos_publicados", "ml_inversion_product_ads"],
+  mercado_libre: [
+    "ml_pct_facturacion",
+    "ml_productos_publicados",
+    "ml_product_ads",
+    "ml_inversion_product_ads",
+  ],
 };
 
 /** Campos que cuentan para el indicador de completitud de cada pestaña, según el modo. */
