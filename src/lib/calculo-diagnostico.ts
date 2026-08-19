@@ -217,11 +217,18 @@ export function calcularDiagnostico(
 ): ResultadoCalculo {
   const d = datos;
 
-  // --- Delta de medición: Pixel contra la facturación real declarada
+  // --- Delta de medición: sólo si hay Pixel midiendo compras y facturación real cargada.
+  // Una tienda que no pautea no tiene Pixel: eso es falta de dato, no medición rota.
   let delta: number | null = null;
-  if (finito(d.facturacion_mensual) && d.facturacion_mensual !== 0 && finito(d.facturacion_pixel)) {
+  if (
+    finito(d.facturacion_mensual) &&
+    d.facturacion_mensual > 0 &&
+    finito(d.facturacion_pixel) &&
+    d.facturacion_pixel > 0
+  ) {
     delta = Math.abs(d.facturacion_pixel - d.facturacion_mensual) / d.facturacion_mensual;
   }
+
 
   // --- Comisiones
   const comPlataforma = comisionPlataformaDe(cfg, d);
