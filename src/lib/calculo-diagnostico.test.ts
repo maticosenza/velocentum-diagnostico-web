@@ -146,7 +146,13 @@ describe("margen ponderado por productos", () => {
     );
     expect(r.derivados.margen_contribucion).toBeNull();
     expect(r.derivados.breakeven_roas).toBeNull();
-    expect(r.fugas.find((f) => f.id === "gasto_no_rentable")?.calculable).toBe(false);
+    expect(
+      calcularDiagnostico(
+        { ...base, producto_1_costo: null, producto_1_precio: null, inversion_meta: 1_000_000 },
+        cfg,
+      ).fugas.find((f) => f.id === "gasto_no_rentable")?.calculable,
+    ).toBe(false);
+
   });
 
   it("calcula CPA breakeven, CPA objetivo y ROAS objetivo", () => {
