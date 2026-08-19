@@ -64,7 +64,8 @@ export function mapearHallazgos(
     return f && f.tipo === "monto" && typeof f.monto === "number" && f.monto > 0;
   };
 
-  if (estados.medicion === "rojo" || datos.tiene_pixel === false || datos.capi_estado === "ausente") {
+  // Solo con el bloque en rojo. "sin_datos" significa que no sabemos: no afirmamos nada.
+  if (estados.medicion === "rojo") {
     h.push({
       id: "medicion",
       titulo: "Medición desalineada entre el Pixel y la facturación real",
@@ -73,6 +74,7 @@ export function mapearHallazgos(
       nota: "Se resuelve dentro del plan como parte del seteo inicial, no se cobra aparte.",
     });
   }
+
 
   if (conMonto("gasto_no_rentable") || estados.economia === "rojo") {
     h.push({
