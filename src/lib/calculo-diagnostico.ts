@@ -450,14 +450,15 @@ export function calcularDiagnostico(
     }
   }
 
-  // Gasto no rentable
-  {
+  // Gasto no rentable: sin inversión publicitaria la fuga no existe (ni como no calculable).
+  if (inversionAds !== null && inversionAds > 0) {
     const faltan: string[] = [];
-    if (inversionAds === null) faltan.push("inversion_meta", "inversion_google");
-    if (mer === null) faltan.push("facturacion_mensual");
+    if (!finito(d.facturacion_mensual) || d.facturacion_mensual <= 0) faltan.push("facturacion_mensual");
     if (breakevenRoas === null) faltan.push("margen_contribucion");
-    if (faltan.length > 0) {
+    if (faltan.length > 0 || mer === null) {
+      if (mer === null && faltan.length === 0) faltan.push("facturacion_mensual");
       fugas.push({
+
         id: "gasto_no_rentable",
         etiqueta: "Fuga por gasto no rentable",
         tipo: "monto",
