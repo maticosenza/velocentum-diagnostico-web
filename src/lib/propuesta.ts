@@ -64,7 +64,8 @@ export function mapearHallazgos(
     return f && f.tipo === "monto" && typeof f.monto === "number" && f.monto > 0;
   };
 
-  if (estados.medicion === "rojo" || datos.tiene_pixel === false || datos.capi_estado === "ausente") {
+  // Solo con el bloque en rojo. "sin_datos" significa que no sabemos: no afirmamos nada.
+  if (estados.medicion === "rojo") {
     h.push({
       id: "medicion",
       titulo: "Medición desalineada entre el Pixel y la facturación real",
@@ -73,6 +74,7 @@ export function mapearHallazgos(
       nota: "Se resuelve dentro del plan como parte del seteo inicial, no se cobra aparte.",
     });
   }
+
 
   if (conMonto("gasto_no_rentable") || estados.economia === "rojo") {
     h.push({
@@ -84,26 +86,34 @@ export function mapearHallazgos(
   }
 
   // Los tres síntomas de estructura de cuenta se leen como un solo problema.
+  // Sin campañas corriendo no hay estructura que criticar.
   {
+    const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+    const hayInversion =
+      num(datos.inversion_meta) + num(datos.inversion_google) > 0 ||
+      num(datos.presupuesto_diario) > 0;
+
     const condiciones: string[] = [];
-    if (conMonto("sobrefragmentacion")) {
-      condiciones.push(
-        "Hay más conjuntos activos que los que el presupuesto puede sostener por encima del piso de aprendizaje.",
-      );
-    }
-    if (derivados.volumen_suficiente === false) {
-      condiciones.push(
-        "El volumen de compras del negocio no alcanza para que un conjunto optimizado por compra salga del aprendizaje.",
-      );
-    }
-    if (
-      typeof derivados.inversion_actual_mensual === "number" &&
-      typeof derivados.piso_mensual_un_conjunto === "number" &&
-      derivados.inversion_actual_mensual < derivados.piso_mensual_un_conjunto
-    ) {
-      condiciones.push(
-        "La inversión mensual actual está por debajo del piso que necesita un solo conjunto para aprender.",
-      );
+    if (hayInversion) {
+      if (conMonto("sobrefragmentacion")) {
+        condiciones.push(
+          "Hay más conjuntos activos que los que el presupuesto puede sostener por encima del piso de aprendizaje.",
+        );
+      }
+      if (derivados.volumen_suficiente === false) {
+        condiciones.push(
+          "El volumen de compras del negocio no alcanza para que un conjunto optimizado por compra salga del aprendizaje.",
+        );
+      }
+      if (
+        typeof derivados.inversion_actual_mensual === "number" &&
+        typeof derivados.piso_mensual_un_conjunto === "number" &&
+        derivados.inversion_actual_mensual < derivados.piso_mensual_un_conjunto
+      ) {
+        condiciones.push(
+          "La inversión mensual actual está por debajo del piso que necesita un solo conjunto para aprender.",
+        );
+      }
     }
     if (condiciones.length > 0) {
       h.push({
@@ -118,7 +128,8 @@ export function mapearHallazgos(
   }
 
   // Mix desalineado: el producto que más factura tiene margen por debajo del ponderado.
-  {
+  // Solo si el bloque de economía tiene datos suficientes.
+  if (estados.economia !== "sin_datos") {
     const cargados = productosCargados(datos);
     const margenes = derivados.margenes_producto ?? [];
     const ponderado = derivados.margen_contribucion;
@@ -140,7 +151,10 @@ export function mapearHallazgos(
     }
   }
 
-  if (conMonto("conversion") || estados.funnel_web === "rojo") {
+  if (
+    estados.funnel_web !== "sin_datos" &&
+    (conMonto("conversion") || estados.funnel_web === "rojo")
+  ) {
     h.push({
       id: "conversion",
       titulo: "Conversión de la tienda por debajo del umbral",
@@ -148,6 +162,7 @@ export function mapearHallazgos(
       servicio: "Web e-commerce",
     });
   }
+
 
   if (conMonto("carritos_abandonados") && datos.recuperacion_carrito === false) {
     h.push({
