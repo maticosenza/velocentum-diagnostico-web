@@ -558,3 +558,50 @@ describe("tienda sin inversión publicitaria ni Pixel", () => {
     expect(r.fugas.find((f) => f.id === "gasto_no_rentable")).toBeDefined();
   });
 });
+
+describe("mapearHallazgos con una tienda sin cuenta publicitaria", () => {
+  const cfgSinAds: ConfiguracionCalculo = { ...cfg, recuperacion_carrito_esperada: 0.08 };
+  const sinAds: DatosDiagnostico = {
+    ...base,
+    facturacion_mensual: 9_000_000,
+    visitas_mensuales: 50_000,
+    facturacion_pixel: null,
+    inversion_meta: null,
+    inversion_google: null,
+    presupuesto_diario: null,
+    conjuntos_activos: null,
+    carritos_abandonados: 500,
+    recuperacion_carrito: false,
+    retargeting_abandono: false,
+    frecuencia_creativos: "2 por mes",
+  };
+  const idsDe = (d: DatosDiagnostico) => {
+    const r = calcularDiagnostico(d, cfgSinAds);
+    return mapearHallazgos(d, r.derivados, r.estados_bloque, r.fugas).map((x) => x.id);
+  };
+
+  it("no genera el hallazgo de medición ni el de estructura de cuenta", () => {
+    const ids = idsDe(sinAds);
+    expect(ids).not.toContain("medicion");
+    expect(ids).not.toContain("estructura_cuenta");
+  });
+
+  it("no genera el hallazgo de medición aunque el Pixel esté marcado como ausente", () => {
+    expect(idsDe({ ...sinAds, tiene_pixel: false, capi_estado: "ausente" })).not.toContain(
+      "medicion",
+    );
+  });
+
+  it("sí genera los hallazgos de conversión, carritos y contenido", () => {
+    const ids = idsDe(sinAds);
+    expect(ids).toContain("conversion");
+    expect(ids).toContain("carritos_abandonados");
+    expect(ids).toContain("creativos");
+  });
+
+  it("con inversión y conjuntos activos vuelve a generar el de estructura de cuenta", () => {
+    expect(
+      idsDe({ ...sinAds, inversion_meta: 1_500_000, presupuesto_diario: 50_000, conjuntos_activos: 12 }),
+    ).toContain("estructura_cuenta");
+  });
+});
