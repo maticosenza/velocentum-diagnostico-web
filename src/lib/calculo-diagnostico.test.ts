@@ -502,3 +502,53 @@ describe("hallazgos que dependen de booleanos sin responder", () => {
     }
   });
 });
+
+describe("tienda sin inversión publicitaria ni Pixel", () => {
+  const cfgSinAds: ConfiguracionCalculo = { ...cfg, recuperacion_carrito_esperada: 0.08 };
+  const sinAds: DatosDiagnostico = {
+    ...base,
+    facturacion_mensual: 9_000_000,
+    visitas_mensuales: 50_000,
+    facturacion_pixel: null,
+    inversion_meta: null,
+    inversion_google: null,
+    carritos_abandonados: 500,
+    recuperacion_carrito: false,
+    retargeting_abandono: false,
+  };
+
+  it("igual calcula el margen y el breakeven", () => {
+    const r = calcularDiagnostico(sinAds, cfgSinAds);
+    expect(r.derivados.margen_contribucion).toBeGreaterThan(0);
+    expect(r.derivados.breakeven_roas).toBeGreaterThan(1);
+  });
+
+  it("deja la medición en sin_datos y no genera el riesgo de medición", () => {
+    const r = calcularDiagnostico(sinAds, cfgSinAds);
+    expect(r.derivados.delta_medicion).toBeNull();
+    expect(r.estados_bloque.medicion).toBe("sin_datos");
+    expect(r.fugas.find((f) => f.id === "medicion")).toBeUndefined();
+  });
+
+  it("con facturación de Pixel en cero tampoco calcula el delta", () => {
+    const r = calcularDiagnostico({ ...sinAds, facturacion_pixel: 0 }, cfgSinAds);
+    expect(r.derivados.delta_medicion).toBeNull();
+    expect(r.estados_bloque.medicion).toBe("sin_datos");
+  });
+
+  it("no lista la fuga por gasto no rentable", () => {
+    const r = calcularDiagnostico(sinAds, cfgSinAds);
+    expect(r.fugas.find((f) => f.id === "gasto_no_rentable")).toBeUndefined();
+  });
+
+  it("sí reporta las fugas de conversión y carritos abandonados", () => {
+    const r = calcularDiagnostico(sinAds, cfgSinAds);
+    expect(r.fugas.find((f) => f.id === "conversion")?.calculable).toBe(true);
+    expect(r.fugas.find((f) => f.id === "carritos_abandonados")?.calculable).toBe(true);
+  });
+
+  it("con inversión cargada la fuga por gasto no rentable vuelve a evaluarse", () => {
+    const r = calcularDiagnostico({ ...sinAds, inversion_meta: 5_000_000 }, cfgSinAds);
+    expect(r.fugas.find((f) => f.id === "gasto_no_rentable")).toBeDefined();
+  });
+});
