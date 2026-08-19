@@ -330,6 +330,12 @@ function Semaforo({
       {tarjetas.map((t) => {
         const estado: EstadoBloque = estados[t.id] ?? "sin_datos";
         const sinDatos = estado === "sin_datos";
+        // Sin inversión no hay MER para comparar, pero el breakeven sí es un dato útil.
+        const respaldo =
+          t.id === "economia" && typeof derivados.breakeven_roas === "number"
+            ? `Breakeven ROAS ${numero(derivados.breakeven_roas)}`
+            : null;
+        const texto = sinDatos ? (respaldo ?? "Sin datos") : t.dato;
         return (
           <article
             key={t.id}
@@ -342,13 +348,14 @@ function Semaforo({
             </div>
             <p
               className={
-                sinDatos
+                sinDatos && !respaldo
                   ? "mt-3 text-[14px] leading-5 text-muted-foreground"
                   : "mt-3 text-[14px] leading-5 text-foreground"
               }
             >
-              {sinDatos ? "Sin datos" : t.dato}
+              {texto}
             </p>
+
           </article>
         );
       })}

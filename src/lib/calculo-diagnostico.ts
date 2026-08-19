@@ -217,11 +217,18 @@ export function calcularDiagnostico(
 ): ResultadoCalculo {
   const d = datos;
 
-  // --- Delta de medición: Pixel contra la facturación real declarada
+  // --- Delta de medición: sólo si hay Pixel midiendo compras y facturación real cargada.
+  // Una tienda que no pautea no tiene Pixel: eso es falta de dato, no medición rota.
   let delta: number | null = null;
-  if (finito(d.facturacion_mensual) && d.facturacion_mensual !== 0 && finito(d.facturacion_pixel)) {
+  if (
+    finito(d.facturacion_mensual) &&
+    d.facturacion_mensual > 0 &&
+    finito(d.facturacion_pixel) &&
+    d.facturacion_pixel > 0
+  ) {
     delta = Math.abs(d.facturacion_pixel - d.facturacion_mensual) / d.facturacion_mensual;
   }
+
 
   // --- Comisiones
   const comPlataforma = comisionPlataformaDe(cfg, d);
@@ -443,14 +450,15 @@ export function calcularDiagnostico(
     }
   }
 
-  // Gasto no rentable
-  {
+  // Gasto no rentable: sin inversión publicitaria la fuga no existe (ni como no calculable).
+  if (inversionAds !== null && inversionAds > 0) {
     const faltan: string[] = [];
-    if (inversionAds === null) faltan.push("inversion_meta", "inversion_google");
-    if (mer === null) faltan.push("facturacion_mensual");
+    if (!finito(d.facturacion_mensual) || d.facturacion_mensual <= 0) faltan.push("facturacion_mensual");
     if (breakevenRoas === null) faltan.push("margen_contribucion");
-    if (faltan.length > 0) {
+    if (faltan.length > 0 || mer === null) {
+      if (mer === null && faltan.length === 0) faltan.push("facturacion_mensual");
       fugas.push({
+
         id: "gasto_no_rentable",
         etiqueta: "Fuga por gasto no rentable",
         tipo: "monto",
