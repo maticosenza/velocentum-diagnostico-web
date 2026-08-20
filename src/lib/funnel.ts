@@ -320,6 +320,7 @@ export function tramosFunnel(
     detalle: string,
     unidades: number | null,
     faltan: string[],
+    confianza: ConfianzaTramo = "alta",
   ): TramoFunnel => {
     const todos = [...faltanBase, ...faltan];
     const monto = valorizar(unidades);
@@ -330,6 +331,7 @@ export function tramosFunnel(
       monto: monto === null ? null : Math.max(0, redondear(monto, 0) ?? 0),
       calculable: monto !== null,
       faltantes: todos,
+      confianza,
     };
   };
 
@@ -349,6 +351,7 @@ export function tramosFunnel(
         "Faltan las etapas intermedias del funnel, así que la oportunidad no se puede repartir entre navegación, carrito y checkout. Se calcula una sola sobre visitas y compras, con la conversión global observada.",
         unidades,
         f.faltantes,
+        "parcial",
       ),
     ];
   }
