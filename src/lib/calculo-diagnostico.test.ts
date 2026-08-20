@@ -5,6 +5,10 @@ import {
   faltaEnvioCobrado,
   faltantesMargen,
   participacionesSuperan100,
+  participacionesIncompatibles,
+  montosNetosDeDescuento,
+  montosNetosDeFinanciacion,
+
   lecturaPresupuesto,
   type ConfiguracionCalculo,
 } from "./calculo-diagnostico";
