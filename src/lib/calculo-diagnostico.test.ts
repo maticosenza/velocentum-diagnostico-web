@@ -11,11 +11,11 @@ import {
   COMISIONES_MARKETPLACE_DEFECTO,
   montosNetosDeDescuento,
   montosNetosDeFinanciacion,
-
   lecturaPresupuesto,
   type ConfiguracionCalculo,
 } from "./calculo-diagnostico";
 import { DATOS_INICIALES, type DatosDiagnostico } from "./diagnostico-form";
+import { casoSnakeStore, casoTitanWebB1, casoTitanWebB1AntesDeCanales } from "./fixtures-casos";
 import { mapearHallazgos } from "./propuesta";
 
 const cfg: ConfiguracionCalculo = {
@@ -167,7 +167,6 @@ describe("margen ponderado por productos", () => {
         cfg,
       ).fugas.find((f) => f.id === "gasto_no_rentable")?.calculable,
     ).toBe(false);
-
   });
 
   it("calcula CPA breakeven, CPA objetivo y ROAS objetivo", () => {
@@ -237,10 +236,7 @@ describe("fugas", () => {
     const combinada = r.fugas.find((f) => f.id === "funnel_combinado")!;
     expect(combinada.calculable).toBe(true);
     expect(r.derivados.funnel.desglosado).toBe(false);
-    expect(r.derivados.funnel.faltantes).toEqual([
-      "agregados_carrito",
-      "checkouts_iniciados",
-    ]);
+    expect(r.derivados.funnel.faltantes).toEqual(["agregados_carrito", "checkouts_iniciados"]);
   });
 
   it("sin visitas la oportunidad de funnel no se calcula", () => {
@@ -248,7 +244,6 @@ describe("fugas", () => {
     expect(r.derivados.funnel.estado).toBe("sin_datos");
     expect(r.fugas.some((f) => f.id.startsWith("funnel_"))).toBe(false);
   });
-
 
   it("ya no calcula fuga por fatiga creativa", () => {
     const r = calcularDiagnostico({ ...base, inversion_meta: 1_000_000 }, cfg);
@@ -390,7 +385,6 @@ describe("caso real de ticket alto", () => {
     }
   });
 
-
   it("detecta que el volumen no alcanza y cambia la lectura de presupuesto", () => {
     const r = calcularDiagnostico(real, cfgReal);
     expect(r.derivados.pedidos_semanales).toBeCloseTo(147 / 4.3, 0);
@@ -464,7 +458,6 @@ describe("cascada de atribución del funnel web", () => {
     }
   });
 
-
   it("deriva las probabilidades condicionales de cada etapa", () => {
     const f = calcularDiagnostico(conFunnel, cfgFunnel).derivados.funnel;
     expect(f.p_carrito_dado_visita).toBeCloseTo(0.1, 4);
@@ -514,7 +507,6 @@ describe("cascada de atribución del funnel web", () => {
   });
 });
 
-
 describe("hallazgos que dependen de booleanos sin responder", () => {
   const cfgCarrito: ConfiguracionCalculo = { ...cfg, recuperacion_carrito_esperada: 0.08 };
   const conDatos: DatosDiagnostico = {
@@ -545,7 +537,11 @@ describe("hallazgos que dependen de booleanos sin responder", () => {
 
   it("genera el hallazgo de ángulo si lo cargado dice que no lo tienen claro", () => {
     expect(
-      hallazgosDe({ ...conDatos, angulo_que_funciona: "No sé, probamos de todo", dolor_cliente: "Precio alto" }),
+      hallazgosDe({
+        ...conDatos,
+        angulo_que_funciona: "No sé, probamos de todo",
+        dolor_cliente: "Precio alto",
+      }),
     ).toContain("angulo");
   });
 
@@ -655,7 +651,12 @@ describe("mapearHallazgos con una tienda sin cuenta publicitaria", () => {
 
   it("con inversión y conjuntos activos vuelve a generar el de estructura de cuenta", () => {
     expect(
-      idsDe({ ...sinAds, inversion_meta: 1_500_000, presupuesto_diario: 50_000, conjuntos_activos: 12 }),
+      idsDe({
+        ...sinAds,
+        inversion_meta: 1_500_000,
+        presupuesto_diario: 50_000,
+        conjuntos_activos: 12,
+      }),
     ).toContain("estructura_cuenta");
   });
 });
@@ -664,49 +665,8 @@ describe("mapearHallazgos con una tienda sin cuenta publicitaria", () => {
 // El envío se paga por pedido: el componente se divide por el ticket promedio.
 
 describe("componente de envío por pedido", () => {
-  const snake: DatosDiagnostico = {
-    ...DATOS_INICIALES,
-    nombre_tienda: "Snake Store",
-    plataforma: "tiendanube",
-    plan_plataforma: "inicial",
-    pasarela: "mercado_pago",
-    ticket_promedio: 225226,
-    costo_envio_promedio: 11000,
-    producto_1_nombre: "Campera Puffer",
-    producto_1_costo: 40000,
-    producto_1_precio: 180000,
-    producto_1_pct_facturacion: 30,
-    producto_2_nombre: "Chaleco Tiffany",
-    producto_2_costo: 35000,
-    producto_2_precio: 125000,
-    producto_2_pct_facturacion: 20,
-    producto_3_nombre: "Calza Street",
-    producto_3_costo: 20000,
-    producto_3_precio: 85000,
-    producto_3_pct_facturacion: 10,
-  };
-
-  const titan: DatosDiagnostico = {
-    ...DATOS_INICIALES,
-    nombre_tienda: "Titan Web",
-    plataforma: "tiendanube",
-    plan_plataforma: "esencial",
-    pasarela: "mercado_pago",
-    ticket_promedio: 25000,
-    costo_envio_promedio: 9000,
-    producto_1_nombre: "Bolsa tostado",
-    producto_1_costo: 5890,
-    producto_1_precio: 11650,
-    producto_1_pct_facturacion: 20,
-    producto_2_nombre: "Molde pan lactal",
-    producto_2_costo: 17330,
-    producto_2_precio: 32990,
-    producto_2_pct_facturacion: 20,
-    producto_3_nombre: "Cintura extensible",
-    producto_3_costo: 15700,
-    producto_3_precio: 30390,
-    producto_3_pct_facturacion: 20,
-  };
+  const snake = casoSnakeStore;
+  const titan = casoTitanWebB1AntesDeCanales;
 
   it("caso A · Snake Store: componente único de envío y márgenes por producto", () => {
     const r = calcularDiagnostico(snake, cfg);
@@ -757,7 +717,6 @@ describe("componente de envío por pedido", () => {
     );
   });
 
-
   it("sin ticket promedio no usa el precio como respaldo", () => {
     const r = calcularDiagnostico({ ...titan, ticket_promedio: null }, cfg);
     expect(r.derivados.componente_envio).toBeNull();
@@ -767,18 +726,23 @@ describe("componente de envío por pedido", () => {
 
   it("un solo producto cargado usa su margen directamente", () => {
     const r = calcularDiagnostico(
-      { ...titan, producto_2_costo: null, producto_2_precio: null, producto_3_costo: null, producto_3_precio: null },
+      {
+        ...titan,
+        producto_2_costo: null,
+        producto_2_precio: null,
+        producto_3_costo: null,
+        producto_3_precio: null,
+      },
       cfg,
     );
     expect(r.derivados.margen_contribucion).toBe(0.0744);
   });
 
   it("envío bruto sin importe cobrado: no se calcula el margen", () => {
-    const r = calcularDiagnostico(
-      { ...titan, costo_envio_promedio: null, envio_bruto: 9000 },
-      cfg,
+    const r = calcularDiagnostico({ ...titan, costo_envio_promedio: null, envio_bruto: 9000 }, cfg);
+    expect(faltaEnvioCobrado({ ...titan, costo_envio_promedio: null, envio_bruto: 9000 })).toBe(
+      true,
     );
-    expect(faltaEnvioCobrado({ ...titan, costo_envio_promedio: null, envio_bruto: 9000 })).toBe(true);
     expect(r.derivados.envio_neto_vendedor).toBeNull();
     expect(r.derivados.margen_contribucion).toBeNull();
   });
@@ -815,7 +779,8 @@ describe("costo de financiación y descuentos", () => {
     producto_1_precio: 50000,
   };
 
-  const margenDe = (d: DatosDiagnostico) => calcularDiagnostico(d, cfg).derivados.margen_contribucion;
+  const margenDe = (d: DatosDiagnostico) =>
+    calcularDiagnostico(d, cfg).derivados.margen_contribucion;
 
   it("base sin financiación ni descuento", () => {
     expect(margenDe(s1)).toBe(0.44);
@@ -866,9 +831,9 @@ describe("costo de financiación y descuentos", () => {
   });
 
   it("financiación al 100% de las ventas", () => {
-    expect(
-      margenDe({ ...s1, financiacion_pct_ventas: 100, financiacion_costo_pct: 10.75 }),
-    ).toBe(0.3325);
+    expect(margenDe({ ...s1, financiacion_pct_ventas: 100, financiacion_costo_pct: 10.75 })).toBe(
+      0.3325,
+    );
   });
 
   it("costos en cero con participaciones cargadas: margen sin cambios", () => {
@@ -1005,13 +970,12 @@ describe("costo de financiación y descuentos", () => {
 
   it("diagnóstico viejo con base_montos neto: neto de descuento, bruto de financiación", () => {
     const viejo: DatosDiagnostico = { ...ambos, base_montos: "neto" };
-    delete (viejo as Record<string, unknown>)['montos_netos_de_descuento'];
-    delete (viejo as Record<string, unknown>)['montos_netos_de_financiacion'];
+    delete (viejo as Record<string, unknown>)["montos_netos_de_descuento"];
+    delete (viejo as Record<string, unknown>)["montos_netos_de_financiacion"];
     expect(montosNetosDeDescuento(viejo)).toBe(true);
     expect(montosNetosDeFinanciacion(viejo)).toBe(false);
     expect(margenDe(viejo)).toBe(0.3863);
   });
-
 
   it("los cálculos degenerados no devuelven NaN ni infinito", () => {
     const r = calcularDiagnostico(
@@ -1058,53 +1022,8 @@ describe("mix de canales y comisiones", () => {
     },
   };
 
-  const snake: DatosDiagnostico = {
-    ...DATOS_INICIALES,
-    nombre_tienda: "Snake Store",
-    plataforma: "tiendanube",
-    plan_plataforma: "inicial",
-    pasarela: "mercado_pago",
-    ticket_promedio: 225226,
-    costo_envio_promedio: 11000,
-    producto_1_nombre: "Campera Puffer",
-    producto_1_costo: 40000,
-    producto_1_precio: 180000,
-    producto_1_pct_facturacion: 30,
-    producto_2_nombre: "Chaleco Tiffany",
-    producto_2_costo: 35000,
-    producto_2_precio: 125000,
-    producto_2_pct_facturacion: 20,
-    producto_3_nombre: "Calza Street",
-    producto_3_costo: 20000,
-    producto_3_precio: 85000,
-    producto_3_pct_facturacion: 10,
-    canal_tienda_pct: 100,
-    canal_ml_no_aplica: true,
-  };
-
-  const titan: DatosDiagnostico = {
-    ...DATOS_INICIALES,
-    nombre_tienda: "Titan Web",
-    plataforma: "tiendanube",
-    plan_plataforma: "esencial",
-    pasarela: "mercado_pago",
-    ticket_promedio: 25000,
-    costo_envio_promedio: 9000,
-    producto_1_nombre: "Bolsa tostado",
-    producto_1_costo: 5890,
-    producto_1_precio: 11650,
-    producto_1_pct_facturacion: 20,
-    producto_2_nombre: "Molde pan lactal",
-    producto_2_costo: 17330,
-    producto_2_precio: 32990,
-    producto_2_pct_facturacion: 20,
-    producto_3_nombre: "Cintura extensible",
-    producto_3_costo: 15700,
-    producto_3_precio: 30390,
-    producto_3_pct_facturacion: 20,
-    canal_ml_pct: 100,
-    canal_tienda_no_aplica: true,
-  };
+  const snake = casoSnakeStore;
+  const titan = casoTitanWebB1;
 
   /** S3: un solo producto al 45% de costo, envío 8% del ticket en los dos canales. */
   const s3: DatosDiagnostico = {
@@ -1206,7 +1125,6 @@ describe("mix de canales y comisiones", () => {
     expect(fn.p_compra_dado_checkout).toBeCloseTo(0.18, 4);
   });
 
-
   it("suma mayor a 100: se bloquea el cálculo y los campos entran en faltantes", () => {
     const datos = { ...s3, canal_tienda_pct: 60, canal_ml_pct: 60 };
     const r = calcularDiagnostico(datos, cfgCanales);
@@ -1282,7 +1200,12 @@ describe("mix de canales y comisiones", () => {
   });
 
   it("diagnóstico viejo con ml_pct_facturacion en 100: el mix es de Mercado Libre", () => {
-    const viejo = { ...titan, canal_ml_pct: null, canal_tienda_no_aplica: false, ml_pct_facturacion: 100 };
+    const viejo = {
+      ...titan,
+      canal_ml_pct: null,
+      canal_tienda_no_aplica: false,
+      ml_pct_facturacion: 100,
+    };
     const r = calcularDiagnostico(viejo, cfgCanales);
     expect(r.derivados.canal_principal).toBe("mercado_libre");
     expect(r.derivados.cobertura_canales).toBe(100);
@@ -1290,7 +1213,12 @@ describe("mix de canales y comisiones", () => {
   });
 
   it("diagnóstico viejo con ml_pct_facturacion parcial: el resto queda sin declarar", () => {
-    const viejo = { ...titan, canal_ml_pct: null, canal_tienda_no_aplica: false, ml_pct_facturacion: 40 };
+    const viejo = {
+      ...titan,
+      canal_ml_pct: null,
+      canal_tienda_no_aplica: false,
+      ml_pct_facturacion: 40,
+    };
     const r = calcularDiagnostico(viejo, cfgCanales);
     expect(r.derivados.cobertura_canales).toBe(40);
     expect(r.derivados.margen_contribucion).toBeNull();

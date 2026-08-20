@@ -11,7 +11,8 @@ import {
   type ConfiguracionCalculo,
 } from "./calculo-diagnostico";
 import { evaluarContradiccion, rangoDeclarado } from "./contradiccion";
-import { DATOS_INICIALES, type DatosDiagnostico } from "./diagnostico-form";
+import type { DatosDiagnostico } from "./diagnostico-form";
+import { casoTitanWebB1 } from "./fixtures-casos";
 import { mapearHallazgos } from "./propuesta";
 
 const cfg: ConfiguracionCalculo = {
@@ -38,25 +39,7 @@ const cfg: ConfiguracionCalculo = {
 };
 
 /** B1 · Titan Web: sólo Mercado Libre, con Product Ads. */
-const titan: DatosDiagnostico = {
-  ...DATOS_INICIALES,
-  nombre_tienda: "Titan Web",
-  plataforma: "tiendanube",
-  plan_plataforma: "esencial",
-  pasarela: "mercado_pago",
-  vende_mercado_libre: true,
-  facturacion_mensual: 50_000_000,
-  ticket_promedio: 25000,
-  costo_envio_promedio: 9000,
-  producto_1_nombre: "Bolsa tostado",
-  producto_1_costo: 5890,
-  producto_1_precio: 11650,
-  producto_1_pct_facturacion: 20,
-  canal_ml_pct: 100,
-  canal_ml_facturacion: 50_000_000,
-  canal_tienda_no_aplica: true,
-  ml_inversion_product_ads: 1_800_000,
-};
+const titan = casoTitanWebB1;
 
 const canal = (r: ReturnType<typeof calcularDiagnostico>, id: string) =>
   r.derivados.canales.find((c) => c.id === id)!;
@@ -76,7 +59,10 @@ describe("Product Ads de Mercado Libre", () => {
   it("tres estados: positivo, cero explícito y ausente", () => {
     const positivo = calcularDiagnostico(titan, cfg).derivados;
     const cero = calcularDiagnostico({ ...titan, ml_inversion_product_ads: 0 }, cfg).derivados;
-    const ausente = calcularDiagnostico({ ...titan, ml_inversion_product_ads: null }, cfg).derivados;
+    const ausente = calcularDiagnostico(
+      { ...titan, ml_inversion_product_ads: null },
+      cfg,
+    ).derivados;
 
     expect(positivo.hay_inversion_publicitaria).toBe(true);
     expect(positivo.mer_marketplace).toBe(27.78);
