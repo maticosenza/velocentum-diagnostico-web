@@ -22,17 +22,68 @@ function mediaHaciaArriba(n: number): number {
 }
 
 /**
- * Redondeo genérico con la política única. Devuelve null si el valor no es finito.
- * Antes de redondear se normaliza el escalado a 12 dígitos significativos para que
- * el ruido binario (0,38625 representado como 0,3862499999...) no baje el medio punto.
+ * Expande la notación exponencial a decimal plana ("1e-7" -> "0.0000001").
+ * Trabaja sobre la representación más corta que redondea al mismo double,
+ * que es la que escribió la persona: 0,38625 es "0.38625" y no
+ * "0.3862499999999999822...".
+ */
+function aDecimalPlano(n: number): string {
+  const s = String(n);
+  if (!/e/i.test(s)) return s;
+  const [mantisa, expTxt] = s.split(/e/i) as [string, string];
+  const exp = Number(expTxt);
+  const neg = mantisa.startsWith("-");
+  const cuerpo = neg ? mantisa.slice(1) : mantisa;
+  const [ent, frac = ""] = cuerpo.split(".") as [string, string?];
+  const digitos = ent + frac;
+  const punto = ent.length + exp;
+  let out: string;
+  if (punto <= 0) out = "0." + "0".repeat(-punto) + digitos;
+  else if (punto >= digitos.length) out = digitos + "0".repeat(punto - digitos.length);
+  else out = digitos.slice(0, punto) + "." + digitos.slice(punto);
+  return (neg ? "-" : "") + out;
+}
+
+/**
+ * Redondeo con la política única, sobre enteros escalados en base decimal.
+ * No multiplica en punto flotante ni usa epsilon: desplaza el punto decimal
+ * en la cadena y aplica media hacia arriba simétrica sobre el entero.
+ * Devuelve null si el valor no es finito.
  */
 export function redondear(n: number | null | undefined, decimales: number): number | null {
   if (!esFinito(n)) return null;
-  const f = 10 ** decimales;
-  const escalado = Number((n * f).toPrecision(12));
-  const r = mediaHaciaArriba(escalado) / f;
+  const plano = aDecimalPlano(n);
+  const neg = plano.startsWith("-");
+  const cuerpo = neg ? plano.slice(1) : plano;
+  const [entTxt, fracTxt = ""] = cuerpo.split(".") as [string, string?];
+  const digitos = entTxt + fracTxt;
+  const punto = entTxt.length + decimales;
+
+  let enteroTxt: string;
+  let resto: string;
+  if (punto <= 0) {
+    enteroTxt = "0";
+    resto = "0".repeat(-punto) + digitos;
+  } else if (punto >= digitos.length) {
+    enteroTxt = digitos + "0".repeat(punto - digitos.length);
+    resto = "";
+  } else {
+    enteroTxt = digitos.slice(0, punto);
+    resto = digitos.slice(punto);
+  }
+
+  let entero = BigInt(enteroTxt === "" ? "0" : enteroTxt);
+  if (resto !== "" && resto.charCodeAt(0) >= 53) entero += 1n; // primer dígito >= '5'
+
+  let salida = entero.toString();
+  if (decimales > 0) {
+    salida = salida.padStart(decimales + 1, "0");
+    salida = salida.slice(0, salida.length - decimales) + "." + salida.slice(salida.length - decimales);
+  }
+  const r = Number((neg ? "-" : "") + salida);
   return Number.isFinite(r) ? r : null;
 }
+
 
 
 /** Redondea una tasa (margen, comisión, ratio) a 4 decimales. */
