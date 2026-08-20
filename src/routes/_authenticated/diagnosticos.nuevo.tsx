@@ -12,7 +12,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { formatPesos, formatPorcentaje } from "@/lib/format";
+import { formatARS, formatPorcentaje } from "@/lib/format";
 import {
   CampoNumero,
   CampoPesos,
@@ -613,7 +613,7 @@ function NuevoDiagnostico() {
                 <p className="mt-0.5 text-[15px] tabular-nums text-foreground">
                   {envioNetoVendedor(datos) === null
                     ? "—"
-                    : formatPesos(envioNetoVendedor(datos) as number)}
+                    : formatARS(envioNetoVendedor(datos) as number)}
                 </p>
               </div>
               {faltaEnvioCobrado(datos) && (
