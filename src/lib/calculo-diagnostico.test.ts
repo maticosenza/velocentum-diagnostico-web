@@ -295,8 +295,14 @@ describe("fugas", () => {
       cfg,
     );
     for (const [k, v] of Object.entries(r.derivados)) {
-      if (k === "margenes_producto" || k === "pesos_producto") continue;
-      if (v !== null) expect(Number.isFinite(v as number)).toBe(true);
+      if (k === "margenes_producto" || k === "pesos_producto" || k === "canales") continue;
+      if (typeof v !== "number") continue;
+      expect(Number.isFinite(v)).toBe(true);
+    }
+    for (const canal of r.derivados.canales) {
+      for (const v of Object.values(canal)) {
+        if (typeof v === "number") expect(Number.isFinite(v)).toBe(true);
+      }
     }
     expect(Number.isFinite(r.oportunidad_total)).toBe(true);
   });
