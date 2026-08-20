@@ -270,8 +270,9 @@ function componentePonderado(
  * lee como neto de descuento y bruto de financiación.
  */
 export function montosNetosDeDescuento(d: DatosDiagnostico): boolean {
-  if (typeof d.montos_netos_de_descuento === "boolean") return d.montos_netos_de_descuento;
-  return d.base_montos === "neto";
+  // El legado gana: los diagnósticos guardados con "neto" siguen leyéndose así.
+  if (d.base_montos === "neto") return true;
+  return d.montos_netos_de_descuento === true;
 }
 
 export function montosNetosDeFinanciacion(d: DatosDiagnostico): boolean {
