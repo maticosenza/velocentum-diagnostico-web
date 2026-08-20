@@ -370,6 +370,17 @@ function Semaforo({
 
 // ---------------------------------------------------------------- 4 · fugas
 
+/** Marca visible para estimaciones sin desglose por falta de etapas intermedias. */
+function MarcaParcial() {
+  return (
+    <p className="mt-3 inline-block rounded-full border border-violet/40 px-3 py-1 text-[12.5px] text-violet">
+      Estimación parcial: faltan etapas intermedias del funnel
+    </p>
+  );
+}
+
+
+
 function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
   const [expandido, setExpandido] = useState(false);
 
