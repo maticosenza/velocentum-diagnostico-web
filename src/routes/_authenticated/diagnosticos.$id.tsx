@@ -7,7 +7,14 @@ import { Button } from "@/components/ui/button";
 import { EstadoPunto, ETIQUETA_ESTADO } from "@/components/estado-punto";
 import { supabase } from "@/integrations/supabase/client";
 import { formatARS, formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
-import { PASARELAS, PLATAFORMAS, VERTICALES, type DatosDiagnostico } from "@/lib/diagnostico-form";
+import {
+  notasVisibles,
+  PASARELAS,
+  PLATAFORMAS,
+  VERTICALES,
+  type DatosDiagnostico,
+  type NotasDiagnostico,
+} from "@/lib/diagnostico-form";
 import { lecturaPresupuesto } from "@/lib/calculo-diagnostico";
 import { cn } from "@/lib/utils";
 import { PropuestaSeccion } from "@/components/propuesta-seccion";
@@ -90,6 +97,7 @@ type FilaDiagnostico = {
   version: number | null;
   origen_diagnostico_id: string | null;
   datos: DatosDiagnostico;
+  notas: NotasDiagnostico;
   derivados: Derivados;
   estados_bloque: Partial<EstadosBloque>;
   fugas: Fuga[];
@@ -114,7 +122,7 @@ function DetalleDiagnostico() {
       const { data, error } = await supabase
         .from("diagnostico")
         .select(
-          "id, fecha, version, origen_diagnostico_id, datos, derivados, estados_bloque, fugas, oportunidad_total, propuesta, oportunidad:oportunidad_id(nombre_tienda, vertical, plataforma, estado)",
+          "id, fecha, version, origen_diagnostico_id, datos, notas, derivados, estados_bloque, fugas, oportunidad_total, propuesta, oportunidad:oportunidad_id(nombre_tienda, vertical, plataforma, estado)",
         )
         .eq("id", id)
         .maybeSingle();
@@ -217,6 +225,8 @@ function DetalleDiagnostico() {
 
         <Semaforo estados={estados} derivados={d} datos={datos} />
 
+        <SeccionNotas notas={data.notas} />
+
         <SeccionFugas fugas={fugas} />
 
         <SeccionCanales derivados={d} />
@@ -235,6 +245,34 @@ function DetalleDiagnostico() {
         />
       </div>
     </>
+  );
+}
+
+function SeccionNotas({ notas }: { notas: NotasDiagnostico | null | undefined }) {
+  const visibles = notasVisibles(notas);
+  if (visibles.length === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-border bg-card">
+      <header className="border-b border-border px-7 py-5">
+        <h2 className="text-[17px] font-medium text-foreground">Notas de la llamada</h2>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          Contexto declarado por el cliente. Estas notas no modifican los cálculos.
+        </p>
+      </header>
+      <div className="grid gap-4 p-7 md:grid-cols-2">
+        {visibles.map((nota) => (
+          <article key={nota.bloque} className="rounded-md border border-border px-4 py-3">
+            <h3 className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+              {nota.etiqueta}
+            </h3>
+            <p className="mt-2 whitespace-pre-wrap text-[14px] leading-6 text-foreground">
+              {nota.texto}
+            </p>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 

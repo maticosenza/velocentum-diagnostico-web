@@ -198,7 +198,7 @@ export function mapearHallazgos(
     });
   }
 
-  if (estados.creativos === "amarillo" || texto(datos.frecuencia_creativos)) {
+  if (estados.creativos === "amarillo" || estados.creativos === "rojo") {
     h.push({
       id: "creativos",
       titulo: "Ritmo de creativos nuevos por mes",
@@ -225,12 +225,6 @@ export function mapearHallazgos(
   }
 
   if (datos.vende_mercado_libre) {
-    h.push({
-      id: "clips_ml",
-      titulo: "Sin clips en Mercado Libre",
-      capa: "servicio",
-      servicio: "Planificación de contenido",
-    });
     if (datos.ml_product_ads === true) {
       h.push({
         id: "product_ads",
@@ -241,17 +235,22 @@ export function mapearHallazgos(
     }
   }
 
-  if (texto(datos.plan_plataforma)) {
-    h.push({
-      id: "plan_plataforma",
-      titulo: "Plan de plataforma mal dimensionado",
-      capa: "recomendacion",
-      servicio: null,
-    });
-  }
-
+  const financiacionConfirmada = [
+    [datos.financiacion_pct_ventas, datos.financiacion_costo_pct],
+    [datos.canal_tienda_financiacion_pct_ventas, datos.canal_tienda_financiacion_costo_pct],
+    [datos.canal_ml_financiacion_pct_ventas, datos.canal_ml_financiacion_costo_pct],
+  ].some(
+    ([participacion, costo]) =>
+      typeof participacion === "number" &&
+      Number.isFinite(participacion) &&
+      participacion > 0 &&
+      typeof costo === "number" &&
+      Number.isFinite(costo) &&
+      costo > 0,
+  );
   if (
     !margenBloqueado &&
+    financiacionConfirmada &&
     typeof derivados.margen_contribucion === "number" &&
     derivados.margen_contribucion < 0.35
   ) {
