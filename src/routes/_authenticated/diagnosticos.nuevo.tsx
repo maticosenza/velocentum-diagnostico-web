@@ -3,12 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Check, Keyboard } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -31,7 +26,6 @@ import {
   CLAVE_BORRADOR,
   ESTADOS_CAPI,
   ORIGEN_DATOS,
-
   DATOS_INICIALES,
   MODOS,
   PASARELAS,
@@ -55,14 +49,13 @@ import {
   participacionesIncompatibles,
   montosNetosDeDescuento,
   montosNetosDeFinanciacion,
-
 } from "@/lib/calculo-diagnostico";
 import { cargarConfiguracion } from "@/lib/configuracion";
 import { evaluarFunnel } from "@/lib/funnel";
 
 export const Route = createFileRoute("/_authenticated/diagnosticos/nuevo")({
   validateSearch: (search: Record<string, unknown>): { desde?: string } =>
-    typeof search['desde'] === "string" ? { desde: search['desde'] as string } : {},
+    typeof search["desde"] === "string" ? { desde: search["desde"] as string } : {},
   head: () => ({
     meta: [
       { title: "Nuevo diagnóstico · Velocentum · Diagnóstico e-commerce" },
@@ -496,641 +489,660 @@ function NuevoDiagnostico() {
               {ORIGEN_DATOS[bloque]}
             </p>
 
-
-          {bloque === "identificacion" && (
-            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
-              <CampoTexto
-                label="Nombre de la tienda"
-                obligatorio
-                value={datos.nombre_tienda}
-                onChange={(v) => set("nombre_tienda", v)}
-                placeholder="Ej. Tienda Aurora"
-              />
-              <CampoSelect
-                label="¿Qué vende?"
-                value={datos.vertical}
-                onChange={(v) => set("vertical", v)}
-                opciones={VERTICALES}
-              />
-              <CampoSelect
-                label="Plataforma"
-                value={datos.plataforma}
-                onChange={(v) => setDatos((p) => ({ ...p, plataforma: v, plan_plataforma: "" }))}
-                opciones={PLATAFORMAS}
-              />
-              {planesFijos ? (
-                <CampoSelect
-                  label="Plan de la plataforma"
-                  value={datos.plan_plataforma}
-                  onChange={(v) => set("plan_plataforma", v)}
-                  opciones={planesFijos}
-                />
-              ) : (
+            {bloque === "identificacion" && (
+              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
                 <CampoTexto
-                  label="Plan de la plataforma"
-                  value={datos.plan_plataforma}
-                  onChange={(v) => set("plan_plataforma", v)}
-                  placeholder="Escribilo tal como lo dice el cliente"
+                  label="Nombre de la tienda"
+                  obligatorio
+                  value={datos.nombre_tienda}
+                  onChange={(v) => set("nombre_tienda", v)}
+                  placeholder="Ej. Tienda Aurora"
                 />
-              )}
-              <CampoSiNo
-                label="¿Vende en Mercado Libre?"
-                value={datos.vende_mercado_libre}
-                onChange={(v) => set("vende_mercado_libre", v === true)}
-                ayuda="Si es que sí, se habilita la pestaña de Mercado Libre."
-              />
-            </div>
-          )}
-
-          {bloque === "medicion" && modo === "A" && (
-            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
-              <CampoSiNo
-                label="¿Tiene el Pixel instalado?"
-                value={datos.tiene_pixel}
-                onChange={(v) => set("tiene_pixel", v)}
-              />
-              <CampoPesos
-                label="Facturación que reporta el Pixel"
-                value={datos.facturacion_pixel}
-                onChange={(v) => set("facturacion_pixel", v)}
-              />
-              <CampoSelect
-                label="Estado de la CAPI"
-                value={datos.capi_estado}
-                onChange={(v) => set("capi_estado", v)}
-                opciones={ESTADOS_CAPI}
-              />
-              <div className="rounded-md border border-border px-3 py-2.5">
-                <p className="text-[12px] text-muted-foreground">
-                  Desvío contra la facturación real
-                </p>
-                <p className="mt-0.5 text-[15px] tabular-nums text-foreground">
-                  {desvioMedicion === null ? "—" : formatPorcentaje(desvioMedicion, 1)}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {bloque === "medicion" && modo === "B" && (
-            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
-              <CampoSiNo
-                label="¿Tiene el Pixel instalado?"
-                value={datos.tiene_pixel}
-                onChange={(v) => set("tiene_pixel", v)}
-              />
-              <CampoSiNo
-                label="¿Tiene Google Analytics?"
-                value={datos.tiene_analytics}
-                onChange={(v) => set("tiene_analytics", v)}
-              />
-              <CampoSiNo
-                label="¿Los números de Meta se parecen a sus ventas reales?"
-                value={datos.numeros_meta_coinciden}
-                onChange={(v) => set("numeros_meta_coinciden", v)}
-              />
-            </div>
-          )}
-
-
-          {bloque === "canales" && <BloqueCanales datos={datos} set={set} />}
-
-          {bloque === "economia" && (
-            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
-              <CampoPesos
-                label="Facturación mensual"
-                value={datos.facturacion_mensual}
-                onChange={(v) => set("facturacion_mensual", v)}
-              />
-              <CampoPesos
-                label="Ticket promedio"
-                value={datos.ticket_promedio}
-                onChange={(v) => set("ticket_promedio", v)}
-              />
-              <div className="sm:col-span-2 rounded-md border border-border px-3 py-2.5">
-                <p className="text-[13px] font-medium text-foreground">
-                  ¿Tus números ya están netos de estos costos?
-                </p>
-                <div className="mt-2 flex flex-wrap gap-5">
-                  <label className="flex items-center gap-2 text-[14px] text-foreground/85">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-violet"
-                      checked={montosNetosDeDescuento(datos)}
-                      onChange={(e) => set("montos_netos_de_descuento", e.target.checked)}
-                    />
-                    Netos de descuentos
-                  </label>
-                  <label className="flex items-center gap-2 text-[14px] text-foreground/85">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-violet"
-                      checked={montosNetosDeFinanciacion(datos)}
-                      onChange={(e) => set("montos_netos_de_financiacion", e.target.checked)}
-                    />
-                    Netos de costo financiero
-                  </label>
-                </div>
-                <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                  Marcá lo que ya esté descontado de la facturación y el ticket para que no se reste
-                  dos veces.
-                </p>
-              </div>
-
-
-              <CampoPesos
-                label="Envío neto del vendedor por pedido"
-                value={datos.costo_envio_promedio}
-                onChange={(v) => set("costo_envio_promedio", v)}
-                ayuda="Lo que efectivamente pone el vendedor, neto de lo que le cobra al cliente. Se usa si no cargás bruto y cobrado."
-              />
-              <CampoPesos
-                label="Envío bruto por pedido"
-                value={datos.envio_bruto}
-                onChange={(v) => set("envio_bruto", v)}
-                ayuda="Costo total del envío por pedido, antes de lo que paga el comprador."
-              />
-              <CampoPesos
-                label="Envío que paga el comprador"
-                value={datos.envio_cobrado_comprador}
-                onChange={(v) => set("envio_cobrado_comprador", v)}
-                ayuda="Cuánto del envío se le cobra al comprador."
-              />
-              <div className="rounded-md border border-border px-3 py-2.5">
-                <p className="text-[12px] text-muted-foreground">Envío neto del vendedor</p>
-                <p className="mt-0.5 text-[15px] tabular-nums text-foreground">
-                  {envioNetoVendedor(datos) === null
-                    ? "—"
-                    : formatARS(envioNetoVendedor(datos) as number)}
-                </p>
-              </div>
-              {faltaEnvioCobrado(datos) && (
-                <p className="text-[12px] text-destructive sm:col-span-2">
-                  Cargaste el envío bruto pero falta cuánto paga el comprador. Ingresá ese importe
-                  para poder calcular el margen: no se asume cero.
-                </p>
-              )}
-
-              <div className="sm:col-span-2 rounded-md border border-border px-3 py-2.5">
-                <p className="text-[13px] font-medium text-foreground">
-                  Margen que declara el cliente
-                </p>
-                <div className="mt-3 grid gap-x-7 gap-y-4 sm:grid-cols-2">
-                  <CampoPorcentaje
-                    label="Margen declarado (mínimo)"
-                    value={datos.margen_declarado_min ?? null}
-                    onChange={(v) => set("margen_declarado_min", v)}
-                    ayuda="Si declara un valor único, cargalo acá y dejá el máximo vacío."
-                  />
-                  <CampoPorcentaje
-                    label="Margen declarado (máximo)"
-                    value={datos.margen_declarado_max ?? null}
-                    onChange={(v) => set("margen_declarado_max", v)}
-                    ayuda="Opcional. Sólo si el cliente da un rango."
-                  />
-                </div>
-                <label className="mt-3 flex items-center gap-2 text-[14px] text-foreground/85">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-violet"
-                    checked={datos.margen_declarado_confirmado === true}
-                    onChange={(e) => set("margen_declarado_confirmado", e.target.checked)}
-                  />
-                  Confirmado por el cliente
-                </label>
-                <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                  Sin confirmar, la diferencia se registra y se muestra como alerta informativa,
-                  pero no bloquea el cálculo.
-                </p>
-              </div>
-
-              <CampoSelect
-                label="Pasarela de cobro"
-                value={datos.pasarela}
-                onChange={(v) => set("pasarela", v)}
-                opciones={PASARELAS}
-              />
-
-              <div className="sm:col-span-2">
-                <p className="text-[13px] font-medium text-foreground">
-                  Financiación y descuentos
-                </p>
-                <p className="mt-0.5 text-[12px] text-muted-foreground">
-                  Cuotas sin interés y descuentos por transferencia: se restan al margen ponderados
-                  por la porción de ventas que alcanzan.
-                </p>
-              </div>
-              <CampoPorcentaje
-                label="Ventas pagadas en cuotas"
-                value={datos.financiacion_pct_ventas}
-                onChange={(v) => set("financiacion_pct_ventas", v)}
-                maximo={100}
-                ayuda="Qué porcentaje de las ventas se paga en cuotas."
-              />
-              <CampoPorcentaje
-                label="Costo de la financiación"
-                value={datos.financiacion_costo_pct}
-                onChange={(v) => set("financiacion_costo_pct", v)}
-                ayuda="Cuánto cuesta esa financiación, como porcentaje del monto financiado."
-              />
-              {montosNetosDeFinanciacion(datos) && (
-                <p className="text-[12px] text-muted-foreground sm:col-span-2">
-                  Los montos ya están netos del costo financiero, así que la financiación no se
-                  vuelve a restar del margen.
-                </p>
-              )}
-              {costoFinanciacion(datos).faltan.length > 0 && (
-                <p className="text-[12px] text-destructive sm:col-span-2">
-                  Falta un dato de financiación para calcular el margen: cargá también{" "}
-                  {costoFinanciacion(datos).faltan[0] === "financiacion_costo_pct"
-                    ? "el costo de la financiación"
-                    : "el porcentaje de ventas en cuotas"}
-                  . No se asume cero.
-                </p>
-              )}
-              <CampoPorcentaje
-                label="Ventas con descuento"
-                value={datos.descuento_pct_ventas}
-                onChange={(v) => set("descuento_pct_ventas", v)}
-                maximo={100}
-                ayuda="Qué porcentaje de las ventas usa descuento (transferencia u otro)."
-              />
-              <CampoPorcentaje
-                label="Descuento aplicado"
-                value={datos.descuento_pct}
-                onChange={(v) => set("descuento_pct", v)}
-                ayuda="Cuánto es el descuento, como porcentaje del precio."
-              />
-              {montosNetosDeDescuento(datos) && (
-                <p className="text-[12px] text-muted-foreground sm:col-span-2">
-                  Los montos ya están netos de descuentos, así que el descuento no se vuelve a
-                  restar del margen.
-                </p>
-              )}
-              {costoDescuento(datos).faltan.length > 0 && (
-                <p className="text-[12px] text-destructive sm:col-span-2">
-                  Falta un dato de descuento para calcular el margen: cargá también{" "}
-                  {costoDescuento(datos).faltan[0] === "descuento_pct"
-                    ? "el porcentaje de descuento"
-                    : "el porcentaje de ventas con descuento"}
-                  . No se asume cero.
-                </p>
-              )}
-              <div className="sm:col-span-2">
                 <CampoSelect
-                  label="¿Se pueden combinar cuotas y descuento?"
-                  value={datos.relacion_financiacion_descuento ?? "excluyentes"}
-                  onChange={(v) =>
-                    set(
-                      "relacion_financiacion_descuento",
-                      (v as "excluyentes" | "superpuestos") || "excluyentes",
-                    )
-                  }
-                  opciones={RELACIONES_FIN_DESC}
-                  placeholder="No, son excluyentes"
-                  ayuda="Cuotas con tarjeta y descuento por transferencia suelen ser excluyentes. Un cupón general sí puede combinarse con cuotas."
+                  label="¿Qué vende?"
+                  value={datos.vertical}
+                  onChange={(v) => set("vertical", v)}
+                  opciones={VERTICALES}
                 />
-              </div>
-              {participacionesIncompatibles(datos) && (
-                <p className="text-[12px] text-destructive sm:col-span-2">
-                  Las participaciones son incompatibles: declaraste que cuotas y descuento son
-                  excluyentes, así que no pueden sumar más de 100% de las ventas. Sin corregirlas no
-                  se calcula el margen.
-                </p>
-              )}
-              {!participacionesIncompatibles(datos) && participacionesSuperan100(datos) && (
-                <p className="text-[12px] text-amber-600 sm:col-span-2">
-                  Las participaciones suman más de 100%. Se calcula igual: una misma venta puede
-                  tener descuento y además pagarse en cuotas.
-                </p>
-              )}
-
-
-              <CampoPesos
-                label="Inversión mensual en Meta"
-                value={datos.inversion_meta}
-                onChange={(v) => set("inversion_meta", v)}
-              />
-              <CampoPesos
-                label="Inversión mensual en Google"
-                value={datos.inversion_google}
-                onChange={(v) => set("inversion_google", v)}
-              />
-            </div>
-          )}
-
-          {bloque === "productos" && (
-            <div className="space-y-7">
-              <p className="text-[12px] text-muted-foreground">
-                {modo === "A"
-                  ? "Los tres productos que más vende, con costo y precio de cada uno. De acá sale el margen."
-                  : "Los tres que más vende. Costo y precio sólo del principal."}
-              </p>
-              {[1, 2, 3].map((n) => {
-                const nombreKey = `producto_${n}_nombre` as keyof DatosDiagnostico;
-                const costoKey = `producto_${n}_costo` as keyof DatosDiagnostico;
-                const precioKey = `producto_${n}_precio` as keyof DatosDiagnostico;
-                const pctKey = `producto_${n}_pct_facturacion` as keyof DatosDiagnostico;
-                const conMontos = modo === "A" || n === 1;
-                return (
-                  <div key={n} className="grid gap-x-7 gap-y-6 sm:grid-cols-4">
-                    <CampoTexto
-                      label={`Producto ${n}${n === 1 ? " (principal)" : ""}`}
-                      value={datos[nombreKey] as string}
-                      onChange={(v) => set(nombreKey, v as never)}
-                      placeholder="Nombre"
-                    />
-                    {conMontos && (
-                      <>
-                        <CampoPesos
-                          label="Costo"
-                          value={datos[costoKey] as number | null}
-                          onChange={(v) => set(costoKey, v as never)}
-                        />
-                        <CampoPesos
-                          label="Precio de venta"
-                          value={datos[precioKey] as number | null}
-                          onChange={(v) => set(precioKey, v as never)}
-                        />
-                      </>
-                    )}
-                    <CampoPorcentaje
-                      label="% de la facturación"
-                      value={datos[pctKey] as number | null}
-                      onChange={(v) => set(pctKey, v as never)}
-                    />
-                  </div>
-                );
-              })}
-              {(() => {
-                const pcts = [
-                  datos.producto_1_pct_facturacion,
-                  datos.producto_2_pct_facturacion,
-                  datos.producto_3_pct_facturacion,
-                ].filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-                if (pcts.length === 0) return null;
-                const suma = pcts.reduce((a, b) => a + b, 0);
-                const excede = suma > 100;
-                return (
-                  <p className="text-[13px] tabular-nums">
-                    <span className="text-muted-foreground">Suma de los tres: </span>
-                    <span className={excede ? "text-[var(--estado-rojo)]" : "text-foreground"}>
-                      {Math.round(suma * 10) / 10}%
-                    </span>
-                    {excede && (
-                      <span className="ml-2 text-[var(--estado-rojo)]">La suma supera el 100%</span>
-                    )}
-                  </p>
-                );
-              })()}
-              {modo === "A" && (
-                <div>
-                  <label
-                    htmlFor="reparto-pauta"
-                    className="text-[14px] font-medium text-foreground/85"
-                  >
-                    ¿Le pauta por igual a todos o hay alguno que empuja más?
-                  </label>
-                  <Textarea
-                    id="reparto-pauta"
-                    rows={2}
-                    maxLength={1000}
-                    className="mt-2 resize-y text-[14px]"
-                    value={datos.reparto_pauta}
-                    onChange={(e) => set("reparto_pauta", e.target.value)}
+                <CampoSelect
+                  label="Plataforma"
+                  value={datos.plataforma}
+                  onChange={(v) => setDatos((p) => ({ ...p, plataforma: v, plan_plataforma: "" }))}
+                  opciones={PLATAFORMAS}
+                />
+                {planesFijos ? (
+                  <CampoSelect
+                    label="Plan de la plataforma"
+                    value={datos.plan_plataforma}
+                    onChange={(v) => set("plan_plataforma", v)}
+                    opciones={planesFijos}
                   />
-                </div>
-              )}
-            </div>
-          )}
-
-          {bloque === "cuenta" && modo === "A" && (
-            <div className="space-y-6">
-              <CargaCsvMeta
-                hayDatosCargados={
-                  datos.conjuntos_activos !== null || datos.presupuesto_diario !== null
-                }
-                onAplicar={(r) =>
-                  setDatos((p) => ({
-                    ...p,
-                    conjuntos_activos: r.conjuntos_activos,
-                    presupuesto_diario: r.presupuesto_diario,
-                    csv_gasto_total: r.gasto_total,
-                    csv_frecuencia_promedio: r.frecuencia_promedio,
-                    csv_ctr_global: r.ctr_global,
-                    csv_conjuntos_bajo_gasto: r.conjuntos_bajo_gasto,
-                    csv_dias_periodo: r.dias,
-                  }))
-                }
-              />
-              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
-                <CampoNumero
-                  label="Conjuntos activos"
-                  value={datos.conjuntos_activos}
-                  onChange={(v) => set("conjuntos_activos", v)}
-                />
-                <CampoPesos
-                  label="Presupuesto diario total"
-                  value={datos.presupuesto_diario}
-                  onChange={(v) => set("presupuesto_diario", v)}
-                />
-              </div>
-            </div>
-          )}
-
-
-          {bloque === "cuenta" && modo === "B" && (
-            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
-              <CampoPesos
-                label="¿Cuánto gasta por día?"
-                value={datos.gasto_diario}
-                onChange={(v) => set("gasto_diario", v)}
-              />
-              <CampoSelect
-                label="¿Tiene muchas campañas prendidas o pocas?"
-                value={datos.cantidad_campanas}
-                onChange={(v) => set("cantidad_campanas", v)}
-                opciones={CANTIDAD_CAMPANAS}
-              />
-            </div>
-          )}
-
-          {bloque === "web" && (
-            <div className="space-y-5">
-              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
-                {modo === "A" && (
-                  <CampoNumero
-                    label="Visitas mensuales"
-                    value={datos.visitas_mensuales}
-                    onChange={(v) => set("visitas_mensuales", v)}
-                    ayuda="Con esto se calcula la conversión de la tienda."
+                ) : (
+                  <CampoTexto
+                    label="Plan de la plataforma"
+                    value={datos.plan_plataforma}
+                    onChange={(v) => set("plan_plataforma", v)}
+                    placeholder="Escribilo tal como lo dice el cliente"
                   />
                 )}
-                <CampoNumero
-                  label="Agregados al carrito en el mes"
-                  value={datos.agregados_carrito}
-                  onChange={(v) => set("agregados_carrito", v)}
-                  ayuda="Mismo período y mismo canal que las visitas. Tiendanube: Estadísticas, embudo de conversión."
-                />
-                <CampoNumero
-                  label="Checkouts iniciados en el mes"
-                  value={datos.checkouts_iniciados}
-                  onChange={(v) => set("checkouts_iniciados", v)}
-                  ayuda="Cuántos llegaron a la pantalla de pago, hayan comprado o no."
-                />
-                <CampoNumero
-                  label="Carritos abandonados en el mes"
-                  value={datos.carritos_abandonados}
-                  onChange={(v) => set("carritos_abandonados", v)}
-                  ayuda="Tiendanube, sección Carritos abandonados. Es referencia: la oportunidad se calcula con el embudo."
-                />
-
                 <CampoSiNo
-                  label="¿Tiene recuperación de carrito?"
-                  value={datos.recuperacion_carrito}
-                  onChange={(v) => set("recuperacion_carrito", v)}
-                />
-                <CampoSiNo
-                  label="¿Hace retargeting a los que abandonaron?"
-                  value={datos.retargeting_abandono}
-                  onChange={(v) => set("retargeting_abandono", v)}
+                  label="¿Vende en Mercado Libre?"
+                  value={datos.vende_mercado_libre}
+                  onChange={(v) => set("vende_mercado_libre", v === true)}
+                  ayuda="Si es que sí, se habilita la pestaña de Mercado Libre."
                 />
               </div>
-              {funnelForm.estado === "error" && funnelForm.error && (
-                <p className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-[13px] text-destructive">
-                  {funnelForm.error}
+            )}
+
+            {bloque === "medicion" && modo === "A" && (
+              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                <CampoSiNo
+                  label="¿Tiene el Pixel instalado?"
+                  value={datos.tiene_pixel}
+                  onChange={(v) => set("tiene_pixel", v)}
+                />
+                <CampoPesos
+                  label="Facturación que reporta el Pixel"
+                  value={datos.facturacion_pixel}
+                  onChange={(v) => set("facturacion_pixel", v)}
+                />
+                <CampoSelect
+                  label="Estado de la CAPI"
+                  value={datos.capi_estado}
+                  onChange={(v) => set("capi_estado", v)}
+                  opciones={ESTADOS_CAPI}
+                />
+                <div className="rounded-md border border-border px-3 py-2.5">
+                  <p className="text-[12px] text-muted-foreground">
+                    Desvío contra la facturación real
+                  </p>
+                  <p className="mt-0.5 text-[15px] tabular-nums text-foreground">
+                    {desvioMedicion === null ? "—" : formatPorcentaje(desvioMedicion, 1)}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {bloque === "medicion" && modo === "B" && (
+              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                <CampoSiNo
+                  label="¿Tiene el Pixel instalado?"
+                  value={datos.tiene_pixel}
+                  onChange={(v) => set("tiene_pixel", v)}
+                />
+                <CampoSiNo
+                  label="¿Tiene Google Analytics?"
+                  value={datos.tiene_analytics}
+                  onChange={(v) => set("tiene_analytics", v)}
+                />
+                <CampoSiNo
+                  label="¿Los números de Meta se parecen a sus ventas reales?"
+                  value={datos.numeros_meta_coinciden}
+                  onChange={(v) => set("numeros_meta_coinciden", v)}
+                />
+              </div>
+            )}
+
+            {bloque === "canales" && <BloqueCanales datos={datos} set={set} />}
+
+            {bloque === "economia" && (
+              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                <CampoPesos
+                  label="Facturación mensual"
+                  value={datos.facturacion_mensual}
+                  onChange={(v) => set("facturacion_mensual", v)}
+                />
+                <CampoPesos
+                  label="Ticket promedio"
+                  value={datos.ticket_promedio}
+                  onChange={(v) => set("ticket_promedio", v)}
+                />
+                <div className="sm:col-span-2 rounded-md border border-border px-3 py-2.5">
+                  <p className="text-[13px] font-medium text-foreground">
+                    ¿Tus números ya están netos de estos costos?
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-5">
+                    <label className="flex items-center gap-2 text-[14px] text-foreground/85">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-violet"
+                        checked={montosNetosDeDescuento(datos)}
+                        onChange={(e) => set("montos_netos_de_descuento", e.target.checked)}
+                      />
+                      Netos de descuentos
+                    </label>
+                    <label className="flex items-center gap-2 text-[14px] text-foreground/85">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-violet"
+                        checked={montosNetosDeFinanciacion(datos)}
+                        onChange={(e) => set("montos_netos_de_financiacion", e.target.checked)}
+                      />
+                      Netos de costo financiero
+                    </label>
+                  </div>
+                  <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+                    Marcá lo que ya esté descontado de la facturación y el ticket para que no se
+                    reste dos veces.
+                  </p>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <CampoSiNo
+                    label="¿El negocio absorbe parte del costo del envío?"
+                    value={datos.absorbe_costo_envio ?? null}
+                    onChange={(v) => set("absorbe_costo_envio", v)}
+                    ayuda="Elegí No cuando el comprador cubre todo el envío. En ese caso no afecta la rentabilidad ni aparece en la proyección o propuesta."
+                  />
+                </div>
+
+                {(datos.absorbe_costo_envio === true ||
+                  datos.costo_envio_promedio !== null ||
+                  datos.envio_bruto !== null ||
+                  datos.envio_cobrado_comprador !== null) &&
+                  datos.absorbe_costo_envio !== false && (
+                    <>
+                      <CampoPesos
+                        label="Envío neto del vendedor por pedido"
+                        value={datos.costo_envio_promedio}
+                        onChange={(v) => set("costo_envio_promedio", v)}
+                        ayuda="Lo que efectivamente pone el vendedor, neto de lo que le cobra al cliente. Se usa si no cargás bruto y cobrado."
+                      />
+                      <CampoPesos
+                        label="Envío bruto por pedido"
+                        value={datos.envio_bruto}
+                        onChange={(v) => set("envio_bruto", v)}
+                        ayuda="Costo total del envío por pedido, antes de lo que paga el comprador."
+                      />
+                      <CampoPesos
+                        label="Envío que paga el comprador"
+                        value={datos.envio_cobrado_comprador}
+                        onChange={(v) => set("envio_cobrado_comprador", v)}
+                        ayuda="Cuánto del envío se le cobra al comprador."
+                      />
+                      <div className="rounded-md border border-border px-3 py-2.5">
+                        <p className="text-[12px] text-muted-foreground">Envío neto del vendedor</p>
+                        <p className="mt-0.5 text-[15px] tabular-nums text-foreground">
+                          {envioNetoVendedor(datos) === null
+                            ? "—"
+                            : formatARS(envioNetoVendedor(datos) as number)}
+                        </p>
+                      </div>
+                      {faltaEnvioCobrado(datos) && (
+                        <p className="text-[12px] text-destructive sm:col-span-2">
+                          Cargaste el envío bruto pero falta cuánto paga el comprador. Ingresá ese
+                          importe para poder calcular el margen: no se asume cero.
+                        </p>
+                      )}
+                    </>
+                  )}
+
+                {datos.absorbe_costo_envio === false && (
+                  <p className="rounded-md border border-border bg-muted/40 px-3 py-2.5 text-[12.5px] text-muted-foreground sm:col-span-2">
+                    El envío queda excluido del cálculo y no se mostrará como costo u oportunidad en
+                    los documentos del cliente.
+                  </p>
+                )}
+
+                <div className="sm:col-span-2 rounded-md border border-border px-3 py-2.5">
+                  <p className="text-[13px] font-medium text-foreground">
+                    Margen que declara el cliente
+                  </p>
+                  <div className="mt-3 grid gap-x-7 gap-y-4 sm:grid-cols-2">
+                    <CampoPorcentaje
+                      label="Margen declarado (mínimo)"
+                      value={datos.margen_declarado_min ?? null}
+                      onChange={(v) => set("margen_declarado_min", v)}
+                      ayuda="Si declara un valor único, cargalo acá y dejá el máximo vacío."
+                    />
+                    <CampoPorcentaje
+                      label="Margen declarado (máximo)"
+                      value={datos.margen_declarado_max ?? null}
+                      onChange={(v) => set("margen_declarado_max", v)}
+                      ayuda="Opcional. Sólo si el cliente da un rango."
+                    />
+                  </div>
+                  <label className="mt-3 flex items-center gap-2 text-[14px] text-foreground/85">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-violet"
+                      checked={datos.margen_declarado_confirmado === true}
+                      onChange={(e) => set("margen_declarado_confirmado", e.target.checked)}
+                    />
+                    Confirmado por el cliente
+                  </label>
+                  <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+                    Sin confirmar, la diferencia se registra y se muestra como alerta informativa,
+                    pero no bloquea el cálculo.
+                  </p>
+                </div>
+
+                <CampoSelect
+                  label="Pasarela de cobro"
+                  value={datos.pasarela}
+                  onChange={(v) => set("pasarela", v)}
+                  opciones={PASARELAS}
+                />
+
+                <div className="sm:col-span-2">
+                  <p className="text-[13px] font-medium text-foreground">
+                    Financiación y descuentos
+                  </p>
+                  <p className="mt-0.5 text-[12px] text-muted-foreground">
+                    Cuotas sin interés y descuentos por transferencia: se restan al margen
+                    ponderados por la porción de ventas que alcanzan.
+                  </p>
+                </div>
+                <CampoPorcentaje
+                  label="Ventas pagadas en cuotas"
+                  value={datos.financiacion_pct_ventas}
+                  onChange={(v) => set("financiacion_pct_ventas", v)}
+                  maximo={100}
+                  ayuda="Qué porcentaje de las ventas se paga en cuotas."
+                />
+                <CampoPorcentaje
+                  label="Costo de la financiación"
+                  value={datos.financiacion_costo_pct}
+                  onChange={(v) => set("financiacion_costo_pct", v)}
+                  ayuda="Cuánto cuesta esa financiación, como porcentaje del monto financiado."
+                />
+                {montosNetosDeFinanciacion(datos) && (
+                  <p className="text-[12px] text-muted-foreground sm:col-span-2">
+                    Los montos ya están netos del costo financiero, así que la financiación no se
+                    vuelve a restar del margen.
+                  </p>
+                )}
+                {costoFinanciacion(datos).faltan.length > 0 && (
+                  <p className="text-[12px] text-destructive sm:col-span-2">
+                    Falta un dato de financiación para calcular el margen: cargá también{" "}
+                    {costoFinanciacion(datos).faltan[0] === "financiacion_costo_pct"
+                      ? "el costo de la financiación"
+                      : "el porcentaje de ventas en cuotas"}
+                    . No se asume cero.
+                  </p>
+                )}
+                <CampoPorcentaje
+                  label="Ventas con descuento"
+                  value={datos.descuento_pct_ventas}
+                  onChange={(v) => set("descuento_pct_ventas", v)}
+                  maximo={100}
+                  ayuda="Qué porcentaje de las ventas usa descuento (transferencia u otro)."
+                />
+                <CampoPorcentaje
+                  label="Descuento aplicado"
+                  value={datos.descuento_pct}
+                  onChange={(v) => set("descuento_pct", v)}
+                  ayuda="Cuánto es el descuento, como porcentaje del precio."
+                />
+                {montosNetosDeDescuento(datos) && (
+                  <p className="text-[12px] text-muted-foreground sm:col-span-2">
+                    Los montos ya están netos de descuentos, así que el descuento no se vuelve a
+                    restar del margen.
+                  </p>
+                )}
+                {costoDescuento(datos).faltan.length > 0 && (
+                  <p className="text-[12px] text-destructive sm:col-span-2">
+                    Falta un dato de descuento para calcular el margen: cargá también{" "}
+                    {costoDescuento(datos).faltan[0] === "descuento_pct"
+                      ? "el porcentaje de descuento"
+                      : "el porcentaje de ventas con descuento"}
+                    . No se asume cero.
+                  </p>
+                )}
+                <div className="sm:col-span-2">
+                  <CampoSelect
+                    label="¿Se pueden combinar cuotas y descuento?"
+                    value={datos.relacion_financiacion_descuento ?? "excluyentes"}
+                    onChange={(v) =>
+                      set(
+                        "relacion_financiacion_descuento",
+                        (v as "excluyentes" | "superpuestos") || "excluyentes",
+                      )
+                    }
+                    opciones={RELACIONES_FIN_DESC}
+                    placeholder="No, son excluyentes"
+                    ayuda="Cuotas con tarjeta y descuento por transferencia suelen ser excluyentes. Un cupón general sí puede combinarse con cuotas."
+                  />
+                </div>
+                {participacionesIncompatibles(datos) && (
+                  <p className="text-[12px] text-destructive sm:col-span-2">
+                    Las participaciones son incompatibles: declaraste que cuotas y descuento son
+                    excluyentes, así que no pueden sumar más de 100% de las ventas. Sin corregirlas
+                    no se calcula el margen.
+                  </p>
+                )}
+                {!participacionesIncompatibles(datos) && participacionesSuperan100(datos) && (
+                  <p className="text-[12px] text-amber-600 sm:col-span-2">
+                    Las participaciones suman más de 100%. Se calcula igual: una misma venta puede
+                    tener descuento y además pagarse en cuotas.
+                  </p>
+                )}
+
+                <CampoPesos
+                  label="Inversión mensual en Meta"
+                  value={datos.inversion_meta}
+                  onChange={(v) => set("inversion_meta", v)}
+                />
+                <CampoPesos
+                  label="Inversión mensual en Google"
+                  value={datos.inversion_google}
+                  onChange={(v) => set("inversion_google", v)}
+                />
+              </div>
+            )}
+
+            {bloque === "productos" && (
+              <div className="space-y-7">
+                <p className="text-[12px] text-muted-foreground">
+                  {modo === "A"
+                    ? "Los tres productos que más vende, con costo y precio de cada uno. De acá sale el margen."
+                    : "Los tres que más vende. Costo y precio sólo del principal."}
                 </p>
-              )}
+                {[1, 2, 3].map((n) => {
+                  const nombreKey = `producto_${n}_nombre` as keyof DatosDiagnostico;
+                  const costoKey = `producto_${n}_costo` as keyof DatosDiagnostico;
+                  const precioKey = `producto_${n}_precio` as keyof DatosDiagnostico;
+                  const pctKey = `producto_${n}_pct_facturacion` as keyof DatosDiagnostico;
+                  const conMontos = modo === "A" || n === 1;
+                  return (
+                    <div key={n} className="grid gap-x-7 gap-y-6 sm:grid-cols-4">
+                      <CampoTexto
+                        label={`Producto ${n}${n === 1 ? " (principal)" : ""}`}
+                        value={datos[nombreKey] as string}
+                        onChange={(v) => set(nombreKey, v as never)}
+                        placeholder="Nombre"
+                      />
+                      {conMontos && (
+                        <>
+                          <CampoPesos
+                            label="Costo"
+                            value={datos[costoKey] as number | null}
+                            onChange={(v) => set(costoKey, v as never)}
+                          />
+                          <CampoPesos
+                            label="Precio de venta"
+                            value={datos[precioKey] as number | null}
+                            onChange={(v) => set(precioKey, v as never)}
+                          />
+                        </>
+                      )}
+                      <CampoPorcentaje
+                        label="% de la facturación"
+                        value={datos[pctKey] as number | null}
+                        onChange={(v) => set(pctKey, v as never)}
+                      />
+                    </div>
+                  );
+                })}
+                {(() => {
+                  const pcts = [
+                    datos.producto_1_pct_facturacion,
+                    datos.producto_2_pct_facturacion,
+                    datos.producto_3_pct_facturacion,
+                  ].filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+                  if (pcts.length === 0) return null;
+                  const suma = pcts.reduce((a, b) => a + b, 0);
+                  const excede = suma > 100;
+                  return (
+                    <p className="text-[13px] tabular-nums">
+                      <span className="text-muted-foreground">Suma de los tres: </span>
+                      <span className={excede ? "text-[var(--estado-rojo)]" : "text-foreground"}>
+                        {Math.round(suma * 10) / 10}%
+                      </span>
+                      {excede && (
+                        <span className="ml-2 text-[var(--estado-rojo)]">
+                          La suma supera el 100%
+                        </span>
+                      )}
+                    </p>
+                  );
+                })()}
+                {modo === "A" && (
+                  <div>
+                    <label
+                      htmlFor="reparto-pauta"
+                      className="text-[14px] font-medium text-foreground/85"
+                    >
+                      ¿Le pauta por igual a todos o hay alguno que empuja más?
+                    </label>
+                    <Textarea
+                      id="reparto-pauta"
+                      rows={2}
+                      maxLength={1000}
+                      className="mt-2 resize-y text-[14px]"
+                      value={datos.reparto_pauta}
+                      onChange={(e) => set("reparto_pauta", e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {bloque === "cuenta" && modo === "A" && (
+              <div className="space-y-6">
+                <CargaCsvMeta
+                  hayDatosCargados={
+                    datos.conjuntos_activos !== null || datos.presupuesto_diario !== null
+                  }
+                  onAplicar={(r) =>
+                    setDatos((p) => ({
+                      ...p,
+                      conjuntos_activos: r.conjuntos_activos,
+                      presupuesto_diario: r.presupuesto_diario,
+                      csv_gasto_total: r.gasto_total,
+                      csv_frecuencia_promedio: r.frecuencia_promedio,
+                      csv_ctr_global: r.ctr_global,
+                      csv_conjuntos_bajo_gasto: r.conjuntos_bajo_gasto,
+                      csv_dias_periodo: r.dias,
+                    }))
+                  }
+                />
+                <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                  <CampoNumero
+                    label="Conjuntos activos"
+                    value={datos.conjuntos_activos}
+                    onChange={(v) => set("conjuntos_activos", v)}
+                  />
+                  <CampoPesos
+                    label="Presupuesto diario total"
+                    value={datos.presupuesto_diario}
+                    onChange={(v) => set("presupuesto_diario", v)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {bloque === "cuenta" && modo === "B" && (
+              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                <CampoPesos
+                  label="¿Cuánto gasta por día?"
+                  value={datos.gasto_diario}
+                  onChange={(v) => set("gasto_diario", v)}
+                />
+                <CampoSelect
+                  label="¿Tiene muchas campañas prendidas o pocas?"
+                  value={datos.cantidad_campanas}
+                  onChange={(v) => set("cantidad_campanas", v)}
+                  opciones={CANTIDAD_CAMPANAS}
+                />
+              </div>
+            )}
+
+            {bloque === "web" && (
+              <div className="space-y-5">
+                <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                  {modo === "A" && (
+                    <CampoNumero
+                      label="Visitas mensuales"
+                      value={datos.visitas_mensuales}
+                      onChange={(v) => set("visitas_mensuales", v)}
+                      ayuda="Con esto se calcula la conversión de la tienda."
+                    />
+                  )}
+                  <CampoNumero
+                    label="Agregados al carrito en el mes"
+                    value={datos.agregados_carrito}
+                    onChange={(v) => set("agregados_carrito", v)}
+                    ayuda="Mismo período y mismo canal que las visitas. Tiendanube: Estadísticas, embudo de conversión."
+                  />
+                  <CampoNumero
+                    label="Checkouts iniciados en el mes"
+                    value={datos.checkouts_iniciados}
+                    onChange={(v) => set("checkouts_iniciados", v)}
+                    ayuda="Cuántos llegaron a la pantalla de pago, hayan comprado o no."
+                  />
+                  <CampoNumero
+                    label="Carritos abandonados en el mes"
+                    value={datos.carritos_abandonados}
+                    onChange={(v) => set("carritos_abandonados", v)}
+                    ayuda="Tiendanube, sección Carritos abandonados. Es referencia: la oportunidad se calcula con el embudo."
+                  />
+
+                  <CampoSiNo
+                    label="¿Tiene recuperación de carrito?"
+                    value={datos.recuperacion_carrito}
+                    onChange={(v) => set("recuperacion_carrito", v)}
+                  />
+                  <CampoSiNo
+                    label="¿Hace retargeting a los que abandonaron?"
+                    value={datos.retargeting_abandono}
+                    onChange={(v) => set("retargeting_abandono", v)}
+                  />
+                </div>
+                {funnelForm.estado === "error" && funnelForm.error && (
+                  <p className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-[13px] text-destructive">
+                    {funnelForm.error}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {bloque === "contenido" && (
+              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                <CampoTexto
+                  label="¿Cada cuánto sube creativos nuevos?"
+                  value={datos.frecuencia_creativos}
+                  onChange={(v) => set("frecuencia_creativos", v)}
+                />
+                <CampoTexto
+                  label="¿Qué formato usa?"
+                  value={datos.formato_creativos}
+                  onChange={(v) => set("formato_creativos", v)}
+                />
+                <CampoTexto
+                  label="¿Tiene identificado qué ángulo funciona mejor?"
+                  value={datos.angulo_que_funciona}
+                  onChange={(v) => set("angulo_que_funciona", v)}
+                />
+                <CampoTexto
+                  label="¿Sabe cuál es el dolor principal de su cliente?"
+                  value={datos.dolor_cliente}
+                  onChange={(v) => set("dolor_cliente", v)}
+                />
+                <CampoSiNo
+                  label="¿Le llegan consultas o ventas por contenido orgánico?"
+                  value={datos.consultas_por_organico}
+                  onChange={(v) => set("consultas_por_organico", v)}
+                />
+              </div>
+            )}
+
+            {bloque === "mercado_libre" && (
+              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                <CampoPorcentaje
+                  label="Porcentaje de la facturación"
+                  value={datos.ml_pct_facturacion}
+                  onChange={(v) => set("ml_pct_facturacion", v)}
+                />
+                <CampoNumero
+                  label="Productos publicados"
+                  value={datos.ml_productos_publicados}
+                  onChange={(v) => set("ml_productos_publicados", v)}
+                />
+                <CampoSiNo
+                  label="¿Hace Product Ads?"
+                  value={datos.ml_product_ads}
+                  onChange={(v) => set("ml_product_ads", v)}
+                />
+                <CampoPesos
+                  label="Inversión mensual en Product Ads"
+                  value={datos.ml_inversion_product_ads}
+                  onChange={(v) => set("ml_inversion_product_ads", v)}
+                  ayuda="Cero significa que declaró que no invierte. Vacío significa que no sabemos."
+                />
+                <CampoPesos
+                  label="Ventas atribuidas a Product Ads"
+                  value={datos.ml_ventas_product_ads ?? null}
+                  onChange={(v) => set("ml_ventas_product_ads", v)}
+                  ayuda="Opcional. Habilita el ROAS de Product Ads; el MER del canal se calcula igual sin este dato."
+                />
+              </div>
+            )}
+
+            <div className="mt-8 border-t border-border pt-6">
+              <label
+                htmlFor={`notas-${bloque}`}
+                className="text-[14px] font-medium text-foreground/85"
+              >
+                Notas de esta pestaña
+              </label>
+              <Textarea
+                id={`notas-${bloque}`}
+                rows={3}
+                maxLength={2000}
+                placeholder="Anotá rápido lo que dice el cliente."
+                className="mt-2 resize-y text-[14px]"
+                value={notas[bloque] ?? ""}
+                onChange={(e) => setNotas((prev) => ({ ...prev, [bloque]: e.target.value }))}
+              />
             </div>
-          )}
-
-
-          {bloque === "contenido" && (
-            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
-              <CampoTexto
-                label="¿Cada cuánto sube creativos nuevos?"
-                value={datos.frecuencia_creativos}
-                onChange={(v) => set("frecuencia_creativos", v)}
-              />
-              <CampoTexto
-                label="¿Qué formato usa?"
-                value={datos.formato_creativos}
-                onChange={(v) => set("formato_creativos", v)}
-              />
-              <CampoTexto
-                label="¿Tiene identificado qué ángulo funciona mejor?"
-                value={datos.angulo_que_funciona}
-                onChange={(v) => set("angulo_que_funciona", v)}
-              />
-              <CampoTexto
-                label="¿Sabe cuál es el dolor principal de su cliente?"
-                value={datos.dolor_cliente}
-                onChange={(v) => set("dolor_cliente", v)}
-              />
-              <CampoSiNo
-                label="¿Le llegan consultas o ventas por contenido orgánico?"
-                value={datos.consultas_por_organico}
-                onChange={(v) => set("consultas_por_organico", v)}
-              />
-            </div>
-          )}
-
-          {bloque === "mercado_libre" && (
-            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
-              <CampoPorcentaje
-                label="Porcentaje de la facturación"
-                value={datos.ml_pct_facturacion}
-                onChange={(v) => set("ml_pct_facturacion", v)}
-              />
-              <CampoNumero
-                label="Productos publicados"
-                value={datos.ml_productos_publicados}
-                onChange={(v) => set("ml_productos_publicados", v)}
-              />
-              <CampoSiNo
-                label="¿Hace Product Ads?"
-                value={datos.ml_product_ads}
-                onChange={(v) => set("ml_product_ads", v)}
-              />
-              <CampoPesos
-                label="Inversión mensual en Product Ads"
-                value={datos.ml_inversion_product_ads}
-                onChange={(v) => set("ml_inversion_product_ads", v)}
-                ayuda="Cero significa que declaró que no invierte. Vacío significa que no sabemos."
-              />
-              <CampoPesos
-                label="Ventas atribuidas a Product Ads"
-                value={datos.ml_ventas_product_ads ?? null}
-                onChange={(v) => set("ml_ventas_product_ads", v)}
-                ayuda="Opcional. Habilita el ROAS de Product Ads; el MER del canal se calcula igual sin este dato."
-              />
-            </div>
-          )}
-
-          <div className="mt-8 border-t border-border pt-6">
-            <label
-              htmlFor={`notas-${bloque}`}
-              className="text-[14px] font-medium text-foreground/85"
-            >
-              Notas de esta pestaña
-            </label>
-            <Textarea
-              id={`notas-${bloque}`}
-              rows={3}
-              maxLength={2000}
-              placeholder="Anotá rápido lo que dice el cliente."
-              className="mt-2 resize-y text-[14px]"
-              value={notas[bloque] ?? ""}
-              onChange={(e) => setNotas((prev) => ({ ...prev, [bloque]: e.target.value }))}
-            />
           </div>
-        </div>
 
-        <div className="mt-6 flex max-w-4xl flex-wrap items-center justify-between gap-3">
-          <Button
-            type="button"
-            size="lg"
-            variant="outline"
-            className="h-12 min-w-40 text-[15px]"
-            disabled={!bloqueAnterior}
-            onClick={() => bloqueAnterior && setBloque(bloqueAnterior.id)}
-          >
-            {bloqueAnterior ? `Anterior · ${bloqueAnterior.label}` : "Anterior"}
-          </Button>
-
-          {bloqueSiguiente ? (
+          <div className="mt-6 flex max-w-4xl flex-wrap items-center justify-between gap-3">
             <Button
               type="button"
               size="lg"
+              variant="outline"
               className="h-12 min-w-40 text-[15px]"
-              onClick={() => setBloque(bloqueSiguiente.id)}
+              disabled={!bloqueAnterior}
+              onClick={() => bloqueAnterior && setBloque(bloqueAnterior.id)}
             >
-              Siguiente · {bloqueSiguiente.label}
+              {bloqueAnterior ? `Anterior · ${bloqueAnterior.label}` : "Anterior"}
             </Button>
-          ) : (
-            <Button
-              type="button"
-              size="lg"
-              className="h-12 min-w-40 text-[15px]"
-              disabled={guardando}
-              onClick={() => void guardar()}
-            >
-              {guardando
-                ? "Guardando…"
-                : origen
-                  ? "Guardar versión nueva"
-                  : "Guardar diagnóstico"}
-            </Button>
+
+            {bloqueSiguiente ? (
+              <Button
+                type="button"
+                size="lg"
+                className="h-12 min-w-40 text-[15px]"
+                onClick={() => setBloque(bloqueSiguiente.id)}
+              >
+                Siguiente · {bloqueSiguiente.label}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="lg"
+                className="h-12 min-w-40 text-[15px]"
+                disabled={guardando}
+                onClick={() => void guardar()}
+              >
+                {guardando
+                  ? "Guardando…"
+                  : origen
+                    ? "Guardar versión nueva"
+                    : "Guardar diagnóstico"}
+              </Button>
+            )}
+          </div>
+
+          {error && (
+            <p className="mt-4 max-w-4xl text-[14px] text-destructive" role="alert">
+              {error}
+            </p>
           )}
-        </div>
-
-        {error && (
-          <p className="mt-4 max-w-4xl text-[14px] text-destructive" role="alert">
-            {error}
-          </p>
-        )}
         </div>
       </div>
     </>
-
   );
 }

@@ -700,6 +700,47 @@ describe("componente de envío por pedido", () => {
     expect(r.derivados.margenes_producto[0]).toBeCloseTo(0.4344, 4);
   });
 
+  it("si el vendedor no absorbe el envío, se ignoran montos viejos y el margen lo excluye", () => {
+    const r = calcularDiagnostico(
+      {
+        ...titan,
+        absorbe_costo_envio: false,
+        costo_envio_promedio: 9000,
+        envio_bruto: 12000,
+        envio_cobrado_comprador: 3000,
+      },
+      cfg,
+    );
+    expect(r.derivados.envio_neto_vendedor).toBe(0);
+    expect(r.derivados.componente_envio).toBe(0);
+    expect(r.derivados.margenes_producto[0]).toBeCloseTo(0.4344, 4);
+    expect(faltaEnvioCobrado({ ...titan, absorbe_costo_envio: false, envio_bruto: 9000 })).toBe(
+      false,
+    );
+  });
+
+  it("si confirma que absorbe envío pero no carga monto, el margen queda sin calcular", () => {
+    const r = calcularDiagnostico(
+      {
+        ...titan,
+        absorbe_costo_envio: true,
+        costo_envio_promedio: null,
+        envio_bruto: null,
+        envio_cobrado_comprador: null,
+      },
+      cfg,
+    );
+    expect(r.derivados.envio_neto_vendedor).toBeNull();
+    expect(r.derivados.margen_contribucion).toBeNull();
+  });
+
+  it("un diagnóstico anterior sin la pregunta nueva conserva el monto legado", () => {
+    const legado = { ...titan };
+    delete (legado as Record<string, unknown>)["absorbe_costo_envio"];
+    expect(envioNetoVendedor(legado)).toBe(9000);
+    expect(calcularDiagnostico(legado, cfg).derivados.margen_contribucion).toBe(0.0642);
+  });
+
   it("envío ausente: margen en null y el campo entre los faltantes", () => {
     const r = calcularDiagnostico(
       {

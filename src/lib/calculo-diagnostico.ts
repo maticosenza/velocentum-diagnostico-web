@@ -26,19 +26,20 @@ import {
   type ComisionMarketplace,
   type EstadoCanal,
 } from "./canales";
-import {
-  evaluarContradiccion,
-  rangoDeclarado,
-  type Contradiccion,
-} from "./contradiccion";
-import {
-  evaluarFunnel,
-  tramosFunnel,
-  MEJORAS_FUNNEL_DEFECTO,
-  type FunnelDerivado,
-} from "./funnel";
+import { evaluarContradiccion, rangoDeclarado, type Contradiccion } from "./contradiccion";
+import { evaluarFunnel, tramosFunnel, MEJORAS_FUNNEL_DEFECTO, type FunnelDerivado } from "./funnel";
 
-export { comisionEnEscalaSospechosa, COMISIONES_MARKETPLACE_DEFECTO, claveComisionPlataforma, comisionPlataformaDe, canalesSuperan100, coberturaCanales, canalPrincipal, estadoCanal, comisionEfectivaCanal };
+export {
+  comisionEnEscalaSospechosa,
+  COMISIONES_MARKETPLACE_DEFECTO,
+  claveComisionPlataforma,
+  comisionPlataformaDe,
+  canalesSuperan100,
+  coberturaCanales,
+  canalPrincipal,
+  estadoCanal,
+  comisionEfectivaCanal,
+};
 export type { CanalId } from "./canales";
 export { evaluarFunnel, tramosFunnel, MEJORAS_FUNNEL_DEFECTO };
 export { evaluarContradiccion, rangoDeclarado };
@@ -73,7 +74,6 @@ export type ConfiguracionCalculo = {
   umbral_contradiccion_critico?: number;
   umbral_contradiccion_validacion?: number;
 };
-
 
 /** Arma el objeto de configuración a partir de las filas crudas de la tabla. */
 export function armarConfiguracion(
@@ -135,7 +135,6 @@ export type Derivados = {
   funnel: FunnelDerivado;
 };
 
-
 export type Fuga = {
   id: string;
   etiqueta: string;
@@ -151,7 +150,6 @@ export type Fuga = {
   /** true cuando el monto depende del margen de contribución. */
   usa_margen?: boolean;
 };
-
 
 export type EstadosBloque = {
   medicion: EstadoBloque;
@@ -239,8 +237,6 @@ export function lecturaPresupuesto(d: Derivados): string | null {
   return "El presupuesto alcanza el piso que necesita un conjunto para aprender. El problema no es de plata, es de estructura de cuenta o de creativo.";
 }
 
-
-
 // ---------------------------------------------------------------- productos
 
 export type ProductoCargado = {
@@ -254,9 +250,27 @@ export type ProductoCargado = {
 /** Devuelve los productos que tienen costo y precio válidos cargados. */
 export function productosCargados(d: DatosDiagnostico) {
   const crudos = [
-    { indice: 1, nombre: d.producto_1_nombre, costo: d.producto_1_costo, precio: d.producto_1_precio, pct: d.producto_1_pct_facturacion },
-    { indice: 2, nombre: d.producto_2_nombre, costo: d.producto_2_costo, precio: d.producto_2_precio, pct: d.producto_2_pct_facturacion },
-    { indice: 3, nombre: d.producto_3_nombre, costo: d.producto_3_costo, precio: d.producto_3_precio, pct: d.producto_3_pct_facturacion },
+    {
+      indice: 1,
+      nombre: d.producto_1_nombre,
+      costo: d.producto_1_costo,
+      precio: d.producto_1_precio,
+      pct: d.producto_1_pct_facturacion,
+    },
+    {
+      indice: 2,
+      nombre: d.producto_2_nombre,
+      costo: d.producto_2_costo,
+      precio: d.producto_2_precio,
+      pct: d.producto_2_pct_facturacion,
+    },
+    {
+      indice: 3,
+      nombre: d.producto_3_nombre,
+      costo: d.producto_3_costo,
+      precio: d.producto_3_precio,
+      pct: d.producto_3_pct_facturacion,
+    },
   ];
   return crudos.filter((p) => finito(p.costo) && finito(p.precio) && (p.precio as number) > 0) as {
     indice: number;
@@ -274,6 +288,7 @@ export function productosCargados(d: DatosDiagnostico) {
  * El campo legado `costo_envio_promedio` se interpreta como neto.
  */
 export function envioNetoVendedor(d: DatosDiagnostico): number | null {
+  if (d.absorbe_costo_envio === false) return 0;
   const bruto = finito(d.envio_bruto) ? d.envio_bruto : null;
   const cobrado = finito(d.envio_cobrado_comprador) ? d.envio_cobrado_comprador : null;
   if (bruto !== null) {
@@ -288,6 +303,7 @@ export function envioNetoVendedor(d: DatosDiagnostico): number | null {
 
 /** true cuando hay bruto cargado pero falta el importe que paga el comprador. */
 export function faltaEnvioCobrado(d: DatosDiagnostico): boolean {
+  if (d.absorbe_costo_envio === false) return false;
   return finito(d.envio_bruto) && !finito(d.envio_cobrado_comprador);
 }
 
@@ -397,8 +413,6 @@ export function faltantesMargen(d: DatosDiagnostico): string[] {
   return faltan;
 }
 
-
-
 // ---------------------------------------------------------------- inversión publicitaria
 
 /**
@@ -415,8 +429,10 @@ export function inversionProductAds(d: DatosDiagnostico): number | null {
 /** Inversión en pauta de tienda propia: Meta más Google. */
 export function inversionMetaGoogle(d: DatosDiagnostico): number | null {
   if (!finito(d.inversion_meta) && !finito(d.inversion_google)) return null;
-  return (finito(d.inversion_meta) ? d.inversion_meta : 0) +
-    (finito(d.inversion_google) ? d.inversion_google : 0);
+  return (
+    (finito(d.inversion_meta) ? d.inversion_meta : 0) +
+    (finito(d.inversion_google) ? d.inversion_google : 0)
+  );
 }
 
 /**
@@ -536,7 +552,10 @@ function margenDeCanal(
   const ticket =
     numeroCanal(d, canal, "ticket") ??
     (finito(d.ticket_promedio) && d.ticket_promedio > 0 ? d.ticket_promedio : null);
-  const envioNeto = numeroCanal(d, canal, "envio_neto") ?? envioNetoVendedor(d);
+  const envioNeto =
+    d.absorbe_costo_envio === false
+      ? 0
+      : (numeroCanal(d, canal, "envio_neto") ?? envioNetoVendedor(d));
   const facturacion = facturacionCanal(d, canal);
   const inversion = inversionCanal(d, canal);
 
@@ -558,7 +577,13 @@ function margenDeCanal(
     "financiacion_pct_ventas",
     "financiacion_costo_pct",
   );
-  const desc = componenteCanal(d, canal, costoDescuento(d), "descuento_pct_ventas", "descuento_pct");
+  const desc = componenteCanal(
+    d,
+    canal,
+    costoDescuento(d),
+    "descuento_pct_ventas",
+    "descuento_pct",
+  );
   faltan.push(...fin.faltan, ...desc.faltan);
   if (participacionesIncompatibles(d)) {
     for (const c of ["financiacion_pct_ventas", "descuento_pct_ventas"]) {
@@ -636,8 +661,7 @@ function margenDeCanal(
   // resta una sola vez, acá: NO entra en el margen de contribución.
   const contribucionAntes =
     facturacion !== null && margenExacto !== null ? facturacion * margenExacto : null;
-  const resultadoDespues =
-    contribucionAntes !== null ? contribucionAntes - (inversion ?? 0) : null;
+  const resultadoDespues = contribucionAntes !== null ? contribucionAntes - (inversion ?? 0) : null;
 
   // ROAS de la pauta: sólo lo atribuido. Sin ventas atribuidas queda sin datos,
   // aunque el MER del canal sí se calcule.
@@ -703,7 +727,6 @@ export function calcularDiagnostico(
     delta = Math.abs(d.facturacion_pixel - d.facturacion_mensual) / d.facturacion_mensual;
   }
 
-
   // --- Margen por canal. Cada canal se calcula con sus propias comisiones,
   // su propio ticket y su propio envío: no hay contaminación entre canales.
   const cargados = productosCargados(d);
@@ -730,7 +753,8 @@ export function calcularDiagnostico(
     const todosCalculables = contribuyentes.every((c) => c.canal.margen_exacto !== null);
     if (todosCalculables && contribuyentes.length > 0) {
       let acumulado = 0;
-      for (const c of contribuyentes) acumulado += (c.canal.margen_exacto as number) * (c.pct / 100);
+      for (const c of contribuyentes)
+        acumulado += (c.canal.margen_exacto as number) * (c.pct / 100);
       // Margen de la muestra: sobre la cobertura conocida, sin reescalar el mix.
       margenMuestra = finito(acumulado) ? acumulado / (cobertura / 100) : null;
       // El margen total sólo existe si el mix cubre el 100% de la facturación.
@@ -755,7 +779,9 @@ export function calcularDiagnostico(
 
   const breakevenRoas = margenPositivo !== null ? 1 / margenPositivo : null;
   const cpaBreakeven =
-    margenPositivo !== null && finito(d.ticket_promedio) ? d.ticket_promedio * margenPositivo : null;
+    margenPositivo !== null && finito(d.ticket_promedio)
+      ? d.ticket_promedio * margenPositivo
+      : null;
 
   const reserva = finito(cfg.reserva_default) ? (cfg.reserva_default as number) : null;
   const cpaObjetivo =
@@ -784,7 +810,8 @@ export function calcularDiagnostico(
 
   // MER por perímetro. Nunca se cruza la facturación de un canal con la
   // inversión del otro.
-  const facturacionTienda = facturacionCanal(d, "tienda_propia") ??
+  const facturacionTienda =
+    facturacionCanal(d, "tienda_propia") ??
     (!hayCanales && finito(d.facturacion_mensual) ? d.facturacion_mensual : null);
   const facturacionML = facturacionCanal(d, "mercado_libre");
   const merTienda =
@@ -891,7 +918,6 @@ export function calcularDiagnostico(
     funnel,
   };
 
-
   // --- Estados por bloque
   const uDelta = cfg.delta_medicion;
   const estadoMedicion: EstadoBloque =
@@ -970,16 +996,15 @@ export function calcularDiagnostico(
     });
   }
 
-
   // Gasto no rentable: sin inversión publicitaria la fuga no existe (ni como no calculable).
   if (inversionAds !== null && inversionAds > 0) {
     const faltan: string[] = [];
-    if (!finito(d.facturacion_mensual) || d.facturacion_mensual <= 0) faltan.push("facturacion_mensual");
+    if (!finito(d.facturacion_mensual) || d.facturacion_mensual <= 0)
+      faltan.push("facturacion_mensual");
     if (breakevenRoas === null) faltan.push("margen_contribucion");
     if (faltan.length > 0 || mer === null) {
       if (mer === null && faltan.length === 0) faltan.push("facturacion_mensual");
       fugas.push({
-
         id: "gasto_no_rentable",
         etiqueta: "Fuga por gasto no rentable",
         tipo: "monto",
@@ -1040,7 +1065,6 @@ export function calcularDiagnostico(
   // carrito de la cascada: no pueden coexistir sin contar dos veces a la misma
   // gente.
 
-
   // Medición: hallazgo de riesgo, nunca valorizado en pesos
   if (estadoMedicion === "rojo") {
     fugas.push({
@@ -1050,7 +1074,8 @@ export function calcularDiagnostico(
       monto: null,
       calculable: true,
       faltantes: [],
-      detalle: "El desvío entre la facturación real y el Pixel invalida cualquier valorización en pesos.",
+      detalle:
+        "El desvío entre la facturación real y el Pixel invalida cualquier valorización en pesos.",
     });
   }
 
@@ -1073,7 +1098,8 @@ export function calcularDiagnostico(
   // --- Red de seguridad: ninguna fuga puede salirse del rango razonable
   const DETALLE_SOSPECHOSA =
     "El cálculo superó el rango razonable para la facturación de la tienda. El umbral usado puede no aplicar a este tipo de negocio: el monto quedó topeado.";
-  const facturacion = finito(d.facturacion_mensual) && d.facturacion_mensual > 0 ? d.facturacion_mensual : null;
+  const facturacion =
+    finito(d.facturacion_mensual) && d.facturacion_mensual > 0 ? d.facturacion_mensual : null;
   const topeInd = finito(cfg.tope_fuga_individual) ? (cfg.tope_fuga_individual as number) : null;
   const topeTot = finito(cfg.tope_fuga_total) ? (cfg.tope_fuga_total as number) : null;
 
@@ -1107,7 +1133,6 @@ export function calcularDiagnostico(
       0,
     );
   }
-
 
   return {
     derivados,

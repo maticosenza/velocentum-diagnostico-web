@@ -97,9 +97,7 @@ export const RELACIONES_FIN_DESC = [
   { value: "superpuestos", label: "Sí, se pueden combinar" },
 ] as const;
 
-
 export type DatosDiagnostico = {
-
   // Identificación (compartido)
   nombre_tienda: string;
   vertical: string;
@@ -130,6 +128,13 @@ export type DatosDiagnostico = {
   envio_bruto: number | null;
   /** Cuánto del envío paga el comprador. */
   envio_cobrado_comprador: number | null;
+  /**
+   * true: el vendedor absorbe costo y debe cuantificarse;
+   * false: no absorbe costo y el envío se excluye del cálculo/documentos;
+   * null/ausente: todavía no fue confirmado. Los diagnósticos viejos con un
+   * monto de envío conservan su cálculo por compatibilidad.
+   */
+  absorbe_costo_envio?: boolean | null;
   pasarela: string;
   /** % de las ventas que se paga en cuotas. */
   financiacion_pct_ventas: number | null;
@@ -260,6 +265,7 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   costo_envio_promedio: null,
   envio_bruto: null,
   envio_cobrado_comprador: null,
+  absorbe_costo_envio: null,
   pasarela: "",
   financiacion_pct_ventas: null,
   financiacion_costo_pct: null,
@@ -269,7 +275,6 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   margen_declarado_min: null,
   margen_declarado_max: null,
   margen_declarado_confirmado: false,
-
 
   inversion_meta: null,
   inversion_google: null,
@@ -366,7 +371,7 @@ const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
   economia: [
     "facturacion_mensual",
     "ticket_promedio",
-    "costo_envio_promedio",
+    "absorbe_costo_envio",
     "pasarela",
     "inversion_meta",
     "inversion_google",
@@ -416,7 +421,9 @@ export function camposPorBloque(modo: Modo, bloque: BloqueId): (keyof DatosDiagn
       : [...nombres, "producto_1_costo", "producto_1_precio"];
   }
   if (bloque === "cuenta") {
-    return modo === "A" ? ["conjuntos_activos", "presupuesto_diario"] : ["gasto_diario", "cantidad_campanas"];
+    return modo === "A"
+      ? ["conjuntos_activos", "presupuesto_diario"]
+      : ["gasto_diario", "cantidad_campanas"];
   }
   if (bloque === "web")
     return modo === "A"
@@ -454,7 +461,6 @@ export const CAMPOS_EXCLUSIVOS: Record<Modo, (keyof DatosDiagnostico)[]> = {
     "csv_dias_periodo",
   ],
   B: ["tiene_analytics", "numeros_meta_coinciden", "gasto_diario", "cantidad_campanas"],
-
 };
 
 export const CLAVE_BORRADOR = "velocentum:borrador-diagnostico";
