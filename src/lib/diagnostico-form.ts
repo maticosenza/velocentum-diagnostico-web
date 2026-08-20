@@ -172,10 +172,16 @@ export const DATOS_INICIALES: DatosDiagnostico = {
 
   facturacion_mensual: null,
   ticket_promedio: null,
+  base_montos: "bruto",
   costo_envio_promedio: null,
   envio_bruto: null,
   envio_cobrado_comprador: null,
   pasarela: "",
+  financiacion_pct_ventas: null,
+  financiacion_costo_pct: null,
+  descuento_pct_ventas: null,
+  descuento_pct: null,
+
   inversion_meta: null,
   inversion_google: null,
   producto_1_nombre: "",
