@@ -6,6 +6,7 @@ import {
   faltantesMargen,
   participacionesSuperan100,
   participacionesIncompatibles,
+  canalesSuperan100,
   montosNetosDeDescuento,
   montosNetosDeFinanciacion,
 
@@ -976,5 +977,247 @@ describe("costo de financiación y descuentos", () => {
     );
     expect(Number.isFinite(r.derivados.margen_contribucion!)).toBe(true);
     expect(r.derivados.breakeven_roas).toBeNull();
+  });
+});
+
+// ---------------------------------------------------- entrega 2.3 · mix de canales
+// Cada canal tiene sus propias comisiones. Un mix incompleto no se reescala.
+
+describe("mix de canales y comisiones", () => {
+  const ML_BENCHMARK = {
+    comision: 0.1694,
+    marketplace: "mercado_libre",
+    tipo_publicacion: "clasica",
+    vigencia_desde: "2026-01-01",
+    pais: "AR",
+    origen: "benchmark_provisional",
+    provisional: true,
+  };
+
+  /** Config con la comisión de marketplace, sin cargo fijo. */
+  const cfgCanales: ConfiguracionCalculo = {
+    ...cfg,
+    comision_marketplace: { mercado_libre: ML_BENCHMARK },
+  };
+
+  /** Misma config, con el cargo fijo provisional de Mercado Libre. */
+  const cfgCargoFijo: ConfiguracionCalculo = {
+    ...cfg,
+    comision_marketplace: {
+      mercado_libre: { ...ML_BENCHMARK, cargo_fijo: 1095, cargo_fijo_hasta: 33000 },
+    },
+  };
+
+  const snake: DatosDiagnostico = {
+    ...DATOS_INICIALES,
+    nombre_tienda: "Snake Store",
+    plataforma: "tiendanube",
+    plan_plataforma: "inicial",
+    pasarela: "mercado_pago",
+    ticket_promedio: 225226,
+    costo_envio_promedio: 11000,
+    producto_1_nombre: "Campera Puffer",
+    producto_1_costo: 40000,
+    producto_1_precio: 180000,
+    producto_1_pct_facturacion: 30,
+    producto_2_nombre: "Chaleco Tiffany",
+    producto_2_costo: 35000,
+    producto_2_precio: 125000,
+    producto_2_pct_facturacion: 20,
+    producto_3_nombre: "Calza Street",
+    producto_3_costo: 20000,
+    producto_3_precio: 85000,
+    producto_3_pct_facturacion: 10,
+    canal_tienda_pct: 100,
+    canal_ml_no_aplica: true,
+  };
+
+  const titan: DatosDiagnostico = {
+    ...DATOS_INICIALES,
+    nombre_tienda: "Titan Web",
+    plataforma: "tiendanube",
+    plan_plataforma: "esencial",
+    pasarela: "mercado_pago",
+    ticket_promedio: 25000,
+    costo_envio_promedio: 9000,
+    producto_1_nombre: "Bolsa tostado",
+    producto_1_costo: 5890,
+    producto_1_precio: 11650,
+    producto_1_pct_facturacion: 20,
+    producto_2_nombre: "Molde pan lactal",
+    producto_2_costo: 17330,
+    producto_2_precio: 32990,
+    producto_2_pct_facturacion: 20,
+    producto_3_nombre: "Cintura extensible",
+    producto_3_costo: 15700,
+    producto_3_precio: 30390,
+    producto_3_pct_facturacion: 20,
+    canal_ml_pct: 100,
+    canal_tienda_no_aplica: true,
+  };
+
+  /** S3: un solo producto al 45% de costo, envío 8% del ticket en los dos canales. */
+  const s3: DatosDiagnostico = {
+    ...DATOS_INICIALES,
+    nombre_tienda: "Mix S3",
+    plataforma: "tiendanube",
+    plan_plataforma: "esencial",
+    pasarela: "mercado_pago",
+    ticket_promedio: 50000,
+    costo_envio_promedio: 4000,
+    producto_1_nombre: "Producto único",
+    producto_1_costo: 45000,
+    producto_1_precio: 100000,
+    producto_1_pct_facturacion: 100,
+    canal_tienda_pct: 60,
+    canal_ml_pct: 40,
+  };
+
+  const canalDe = (r: ReturnType<typeof calcularDiagnostico>, id: string) =>
+    r.derivados.canales.find((c) => c.id === id)!;
+
+  it("caso A · Snake Store: 100% tienda propia, comisiones de Tiendanube y Mercado Pago", () => {
+    const r = calcularDiagnostico(snake, cfgCanales);
+    expect(r.derivados.margen_muestra).toBe(0.6375);
+    expect(r.derivados.margen_contribucion).toBe(0.6375);
+    expect(r.derivados.breakeven_roas).toBe(1.5686);
+    expect(r.derivados.canal_principal).toBe("tienda_propia");
+    expect(r.derivados.cobertura_canales).toBe(100);
+    expect(canalDe(r, "tienda_propia").comision_efectiva).toBe(0.07);
+  });
+
+  it("caso B1 · Titan Web: 100% Mercado Libre, sin comisiones de tienda propia", () => {
+    const r = calcularDiagnostico(titan, cfgCanales);
+    const ml = canalDe(r, "mercado_libre");
+    expect(ml.comision_efectiva).toBe(0.1694);
+    expect(ml.componente_envio).toBe(0.36);
+    expect(ml.margenes_producto).toEqual([-0.035, -0.0547, -0.046]);
+    expect(r.derivados.margen_muestra).toBe(-0.0452);
+    expect(r.derivados.margen_contribucion).toBe(-0.0452);
+    expect(r.derivados.canal_principal).toBe("mercado_libre");
+    expect(r.derivados.comision_plataforma).toBeNull();
+    expect(r.derivados.comision_pasarela).toBeNull();
+    expect(canalDe(r, "tienda_propia").estado).toBe("no_aplica");
+  });
+
+  it("S3 · mix 60/40: cada canal con su margen y el total ponderado", () => {
+    const r = calcularDiagnostico(s3, cfgCanales);
+    expect(canalDe(r, "tienda_propia").margen).toBe(0.41);
+    expect(canalDe(r, "mercado_libre").margen).toBe(0.3006);
+    expect(r.derivados.margen_contribucion).toBe(0.3662);
+    expect(r.derivados.margen_muestra).toBe(0.3662);
+    expect(r.derivados.cobertura_canales).toBe(100);
+    expect(r.derivados.canal_principal).toBe("tienda_propia");
+  });
+
+  it("mix incompleto 60/30: cobertura 90, margen de la muestra y total sin datos", () => {
+    const r = calcularDiagnostico({ ...s3, canal_ml_pct: 30 }, cfgCanales);
+    expect(r.derivados.cobertura_canales).toBe(90);
+    expect(r.derivados.margen_muestra).toBe(0.3735);
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(r.estados_bloque.economia).toBe("sin_datos");
+  });
+
+  it("suma mayor a 100: se bloquea el cálculo y los campos entran en faltantes", () => {
+    const datos = { ...s3, canal_tienda_pct: 60, canal_ml_pct: 60 };
+    const r = calcularDiagnostico(datos, cfgCanales);
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(r.derivados.margen_muestra).toBeNull();
+    expect(faltantesMargen(datos)).toContain("canal_tienda_pct");
+    expect(faltantesMargen(datos)).toContain("canal_ml_pct");
+    expect(canalesSuperan100(datos)).toBe(true);
+  });
+
+  it("los dos canales en 0%: existen, no facturan y no hay margen que ponderar", () => {
+    const r = calcularDiagnostico({ ...s3, canal_tienda_pct: 0, canal_ml_pct: 0 }, cfgCanales);
+    expect(r.derivados.cobertura_canales).toBe(0);
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(r.derivados.canal_principal).toBeNull();
+  });
+
+  it("un canal en no_aplica no baja la cobertura", () => {
+    const r = calcularDiagnostico(
+      { ...s3, canal_tienda_pct: 100, canal_ml_pct: null, canal_ml_no_aplica: true },
+      cfgCanales,
+    );
+    expect(r.derivados.cobertura_canales).toBe(100);
+    expect(canalDe(r, "mercado_libre").estado).toBe("no_aplica");
+    expect(r.derivados.margen_contribucion).toBe(0.41);
+  });
+
+  it("canal ausente: no sabemos si vende ahí y la cobertura baja", () => {
+    const r = calcularDiagnostico({ ...s3, canal_ml_pct: null }, cfgCanales);
+    expect(canalDe(r, "mercado_libre").estado).toBe("ausente");
+    expect(r.derivados.cobertura_canales).toBe(60);
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(r.derivados.margen_muestra).toBe(0.41);
+  });
+
+  it("comisión de marketplace ausente en configuración: el canal no calcula", () => {
+    const r = calcularDiagnostico(titan, cfg);
+    const ml = canalDe(r, "mercado_libre");
+    expect(ml.comision_efectiva).toBeNull();
+    expect(ml.faltantes).toContain("comision_marketplace");
+    expect(r.derivados.margen_contribucion).toBeNull();
+  });
+
+  it("cargo fijo: aplica por debajo del umbral y no aplica por encima", () => {
+    const bajo = calcularDiagnostico({ ...titan, canal_ml_ticket: 20000 }, cfgCargoFijo);
+    expect(canalDe(bajo, "mercado_libre").comision_efectiva).toBe(0.2242);
+    expect(canalDe(bajo, "mercado_libre").cargo_fijo_aplicado).toBe(true);
+    const alto = calcularDiagnostico({ ...titan, canal_ml_ticket: 40000 }, cfgCargoFijo);
+    expect(canalDe(alto, "mercado_libre").comision_efectiva).toBe(0.1694);
+    expect(canalDe(alto, "mercado_libre").cargo_fijo_aplicado).toBe(false);
+  });
+
+  it("empate exacto 50/50: el canal principal queda en null", () => {
+    const r = calcularDiagnostico({ ...s3, canal_tienda_pct: 50, canal_ml_pct: 50 }, cfgCanales);
+    expect(r.derivados.canal_principal).toBeNull();
+    expect(r.derivados.cobertura_canales).toBe(100);
+  });
+
+  it("la comisión verificada con el cliente le gana al benchmark", () => {
+    const r = calcularDiagnostico({ ...titan, canal_ml_comision_pct: 12 }, cfgCanales);
+    const ml = canalDe(r, "mercado_libre");
+    expect(ml.comision_efectiva).toBe(0.12);
+    expect(ml.comision_origen).toBe("verificado_cliente");
+    expect(canalDe(calcularDiagnostico(titan, cfgCanales), "mercado_libre").comision_origen).toBe(
+      "benchmark_provisional",
+    );
+  });
+
+  it("diagnóstico viejo con ml_pct_facturacion en 100: el mix es de Mercado Libre", () => {
+    const viejo = { ...titan, canal_ml_pct: null, canal_tienda_no_aplica: false, ml_pct_facturacion: 100 };
+    const r = calcularDiagnostico(viejo, cfgCanales);
+    expect(r.derivados.canal_principal).toBe("mercado_libre");
+    expect(r.derivados.cobertura_canales).toBe(100);
+    expect(canalDe(r, "tienda_propia").estado).toBe("ausente");
+  });
+
+  it("diagnóstico viejo con ml_pct_facturacion parcial: el resto queda sin declarar", () => {
+    const viejo = { ...titan, canal_ml_pct: null, canal_tienda_no_aplica: false, ml_pct_facturacion: 40 };
+    const r = calcularDiagnostico(viejo, cfgCanales);
+    expect(r.derivados.cobertura_canales).toBe(40);
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(canalDe(r, "tienda_propia").estado).toBe("ausente");
+  });
+
+  it("diagnóstico viejo sin ningún porcentaje: cobertura cero y cálculo de canal único", () => {
+    const viejo = { ...titan, canal_ml_pct: null, canal_tienda_no_aplica: false };
+    const r = calcularDiagnostico(viejo, cfgCanales);
+    expect(r.derivados.cobertura_canales).toBe(0);
+    expect(r.derivados.canal_principal).toBeNull();
+    expect(canalDe(r, "tienda_propia").estado).toBe("ausente");
+    expect(canalDe(r, "mercado_libre").estado).toBe("ausente");
+    // Se conserva el cálculo previo a la entrega 2.3: tienda propia con datos compartidos.
+    expect(r.derivados.margen_contribucion).toBe(0.0642);
+  });
+
+  it("sin contaminación: el funnel y las comisiones de tienda no tocan al marketplace", () => {
+    const r = calcularDiagnostico(titan, cfgCanales);
+    const ml = canalDe(r, "mercado_libre");
+    const tienda = canalDe(r, "tienda_propia");
+    expect(ml.comision_efectiva).not.toBe(tienda.comision_efectiva);
+    expect(ml.margen).not.toBe(tienda.margen);
   });
 });
