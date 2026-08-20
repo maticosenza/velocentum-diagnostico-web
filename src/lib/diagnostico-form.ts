@@ -359,6 +359,23 @@ export const BLOQUES = [
 
 export type BloqueId = (typeof BLOQUES)[number]["id"];
 
+/** Notas con contenido, ordenadas y etiquetadas igual que el formulario. */
+export function notasVisibles(notas: NotasDiagnostico | null | undefined) {
+  const etiquetas = new Map<string, string>(BLOQUES.map((bloque) => [bloque.id, bloque.label]));
+  return Object.entries(notas ?? {})
+    .map(([bloque, valor]) => ({
+      bloque,
+      etiqueta: etiquetas.get(bloque) ?? bloque.replace(/[_-]+/g, " "),
+      texto: typeof valor === "string" ? valor.trim() : "",
+    }))
+    .filter((nota) => nota.texto !== "")
+    .sort((a, b) => {
+      const ordenA = BLOQUES.findIndex((bloque) => bloque.id === a.bloque);
+      const ordenB = BLOQUES.findIndex((bloque) => bloque.id === b.bloque);
+      return (ordenA < 0 ? BLOQUES.length : ordenA) - (ordenB < 0 ? BLOQUES.length : ordenB);
+    });
+}
+
 const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
   identificacion: ["nombre_tienda", "vertical", "plataforma", "plan_plataforma"],
   medicion: [],

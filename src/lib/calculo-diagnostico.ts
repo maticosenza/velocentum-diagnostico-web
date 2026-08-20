@@ -88,6 +88,28 @@ export function armarConfiguracion(
 
 export type EstadoBloque = "verde" | "amarillo" | "rojo" | "sin_datos";
 
+const RESPUESTA_CONTENIDO_NEGATIVA =
+  /(^|\W)(0+(?:[.,]0+)?|no|nunca|ningun[oa]?|nada|sin|no s[eé]|no sabe|no tiene|no hay|sin definir)(\W|$)/i;
+
+/**
+ * Evalúa lo que dicen las respuestas de contenido, no cuántas celdas están completas.
+ * Un "0", "No" o "No sé" es evidencia negativa y nunca puede dejar el bloque verde.
+ */
+export function evaluarEstadoCreativos(d: DatosDiagnostico): EstadoBloque {
+  const respuestas = [
+    d.frecuencia_creativos,
+    d.formato_creativos,
+    d.angulo_que_funciona,
+    d.dolor_cliente,
+  ]
+    .map((valor) => (typeof valor === "string" ? valor.trim() : ""))
+    .filter((valor) => valor !== "");
+
+  if (respuestas.length === 0) return "sin_datos";
+  if (respuestas.some((valor) => RESPUESTA_CONTENIDO_NEGATIVA.test(valor))) return "rojo";
+  return respuestas.length === 4 ? "verde" : "amarillo";
+}
+
 export type Derivados = {
   delta_medicion: number | null;
   margen_contribucion: number | null;
@@ -927,15 +949,8 @@ export function calcularDiagnostico(
         ? porUmbral(crTienda, uCr, true)
         : "sin_datos";
 
-  // Contenido: cualitativo, no se semaforiza con umbrales numéricos.
-  const camposContenido = [
-    d.frecuencia_creativos,
-    d.formato_creativos,
-    d.angulo_que_funciona,
-    d.dolor_cliente,
-  ].filter((t) => typeof t === "string" && t.trim() !== "").length;
-  const estadoCreativos: EstadoBloque =
-    camposContenido === 0 ? "sin_datos" : camposContenido >= 3 ? "verde" : "amarillo";
+  // Contenido: cualitativo. Importa la respuesta, no la mera completitud.
+  const estadoCreativos = evaluarEstadoCreativos(d);
 
   const estados_bloque: EstadosBloque = {
     medicion: estadoMedicion,

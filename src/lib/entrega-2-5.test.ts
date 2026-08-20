@@ -238,8 +238,9 @@ describe("bloqueo por contradicción crítica", () => {
     const ids = hallazgos.map((h) => h.id);
     expect(ids).not.toContain("mer_bajo");
     expect(ids).not.toContain("cuotas");
-    expect(ids).toContain("clips_ml");
-    expect(ids).toContain("plan_plataforma");
+    // No se afirman clips ni un plan mal dimensionado sin datos que los prueben.
+    expect(ids).not.toContain("clips_ml");
+    expect(ids).not.toContain("plan_plataforma");
   });
 
   it("crítica sin confirmar: informa pero no bloquea", () => {
