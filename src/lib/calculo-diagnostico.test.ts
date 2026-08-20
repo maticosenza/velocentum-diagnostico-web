@@ -627,12 +627,15 @@ describe("componente de envío por pedido", () => {
     producto_1_nombre: "Campera Puffer",
     producto_1_costo: 40000,
     producto_1_precio: 180000,
+    producto_1_pct_facturacion: 30,
     producto_2_nombre: "Chaleco Tiffany",
     producto_2_costo: 35000,
     producto_2_precio: 125000,
+    producto_2_pct_facturacion: 20,
     producto_3_nombre: "Calza Street",
     producto_3_costo: 20000,
     producto_3_precio: 85000,
+    producto_3_pct_facturacion: 10,
   };
 
   const titan: DatosDiagnostico = {
@@ -646,18 +649,23 @@ describe("componente de envío por pedido", () => {
     producto_1_nombre: "Bolsa tostado",
     producto_1_costo: 5890,
     producto_1_precio: 11650,
+    producto_1_pct_facturacion: 20,
     producto_2_nombre: "Molde pan lactal",
     producto_2_costo: 17330,
     producto_2_precio: 32990,
+    producto_2_pct_facturacion: 20,
     producto_3_nombre: "Cintura extensible",
     producto_3_costo: 15700,
     producto_3_precio: 30390,
+    producto_3_pct_facturacion: 20,
   };
 
   it("caso A · Snake Store: componente único de envío y márgenes por producto", () => {
     const r = calcularDiagnostico(snake, cfg);
     expect(r.derivados.componente_envio).toBe(0.0488);
     expect(r.derivados.margenes_producto).toEqual([0.6589, 0.6012, 0.6459]);
+    expect(r.derivados.margen_contribucion).toBe(0.6375);
+    expect(r.derivados.breakeven_roas).toBe(1.5686);
   });
 
   it("caso B1 · Titan Web: el envío deja de comerse el precio unitario", () => {
