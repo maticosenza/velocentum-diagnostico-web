@@ -82,6 +82,8 @@ export type DatosDiagnostico = {
   // Economía (compartido)
   facturacion_mensual: number | null;
   ticket_promedio: number | null;
+  /** Indica si facturación y ticket vienen brutos o ya netos de descuentos. */
+  base_montos: BaseMontos;
   /** Legado: se interpreta como envío neto del vendedor. */
   costo_envio_promedio: number | null;
   /** Costo total del envío por pedido. */
@@ -89,8 +91,17 @@ export type DatosDiagnostico = {
   /** Cuánto del envío paga el comprador. */
   envio_cobrado_comprador: number | null;
   pasarela: string;
+  /** % de las ventas que se paga en cuotas. */
+  financiacion_pct_ventas: number | null;
+  /** Costo de esa financiación, como % del monto financiado. */
+  financiacion_costo_pct: number | null;
+  /** % de las ventas que usa descuento. */
+  descuento_pct_ventas: number | null;
+  /** Magnitud del descuento, como % del precio. */
+  descuento_pct: number | null;
   inversion_meta: number | null;
   inversion_google: number | null;
+
   // Productos (compartido; en modo B sólo el principal lleva costo y precio)
   producto_1_nombre: string;
   producto_1_costo: number | null;
