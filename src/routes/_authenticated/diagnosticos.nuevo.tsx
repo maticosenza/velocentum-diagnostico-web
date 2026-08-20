@@ -25,7 +25,7 @@ import { CargaCsvMeta } from "@/components/carga-csv-meta";
 import {
   BLOQUES,
   CAMPOS_EXCLUSIVOS,
-  BASES_MONTOS,
+  RELACIONES_FIN_DESC,
   CANTIDAD_CAMPANAS,
   CLAVE_BORRADOR,
   ESTADOS_CAPI,
