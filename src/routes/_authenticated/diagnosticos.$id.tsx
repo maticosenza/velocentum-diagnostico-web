@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatARS, formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
 import { PASARELAS, PLATAFORMAS, VERTICALES, type DatosDiagnostico } from "@/lib/diagnostico-form";
 import { lecturaPresupuesto } from "@/lib/calculo-diagnostico";
+import { cn } from "@/lib/utils";
 import { PropuestaSeccion } from "@/components/propuesta-seccion";
 import { normalizarPropuesta } from "@/lib/propuesta";
 import type {
@@ -208,6 +209,8 @@ function DetalleDiagnostico() {
         <Semaforo estados={estados} derivados={d} datos={datos} />
 
         <SeccionFugas fugas={fugas} />
+
+        <SeccionCanales derivados={d} />
 
         <div className="grid gap-8 lg:grid-cols-2">
           <EconomiaDetalle derivados={d} datos={datos} />
@@ -507,6 +510,110 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
       <p className="border-t border-border px-7 py-6 text-[15px] leading-6 text-foreground">
         {lectura ?? "Faltan datos de presupuesto para dar una lectura."}
       </p>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- canales
+
+const NOMBRE_CANAL: Record<string, string> = {
+  tienda_propia: "Tienda propia",
+  mercado_libre: "Mercado Libre",
+};
+
+function origenLegible(origen: string | null) {
+  if (origen === "verificado_cliente") return "Verificado con el cliente";
+  if (origen === null) return "Sin comisión resuelta";
+  return "Benchmark";
+}
+
+/** Mix de canales: cada canal con su comisión, su margen y su breakeven. */
+function SeccionCanales({ derivados }: { derivados: Derivados }) {
+  const canales = derivados.canales ?? [];
+  if (canales.length === 0) return null;
+  const cobertura = derivados.cobertura_canales ?? 0;
+  const principal = derivados.canal_principal;
+
+  return (
+    <section className="rounded-lg border border-border bg-card">
+      <div className="border-b border-border px-8 py-5">
+        <h2 className="text-[17px] font-medium text-foreground">Canales de venta</h2>
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-8 gap-y-1 text-[13px] text-muted-foreground">
+          <span>
+            Cobertura declarada{" "}
+            <span className="text-[15px] font-medium tabular-nums text-foreground">
+              {String(cobertura).replace(".", ",")}%
+            </span>
+          </span>
+          <span>
+            Canal principal{" "}
+            <span className="text-[15px] font-medium text-foreground">
+              {principal ? NOMBRE_CANAL[principal] : "sin definir"}
+            </span>
+          </span>
+        </div>
+        {cobertura < 100 && (
+          <p className="mt-3 text-[13px] text-muted-foreground">
+            El mix declarado no llega al 100%: el margen que se muestra es el de la muestra
+            declarada, no el del negocio completo.
+          </p>
+        )}
+      </div>
+
+      <div className="grid gap-6 p-8 sm:grid-cols-2">
+        {canales.map((c) => {
+          const inactivo = c.estado !== "declarado";
+          return (
+            <div
+              key={c.id}
+              className={cn(
+                "rounded-lg border border-border p-6",
+                inactivo && "bg-muted/40 text-muted-foreground",
+              )}
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <h3
+                  className={cn(
+                    "text-[15px] font-medium",
+                    inactivo ? "text-muted-foreground" : "text-foreground",
+                  )}
+                >
+                  {NOMBRE_CANAL[c.id] ?? c.id}
+                </h3>
+                <span className="text-[14px] tabular-nums">
+                  {c.estado === "declarado"
+                    ? pct(typeof c.pct === "number" ? c.pct / 100 : null, 1)
+                    : c.estado === "no_aplica"
+                      ? "No aplica"
+                      : "Sin datos"}
+                </span>
+              </div>
+
+              {c.estado === "declarado" && (
+                <dl className="mt-4 space-y-2.5">
+                  <Fila label="Margen del canal" value={pct(c.margen)} />
+                  <Fila label="Comisión efectiva" value={pct(c.comision_efectiva, 2)} />
+                  <Fila label="Origen de la comisión" value={origenLegible(c.comision_origen)} />
+                  <Fila label="MER del canal" value={numero(c.mer)} />
+                  <Fila label="Breakeven del canal" value={numero(c.breakeven_roas)} />
+                  {c.comision_provisional && (
+                    <p className="rounded-md bg-violet-soft px-3 py-2 text-[12.5px] text-violet">
+                      Comisión provisional: es un benchmark pendiente de verificar contra la
+                      liquidación real.
+                    </p>
+                  )}
+                  {c.cargo_fijo_disponible && !c.cargo_fijo_disponible.verificado && (
+                    <p className="text-[12.5px] text-muted-foreground">
+                      Hay un cargo fijo conocido de {pesos(c.cargo_fijo_disponible.valor)} sin
+                      verificar: no está incluido en la comisión efectiva.
+                    </p>
+                  )}
+                </dl>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }

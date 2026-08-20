@@ -22,6 +22,7 @@ import {
   CampoTexto,
 } from "@/components/campos-formulario";
 import { CargaCsvMeta } from "@/components/carga-csv-meta";
+import { BloqueCanales } from "@/components/bloque-canales";
 import {
   BLOQUES,
   CAMPOS_EXCLUSIVOS,
@@ -585,6 +586,8 @@ function NuevoDiagnostico() {
             </div>
           )}
 
+
+          {bloque === "canales" && <BloqueCanales datos={datos} set={set} />}
 
           {bloque === "economia" && (
             <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">

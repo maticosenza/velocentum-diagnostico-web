@@ -57,6 +57,12 @@ export const PASARELAS = [
   { value: "otra", label: "Otra" },
 ] as const;
 
+/** Tipos de publicación de Mercado Libre: definen la comisión aplicable. */
+export const TIPOS_PUBLICACION_ML = [
+  { value: "clasica", label: "Clásica" },
+  { value: "premium", label: "Premium" },
+] as const;
+
 export const CANTIDAD_CAMPANAS = [
   { value: "pocas", label: "Pocas" },
   { value: "varias", label: "Varias" },
