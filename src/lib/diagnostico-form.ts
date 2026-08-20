@@ -200,7 +200,8 @@ export const DATOS_INICIALES: DatosDiagnostico = {
 
   facturacion_mensual: null,
   ticket_promedio: null,
-  base_montos: "bruto",
+  montos_netos_de_descuento: false,
+  montos_netos_de_financiacion: false,
   costo_envio_promedio: null,
   envio_bruto: null,
   envio_cobrado_comprador: null,
@@ -209,6 +210,8 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   financiacion_costo_pct: null,
   descuento_pct_ventas: null,
   descuento_pct: null,
+  relacion_financiacion_descuento: "excluyentes",
+
 
   inversion_meta: null,
   inversion_google: null,
