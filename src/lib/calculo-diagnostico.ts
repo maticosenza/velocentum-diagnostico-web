@@ -20,11 +20,14 @@ import {
   numeroCanal,
   pctCanal,
   type CanalId,
+  COMISIONES_MARKETPLACE_DEFECTO,
+  comisionEnEscalaSospechosa,
+  type CargoFijoDisponible,
   type ComisionMarketplace,
   type EstadoCanal,
 } from "./canales";
 
-export { claveComisionPlataforma, comisionPlataformaDe, canalesSuperan100, coberturaCanales, canalPrincipal, estadoCanal, comisionEfectivaCanal };
+export { comisionEnEscalaSospechosa, COMISIONES_MARKETPLACE_DEFECTO, claveComisionPlataforma, comisionPlataformaDe, canalesSuperan100, coberturaCanales, canalPrincipal, estadoCanal, comisionEfectivaCanal };
 export type { CanalId } from "./canales";
 
 // ---------------------------------------------------------------- configuración
@@ -369,6 +372,12 @@ export type CanalDerivado = {
   comision_origen: string | null;
   comision_provisional: boolean;
   cargo_fijo_aplicado: boolean;
+  /** Cargo fijo conocido de la regla, aplicado o no. Si no está verificado, no entra al cálculo. */
+  cargo_fijo_disponible: CargoFijoDisponible | null;
+  /** true si la comisión verificada parece cargada en tasa (0,1694) y no en porcentaje (16,94). */
+  comision_escala_sospechosa: boolean;
+  /** Comisión efectiva usada en cada producto: puede variar si el cargo depende del precio. */
+  comisiones_producto: (number | null)[];
   costo_financiacion_efectivo: number | null;
   costo_descuento_efectivo: number | null;
   margen: number | null;
@@ -446,6 +455,7 @@ function margenDeCanal(
   }
 
   const margenesExactos: (number | null)[] = [null, null, null];
+  const comisionesProducto: (number | null)[] = [null, null, null];
   const pesos: (number | null)[] = [null, null, null];
   const calculables: { indice: number; margen: number; pct: number | null }[] = [];
 
@@ -459,14 +469,21 @@ function margenDeCanal(
     for (const p of cargados) {
       const costoRelativo = ratioPesos(p.costo, p.precio);
       if (costoRelativo === null) continue;
+      // El cargo fijo puede depender del precio del producto (base por unidad o
+      // umbral comparado contra el precio): se resuelve la comisión por producto.
+      const comisionProducto = comisionEfectivaCanal(d, cfg, canal, ticket, p.precio);
+      const tasaComision = comisionProducto.valor ?? comision.valor;
+      if (tasaComision === null) continue;
+      comisionesProducto[p.indice - 1] = red(tasaComision, DECIMALES_TASA);
       const m = sumarDecimal(
         1,
         -costoRelativo,
-        -comision.valor,
+        -tasaComision,
         -componenteEnvio,
         -fin.valor,
         -desc.valor,
       );
+
       if (!finito(m)) continue;
       margenesExactos[p.indice - 1] = m;
       calculables.push({
@@ -515,6 +532,9 @@ function margenDeCanal(
     comision_origen: comision.origen,
     comision_provisional: comision.provisional,
     cargo_fijo_aplicado: comision.cargo_fijo_aplicado,
+    cargo_fijo_disponible: comision.cargo_fijo_disponible,
+    comision_escala_sospechosa: comision.escala_sospechosa,
+    comisiones_producto: comisionesProducto,
     costo_financiacion_efectivo: red(fin.valor, DECIMALES_TASA),
     costo_descuento_efectivo: red(desc.valor, DECIMALES_TASA),
     margen: red(margenExacto, DECIMALES_TASA),

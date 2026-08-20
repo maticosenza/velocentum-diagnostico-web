@@ -7,6 +7,8 @@ import {
   participacionesSuperan100,
   participacionesIncompatibles,
   canalesSuperan100,
+  comisionEnEscalaSospechosa,
+  COMISIONES_MARKETPLACE_DEFECTO,
   montosNetosDeDescuento,
   montosNetosDeFinanciacion,
 
@@ -1004,7 +1006,14 @@ describe("mix de canales y comisiones", () => {
   const cfgCargoFijo: ConfiguracionCalculo = {
     ...cfg,
     comision_marketplace: {
-      mercado_libre: { ...ML_BENCHMARK, cargo_fijo: 1095, cargo_fijo_hasta: 33000 },
+      mercado_libre: {
+        ...ML_BENCHMARK,
+        cargo_fijo: 1095,
+        cargo_fijo_hasta: 33000,
+        base_aplicacion: "pedido" as const,
+        precio_umbral: "ticket_promedio" as const,
+        verificado: true,
+      },
     },
   };
 
@@ -1153,12 +1162,18 @@ describe("mix de canales y comisiones", () => {
     expect(r.derivados.margen_muestra).toBe(0.41);
   });
 
-  it("comisión de marketplace ausente en configuración: el canal no calcula", () => {
+  it("sin fila en configuración: se usa el valor por defecto del código", () => {
     const r = calcularDiagnostico(titan, cfg);
     const ml = canalDe(r, "mercado_libre");
-    expect(ml.comision_efectiva).toBeNull();
-    expect(ml.faltantes).toContain("comision_marketplace");
-    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(ml.comision_efectiva).toBe(0.1694);
+    expect(ml.comision_provisional).toBe(true);
+    expect(ml.faltantes).not.toContain("comision_marketplace");
+    // El cargo fijo por defecto no está verificado: se informa pero no se aplica.
+    expect(ml.cargo_fijo_aplicado).toBe(false);
+    expect(ml.cargo_fijo_disponible?.valor).toBe(1095);
+    expect(ml.cargo_fijo_disponible?.verificado).toBe(false);
+    expect(ml.cargo_fijo_disponible?.fuente).toBe("benchmark_provisional_pendiente_liquidacion");
+    expect(r.derivados.margen_muestra).toBe(-0.0452);
   });
 
   it("cargo fijo: aplica por debajo del umbral y no aplica por encima", () => {
@@ -1219,5 +1234,194 @@ describe("mix de canales y comisiones", () => {
     const tienda = canalDe(r, "tienda_propia");
     expect(ml.comision_efectiva).not.toBe(tienda.comision_efectiva);
     expect(ml.margen).not.toBe(tienda.margen);
+  });
+});
+
+// ---------------------------------------------------- entrega 2.3 · cargo fijo y escala
+// El cargo fijo de Mercado Libre es una regla no verificada: hasta que alguien
+// la confirme contra una liquidación real, se informa pero no se cobra.
+
+describe("cargo fijo del marketplace y escala de la comisión verificada", () => {
+  const base: DatosDiagnostico = {
+    ...DATOS_INICIALES,
+    nombre_tienda: "Titan Web",
+    plataforma: "tiendanube",
+    plan_plataforma: "esencial",
+    pasarela: "mercado_pago",
+    ticket_promedio: 25000,
+    costo_envio_promedio: 9000,
+    producto_1_nombre: "Bolsa tostado",
+    producto_1_costo: 5890,
+    producto_1_precio: 11650,
+    producto_1_pct_facturacion: 20,
+    producto_2_nombre: "Molde pan lactal",
+    producto_2_costo: 17330,
+    producto_2_precio: 32990,
+    producto_2_pct_facturacion: 20,
+    producto_3_nombre: "Cintura extensible",
+    producto_3_costo: 15700,
+    producto_3_precio: 30390,
+    producto_3_pct_facturacion: 20,
+    canal_ml_pct: 100,
+    canal_tienda_no_aplica: true,
+  };
+
+  const ml = (r: ReturnType<typeof calcularDiagnostico>) =>
+    r.derivados.canales.find((c) => c.id === "mercado_libre")!;
+
+  const conRegla = (regla: Record<string, unknown>): ConfiguracionCalculo => ({
+    ...cfg,
+    comision_marketplace: {
+      mercado_libre: {
+        comision: 0.1694,
+        origen: "benchmark_provisional",
+        provisional: true,
+        ...regla,
+      },
+    } as NonNullable<ConfiguracionCalculo["comision_marketplace"]>,
+  });
+
+  it("el valor por defecto del código no necesita fila en configuración", () => {
+    expect(COMISIONES_MARKETPLACE_DEFECTO["mercado_libre"]?.comision).toBe(0.1694);
+    expect(COMISIONES_MARKETPLACE_DEFECTO["mercado_libre"]?.verificado).toBe(false);
+    expect(COMISIONES_MARKETPLACE_DEFECTO["mercado_libre"]?.cargo_fijo).toBe(1095);
+  });
+
+  it("cargo fijo con verificado en false: no se aplica y la comisión queda en 0,1694", () => {
+    const r = calcularDiagnostico(
+      base,
+      conRegla({ cargo_fijo: 1095, cargo_fijo_hasta: 33000, verificado: false }),
+    );
+    expect(ml(r).comision_efectiva).toBe(0.1694);
+    expect(ml(r).cargo_fijo_aplicado).toBe(false);
+    expect(ml(r).cargo_fijo_disponible?.valor).toBe(1095);
+    expect(ml(r).comisiones_producto).toEqual([0.1694, 0.1694, 0.1694]);
+    expect(r.derivados.margen_muestra).toBe(-0.0452);
+  });
+
+  it("cargo fijo verificado con base pedido: se aplica sobre el ticket del canal", () => {
+    const r = calcularDiagnostico(
+      { ...base, canal_ml_ticket: 20000 },
+      conRegla({
+        cargo_fijo: 1095,
+        cargo_fijo_hasta: 33000,
+        base_aplicacion: "pedido",
+        precio_umbral: "ticket_promedio",
+        verificado: true,
+      }),
+    );
+    // 0,1694 + 1095/20000 = 0,22415 -> 0,2242
+    expect(ml(r).comision_efectiva).toBe(0.2242);
+    expect(ml(r).cargo_fijo_aplicado).toBe(true);
+    expect(ml(r).comisiones_producto).toEqual([0.2242, 0.2242, 0.2242]);
+  });
+
+  it("cargo fijo verificado con base unidad: se aplica sobre el precio de cada producto", () => {
+    const r = calcularDiagnostico(
+      base,
+      conRegla({
+        cargo_fijo: 1095,
+        cargo_fijo_hasta: 40000,
+        base_aplicacion: "unidad",
+        precio_umbral: "precio_producto",
+        verificado: true,
+      }),
+    );
+    // 0,1694 + 1095/precio, distinto en cada producto
+    expect(ml(r).comisiones_producto).toEqual([0.2634, 0.2026, 0.2054]);
+  });
+
+  it("productos a los dos lados del umbral con base precio_producto: uno con cargo y otro sin", () => {
+    const r = calcularDiagnostico(
+      base,
+      conRegla({
+        cargo_fijo: 1095,
+        cargo_fijo_hasta: 20000,
+        base_aplicacion: "pedido",
+        precio_umbral: "precio_producto",
+        verificado: true,
+      }),
+    );
+    const [p1, p2, p3] = ml(r).comisiones_producto;
+    // Sólo el producto de 11.650 queda por debajo del umbral de 20.000.
+    expect(p1).toBe(0.2132);
+    expect(p2).toBe(0.1694);
+    expect(p3).toBe(0.1694);
+  });
+
+  it("cargo por publicación: nunca entra en la comisión por venta", () => {
+    const r = calcularDiagnostico(
+      base,
+      conRegla({ cargo_fijo: 1095, base_aplicacion: "publicacion", verificado: true }),
+    );
+    expect(ml(r).comision_efectiva).toBe(0.1694);
+    expect(ml(r).cargo_fijo_aplicado).toBe(false);
+  });
+
+  it("la comisión verificada se carga en porcentaje: 16,94 da la tasa 0,1694", () => {
+    const r = calcularDiagnostico({ ...base, canal_ml_comision_pct: 16.94 }, cfg);
+    expect(ml(r).comision_efectiva).toBe(0.1694);
+    expect(ml(r).comision_origen).toBe("verificado_cliente");
+    expect(ml(r).comision_escala_sospechosa).toBe(false);
+  });
+
+  it("comisión cargada como 0,1694 en el campo: se advierte el error de escala", () => {
+    const r = calcularDiagnostico({ ...base, canal_ml_comision_pct: 0.1694 }, cfg);
+    expect(ml(r).comision_escala_sospechosa).toBe(true);
+    expect(comisionEnEscalaSospechosa(0.1694)).toBe(true);
+    expect(comisionEnEscalaSospechosa(16.94)).toBe(false);
+    expect(comisionEnEscalaSospechosa(0)).toBe(false);
+    expect(comisionEnEscalaSospechosa(null)).toBe(false);
+  });
+
+  it("la comisión verificada le gana al valor por defecto del código", () => {
+    const r = calcularDiagnostico({ ...base, canal_ml_comision_pct: 12 }, cfg);
+    expect(ml(r).comision_efectiva).toBe(0.12);
+    expect(ml(r).comision_origen).toBe("verificado_cliente");
+    expect(ml(r).comision_provisional).toBe(false);
+  });
+
+  it("diagnóstico viejo sin campos de canal: abre sin error y los canales quedan ausentes", () => {
+    const viejo = { ...base } as Record<string, unknown>;
+    for (const k of Object.keys(viejo)) if (k.startsWith("canal_")) delete viejo[k];
+    const r = calcularDiagnostico(viejo as DatosDiagnostico, cfg);
+    expect(r.derivados.cobertura_canales).toBe(0);
+    expect(r.derivados.canal_principal).toBeNull();
+    for (const c of r.derivados.canales) expect(c.estado).toBe("ausente");
+  });
+
+  it("guardado y reapertura: los campos de canal sobreviven el ciclo completo", () => {
+    const cargado: DatosDiagnostico = {
+      ...base,
+      canal_tienda_no_aplica: false,
+      canal_tienda_pct: 60,
+      canal_tienda_facturacion: 6_000_000,
+      canal_tienda_ticket: 30000,
+      canal_tienda_comision_pct: 7,
+      canal_tienda_envio_neto: 2000,
+      canal_tienda_inversion: 500000,
+      canal_ml_pct: 40,
+      canal_ml_ticket: 25000,
+      canal_ml_comision_pct: 16.94,
+      canal_ml_tipo_publicacion: "clasica",
+    };
+    const reabierto = JSON.parse(JSON.stringify(cargado)) as DatosDiagnostico;
+    expect(reabierto.canal_tienda_pct).toBe(60);
+    expect(reabierto.canal_ml_comision_pct).toBe(16.94);
+    expect(reabierto.canal_ml_tipo_publicacion).toBe("clasica");
+    const antes = calcularDiagnostico(cargado, cfg);
+    const despues = calcularDiagnostico(reabierto, cfg);
+    expect(despues.derivados).toEqual(antes.derivados);
+    expect(despues.derivados.cobertura_canales).toBe(100);
+  });
+
+  it("el detalle recibe origen, marca de provisional y cobertura de la muestra", () => {
+    const r = calcularDiagnostico({ ...base, canal_ml_pct: 70 }, cfg);
+    expect(r.derivados.cobertura_canales).toBe(70);
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(r.derivados.margen_muestra).toBe(-0.0452);
+    expect(ml(r).comision_origen).toBe("benchmark_provisional");
+    expect(ml(r).comision_provisional).toBe(true);
+    expect(r.derivados.canal_principal).toBe("mercado_libre");
   });
 });
