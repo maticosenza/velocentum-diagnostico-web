@@ -142,6 +142,13 @@ export type DatosDiagnostico = {
   /** Si cuotas y descuento pueden caer sobre la misma venta. */
   relacion_financiacion_descuento?: RelacionFinDesc;
 
+  /** Margen de contribución que declara el cliente, en porcentaje. Mínimo del rango. */
+  margen_declarado_min?: number | null;
+  /** Máximo del rango declarado. Sin máximo, el rango es el valor exacto del mínimo. */
+  margen_declarado_max?: number | null;
+  /** Sólo un margen declarado y confirmado puede bloquear el cálculo. */
+  margen_declarado_confirmado?: boolean;
+
   inversion_meta: number | null;
   inversion_google: number | null;
 
@@ -192,6 +199,8 @@ export type DatosDiagnostico = {
   ml_productos_publicados: number | null;
   ml_product_ads: boolean | null;
   ml_inversion_product_ads: number | null;
+  /** Ventas atribuidas a Product Ads, en pesos. Opcional: habilita el ROAS del canal. */
+  ml_ventas_product_ads?: number | null;
 
   /**
    * Mix de canales. Todos opcionales: los diagnósticos guardados no los tienen y
@@ -257,6 +266,9 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   descuento_pct_ventas: null,
   descuento_pct: null,
   relacion_financiacion_descuento: "excluyentes",
+  margen_declarado_min: null,
+  margen_declarado_max: null,
+  margen_declarado_confirmado: false,
 
 
   inversion_meta: null,
@@ -299,6 +311,7 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   ml_productos_publicados: null,
   ml_product_ads: null,
   ml_inversion_product_ads: null,
+  ml_ventas_product_ads: null,
 
   canal_tienda_pct: null,
   canal_tienda_no_aplica: false,
@@ -373,6 +386,7 @@ const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
     "ml_productos_publicados",
     "ml_product_ads",
     "ml_inversion_product_ads",
+    "ml_ventas_product_ads",
   ],
 };
 

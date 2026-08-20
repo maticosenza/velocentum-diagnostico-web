@@ -58,6 +58,8 @@ export function mapearHallazgos(
   fugas: Fuga[],
 ): HallazgoMapeado[] {
   const h: HallazgoMapeado[] = [];
+  // Una contradicción crítica confirmada tira abajo todo lo que se apoya en el margen.
+  const margenBloqueado = derivados.contradiccion_margen?.bloquea === true;
   const fuga = (id: string) => fugas.find((f) => f.id === id);
   const conMonto = (id: string) => {
     const f = fuga(id);
@@ -76,7 +78,7 @@ export function mapearHallazgos(
   }
 
 
-  if (conMonto("gasto_no_rentable") || estados.economia === "rojo") {
+  if (!margenBloqueado && (conMonto("gasto_no_rentable") || estados.economia === "rojo")) {
     h.push({
       id: "mer_bajo",
       titulo: "MER por debajo del breakeven",
@@ -89,9 +91,10 @@ export function mapearHallazgos(
   // Sin campañas corriendo no hay estructura que criticar.
   {
     const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+    // La inversión publicitaria del negocio incluye Product Ads: la ausencia de
+    // Meta y Google no significa que el cliente no invierta.
     const hayInversion =
-      num(datos.inversion_meta) + num(datos.inversion_google) > 0 ||
-      num(datos.presupuesto_diario) > 0;
+      derivados.hay_inversion_publicitaria === true || num(datos.presupuesto_diario) > 0;
 
     const condiciones: string[] = [];
     if (hayInversion) {
@@ -129,7 +132,7 @@ export function mapearHallazgos(
 
   // Mix desalineado: el producto que más factura tiene margen por debajo del ponderado.
   // Solo si el bloque de economía tiene datos suficientes.
-  if (estados.economia !== "sin_datos") {
+  if (estados.economia !== "sin_datos" && !margenBloqueado) {
     const cargados = productosCargados(datos);
     const margenes = derivados.margenes_producto ?? [];
     const ponderado = derivados.margen_contribucion;
@@ -247,7 +250,11 @@ export function mapearHallazgos(
     });
   }
 
-  if (typeof derivados.margen_contribucion === "number" && derivados.margen_contribucion < 0.35) {
+  if (
+    !margenBloqueado &&
+    typeof derivados.margen_contribucion === "number" &&
+    derivados.margen_contribucion < 0.35
+  ) {
     h.push({
       id: "cuotas",
       titulo: "Cuotas sin interés sobre producto de margen fino",
@@ -298,6 +305,12 @@ export function armarInsumoPropuesta(args: {
       cpa_objetivo: derivados.cpa_objetivo,
       roas_objetivo: derivados.roas_objetivo,
       mer_actual: derivados.mer_actual,
+      mer_tienda_propia: derivados.mer_tienda_propia,
+      mer_marketplace: derivados.mer_marketplace,
+      roas_product_ads: derivados.roas_product_ads,
+      inversion_publicitaria_total: derivados.inversion_publicitaria_total,
+      hay_inversion_publicitaria: derivados.hay_inversion_publicitaria,
+      contradiccion_margen: derivados.contradiccion_margen,
       piso_mensual_un_conjunto: derivados.piso_mensual_un_conjunto,
       inversion_actual_mensual: derivados.inversion_actual_mensual,
       pedidos_semanales: derivados.pedidos_semanales,

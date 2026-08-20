@@ -27,6 +27,11 @@ import {
   type EstadoCanal,
 } from "./canales";
 import {
+  evaluarContradiccion,
+  rangoDeclarado,
+  type Contradiccion,
+} from "./contradiccion";
+import {
   evaluarFunnel,
   tramosFunnel,
   MEJORAS_FUNNEL_DEFECTO,
@@ -36,6 +41,8 @@ import {
 export { comisionEnEscalaSospechosa, COMISIONES_MARKETPLACE_DEFECTO, claveComisionPlataforma, comisionPlataformaDe, canalesSuperan100, coberturaCanales, canalPrincipal, estadoCanal, comisionEfectivaCanal };
 export type { CanalId } from "./canales";
 export { evaluarFunnel, tramosFunnel, MEJORAS_FUNNEL_DEFECTO };
+export { evaluarContradiccion, rangoDeclarado };
+export type { Contradiccion } from "./contradiccion";
 export type { FunnelDerivado } from "./funnel";
 
 // ---------------------------------------------------------------- configuración
@@ -62,6 +69,9 @@ export type ConfiguracionCalculo = {
   mejora_agregado_pts?: number;
   mejora_checkout_pts?: number;
   mejora_compra_pts?: number;
+  /** Umbrales de la regla de contradicción del margen declarado, en tasa. */
+  umbral_contradiccion_critico?: number;
+  umbral_contradiccion_validacion?: number;
 };
 
 
@@ -103,6 +113,17 @@ export type Derivados = {
   cpa_objetivo: number | null;
   roas_objetivo: number | null;
   mer_actual: number | null;
+  /** MER por perímetro: nunca mezcla canales ni plataformas de pauta. */
+  mer_tienda_propia: number | null;
+  mer_marketplace: number | null;
+  /** ROAS de Product Ads: ventas atribuidas sobre inversión en Product Ads. */
+  roas_product_ads: number | null;
+  /** Inversión publicitaria del negocio: Meta + Google + Product Ads. */
+  inversion_publicitaria_total: number | null;
+  /** null = no sabemos. false = declaró explícitamente que no invierte. */
+  hay_inversion_publicitaria: boolean | null;
+  /** Contradicción entre el margen calculado y el margen declarado por el cliente. */
+  contradiccion_margen: Contradiccion | null;
   contribucion_marginal: number | null;
   piso_semanal_por_conjunto: number | null;
   conjuntos_sostenibles: number | null;
@@ -127,6 +148,8 @@ export type Fuga = {
   sospechosa?: boolean;
   /** Confianza del cálculo: "parcial" marca estimaciones sin desglose. */
   confianza?: "alta" | "parcial";
+  /** true cuando el monto depende del margen de contribución. */
+  usa_margen?: boolean;
 };
 
 
@@ -144,6 +167,9 @@ export type ResultadoCalculo = {
   fugas: Fuga[];
   oportunidad_total: number;
   oportunidad_conservadora: number;
+  /** true cuando una contradicción crítica confirmada bloquea todo lo que usa margen. */
+  margen_bloqueado: boolean;
+  contradiccion_margen: Contradiccion | null;
 };
 
 // ---------------------------------------------------------------- helpers
@@ -373,6 +399,64 @@ export function faltantesMargen(d: DatosDiagnostico): string[] {
 
 
 
+// ---------------------------------------------------------------- inversión publicitaria
+
+/**
+ * Inversión en Product Ads de Mercado Libre.
+ * Tres estados distintos: positivo (se evalúa), cero explícito (el cliente
+ * declaró que no invierte) y null (no sabemos).
+ */
+export function inversionProductAds(d: DatosDiagnostico): number | null {
+  const delCanal = numeroCanal(d, "mercado_libre", "inversion");
+  if (delCanal !== null) return delCanal;
+  return finito(d.ml_inversion_product_ads) ? d.ml_inversion_product_ads : null;
+}
+
+/** Inversión en pauta de tienda propia: Meta más Google. */
+export function inversionMetaGoogle(d: DatosDiagnostico): number | null {
+  if (!finito(d.inversion_meta) && !finito(d.inversion_google)) return null;
+  return (finito(d.inversion_meta) ? d.inversion_meta : 0) +
+    (finito(d.inversion_google) ? d.inversion_google : 0);
+}
+
+/**
+ * Inversión publicitaria del negocio: Meta más Google más Product Ads.
+ * Sin ningún dato cargado devuelve null: no sabemos, no afirmamos.
+ */
+export function inversionPublicitariaTotal(d: DatosDiagnostico): number | null {
+  const propia = numeroCanal(d, "tienda_propia", "inversion") ?? inversionMetaGoogle(d);
+  const ads = inversionProductAds(d);
+  if (propia === null && ads === null) return null;
+  return (propia ?? 0) + (ads ?? 0);
+}
+
+/**
+ * ¿El negocio invierte en publicidad? Considera los tres frentes.
+ * null cuando no hay ningún dato cargado; false sólo con ceros explícitos.
+ */
+export function hayInversionPublicitaria(d: DatosDiagnostico): boolean | null {
+  const total = inversionPublicitariaTotal(d);
+  if (total === null) return null;
+  return total > 0;
+}
+
+/** Inversión publicitaria del perímetro de un canal. */
+export function inversionCanal(d: DatosDiagnostico, canal: CanalId): number | null {
+  if (canal === "mercado_libre") return inversionProductAds(d);
+  return numeroCanal(d, canal, "inversion") ?? inversionMetaGoogle(d);
+}
+
+/** Facturación del canal: la declarada o, en su defecto, la derivada del mix. */
+export function facturacionCanal(d: DatosDiagnostico, canal: CanalId): number | null {
+  const propia = numeroCanal(d, canal, "facturacion");
+  if (propia !== null) return propia;
+  const pct = pctCanal(d, canal);
+  if (pct !== null && finito(d.facturacion_mensual) && d.facturacion_mensual > 0) {
+    return (d.facturacion_mensual * pct) / 100;
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------- canales
 
 export type CanalDerivado = {
@@ -403,6 +487,14 @@ export type CanalDerivado = {
   margen: number | null;
   margenes_producto: (number | null)[];
   mer: number | null;
+  /** Facturación del canal por su margen, ANTES de descontar publicidad. */
+  contribucion_antes_publicidad: number | null;
+  /** Inversión publicitaria del perímetro del canal. */
+  inversion_publicitaria: number | null;
+  /** Contribución antes de publicidad menos la inversión del canal. */
+  resultado_despues_publicidad: number | null;
+  /** ROAS de la pauta del canal: ventas atribuidas sobre inversión. */
+  roas_pauta: number | null;
   breakeven_roas: number | null;
   faltantes: string[];
   /** Margen sin redondear, para ponderar el mix sin arrastrar error. */
@@ -445,8 +537,8 @@ function margenDeCanal(
     numeroCanal(d, canal, "ticket") ??
     (finito(d.ticket_promedio) && d.ticket_promedio > 0 ? d.ticket_promedio : null);
   const envioNeto = numeroCanal(d, canal, "envio_neto") ?? envioNetoVendedor(d);
-  const facturacion = numeroCanal(d, canal, "facturacion");
-  const inversion = numeroCanal(d, canal, "inversion");
+  const facturacion = facturacionCanal(d, canal);
+  const inversion = inversionCanal(d, canal);
 
   const faltan: string[] = [];
   if (ticket === null || ticket <= 0) faltan.push("ticket_promedio");
@@ -536,8 +628,25 @@ function margenDeCanal(
   }
 
   const margenPositivo = margenExacto !== null && margenExacto > 0 ? margenExacto : null;
+  // MER por perímetro: la facturación del canal sobre la inversión del canal.
   const mer =
     facturacion !== null && inversion !== null && inversion > 0 ? facturacion / inversion : null;
+
+  // Tres números separados que nunca se mezclan. La inversión publicitaria se
+  // resta una sola vez, acá: NO entra en el margen de contribución.
+  const contribucionAntes =
+    facturacion !== null && margenExacto !== null ? facturacion * margenExacto : null;
+  const resultadoDespues =
+    contribucionAntes !== null ? contribucionAntes - (inversion ?? 0) : null;
+
+  // ROAS de la pauta: sólo lo atribuido. Sin ventas atribuidas queda sin datos,
+  // aunque el MER del canal sí se calcule.
+  const ventasAtribuidas =
+    canal === "mercado_libre" && finito(d.ml_ventas_product_ads) ? d.ml_ventas_product_ads : null;
+  const roasPauta =
+    ventasAtribuidas !== null && inversion !== null && inversion > 0
+      ? ventasAtribuidas / inversion
+      : null;
 
   return {
     id: canal,
@@ -562,6 +671,10 @@ function margenDeCanal(
     margen: red(margenExacto, DECIMALES_TASA),
     margenes_producto: margenesExactos.map((m) => red(m, DECIMALES_TASA)),
     mer: red(mer, 2),
+    contribucion_antes_publicidad: red(contribucionAntes, 0),
+    inversion_publicitaria: inversion,
+    resultado_despues_publicidad: red(resultadoDespues, 0),
+    roas_pauta: red(roasPauta, 2),
     breakeven_roas: margenPositivo !== null ? red(1 / margenPositivo, DECIMALES_TASA) : null,
     faltantes: faltan,
     margen_exacto: margenExacto,
@@ -662,10 +775,31 @@ export function calcularDiagnostico(
       ? pedidos / d.visitas_mensuales
       : null;
 
-  const inversionAds =
-    finito(d.inversion_meta) || finito(d.inversion_google)
-      ? (finito(d.inversion_meta) ? d.inversion_meta : 0) +
-        (finito(d.inversion_google) ? d.inversion_google : 0)
+  // Inversión publicitaria del negocio: Meta, Google y Product Ads. La ausencia
+  // de Meta y Google ya no se lee como "no invierte en publicidad".
+  const inversionAds = inversionPublicitariaTotal(d);
+  const hayInversionAds = hayInversionPublicitaria(d);
+  const inversionPropia = inversionCanal(d, "tienda_propia");
+  const inversionAdsML = inversionProductAds(d);
+
+  // MER por perímetro. Nunca se cruza la facturación de un canal con la
+  // inversión del otro.
+  const facturacionTienda = facturacionCanal(d, "tienda_propia") ??
+    (!hayCanales && finito(d.facturacion_mensual) ? d.facturacion_mensual : null);
+  const facturacionML = facturacionCanal(d, "mercado_libre");
+  const merTienda =
+    facturacionTienda !== null && inversionPropia !== null && inversionPropia > 0
+      ? facturacionTienda / inversionPropia
+      : null;
+  const merMarketplace =
+    facturacionML !== null && inversionAdsML !== null && inversionAdsML > 0
+      ? facturacionML / inversionAdsML
+      : null;
+
+  // ROAS de Product Ads: sólo lo atribuido a la pauta. Es otra cosa que el MER.
+  const roasProductAds =
+    finito(d.ml_ventas_product_ads) && inversionAdsML !== null && inversionAdsML > 0
+      ? d.ml_ventas_product_ads / inversionAdsML
       : null;
 
   const mer =
@@ -703,6 +837,18 @@ export function calcularDiagnostico(
   // --- Cascada del funnel: etapas del mismo canal y del mismo período.
   const funnel = evaluarFunnel(d, cfg);
 
+  // --- Contradicción contra el margen declarado por el cliente.
+  const contradiccion = evaluarContradiccion(
+    margen,
+    rangoDeclarado(d.margen_declarado_min, d.margen_declarado_max),
+    {
+      confirmado: d.margen_declarado_confirmado === true,
+      umbral_critico: cfg.umbral_contradiccion_critico,
+      umbral_validacion: cfg.umbral_contradiccion_validacion,
+    },
+  );
+  const margenBloqueado = contradiccion?.bloquea === true;
+
   const derivados: Derivados = {
     delta_medicion: red(delta, 4),
     margen_contribucion: red(margen, DECIMALES_TASA),
@@ -729,6 +875,12 @@ export function calcularDiagnostico(
     cpa_objetivo: red(cpaObjetivo, 0),
     roas_objetivo: red(roasObjetivo, 2),
     mer_actual: red(mer, 2),
+    mer_tienda_propia: red(merTienda, 2),
+    mer_marketplace: red(merMarketplace, 2),
+    roas_product_ads: red(roasProductAds, 2),
+    inversion_publicitaria_total: inversionAds,
+    hay_inversion_publicitaria: hayInversionAds,
+    contradiccion_margen: contradiccion,
     contribucion_marginal: red(contribucionMarginal, 0),
     piso_semanal_por_conjunto: red(pisoSemanalPorConjunto, 0),
     conjuntos_sostenibles: red(conjuntosSostenibles, 1),
@@ -814,6 +966,7 @@ export function calcularDiagnostico(
       faltantes: faltan,
       detalle: t.detalle,
       confianza: t.confianza,
+      usa_margen: true,
     });
   }
 
@@ -833,6 +986,7 @@ export function calcularDiagnostico(
         monto: null,
         calculable: false,
         faltantes: faltan,
+        usa_margen: true,
       });
     } else if ((mer as number) < (breakevenRoas as number)) {
       const monto = (inversionAds as number) * (1 - (mer as number) / (breakevenRoas as number));
@@ -843,6 +997,7 @@ export function calcularDiagnostico(
         monto: Math.max(0, red(monto, 0) ?? 0),
         calculable: true,
         faltantes: [],
+        usa_margen: true,
       });
     }
   }
@@ -860,6 +1015,7 @@ export function calcularDiagnostico(
         monto: null,
         calculable: false,
         faltantes: faltan,
+        usa_margen: true,
       });
     } else if (
       conjuntosSostenibles !== null &&
@@ -875,6 +1031,7 @@ export function calcularDiagnostico(
         monto: Math.max(0, red(monto, 0) ?? 0),
         calculable: true,
         faltantes: [],
+        usa_margen: true,
       });
     }
   }
@@ -895,6 +1052,22 @@ export function calcularDiagnostico(
       faltantes: [],
       detalle: "El desvío entre la facturación real y el Pixel invalida cualquier valorización en pesos.",
     });
+  }
+
+  // --- Contradicción crítica confirmada: se cae todo lo que depende del margen.
+  // Los hallazgos que no usan margen (medición, estructura, contenido, funnel,
+  // canales) siguen intactos.
+  if (margenBloqueado) {
+    for (const f of fugas) {
+      if (f.usa_margen !== true) continue;
+      f.monto = null;
+      f.calculable = false;
+      if (!f.faltantes.includes("margen_en_contradiccion")) {
+        f.faltantes.push("margen_en_contradiccion");
+      }
+      f.detalle =
+        "El margen calculado contradice al margen confirmado por el cliente: no se valoriza hasta resolver la diferencia.";
+    }
   }
 
   // --- Red de seguridad: ninguna fuga puede salirse del rango razonable
@@ -940,7 +1113,10 @@ export function calcularDiagnostico(
     derivados,
     estados_bloque,
     fugas,
-    oportunidad_total: red(total, 0) ?? 0,
-    oportunidad_conservadora: red(total * 0.6, 0) ?? 0,
+    // La oportunidad mensual estimada no se muestra con el margen bloqueado.
+    oportunidad_total: margenBloqueado ? 0 : (red(total, 0) ?? 0),
+    oportunidad_conservadora: margenBloqueado ? 0 : (red(total * 0.6, 0) ?? 0),
+    margen_bloqueado: margenBloqueado,
+    contradiccion_margen: contradiccion,
   };
 }
