@@ -12,7 +12,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { formatPorcentaje } from "@/lib/format";
+import { formatARS, formatPorcentaje } from "@/lib/format";
 import {
   CampoNumero,
   CampoPesos,
@@ -43,7 +43,11 @@ import {
   type Modo,
   type NotasDiagnostico,
 } from "@/lib/diagnostico-form";
-import { calcularDiagnostico } from "@/lib/calculo-diagnostico";
+import {
+  calcularDiagnostico,
+  envioNetoVendedor,
+  faltaEnvioCobrado,
+} from "@/lib/calculo-diagnostico";
 import { cargarConfiguracion } from "@/lib/configuracion";
 
 export const Route = createFileRoute("/_authenticated/diagnosticos/nuevo")({
@@ -587,11 +591,38 @@ function NuevoDiagnostico() {
                 onChange={(v) => set("ticket_promedio", v)}
               />
               <CampoPesos
-                label="Costo de envío por pedido"
+                label="Envío neto del vendedor por pedido"
                 value={datos.costo_envio_promedio}
                 onChange={(v) => set("costo_envio_promedio", v)}
-                ayuda="Neto de lo que le cobra al cliente."
+                ayuda="Lo que efectivamente pone el vendedor, neto de lo que le cobra al cliente. Se usa si no cargás bruto y cobrado."
               />
+              <CampoPesos
+                label="Envío bruto por pedido"
+                value={datos.envio_bruto}
+                onChange={(v) => set("envio_bruto", v)}
+                ayuda="Costo total del envío por pedido, antes de lo que paga el comprador."
+              />
+              <CampoPesos
+                label="Envío que paga el comprador"
+                value={datos.envio_cobrado_comprador}
+                onChange={(v) => set("envio_cobrado_comprador", v)}
+                ayuda="Cuánto del envío se le cobra al comprador."
+              />
+              <div className="rounded-md border border-border px-3 py-2.5">
+                <p className="text-[12px] text-muted-foreground">Envío neto del vendedor</p>
+                <p className="mt-0.5 text-[15px] tabular-nums text-foreground">
+                  {envioNetoVendedor(datos) === null
+                    ? "—"
+                    : formatARS(envioNetoVendedor(datos) as number)}
+                </p>
+              </div>
+              {faltaEnvioCobrado(datos) && (
+                <p className="text-[12px] text-destructive sm:col-span-2">
+                  Cargaste el envío bruto pero falta cuánto paga el comprador. Ingresá ese importe
+                  para poder calcular el margen: no se asume cero.
+                </p>
+              )}
+
               <CampoSelect
                 label="Pasarela de cobro"
                 value={datos.pasarela}

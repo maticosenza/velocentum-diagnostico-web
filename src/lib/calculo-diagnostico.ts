@@ -4,6 +4,7 @@
  */
 
 import type { DatosDiagnostico } from "./diagnostico-form";
+import { DECIMALES_TASA, ratioPesos, redondear, restarPesos } from "./dinero";
 
 // ---------------------------------------------------------------- configuración
 
@@ -43,6 +44,8 @@ export type EstadoBloque = "verde" | "amarillo" | "rojo" | "sin_datos";
 export type Derivados = {
   delta_medicion: number | null;
   margen_contribucion: number | null;
+  envio_neto_vendedor: number | null;
+  componente_envio: number | null;
   comision_plataforma: number | null;
   comision_pasarela: number | null;
   margenes_producto: (number | null)[];
@@ -101,11 +104,9 @@ function finito(n: number | null | undefined): n is number {
   return typeof n === "number" && Number.isFinite(n);
 }
 
-/** Redondea a `decimales` y devuelve null si el valor no es finito. */
+/** Redondea con la política única de `dinero.ts` (media hacia arriba). */
 function red(n: number | null | undefined, decimales = 0): number | null {
-  if (!finito(n)) return null;
-  const f = 10 ** decimales;
-  return Math.round(n * f) / f;
+  return redondear(n, decimales);
 }
 
 /** Devuelve los nombres de los campos que faltan (null, vacío o no numérico). */
@@ -209,6 +210,40 @@ export function productosCargados(d: DatosDiagnostico) {
   }[];
 }
 
+/**
+ * Envío neto que efectivamente pone el vendedor por pedido.
+ * Prioridad: bruto menos lo cobrado al comprador. Si sólo hay bruto cargado
+ * no se asume cero cobrado: el neto queda en null hasta que se cargue el importe.
+ * El campo legado `costo_envio_promedio` se interpreta como neto.
+ */
+export function envioNetoVendedor(d: DatosDiagnostico): number | null {
+  const bruto = finito(d.envio_bruto) ? d.envio_bruto : null;
+  const cobrado = finito(d.envio_cobrado_comprador) ? d.envio_cobrado_comprador : null;
+  if (bruto !== null) {
+    if (cobrado === null) return null;
+    return restarPesos(bruto, cobrado);
+  }
+  if (cobrado !== null && finito(d.costo_envio_promedio)) {
+    return restarPesos(d.costo_envio_promedio, cobrado);
+  }
+  return finito(d.costo_envio_promedio) ? d.costo_envio_promedio : null;
+}
+
+/** true cuando hay bruto cargado pero falta el importe que paga el comprador. */
+export function faltaEnvioCobrado(d: DatosDiagnostico): boolean {
+  return finito(d.envio_bruto) && !finito(d.envio_cobrado_comprador);
+}
+
+/** Campos que impiden calcular el margen de contribución. */
+export function faltantesMargen(d: DatosDiagnostico): string[] {
+  const faltan: string[] = [];
+  if (envioNetoVendedor(d) === null) faltan.push("envio_neto_vendedor");
+  if (!finito(d.ticket_promedio) || (d.ticket_promedio as number) <= 0) {
+    faltan.push("ticket_promedio");
+  }
+  return faltan;
+}
+
 // ---------------------------------------------------------------- cálculo
 
 export function calcularDiagnostico(
@@ -238,15 +273,23 @@ export function calcularDiagnostico(
 
   // --- Margen de contribución ponderado por los productos más vendidos
   const cargados = productosCargados(d);
-  const envio = finito(d.costo_envio_promedio) ? d.costo_envio_promedio : null;
+  const envioNeto = envioNetoVendedor(d);
+  // El envío se paga por pedido, no por unidad: se divide por el ticket promedio,
+  // así que el componente es el mismo para todos los productos del diagnóstico.
+  const componenteEnvio =
+    envioNeto !== null && finito(d.ticket_promedio) && d.ticket_promedio > 0
+      ? ratioPesos(envioNeto, d.ticket_promedio)
+      : null;
 
   const margenesProducto: (number | null)[] = [null, null, null];
   const pesosProducto: (number | null)[] = [null, null, null];
   const calculables: { indice: number; margen: number; pct: number | null }[] = [];
 
-  if (comPlataforma !== null && comPasarela !== null && envio !== null) {
+  if (comPlataforma !== null && comPasarela !== null && componenteEnvio !== null) {
     for (const p of cargados) {
-      const m = 1 - p.costo / p.precio - comPlataforma - comPasarela - envio / p.precio;
+      const costoRelativo = ratioPesos(p.costo, p.precio);
+      if (costoRelativo === null) continue;
+      const m = 1 - costoRelativo - comPlataforma - comPasarela - componenteEnvio;
       if (!finito(m)) continue;
       margenesProducto[p.indice - 1] = red(m, 4);
       calculables.push({
@@ -342,7 +385,9 @@ export function calcularDiagnostico(
 
   const derivados: Derivados = {
     delta_medicion: red(delta, 4),
-    margen_contribucion: red(margen, 4),
+    margen_contribucion: red(margen, DECIMALES_TASA),
+    envio_neto_vendedor: red(envioNeto, 0),
+    componente_envio: red(componenteEnvio, DECIMALES_TASA),
     comision_plataforma: comPlataforma,
     comision_pasarela: comPasarela,
     margenes_producto: margenesProducto,
@@ -350,7 +395,7 @@ export function calcularDiagnostico(
     pedidos_mensuales: red(pedidos, 0),
     cr_tienda: red(crTienda, 4),
     cr_umbral_verde: uCr ? uCr.verde : null,
-    breakeven_roas: red(breakevenRoas, 2),
+    breakeven_roas: red(breakevenRoas, DECIMALES_TASA),
     cpa_breakeven: red(cpaBreakeven, 0),
 
     reserva,
@@ -421,7 +466,10 @@ export function calcularDiagnostico(
   // Conversión
   {
     const faltan = faltantes(datos, ["visitas_mensuales", "facturacion_mensual", "ticket_promedio"]);
-    if (margen === null) faltan.push("margen_contribucion");
+    if (margen === null) {
+      faltan.push("margen_contribucion");
+      for (const f of faltantesMargen(datos)) if (!faltan.includes(f)) faltan.push(f);
+    }
     if (!uCr) faltan.push("umbrales_funnel_web.cr_tienda");
     if (faltan.length > 0 || crTienda === null) {
       if (crTienda === null && faltan.length === 0) faltan.push("visitas_mensuales");
@@ -538,7 +586,10 @@ export function calcularDiagnostico(
       });
     } else if (activos < 2) {
       const faltan = faltantes(datos, ["carritos_abandonados", "ticket_promedio"]);
-      if (margen === null) faltan.push("margen_contribucion");
+      if (margen === null) {
+      faltan.push("margen_contribucion");
+      for (const f of faltantesMargen(datos)) if (!faltan.includes(f)) faltan.push(f);
+    }
       if (pctEsperado === null) faltan.push("recuperacion_carrito_esperada");
       if (faltan.length > 0) {
         fugas.push({

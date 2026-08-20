@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { calcularDiagnostico, lecturaPresupuesto, type ConfiguracionCalculo } from "./calculo-diagnostico";
+import {
+  calcularDiagnostico,
+  envioNetoVendedor,
+  faltaEnvioCobrado,
+  lecturaPresupuesto,
+  type ConfiguracionCalculo,
+} from "./calculo-diagnostico";
 import { DATOS_INICIALES, type DatosDiagnostico } from "./diagnostico-form";
 import { mapearHallazgos } from "./propuesta";
 
@@ -603,5 +609,126 @@ describe("mapearHallazgos con una tienda sin cuenta publicitaria", () => {
     expect(
       idsDe({ ...sinAds, inversion_meta: 1_500_000, presupuesto_diario: 50_000, conjuntos_activos: 12 }),
     ).toContain("estructura_cuenta");
+  });
+});
+
+// ---------------------------------------------------- entrega 2.1 · costo de envío
+// El envío se paga por pedido: el componente se divide por el ticket promedio.
+
+describe("componente de envío por pedido", () => {
+  const snake: DatosDiagnostico = {
+    ...DATOS_INICIALES,
+    nombre_tienda: "Snake Store",
+    plataforma: "tiendanube",
+    plan_plataforma: "inicial",
+    pasarela: "mercado_pago",
+    ticket_promedio: 225226,
+    costo_envio_promedio: 11000,
+    producto_1_nombre: "Campera Puffer",
+    producto_1_costo: 40000,
+    producto_1_precio: 180000,
+    producto_2_nombre: "Chaleco Tiffany",
+    producto_2_costo: 35000,
+    producto_2_precio: 125000,
+    producto_3_nombre: "Calza Street",
+    producto_3_costo: 20000,
+    producto_3_precio: 85000,
+  };
+
+  const titan: DatosDiagnostico = {
+    ...DATOS_INICIALES,
+    nombre_tienda: "Titan Web",
+    plataforma: "tiendanube",
+    plan_plataforma: "esencial",
+    pasarela: "mercado_pago",
+    ticket_promedio: 25000,
+    costo_envio_promedio: 9000,
+    producto_1_nombre: "Bolsa tostado",
+    producto_1_costo: 5890,
+    producto_1_precio: 11650,
+    producto_2_nombre: "Molde pan lactal",
+    producto_2_costo: 17330,
+    producto_2_precio: 32990,
+    producto_3_nombre: "Cintura extensible",
+    producto_3_costo: 15700,
+    producto_3_precio: 30390,
+  };
+
+  it("caso A · Snake Store: componente único de envío y márgenes por producto", () => {
+    const r = calcularDiagnostico(snake, cfg);
+    expect(r.derivados.componente_envio).toBe(0.0488);
+    expect(r.derivados.margenes_producto).toEqual([0.6589, 0.6012, 0.6459]);
+  });
+
+  it("caso B1 · Titan Web: el envío deja de comerse el precio unitario", () => {
+    const r = calcularDiagnostico(titan, cfg);
+    expect(r.derivados.componente_envio).toBe(0.36);
+    expect(r.derivados.margenes_producto).toEqual([0.0744, 0.0547, 0.0634]);
+    expect(r.derivados.margen_contribucion).toBe(0.0642);
+    expect(r.derivados.breakeven_roas).toBe(15.585);
+  });
+
+  it("envío mayor al ticket: margen negativo pero finito", () => {
+    const r = calcularDiagnostico({ ...titan, costo_envio_promedio: 40000 }, cfg);
+    for (const m of r.derivados.margenes_producto) {
+      if (m !== null) expect(Number.isFinite(m)).toBe(true);
+    }
+    expect(r.derivados.margen_contribucion!).toBeLessThan(0);
+    expect(Number.isFinite(r.derivados.margen_contribucion!)).toBe(true);
+    expect(r.derivados.breakeven_roas).toBeNull();
+  });
+
+  it("envío en cero: componente cero y margen normal", () => {
+    const r = calcularDiagnostico({ ...titan, costo_envio_promedio: 0 }, cfg);
+    expect(r.derivados.componente_envio).toBe(0);
+    expect(r.derivados.margenes_producto[0]).toBeCloseTo(0.4344, 4);
+  });
+
+  it("envío ausente: margen en null y el campo entre los faltantes", () => {
+    const r = calcularDiagnostico(
+      { ...titan, costo_envio_promedio: null, facturacion_mensual: 10_000_000 },
+      cfg,
+    );
+    expect(r.derivados.componente_envio).toBeNull();
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(r.fugas.find((f) => f.id === "conversion")?.faltantes).toContain("envio_neto_vendedor");
+  });
+
+  it("sin ticket promedio no usa el precio como respaldo", () => {
+    const r = calcularDiagnostico({ ...titan, ticket_promedio: null }, cfg);
+    expect(r.derivados.componente_envio).toBeNull();
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(r.derivados.margenes_producto).toEqual([null, null, null]);
+  });
+
+  it("un solo producto cargado usa su margen directamente", () => {
+    const r = calcularDiagnostico(
+      { ...titan, producto_2_costo: null, producto_2_precio: null, producto_3_costo: null, producto_3_precio: null },
+      cfg,
+    );
+    expect(r.derivados.margen_contribucion).toBe(0.0744);
+  });
+
+  it("envío bruto sin importe cobrado: no se calcula el margen", () => {
+    const r = calcularDiagnostico(
+      { ...titan, costo_envio_promedio: null, envio_bruto: 9000 },
+      cfg,
+    );
+    expect(faltaEnvioCobrado({ ...titan, costo_envio_promedio: null, envio_bruto: 9000 })).toBe(true);
+    expect(r.derivados.envio_neto_vendedor).toBeNull();
+    expect(r.derivados.margen_contribucion).toBeNull();
+  });
+
+  it("envío bruto 9.000 con 4.000 cobrado: neto 5.000 y componente 0,2", () => {
+    const r = calcularDiagnostico(
+      { ...titan, costo_envio_promedio: null, envio_bruto: 9000, envio_cobrado_comprador: 4000 },
+      cfg,
+    );
+    expect(r.derivados.envio_neto_vendedor).toBe(5000);
+    expect(r.derivados.componente_envio).toBe(0.2);
+  });
+
+  it("el campo legado sigue funcionando como neto en diagnósticos guardados", () => {
+    expect(envioNetoVendedor({ ...titan })).toBe(9000);
   });
 });
