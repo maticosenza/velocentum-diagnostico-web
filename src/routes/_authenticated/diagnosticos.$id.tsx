@@ -172,7 +172,9 @@ function DetalleDiagnostico() {
     .filter(Boolean)
     .join(" · ");
 
-  const total = data.oportunidad_total ?? 0;
+  const contradiccion = d.contradiccion_margen ?? null;
+  const margenBloqueado = contradiccion?.bloquea === true;
+  const total = margenBloqueado ? 0 : (data.oportunidad_total ?? 0);
   const conservador = Math.round(total * 0.6);
 
   const acciones = (
@@ -204,7 +206,14 @@ function DetalleDiagnostico() {
       )}
 
       <div className="space-y-10 px-8 py-10">
-        <NumeroPrincipal medicionRota={medicionRota} total={total} conservador={conservador} />
+        <AvisoContradiccion contradiccion={contradiccion} />
+
+        <NumeroPrincipal
+          medicionRota={medicionRota}
+          margenBloqueado={margenBloqueado}
+          total={total}
+          conservador={conservador}
+        />
 
         <Semaforo estados={estados} derivados={d} datos={datos} />
 
@@ -231,15 +240,77 @@ function DetalleDiagnostico() {
 
 // ---------------------------------------------------------------- 2 · el número
 
+/** Alerta de contradicción entre el margen calculado y el que declara el cliente. */
+function AvisoContradiccion({
+  contradiccion,
+}: {
+  contradiccion: Derivados["contradiccion_margen"];
+}) {
+  if (!contradiccion || contradiccion.nivel === "sin_alerta") return null;
+  const critica = contradiccion.nivel === "critica";
+  const rango =
+    contradiccion.declarado_min === contradiccion.declarado_max
+      ? pct(contradiccion.declarado_min)
+      : `${pct(contradiccion.declarado_min)} a ${pct(contradiccion.declarado_max)}`;
+
+  return (
+    <section
+      className={cn(
+        "rounded-lg border bg-card px-7 py-5",
+        critica ? "border-estado-rojo/40" : "border-estado-amarillo/50",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <EstadoPunto estado={critica ? "rojo" : "amarillo"} className="mt-1.5 size-3" />
+        <div>
+          <h2 className="text-[15px] font-medium text-foreground">
+            {critica
+              ? "Contradicción crítica con el margen declarado"
+              : "El margen declarado necesita validación"}
+          </h2>
+          <p className="mt-2 text-[13.5px] leading-6 text-muted-foreground">
+            El margen calculado es {pct(contradiccion.calculado)} y el cliente declara {rango}.
+            {contradiccion.cambio_de_signo
+              ? " El signo no coincide: uno de los dos números está mal."
+              : ` La diferencia contra el límite más cercano es de ${pct(contradiccion.diferencia)}.`}
+          </p>
+          <p className="mt-2 text-[13px] text-muted-foreground">
+            {contradiccion.bloquea
+              ? "El dato está confirmado por el cliente: no se muestra la oportunidad estimada ni se valorizan las fugas que usan margen hasta resolver la diferencia. El resto del diagnóstico sigue siendo válido."
+              : "El dato no está confirmado por el cliente: se registra como alerta informativa y no bloquea el cálculo."}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function NumeroPrincipal({
   medicionRota,
+  margenBloqueado,
   total,
   conservador,
 }: {
   medicionRota: boolean;
+  margenBloqueado: boolean;
   total: number;
   conservador: number;
 }) {
+  if (margenBloqueado) {
+    return (
+      <section className="rounded-lg border border-estado-rojo/40 bg-card px-10 py-14">
+        <h2 className="text-[30px] font-medium leading-9 text-foreground">
+          No valorizamos la oportunidad con este margen
+        </h2>
+        <p className="mt-4 max-w-2xl text-[16px] leading-7 text-muted-foreground">
+          El margen que confirmó el cliente contradice al que sale de los números cargados.
+          Cualquier monto sería una cuenta sobre un margen que no sabemos cuál es. El resto del
+          diagnóstico (medición, estructura de cuenta, funnel, canales y contenido) sigue en pie.
+        </p>
+      </section>
+    );
+  }
+
   if (medicionRota) {
     return (
       <section className="rounded-lg border border-estado-rojo/40 bg-card px-10 py-14">
@@ -492,7 +563,25 @@ function EconomiaDetalle({
         <Fila label="Reserva aplicada" value={pct(derivados.reserva, 0)} />
         <Fila label="CPA objetivo" value={pesos(derivados.cpa_objetivo)} />
         <Fila label="ROAS objetivo" value={numero(derivados.roas_objetivo)} />
-        <Fila label="MER actual" value={numero(derivados.mer_actual)} />
+        <Fila label="MER actual (combinado)" value={numero(derivados.mer_actual)} />
+        <Fila label="MER tienda propia (Meta + Google)" value={numero(derivados.mer_tienda_propia)} />
+        <Fila label="MER Mercado Libre (Product Ads)" value={numero(derivados.mer_marketplace)} />
+        <Fila
+          label="ROAS de Product Ads"
+          value={
+            typeof derivados.roas_product_ads === "number"
+              ? numero(derivados.roas_product_ads)
+              : "Sin datos"
+          }
+        />
+        <Fila
+          label="Inversión publicitaria total"
+          value={
+            derivados.hay_inversion_publicitaria === null
+              ? "Sin datos"
+              : pesos(derivados.inversion_publicitaria_total)
+          }
+        />
         <Fila label="Pedidos mensuales estimados" value={numero(derivados.pedidos_mensuales, 0)} />
       </dl>
     </section>
@@ -674,6 +763,21 @@ function SeccionCanales({ derivados }: { derivados: Derivados }) {
                     <Fila label="Vigencia de la regla" value={c.comision_vigencia} />
                   )}
                   <Fila label="MER del canal" value={numero(c.mer)} />
+                  <Fila
+                    label="Contribución antes de publicidad"
+                    value={pesos(c.contribucion_antes_publicidad)}
+                  />
+                  <Fila label="Inversión publicitaria del canal" value={pesos(c.inversion_publicitaria)} />
+                  <Fila
+                    label="Resultado después de publicidad"
+                    value={pesos(c.resultado_despues_publicidad)}
+                  />
+                  {c.id === "mercado_libre" && (
+                    <Fila
+                      label="ROAS de Product Ads"
+                      value={typeof c.roas_pauta === "number" ? numero(c.roas_pauta) : "Sin datos"}
+                    />
+                  )}
                   <Fila label="Breakeven del canal" value={numero(c.breakeven_roas)} />
                   {c.comision_provisional && (
                     <p className="rounded-md bg-violet-soft px-3 py-2 text-[12.5px] text-violet">
