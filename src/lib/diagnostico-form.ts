@@ -182,6 +182,42 @@ export type DatosDiagnostico = {
   ml_productos_publicados: number | null;
   ml_product_ads: boolean | null;
   ml_inversion_product_ads: number | null;
+
+  /**
+   * Mix de canales. Todos opcionales: los diagnósticos guardados no los tienen y
+   * NO se migran asumiendo que la tienda propia factura el 100%.
+   * Los porcentajes de comisión de canal se cargan en porcentaje (16,94), no en tasa.
+   */
+  canal_tienda_pct?: number | null;
+  canal_tienda_no_aplica?: boolean;
+  canal_tienda_facturacion?: number | null;
+  canal_tienda_ticket?: number | null;
+  canal_tienda_comision_pct?: number | null;
+  canal_tienda_cargo_fijo?: number | null;
+  canal_tienda_envio_neto?: number | null;
+  canal_tienda_financiacion_pct_ventas?: number | null;
+  canal_tienda_financiacion_costo_pct?: number | null;
+  canal_tienda_descuento_pct_ventas?: number | null;
+  canal_tienda_descuento_pct?: number | null;
+  canal_tienda_inversion?: number | null;
+  canal_tienda_periodo?: string;
+  canal_tienda_moneda?: string;
+
+  canal_ml_pct?: number | null;
+  canal_ml_no_aplica?: boolean;
+  canal_ml_facturacion?: number | null;
+  canal_ml_ticket?: number | null;
+  canal_ml_comision_pct?: number | null;
+  canal_ml_cargo_fijo?: number | null;
+  canal_ml_envio_neto?: number | null;
+  canal_ml_financiacion_pct_ventas?: number | null;
+  canal_ml_financiacion_costo_pct?: number | null;
+  canal_ml_descuento_pct_ventas?: number | null;
+  canal_ml_descuento_pct?: number | null;
+  canal_ml_inversion?: number | null;
+  canal_ml_tipo_publicacion?: string;
+  canal_ml_periodo?: string;
+  canal_ml_moneda?: string;
 };
 
 export type NotasDiagnostico = Record<string, string>;
@@ -251,11 +287,43 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   ml_productos_publicados: null,
   ml_product_ads: null,
   ml_inversion_product_ads: null,
+
+  canal_tienda_pct: null,
+  canal_tienda_no_aplica: false,
+  canal_tienda_facturacion: null,
+  canal_tienda_ticket: null,
+  canal_tienda_comision_pct: null,
+  canal_tienda_cargo_fijo: null,
+  canal_tienda_envio_neto: null,
+  canal_tienda_financiacion_pct_ventas: null,
+  canal_tienda_financiacion_costo_pct: null,
+  canal_tienda_descuento_pct_ventas: null,
+  canal_tienda_descuento_pct: null,
+  canal_tienda_inversion: null,
+  canal_tienda_periodo: "mensual",
+  canal_tienda_moneda: "ARS",
+
+  canal_ml_pct: null,
+  canal_ml_no_aplica: false,
+  canal_ml_facturacion: null,
+  canal_ml_ticket: null,
+  canal_ml_comision_pct: null,
+  canal_ml_cargo_fijo: null,
+  canal_ml_envio_neto: null,
+  canal_ml_financiacion_pct_ventas: null,
+  canal_ml_financiacion_costo_pct: null,
+  canal_ml_descuento_pct_ventas: null,
+  canal_ml_descuento_pct: null,
+  canal_ml_inversion: null,
+  canal_ml_tipo_publicacion: "",
+  canal_ml_periodo: "mensual",
+  canal_ml_moneda: "ARS",
 };
 
 export const BLOQUES = [
   { id: "identificacion", label: "Identificación" },
   { id: "medicion", label: "Medición" },
+  { id: "canales", label: "Canales" },
   { id: "economia", label: "Economía" },
   { id: "productos", label: "Productos" },
   { id: "cuenta", label: "Cuenta" },
@@ -269,6 +337,7 @@ export type BloqueId = (typeof BLOQUES)[number]["id"];
 const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
   identificacion: ["nombre_tienda", "vertical", "plataforma", "plan_plataforma"],
   medicion: [],
+  canales: ["canal_tienda_pct", "canal_ml_pct"],
   economia: [
     "facturacion_mensual",
     "ticket_promedio",
@@ -373,6 +442,8 @@ export const ORIGEN_DATOS: Record<BloqueId, string> = {
   identificacion: "Conversado. El plan se ve en el panel del cliente.",
   medicion:
     "Events Manager, pestaña Resumen. Ojo que Meta solo guarda unos dos meses de historial.",
+  canales:
+    "Conversado, más el panel de cada canal. El porcentaje de cada canal sale de la facturación total del negocio.",
   economia: "Tiendanube: Estadísticas, Visión general.",
   productos: "Tiendanube: Estadísticas, Productos. Ahí están las unidades vendidas de cada uno.",
   cuenta:

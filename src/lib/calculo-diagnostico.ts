@@ -5,6 +5,27 @@
 
 import type { DatosDiagnostico } from "./diagnostico-form";
 import { DECIMALES_TASA, ratioPesos, redondear, restarPesos, sumarDecimal } from "./dinero";
+import {
+  CANALES,
+  CAMPOS_PCT_CANAL,
+  canalPrincipal,
+  canalesDeclarados,
+  canalesSuperan100,
+  coberturaCanales,
+  comisionEfectivaCanal,
+  comisionPlataformaDe,
+  claveComisionPlataforma,
+  estadoCanal,
+  hayCanalesDeclarados,
+  numeroCanal,
+  pctCanal,
+  type CanalId,
+  type ComisionMarketplace,
+  type EstadoCanal,
+} from "./canales";
+
+export { claveComisionPlataforma, comisionPlataformaDe, canalesSuperan100, coberturaCanales, canalPrincipal, estadoCanal, comisionEfectivaCanal };
+export type { CanalId } from "./canales";
 
 // ---------------------------------------------------------------- configuración
 
@@ -17,6 +38,7 @@ export type ConfiguracionCalculo = {
   reserva_default?: number;
   comision_plataforma?: Record<string, number>;
   comision_pasarela?: Record<string, number>;
+  comision_marketplace?: Record<string, ComisionMarketplace>;
   umbrales_funnel_web?: Record<string, Umbral>;
   umbrales_cr_por_ticket?: TramoCr[];
   umbrales_creativos?: Record<string, Umbral>;
@@ -53,6 +75,10 @@ export type Derivados = {
   margenes_producto: (number | null)[];
 
   pesos_producto: (number | null)[];
+  canales: CanalDerivado[];
+  cobertura_canales: number;
+  canal_principal: CanalId | null;
+  margen_muestra: number | null;
   pedidos_mensuales: number | null;
   cr_tienda: number | null;
   cr_umbral_verde: number | null;
@@ -130,23 +156,6 @@ function porUmbral(valor: number, u: Umbral, mayorEsMejor: boolean): EstadoBloqu
   if (valor <= u.verde) return "verde";
   if (valor > u.rojo) return "rojo";
   return "amarillo";
-}
-
-/** Clave compuesta plataforma_plan usada en la configuración de comisiones. */
-export function claveComisionPlataforma(plataforma: string, plan: string): string {
-  const p = (plataforma || "").trim();
-  const pl = (plan || "").trim();
-  if (!p) return "";
-  return pl ? `${p}_${pl}` : p;
-}
-
-function comisionPlataformaDe(cfg: ConfiguracionCalculo, datos: DatosDiagnostico): number | null {
-  const tabla = cfg.comision_plataforma ?? {};
-  const compuesta = claveComisionPlataforma(datos.plataforma, datos.plan_plataforma);
-  if (finito(tabla[compuesta])) return tabla[compuesta] as number;
-  const simple = (datos.plataforma || "").trim();
-  if (finito(tabla[simple])) return tabla[simple] as number;
-  return null;
 }
 
 /**
@@ -332,6 +341,9 @@ export function faltantesMargen(d: DatosDiagnostico): string[] {
   }
   faltan.push(...costoFinanciacion(d).faltan);
   faltan.push(...costoDescuento(d).faltan);
+  if (canalesSuperan100(d)) {
+    for (const c of Object.values(CAMPOS_PCT_CANAL)) if (!faltan.includes(c)) faltan.push(c);
+  }
   if (participacionesIncompatibles(d)) {
     for (const c of ["financiacion_pct_ventas", "descuento_pct_ventas"]) {
       if (!faltan.includes(c)) faltan.push(c);
@@ -341,6 +353,180 @@ export function faltantesMargen(d: DatosDiagnostico): string[] {
 }
 
 
+
+// ---------------------------------------------------------------- canales
+
+export type CanalDerivado = {
+  id: CanalId;
+  estado: EstadoCanal;
+  pct: number | null;
+  ticket: number | null;
+  facturacion: number | null;
+  inversion: number | null;
+  envio_neto: number | null;
+  componente_envio: number | null;
+  comision_efectiva: number | null;
+  comision_origen: string | null;
+  comision_provisional: boolean;
+  cargo_fijo_aplicado: boolean;
+  costo_financiacion_efectivo: number | null;
+  costo_descuento_efectivo: number | null;
+  margen: number | null;
+  margenes_producto: (number | null)[];
+  mer: number | null;
+  breakeven_roas: number | null;
+  faltantes: string[];
+  /** Margen sin redondear, para ponderar el mix sin arrastrar error. */
+  margen_exacto: number | null;
+  margenes_producto_exactos: (number | null)[];
+  pesos_producto: (number | null)[];
+};
+
+/**
+ * Costo variable ponderado propio del canal. Si el canal no declara ninguno de
+ * los dos campos, hereda el valor compartido del diagnóstico.
+ */
+function componenteCanal(
+  d: DatosDiagnostico,
+  canal: CanalId,
+  base: { valor: number | null; faltan: string[] },
+  sufijoPct: string,
+  sufijoCosto: string,
+): { valor: number | null; faltan: string[] } {
+  const pct = numeroCanal(d, canal, sufijoPct);
+  const costo = numeroCanal(d, canal, sufijoCosto);
+  if (pct === null && costo === null) return base;
+  const prefijo = `${canal === "tienda_propia" ? "canal_tienda" : "canal_ml"}_`;
+  if (pct === null) return { valor: null, faltan: [`${prefijo}${sufijoPct}`] };
+  if (costo === null) return { valor: null, faltan: [`${prefijo}${sufijoCosto}`] };
+  if (pct < 0 || costo < 0) return { valor: null, faltan: [`${prefijo}${sufijoPct}`] };
+  return { valor: (pct / 100) * (costo / 100), faltan: [] };
+}
+
+/** Margen de contribución de un canal, ponderado por los productos más vendidos. */
+function margenDeCanal(
+  d: DatosDiagnostico,
+  cfg: ConfiguracionCalculo,
+  canal: CanalId,
+  cargados: ReturnType<typeof productosCargados>,
+): CanalDerivado {
+  const estado = estadoCanal(d, canal);
+  const pct = pctCanal(d, canal);
+  const ticket =
+    numeroCanal(d, canal, "ticket") ??
+    (finito(d.ticket_promedio) && d.ticket_promedio > 0 ? d.ticket_promedio : null);
+  const envioNeto = numeroCanal(d, canal, "envio_neto") ?? envioNetoVendedor(d);
+  const facturacion = numeroCanal(d, canal, "facturacion");
+  const inversion = numeroCanal(d, canal, "inversion");
+
+  const faltan: string[] = [];
+  if (ticket === null || ticket <= 0) faltan.push("ticket_promedio");
+  if (envioNeto === null) faltan.push("envio_neto_vendedor");
+
+  // El envío se paga por pedido, no por unidad: se divide por el ticket del canal.
+  const componenteEnvio =
+    envioNeto !== null && ticket !== null && ticket > 0 ? ratioPesos(envioNeto, ticket) : null;
+
+  const comision = comisionEfectivaCanal(d, cfg, canal, ticket);
+  faltan.push(...comision.faltantes);
+
+  const fin = componenteCanal(
+    d,
+    canal,
+    costoFinanciacion(d),
+    "financiacion_pct_ventas",
+    "financiacion_costo_pct",
+  );
+  const desc = componenteCanal(d, canal, costoDescuento(d), "descuento_pct_ventas", "descuento_pct");
+  faltan.push(...fin.faltan, ...desc.faltan);
+  if (participacionesIncompatibles(d)) {
+    for (const c of ["financiacion_pct_ventas", "descuento_pct_ventas"]) {
+      if (!faltan.includes(c)) faltan.push(c);
+    }
+  }
+
+  const margenesExactos: (number | null)[] = [null, null, null];
+  const pesos: (number | null)[] = [null, null, null];
+  const calculables: { indice: number; margen: number; pct: number | null }[] = [];
+
+  if (
+    comision.valor !== null &&
+    componenteEnvio !== null &&
+    fin.valor !== null &&
+    desc.valor !== null &&
+    !participacionesIncompatibles(d)
+  ) {
+    for (const p of cargados) {
+      const costoRelativo = ratioPesos(p.costo, p.precio);
+      if (costoRelativo === null) continue;
+      const m = sumarDecimal(
+        1,
+        -costoRelativo,
+        -comision.valor,
+        -componenteEnvio,
+        -fin.valor,
+        -desc.valor,
+      );
+      if (!finito(m)) continue;
+      margenesExactos[p.indice - 1] = m;
+      calculables.push({
+        indice: p.indice,
+        margen: m,
+        pct: finito(p.pct) && (p.pct as number) > 0 ? (p.pct as number) : null,
+      });
+    }
+  }
+
+  let margenExacto: number | null = null;
+  if (calculables.length === 1) {
+    const uno = calculables[0]!;
+    margenExacto = uno.margen;
+    pesos[uno.indice - 1] = 1;
+  } else if (calculables.length > 1) {
+    // Peso = participación de cada producto en la facturación del catálogo cargado.
+    const conPct = calculables.filter((c) => c.pct !== null);
+    const usados = conPct.length > 0 ? conPct : calculables;
+    const sumaPesos = usados.reduce((a, c) => a + (conPct.length > 0 ? (c.pct as number) : 1), 0);
+    if (sumaPesos > 0) {
+      let acumulado = 0;
+      for (const c of usados) {
+        const peso = (conPct.length > 0 ? (c.pct as number) : 1) / sumaPesos;
+        pesos[c.indice - 1] = red(peso, 4);
+        acumulado += c.margen * peso;
+      }
+      margenExacto = finito(acumulado) ? acumulado : null;
+    }
+  }
+
+  const margenPositivo = margenExacto !== null && margenExacto > 0 ? margenExacto : null;
+  const mer =
+    facturacion !== null && inversion !== null && inversion > 0 ? facturacion / inversion : null;
+
+  return {
+    id: canal,
+    estado,
+    pct,
+    ticket,
+    facturacion,
+    inversion,
+    envio_neto: envioNeto,
+    componente_envio: red(componenteEnvio, DECIMALES_TASA),
+    comision_efectiva: comision.valor,
+    comision_origen: comision.origen,
+    comision_provisional: comision.provisional,
+    cargo_fijo_aplicado: comision.cargo_fijo_aplicado,
+    costo_financiacion_efectivo: red(fin.valor, DECIMALES_TASA),
+    costo_descuento_efectivo: red(desc.valor, DECIMALES_TASA),
+    margen: red(margenExacto, DECIMALES_TASA),
+    margenes_producto: margenesExactos.map((m) => red(m, DECIMALES_TASA)),
+    mer: red(mer, 2),
+    breakeven_roas: margenPositivo !== null ? red(1 / margenPositivo, DECIMALES_TASA) : null,
+    faltantes: faltan,
+    margen_exacto: margenExacto,
+    margenes_producto_exactos: margenesExactos,
+    pesos_producto: pesos,
+  };
+}
 
 // ---------------------------------------------------------------- cálculo
 
@@ -363,83 +549,52 @@ export function calcularDiagnostico(
   }
 
 
-  // --- Comisiones
-  const comPlataforma = comisionPlataformaDe(cfg, d);
-  const comPasarela = finito(cfg.comision_pasarela?.[d.pasarela])
-    ? (cfg.comision_pasarela![d.pasarela] as number)
-    : null;
-
-  // --- Margen de contribución ponderado por los productos más vendidos
+  // --- Margen por canal. Cada canal se calcula con sus propias comisiones,
+  // su propio ticket y su propio envío: no hay contaminación entre canales.
   const cargados = productosCargados(d);
-  const envioNeto = envioNetoVendedor(d);
-  // El envío se paga por pedido, no por unidad: se divide por el ticket promedio,
-  // así que el componente es el mismo para todos los productos del diagnóstico.
-  const componenteEnvio =
-    envioNeto !== null && finito(d.ticket_promedio) && d.ticket_promedio > 0
-      ? ratioPesos(envioNeto, d.ticket_promedio)
-      : null;
+  const canalesCalc: CanalDerivado[] = CANALES.map((c) => margenDeCanal(d, cfg, c.id, cargados));
+  const porId = (id: CanalId) => canalesCalc.find((c) => c.id === id)!;
 
-  // --- Costos variables sobre el precio: financiación en cuotas y descuentos
-  const finComp = costoFinanciacion(d);
-  const descComp = costoDescuento(d);
-
-  const margenesProducto: (number | null)[] = [null, null, null];
-  const pesosProducto: (number | null)[] = [null, null, null];
-  const calculables: { indice: number; margen: number; pct: number | null }[] = [];
-
-  if (
-    comPlataforma !== null &&
-    comPasarela !== null &&
-    componenteEnvio !== null &&
-    finComp.valor !== null &&
-    descComp.valor !== null &&
-    !participacionesIncompatibles(d)
-  ) {
-
-    for (const p of cargados) {
-      const costoRelativo = ratioPesos(p.costo, p.precio);
-      if (costoRelativo === null) continue;
-      const m = sumarDecimal(
-        1,
-        -costoRelativo,
-        -comPlataforma,
-        -comPasarela,
-        -componenteEnvio,
-        -finComp.valor,
-        -descComp.valor,
-      );
-
-      if (!finito(m)) continue;
-      margenesProducto[p.indice - 1] = red(m, 4);
-
-      calculables.push({
-        indice: p.indice,
-        margen: m,
-        pct: finito(p.pct) && (p.pct as number) > 0 ? (p.pct as number) : null,
-      });
-    }
-  }
+  const cobertura = coberturaCanales(d);
+  const hayCanales = hayCanalesDeclarados(d);
+  const principal = canalPrincipal(d);
+  const canalMuestra = principal !== null ? porId(principal) : porId("tienda_propia");
 
   let margen: number | null = null;
-  if (calculables.length === 1) {
-    const uno = calculables[0]!;
-    margen = uno.margen;
-    pesosProducto[uno.indice - 1] = 1;
-  } else if (calculables.length > 1) {
-    // Peso = participación de cada producto en la facturación mensual.
-    const conPct = calculables.filter((c) => c.pct !== null);
-    const usados = conPct.length > 0 ? conPct : calculables;
-    const sumaPesos = usados.reduce((a, c) => a + (conPct.length > 0 ? (c.pct as number) : 1), 0);
-    if (sumaPesos > 0) {
+  let margenMuestra: number | null = null;
+
+  if (!hayCanales) {
+    // Diagnóstico sin mix declarado: se mantiene el cálculo de canal único
+    // (tienda propia con los datos compartidos), sin asumir que factura el 100%.
+    margen = porId("tienda_propia").margen_exacto;
+    margenMuestra = margen;
+  } else if (!canalesSuperan100(d) && cobertura > 0) {
+    const contribuyentes = canalesDeclarados(d)
+      .filter((c) => c.pct > 0)
+      .map((c) => ({ pct: c.pct, canal: porId(c.id) }));
+    const todosCalculables = contribuyentes.every((c) => c.canal.margen_exacto !== null);
+    if (todosCalculables && contribuyentes.length > 0) {
       let acumulado = 0;
-      for (const c of usados) {
-        const peso = (conPct.length > 0 ? (c.pct as number) : 1) / sumaPesos;
-        pesosProducto[c.indice - 1] = red(peso, 4);
-        acumulado += c.margen * peso;
-      }
-      margen = finito(acumulado) ? acumulado : null;
+      for (const c of contribuyentes) acumulado += (c.canal.margen_exacto as number) * (c.pct / 100);
+      // Margen de la muestra: sobre la cobertura conocida, sin reescalar el mix.
+      margenMuestra = finito(acumulado) ? acumulado / (cobertura / 100) : null;
+      // El margen total sólo existe si el mix cubre el 100% de la facturación.
+      margen = cobertura >= 100 ? margenMuestra : null;
     }
   }
+
+  const margenesProducto = canalMuestra.margenes_producto_exactos.map((m) => red(m, 4));
+  const pesosProducto = canalMuestra.pesos_producto;
+  const componenteEnvio = canalMuestra.componente_envio;
+  // Garantía 5: las comisiones de la tienda propia no se informan si no participa.
+  const tiendaParticipa = !hayCanales || estadoCanal(d, "tienda_propia") === "declarado";
+  const comPlataforma = tiendaParticipa ? comisionPlataformaDe(cfg, d) : null;
+  const comPasarela =
+    tiendaParticipa && finito(cfg.comision_pasarela?.[d.pasarela])
+      ? (cfg.comision_pasarela![d.pasarela] as number)
+      : null;
+  const finComp = costoFinanciacion(d);
+  const descComp = costoDescuento(d);
 
   const margenPositivo = margen !== null && margen > 0 ? margen : null;
 
@@ -506,13 +661,17 @@ export function calcularDiagnostico(
   const derivados: Derivados = {
     delta_medicion: red(delta, 4),
     margen_contribucion: red(margen, DECIMALES_TASA),
-    envio_neto_vendedor: red(envioNeto, 0),
+    envio_neto_vendedor: red(canalMuestra.envio_neto, 0),
     componente_envio: red(componenteEnvio, DECIMALES_TASA),
     comision_plataforma: comPlataforma,
     comision_pasarela: comPasarela,
     costo_financiacion_efectivo: red(finComp.valor, DECIMALES_TASA),
     costo_descuento_efectivo: red(descComp.valor, DECIMALES_TASA),
 
+    canales: canalesCalc,
+    cobertura_canales: cobertura,
+    canal_principal: principal,
+    margen_muestra: red(margenMuestra, DECIMALES_TASA),
     margenes_producto: margenesProducto,
     pesos_producto: pesosProducto,
     pedidos_mensuales: red(pedidos, 0),
