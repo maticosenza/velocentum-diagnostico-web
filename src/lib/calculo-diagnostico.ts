@@ -813,6 +813,7 @@ export function calcularDiagnostico(
       calculable: t.calculable,
       faltantes: faltan,
       detalle: t.detalle,
+      confianza: t.confianza,
     });
   }
 
