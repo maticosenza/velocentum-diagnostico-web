@@ -63,13 +63,34 @@ export const CANTIDAD_CAMPANAS = [
   { value: "muchas", label: "Muchas" },
 ] as const;
 
-/** Base sobre la que están expresados facturación y ticket. */
+/**
+ * Base sobre la que están expresados facturación y ticket. Legado: se conserva
+ * para poder leer diagnósticos guardados antes de los indicadores independientes.
+ */
 export type BaseMontos = "bruto" | "neto";
 
 export const BASES_MONTOS = [
   { value: "bruto", label: "Bruto (antes de descuentos)" },
   { value: "neto", label: "Neto (ya con descuentos aplicados)" },
 ] as const;
+
+/**
+ * Vocabulario de montos, para que no queden dudas de qué se resta y qué no:
+ *  - bruto: precio de lista, antes de cualquier deducción;
+ *  - neto de descuento: el ingreso después de aplicar los descuentos comerciales
+ *    (transferencia, cupones);
+ *  - neto de financiación: el ingreso después de que el procesador ya retuvo el
+ *    costo de las cuotas.
+ * Cada indicador es independiente: un mismo diagnóstico puede venir neto de
+ * descuento y bruto de financiación, o al revés.
+ */
+export type RelacionFinDesc = "excluyentes" | "superpuestos";
+
+export const RELACIONES_FIN_DESC = [
+  { value: "excluyentes", label: "No, son excluyentes" },
+  { value: "superpuestos", label: "Sí, se pueden combinar" },
+] as const;
+
 
 export type DatosDiagnostico = {
 
@@ -91,8 +112,12 @@ export type DatosDiagnostico = {
   // Economía (compartido)
   facturacion_mensual: number | null;
   ticket_promedio: number | null;
-  /** Indica si facturación y ticket vienen brutos o ya netos de descuentos. */
-  base_montos: BaseMontos;
+  /** Legado. Se lee sólo si no están los dos indicadores nuevos. */
+  base_montos?: BaseMontos;
+  /** true si facturación y ticket ya vienen netos de descuentos comerciales. */
+  montos_netos_de_descuento?: boolean;
+  /** true si facturación y ticket ya vienen netos del costo financiero. */
+  montos_netos_de_financiacion?: boolean;
   /** Legado: se interpreta como envío neto del vendedor. */
   costo_envio_promedio: number | null;
   /** Costo total del envío por pedido. */
@@ -108,6 +133,9 @@ export type DatosDiagnostico = {
   descuento_pct_ventas: number | null;
   /** Magnitud del descuento, como % del precio. */
   descuento_pct: number | null;
+  /** Si cuotas y descuento pueden caer sobre la misma venta. */
+  relacion_financiacion_descuento?: RelacionFinDesc;
+
   inversion_meta: number | null;
   inversion_google: number | null;
 
@@ -172,7 +200,8 @@ export const DATOS_INICIALES: DatosDiagnostico = {
 
   facturacion_mensual: null,
   ticket_promedio: null,
-  base_montos: "bruto",
+  montos_netos_de_descuento: false,
+  montos_netos_de_financiacion: false,
   costo_envio_promedio: null,
   envio_bruto: null,
   envio_cobrado_comprador: null,
@@ -181,6 +210,8 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   financiacion_costo_pct: null,
   descuento_pct_ventas: null,
   descuento_pct: null,
+  relacion_financiacion_descuento: "excluyentes",
+
 
   inversion_meta: null,
   inversion_google: null,

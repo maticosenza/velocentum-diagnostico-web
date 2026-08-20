@@ -5,6 +5,10 @@ import {
   faltaEnvioCobrado,
   faltantesMargen,
   participacionesSuperan100,
+  participacionesIncompatibles,
+  montosNetosDeDescuento,
+  montosNetosDeFinanciacion,
+
   lecturaPresupuesto,
   type ConfiguracionCalculo,
 } from "./calculo-diagnostico";
@@ -865,9 +869,10 @@ describe("costo de financiación y descuentos", () => {
     expect(faltantesMargen(d)).toContain("descuento_pct_ventas");
   });
 
-  it("suma de participaciones mayor a 100: advierte pero calcula", () => {
-    const d = {
+  it("suma de participaciones mayor a 100 con costos superpuestos: advierte pero calcula", () => {
+    const d: DatosDiagnostico = {
       ...s1,
+      relacion_financiacion_descuento: "superpuestos",
       financiacion_pct_ventas: 80,
       financiacion_costo_pct: 10,
       descuento_pct_ventas: 40,
@@ -876,6 +881,87 @@ describe("costo de financiación y descuentos", () => {
     expect(participacionesSuperan100(d)).toBe(true);
     expect(calcularDiagnostico(d, cfg).derivados.margen_contribucion).toBe(0.32);
   });
+
+  // ---------------------------------- entrega 2.3a · relación e indicadores netos
+
+  it("excluyentes con suma 120: margen null y ambos campos en faltantes", () => {
+    const d: DatosDiagnostico = {
+      ...s1,
+      relacion_financiacion_descuento: "excluyentes",
+      financiacion_pct_ventas: 80,
+      financiacion_costo_pct: 10,
+      descuento_pct_ventas: 40,
+      descuento_pct: 10,
+    };
+    expect(participacionesIncompatibles(d)).toBe(true);
+    expect(calcularDiagnostico(d, cfg).derivados.margen_contribucion).toBeNull();
+    expect(faltantesMargen(d)).toContain("financiacion_pct_ventas");
+    expect(faltantesMargen(d)).toContain("descuento_pct_ventas");
+  });
+
+  it("excluyentes con suma 100: se calcula normal", () => {
+    const d: DatosDiagnostico = {
+      ...s1,
+      relacion_financiacion_descuento: "excluyentes",
+      financiacion_pct_ventas: 60,
+      financiacion_costo_pct: 10,
+      descuento_pct_ventas: 40,
+      descuento_pct: 10,
+    };
+    expect(participacionesIncompatibles(d)).toBe(false);
+    // 0,44 - 0,06 - 0,04 = 0,34
+    expect(calcularDiagnostico(d, cfg).derivados.margen_contribucion).toBe(0.34);
+  });
+
+  const ambos: DatosDiagnostico = {
+    ...s1,
+    financiacion_pct_ventas: 50,
+    financiacion_costo_pct: 10.75,
+    descuento_pct_ventas: 30,
+    descuento_pct: 15,
+  };
+
+  it("netos de descuento: solo se resta financiación", () => {
+    const r = calcularDiagnostico(
+      { ...ambos, montos_netos_de_descuento: true, montos_netos_de_financiacion: false },
+      cfg,
+    );
+    expect(r.derivados.costo_descuento_efectivo).toBe(0);
+    expect(r.derivados.costo_financiacion_efectivo).toBe(0.0538);
+    expect(r.derivados.margen_contribucion).toBe(0.3863);
+  });
+
+  it("netos de financiación: solo se resta descuento", () => {
+    const r = calcularDiagnostico(
+      { ...ambos, montos_netos_de_descuento: false, montos_netos_de_financiacion: true },
+      cfg,
+    );
+    expect(r.derivados.costo_financiacion_efectivo).toBe(0);
+    expect(r.derivados.costo_descuento_efectivo).toBe(0.045);
+    expect(r.derivados.margen_contribucion).toBe(0.395);
+  });
+
+  it("los dos en true: no se resta ninguno", () => {
+    expect(
+      margenDe({ ...ambos, montos_netos_de_descuento: true, montos_netos_de_financiacion: true }),
+    ).toBe(0.44);
+  });
+
+  it("los dos en false: se restan los dos", () => {
+    expect(
+      margenDe({ ...ambos, montos_netos_de_descuento: false, montos_netos_de_financiacion: false }),
+    ).toBe(0.3413);
+  });
+
+  it("diagnóstico viejo con base_montos neto: neto de descuento, bruto de financiación", () => {
+    const viejo: DatosDiagnostico = { ...ambos, base_montos: "neto" };
+    delete (viejo as Record<string, unknown>)['montos_netos_de_descuento'];
+    delete (viejo as Record<string, unknown>)['montos_netos_de_financiacion'];
+    expect(montosNetosDeDescuento(viejo)).toBe(true);
+    expect(montosNetosDeFinanciacion(viejo)).toBe(false);
+    expect(margenDe(viejo)).toBe(0.3863);
+  });
+
 
   it("los cálculos degenerados no devuelven NaN ni infinito", () => {
     const r = calcularDiagnostico(
