@@ -125,6 +125,8 @@ export type Fuga = {
   detalle?: string;
   /** true cuando el monto superó el rango razonable y quedó topeado. */
   sospechosa?: boolean;
+  /** Confianza del cálculo: "parcial" marca estimaciones sin desglose. */
+  confianza?: "alta" | "parcial";
 };
 
 
@@ -811,6 +813,7 @@ export function calcularDiagnostico(
       calculable: t.calculable,
       faltantes: faltan,
       detalle: t.detalle,
+      confianza: t.confianza,
     });
   }
 

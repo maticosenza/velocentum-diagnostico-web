@@ -370,6 +370,17 @@ function Semaforo({
 
 // ---------------------------------------------------------------- 4 · fugas
 
+/** Marca visible para estimaciones sin desglose por falta de etapas intermedias. */
+function MarcaParcial() {
+  return (
+    <p className="mt-3 inline-block rounded-full border border-violet/40 px-3 py-1 text-[12.5px] text-violet">
+      Estimación parcial: faltan etapas intermedias del funnel
+    </p>
+  );
+}
+
+
+
 function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
   const [expandido, setExpandido] = useState(false);
 
@@ -402,6 +413,7 @@ function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
               <p className="mt-1.5 text-[14px] leading-5 text-muted-foreground">
                 {f.detalle ?? EXPLICACION_FUGA[f.id] ?? ""}
               </p>
+              {f.confianza === "parcial" && <MarcaParcial />}
             </div>
             <p className="text-[24px] font-medium tabular-nums text-foreground">{pesos(f.monto)}</p>
           </li>
@@ -426,6 +438,7 @@ function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
               No se pudo calcular. Faltan:{" "}
               {f.faltantes.map((c) => ETIQUETAS_CAMPO[c] ?? c).join(", ")}.
             </p>
+            {f.confianza === "parcial" && <MarcaParcial />}
           </li>
         ))}
       </ul>

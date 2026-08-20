@@ -441,7 +441,29 @@ describe("cascada de atribución del funnel web", () => {
     expect(ids).not.toContain("conversion");
     expect(ids).not.toContain("carritos_abandonados");
     expect(r.derivados.funnel.desglosado).toBe(true);
+    for (const id of ["funnel_navegacion", "funnel_carrito", "funnel_checkout"]) {
+      expect(r.fugas.find((f) => f.id === id)!.confianza, id).toBe("alta");
+    }
   });
+
+  it("cascada y combinada son excluyentes entre sí", () => {
+    const conTodo = calcularDiagnostico(conFunnel, cfgFunnel).fugas.map((f) => f.id);
+    expect(conTodo).toContain("funnel_navegacion");
+    expect(conTodo).toContain("funnel_carrito");
+    expect(conTodo).toContain("funnel_checkout");
+    expect(conTodo).not.toContain("funnel_combinado");
+
+    for (const falta of ["agregados_carrito", "checkouts_iniciados"] as const) {
+      const r = calcularDiagnostico({ ...conFunnel, [falta]: null }, cfgFunnel);
+      const ids = r.fugas.map((f) => f.id);
+      expect(ids, falta).toContain("funnel_combinado");
+      expect(ids, falta).not.toContain("funnel_navegacion");
+      expect(ids, falta).not.toContain("funnel_carrito");
+      expect(ids, falta).not.toContain("funnel_checkout");
+      expect(r.fugas.find((f) => f.id === "funnel_combinado")!.confianza).toBe("parcial");
+    }
+  });
+
 
   it("deriva las probabilidades condicionales de cada etapa", () => {
     const f = calcularDiagnostico(conFunnel, cfgFunnel).derivados.funnel;
@@ -1145,6 +1167,45 @@ describe("mix de canales y comisiones", () => {
     expect(r.derivados.margen_contribucion).toBeNull();
     expect(r.estados_bloque.economia).toBe("sin_datos");
   });
+
+  it("mix incompleto: el funnel muestra estructura pero no monetiza con el margen de la muestra", () => {
+    const r = calcularDiagnostico(
+      {
+        ...s3,
+        canal_ml_pct: 30,
+        facturacion_mensual: 9_000_000,
+        visitas_mensuales: 50_000,
+        agregados_carrito: 5_000,
+        checkouts_iniciados: 1_000,
+      },
+      cfgCanales,
+    );
+
+    expect(r.derivados.margen_muestra).toBe(0.3735);
+    expect(r.derivados.margen_contribucion).toBeNull();
+
+    const tramos = ["funnel_navegacion", "funnel_carrito", "funnel_checkout"];
+    for (const id of tramos) {
+      const f = r.fugas.find((x) => x.id === id);
+      expect(f, id).toBeDefined();
+      expect(f!.monto).toBeNull();
+      expect(f!.calculable).toBe(false);
+      expect(f!.faltantes).toContain("margen_contribucion");
+    }
+
+    // El volumen y la estructura del funnel sí se calculan.
+    const fn = r.derivados.funnel;
+    expect(fn.estado).toBe("calculado");
+    expect(fn.desglosado).toBe(true);
+    expect(fn.visitas).toBe(50_000);
+    expect(fn.agregados_carrito).toBe(5_000);
+    expect(fn.checkouts_iniciados).toBe(1_000);
+    expect(fn.compras).toBe(180);
+    expect(fn.p_carrito_dado_visita).toBeCloseTo(0.1, 4);
+    expect(fn.p_checkout_dado_carrito).toBeCloseTo(0.2, 4);
+    expect(fn.p_compra_dado_checkout).toBeCloseTo(0.18, 4);
+  });
+
 
   it("suma mayor a 100: se bloquea el cálculo y los campos entran en faltantes", () => {
     const datos = { ...s3, canal_tienda_pct: 60, canal_ml_pct: 60 };

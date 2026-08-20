@@ -253,6 +253,8 @@ export function evaluarFunnel(d: DatosDiagnostico, cfg: ConfigFunnel = {}): Funn
   };
 }
 
+export type ConfianzaTramo = "alta" | "parcial";
+
 export type TramoFunnel = {
   id: "funnel_navegacion" | "funnel_carrito" | "funnel_checkout" | "funnel_combinado";
   etiqueta: string;
@@ -261,7 +263,13 @@ export type TramoFunnel = {
   monto: number | null;
   calculable: boolean;
   faltantes: string[];
+  /**
+   * "alta" para los tramos disjuntos de la cascada completa; "parcial" para la
+   * oportunidad combinada, que estima sin poder repartir entre tramos.
+   */
+  confianza: ConfianzaTramo;
 };
+
 
 /**
  * La mejora nunca puede llevar una tasa por encima del 100%: el techo es el
@@ -312,6 +320,7 @@ export function tramosFunnel(
     detalle: string,
     unidades: number | null,
     faltan: string[],
+    confianza: ConfianzaTramo = "alta",
   ): TramoFunnel => {
     const todos = [...faltanBase, ...faltan];
     const monto = valorizar(unidades);
@@ -322,6 +331,7 @@ export function tramosFunnel(
       monto: monto === null ? null : Math.max(0, redondear(monto, 0) ?? 0),
       calculable: monto !== null,
       faltantes: todos,
+      confianza,
     };
   };
 
@@ -341,6 +351,7 @@ export function tramosFunnel(
         "Faltan las etapas intermedias del funnel, así que la oportunidad no se puede repartir entre navegación, carrito y checkout. Se calcula una sola sobre visitas y compras, con la conversión global observada.",
         unidades,
         f.faltantes,
+        "parcial",
       ),
     ];
   }
