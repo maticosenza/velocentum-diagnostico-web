@@ -590,6 +590,14 @@ function NuevoDiagnostico() {
                 value={datos.ticket_promedio}
                 onChange={(v) => set("ticket_promedio", v)}
               />
+              <CampoSelect
+                label="Base de los montos"
+                value={datos.base_montos ?? "bruto"}
+                onChange={(v) => set("base_montos", (v as "bruto" | "neto") || "bruto")}
+                opciones={BASES_MONTOS}
+                ayuda="Si tus números ya están netos de descuentos, elegí neto para que no se descuente dos veces."
+              />
+
               <CampoPesos
                 label="Envío neto del vendedor por pedido"
                 value={datos.costo_envio_promedio}
