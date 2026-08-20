@@ -521,10 +521,21 @@ const NOMBRE_CANAL: Record<string, string> = {
   mercado_libre: "Mercado Libre",
 };
 
-function origenLegible(origen: string | null) {
-  if (origen === "verificado_cliente") return "Verificado con el cliente";
+/**
+ * Un benchmark nunca se muestra como comisión verificada: sólo una liquidación
+ * del cliente cuenta como evidencia.
+ */
+function origenLegible(origen: string | null, evidencia?: string) {
   if (origen === null) return "Sin comisión resuelta";
-  return "Benchmark";
+  if (evidencia === "liquidacion_cliente" || origen === "verificado_cliente")
+    return "Verificada con la liquidación del cliente";
+  return "Benchmark de configuración";
+}
+
+function evidenciaLegible(evidencia: string) {
+  if (evidencia === "liquidacion_cliente") return "Liquidación del cliente";
+  if (evidencia === "declarado_cliente") return "Cargo declarado por el cliente";
+  return "Sin verificar";
 }
 
 /** Mix de canales: cada canal con su comisión, su margen y su breakeven. */
@@ -593,7 +604,14 @@ function SeccionCanales({ derivados }: { derivados: Derivados }) {
                 <dl className="mt-4 space-y-2.5">
                   <Fila label="Margen del canal" value={pct(c.margen)} />
                   <Fila label="Comisión efectiva" value={pct(c.comision_efectiva, 2)} />
-                  <Fila label="Origen de la comisión" value={origenLegible(c.comision_origen)} />
+                  <Fila
+                    label="Origen de la comisión"
+                    value={origenLegible(c.comision_origen, c.comision_evidencia)}
+                  />
+                  <Fila label="Evidencia" value={evidenciaLegible(c.comision_evidencia)} />
+                  {c.comision_vigencia && (
+                    <Fila label="Vigencia de la regla" value={c.comision_vigencia} />
+                  )}
                   <Fila label="MER del canal" value={numero(c.mer)} />
                   <Fila label="Breakeven del canal" value={numero(c.breakeven_roas)} />
                   {c.comision_provisional && (
