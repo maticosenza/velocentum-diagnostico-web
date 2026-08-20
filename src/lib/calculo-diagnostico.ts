@@ -343,17 +343,35 @@ export function calcularDiagnostico(
       ? ratioPesos(envioNeto, d.ticket_promedio)
       : null;
 
+  // --- Costos variables sobre el precio: financiación en cuotas y descuentos
+  const finComp = costoFinanciacion(d);
+  const descComp = costoDescuento(d);
+
   const margenesProducto: (number | null)[] = [null, null, null];
   const pesosProducto: (number | null)[] = [null, null, null];
   const calculables: { indice: number; margen: number; pct: number | null }[] = [];
 
-  if (comPlataforma !== null && comPasarela !== null && componenteEnvio !== null) {
+  if (
+    comPlataforma !== null &&
+    comPasarela !== null &&
+    componenteEnvio !== null &&
+    finComp.valor !== null &&
+    descComp.valor !== null
+  ) {
     for (const p of cargados) {
       const costoRelativo = ratioPesos(p.costo, p.precio);
       if (costoRelativo === null) continue;
-      const m = 1 - costoRelativo - comPlataforma - comPasarela - componenteEnvio;
+      const m =
+        1 -
+        costoRelativo -
+        comPlataforma -
+        comPasarela -
+        componenteEnvio -
+        finComp.valor -
+        descComp.valor;
       if (!finito(m)) continue;
       margenesProducto[p.indice - 1] = red(m, 4);
+
       calculables.push({
         indice: p.indice,
         margen: m,
