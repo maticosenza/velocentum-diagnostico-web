@@ -670,6 +670,39 @@ function NuevoDiagnostico() {
                 </p>
               )}
 
+              <div className="sm:col-span-2 rounded-md border border-border px-3 py-2.5">
+                <p className="text-[13px] font-medium text-foreground">
+                  Margen que declara el cliente
+                </p>
+                <div className="mt-3 grid gap-x-7 gap-y-4 sm:grid-cols-2">
+                  <CampoPorcentaje
+                    label="Margen declarado (mínimo)"
+                    value={datos.margen_declarado_min ?? null}
+                    onChange={(v) => set("margen_declarado_min", v)}
+                    ayuda="Si declara un valor único, cargalo acá y dejá el máximo vacío."
+                  />
+                  <CampoPorcentaje
+                    label="Margen declarado (máximo)"
+                    value={datos.margen_declarado_max ?? null}
+                    onChange={(v) => set("margen_declarado_max", v)}
+                    ayuda="Opcional. Sólo si el cliente da un rango."
+                  />
+                </div>
+                <label className="mt-3 flex items-center gap-2 text-[14px] text-foreground/85">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-violet"
+                    checked={datos.margen_declarado_confirmado === true}
+                    onChange={(e) => set("margen_declarado_confirmado", e.target.checked)}
+                  />
+                  Confirmado por el cliente
+                </label>
+                <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+                  Sin confirmar, la diferencia se registra y se muestra como alerta informativa,
+                  pero no bloquea el cálculo.
+                </p>
+              </div>
+
               <CampoSelect
                 label="Pasarela de cobro"
                 value={datos.pasarela}
@@ -1022,6 +1055,13 @@ function NuevoDiagnostico() {
                 label="Inversión mensual en Product Ads"
                 value={datos.ml_inversion_product_ads}
                 onChange={(v) => set("ml_inversion_product_ads", v)}
+                ayuda="Cero significa que declaró que no invierte. Vacío significa que no sabemos."
+              />
+              <CampoPesos
+                label="Ventas atribuidas a Product Ads"
+                value={datos.ml_ventas_product_ads ?? null}
+                onChange={(v) => set("ml_ventas_product_ads", v)}
+                ayuda="Opcional. Habilita el ROAS de Product Ads; el MER del canal se calcula igual sin este dato."
               />
             </div>
           )}
