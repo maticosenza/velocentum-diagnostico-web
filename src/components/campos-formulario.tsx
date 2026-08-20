@@ -107,13 +107,20 @@ export function CampoPorcentaje({
   value,
   onChange,
   ayuda,
+  minimo = 0,
+  maximo,
 }: {
   label: string;
   value: number | null;
   onChange: (v: number | null) => void;
   ayuda?: string;
+  /** Valores por debajo de este mínimo se rechazan. Por defecto 0: sin negativos. */
+  minimo?: number;
+  /** Valores por encima de este máximo se rechazan. */
+  maximo?: number;
 }) {
   const id = useId();
+  const [rechazado, setRechazado] = useState(false);
   return (
     <Campo label={label} ayuda={ayuda} htmlFor={id}>
       <div className="flex items-center gap-2">
@@ -123,13 +130,28 @@ export function CampoPorcentaje({
           autoComplete="off"
           className="h-11 text-[14px] tabular-nums"
           value={value === null ? "" : String(value)}
-          onChange={(e) => onChange(parseNumero(e.target.value))}
+          onChange={(e) => {
+            const v = parseNumero(e.target.value);
+            if (v !== null && (v < minimo || (maximo !== undefined && v > maximo))) {
+              setRechazado(true);
+              return;
+            }
+            setRechazado(false);
+            onChange(v);
+          }}
         />
         <span className="shrink-0 text-[14px] text-muted-foreground">%</span>
       </div>
+      {rechazado && (
+        <p className="mt-1 text-[12px] text-destructive">
+          Valor fuera de rango: tiene que estar entre {minimo}
+          {maximo !== undefined ? ` y ${maximo}` : ""}.
+        </p>
+      )}
     </Campo>
   );
 }
+
 
 export function CampoTexto({
   label,
