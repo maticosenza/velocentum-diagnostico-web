@@ -260,23 +260,43 @@ function componentePonderado(
   return { valor: (p / 100) * (c / 100), faltan: [] };
 }
 
+/**
+ * Vocabulario de montos:
+ *  - bruto: precio de lista, antes de cualquier deducción;
+ *  - neto de descuento: ingreso ya con los descuentos comerciales aplicados;
+ *  - neto de financiación: ingreso después de que el procesador retuvo el costo
+ *    de las cuotas.
+ * Los dos indicadores son independientes. El legado `base_montos = "neto"` se
+ * lee como neto de descuento y bruto de financiación.
+ */
+export function montosNetosDeDescuento(d: DatosDiagnostico): boolean {
+  if (typeof d.montos_netos_de_descuento === "boolean") return d.montos_netos_de_descuento;
+  return d.base_montos === "neto";
+}
+
+export function montosNetosDeFinanciacion(d: DatosDiagnostico): boolean {
+  return d.montos_netos_de_financiacion === true;
+}
+
 /** Costo efectivo de la financiación en cuotas, ponderado por su participación en las ventas. */
 export function costoFinanciacion(d: DatosDiagnostico) {
-  return componentePonderado(
+  if (montosNetosDeFinanciacion(d)) return { valor: 0, faltan: [], aplicado: false };
+  const r = componentePonderado(
     d.financiacion_pct_ventas,
     d.financiacion_costo_pct,
     "financiacion_pct_ventas",
     "financiacion_costo_pct",
   );
+  return { ...r, aplicado: true };
 }
 
 /**
  * Costo efectivo del descuento (transferencia y similares).
- * Con `base_montos = "neto"` no se resta: los montos cargados ya vienen netos
- * de descuento y volver a restarlo sería contarlo dos veces.
+ * Si los montos ya vienen netos de descuento no se resta: volver a restarlo
+ * sería contarlo dos veces.
  */
 export function costoDescuento(d: DatosDiagnostico) {
-  if (d.base_montos === "neto") return { valor: 0, faltan: [], aplicado: false };
+  if (montosNetosDeDescuento(d)) return { valor: 0, faltan: [], aplicado: false };
   const r = componentePonderado(
     d.descuento_pct_ventas,
     d.descuento_pct,
@@ -293,6 +313,15 @@ export function participacionesSuperan100(d: DatosDiagnostico): boolean {
   return a + b > 100;
 }
 
+/**
+ * Participaciones imposibles: si cuotas y descuento son excluyentes, no pueden
+ * cubrir juntas más del 100% de las ventas. En ese caso el margen no se calcula.
+ */
+export function participacionesIncompatibles(d: DatosDiagnostico): boolean {
+  const relacion = d.relacion_financiacion_descuento ?? "excluyentes";
+  return relacion === "excluyentes" && participacionesSuperan100(d);
+}
+
 /** Campos que impiden calcular el margen de contribución. */
 export function faltantesMargen(d: DatosDiagnostico): string[] {
   const faltan: string[] = [];
@@ -302,8 +331,14 @@ export function faltantesMargen(d: DatosDiagnostico): string[] {
   }
   faltan.push(...costoFinanciacion(d).faltan);
   faltan.push(...costoDescuento(d).faltan);
+  if (participacionesIncompatibles(d)) {
+    for (const c of ["financiacion_pct_ventas", "descuento_pct_ventas"]) {
+      if (!faltan.includes(c)) faltan.push(c);
+    }
+  }
   return faltan;
 }
+
 
 
 // ---------------------------------------------------------------- cálculo
