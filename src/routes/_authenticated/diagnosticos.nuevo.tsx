@@ -594,13 +594,36 @@ function NuevoDiagnostico() {
                 value={datos.ticket_promedio}
                 onChange={(v) => set("ticket_promedio", v)}
               />
-              <CampoSelect
-                label="Base de los montos"
-                value={datos.base_montos ?? "bruto"}
-                onChange={(v) => set("base_montos", (v as "bruto" | "neto") || "bruto")}
-                opciones={BASES_MONTOS}
-                ayuda="Si tus números ya están netos de descuentos, elegí neto para que no se descuente dos veces."
-              />
+              <div className="sm:col-span-2 rounded-md border border-border px-3 py-2.5">
+                <p className="text-[13px] font-medium text-foreground">
+                  ¿Tus números ya están netos de estos costos?
+                </p>
+                <div className="mt-2 flex flex-wrap gap-5">
+                  <label className="flex items-center gap-2 text-[14px] text-foreground/85">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-violet"
+                      checked={montosNetosDeDescuento(datos)}
+                      onChange={(e) => set("montos_netos_de_descuento", e.target.checked)}
+                    />
+                    Netos de descuentos
+                  </label>
+                  <label className="flex items-center gap-2 text-[14px] text-foreground/85">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-violet"
+                      checked={montosNetosDeFinanciacion(datos)}
+                      onChange={(e) => set("montos_netos_de_financiacion", e.target.checked)}
+                    />
+                    Netos de costo financiero
+                  </label>
+                </div>
+                <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+                  Marcá lo que ya esté descontado de la facturación y el ticket para que no se reste
+                  dos veces.
+                </p>
+              </div>
+
 
               <CampoPesos
                 label="Envío neto del vendedor por pedido"
