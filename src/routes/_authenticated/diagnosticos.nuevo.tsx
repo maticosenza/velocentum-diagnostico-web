@@ -12,7 +12,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { formatPorcentaje } from "@/lib/format";
+import { formatPesos, formatPorcentaje } from "@/lib/format";
 import {
   CampoNumero,
   CampoPesos,
@@ -43,7 +43,11 @@ import {
   type Modo,
   type NotasDiagnostico,
 } from "@/lib/diagnostico-form";
-import { calcularDiagnostico } from "@/lib/calculo-diagnostico";
+import {
+  calcularDiagnostico,
+  envioNetoVendedor,
+  faltaEnvioCobrado,
+} from "@/lib/calculo-diagnostico";
 import { cargarConfiguracion } from "@/lib/configuracion";
 
 export const Route = createFileRoute("/_authenticated/diagnosticos/nuevo")({
