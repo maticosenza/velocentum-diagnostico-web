@@ -1,0 +1,450 @@
+import type { ReactNode } from "react";
+import type {
+  DocumentBlock,
+  DocumentModel,
+  DocumentSection,
+  PublishedNumber,
+} from "../../templates/velocentum-v1";
+import { formatDocumentDate, formatPublishedNumber } from "./format";
+import "./document-renderer.css";
+
+export type DocumentWebRendererProps = {
+  model: DocumentModel;
+  className?: string;
+};
+
+const LABELS_CONFIANZA = {
+  alta: "Confianza alta",
+  media: "Confianza media",
+  baja: "Confianza baja",
+  bloqueada: "Cifra bloqueada",
+} as const;
+
+const LABELS_CAPA = {
+  servicio: "Servicio",
+  recomendacion: "Recomendación",
+  contexto: "Contexto",
+} as const;
+
+const LABELS_ESCENARIO = {
+  conservador: "Conservador",
+  base: "Base",
+  potencial: "Potencial",
+} as const;
+
+const LABELS_ORIGEN = {
+  observado: "Observado",
+  declarado: "Declarado",
+  configuracion: "Configuración",
+  derivado: "Derivado",
+} as const;
+
+function classNames(...values: Array<string | undefined | false>) {
+  return values.filter(Boolean).join(" ");
+}
+
+function ConfidenceBadge({ value }: { value: keyof typeof LABELS_CONFIANZA }) {
+  return (
+    <span className={`vdoc-badge vdoc-badge--${value}`} data-confidence={value}>
+      {LABELS_CONFIANZA[value]}
+    </span>
+  );
+}
+
+export function PublishedNumberView({ value }: { value: PublishedNumber }) {
+  return (
+    <span
+      className="vdoc-number"
+      data-value={String(value.value)}
+      data-value-format={value.format}
+      title={LABELS_CONFIANZA[value.confidence]}
+    >
+      {formatPublishedNumber(value)}
+    </span>
+  );
+}
+
+function List({ items, emptyLabel }: { items: string[]; emptyLabel?: string }) {
+  if (items.length === 0) return emptyLabel ? <p className="vdoc-muted">{emptyLabel}</p> : null;
+  return (
+    <ul className="vdoc-list">
+      {items.map((item, index) => (
+        <li key={`${item}-${index}`}>{item}</li>
+      ))}
+    </ul>
+  );
+}
+
+function BlockFrame({ type, children }: { type: DocumentBlock["type"]; children: ReactNode }) {
+  return (
+    <div className={`vdoc-block vdoc-block--${type}`} data-block-type={type}>
+      {children}
+    </div>
+  );
+}
+
+function CoverBlock({ block }: { block: Extract<DocumentBlock, { type: "cover" }> }) {
+  return (
+    <BlockFrame type="cover">
+      <div className="vdoc-cover__brand">Velocentum</div>
+      <div className="vdoc-cover__content">
+        <p className="vdoc-cover__client">{block.clientName}</p>
+        <h1>{block.title}</h1>
+        <p className="vdoc-cover__subtitle">{block.subtitle}</p>
+      </div>
+      <time className="vdoc-cover__date" dateTime={block.diagnosticDate}>
+        {formatDocumentDate(block.diagnosticDate)}
+      </time>
+    </BlockFrame>
+  );
+}
+
+function CoverageBlock({ block }: { block: Extract<DocumentBlock, { type: "coverage" }> }) {
+  return (
+    <BlockFrame type="coverage">
+      <div className="vdoc-block__header">
+        <h3>Cobertura del diagnóstico</h3>
+        <ConfidenceBadge value={block.confidence} />
+      </div>
+      <div className="vdoc-coverage-grid">
+        {block.items.map((item) => (
+          <div className="vdoc-coverage" key={item.id}>
+            <div className="vdoc-coverage__label">
+              <span>{item.label}</span>
+              <strong>{item.value}%</strong>
+            </div>
+            <progress aria-label={item.label} max={100} value={item.value}>
+              {item.value}%
+            </progress>
+          </div>
+        ))}
+      </div>
+    </BlockFrame>
+  );
+}
+
+function MetricGridBlock({ block }: { block: Extract<DocumentBlock, { type: "metric-grid" }> }) {
+  return (
+    <BlockFrame type="metric-grid">
+      <dl className="vdoc-metric-grid">
+        {block.items.map((item) => (
+          <div className="vdoc-metric" key={item.id}>
+            <dt>{item.label}</dt>
+            <dd>
+              <PublishedNumberView value={item.value} />
+            </dd>
+            <ConfidenceBadge value={item.value.confidence} />
+          </div>
+        ))}
+      </dl>
+    </BlockFrame>
+  );
+}
+
+function ShippingBlock({ block }: { block: Extract<DocumentBlock, { type: "shipping" }> }) {
+  return (
+    <BlockFrame type="shipping">
+      <p className="vdoc-kicker">Envío</p>
+      <div className="vdoc-inline-value">
+        <span>{block.label}</span>
+        <strong>
+          <PublishedNumberView value={block.cost} />
+        </strong>
+      </div>
+    </BlockFrame>
+  );
+}
+
+function FindingsBlock({ block }: { block: Extract<DocumentBlock, { type: "findings" }> }) {
+  return (
+    <BlockFrame type="findings">
+      <ol className="vdoc-findings">
+        {block.items.map((item, index) => (
+          <li className="vdoc-finding" key={item.id}>
+            <div className="vdoc-finding__index" aria-hidden="true">
+              {String(index + 1).padStart(2, "0")}
+            </div>
+            <div className="vdoc-finding__body">
+              <div className="vdoc-tags">
+                <span className={`vdoc-tag vdoc-tag--${item.prioridad}`}>
+                  Prioridad {item.prioridad}
+                </span>
+                <span className="vdoc-tag">{LABELS_CAPA[item.capa]}</span>
+              </div>
+              <h3>{item.titulo}</h3>
+              {item.amount ? (
+                <p className="vdoc-finding__amount">
+                  Impacto estimado: <PublishedNumberView value={item.amount} />
+                </p>
+              ) : null}
+              <ConfidenceBadge value={item.confianza} />
+            </div>
+          </li>
+        ))}
+      </ol>
+    </BlockFrame>
+  );
+}
+
+function ScenariosBlock({ block }: { block: Extract<DocumentBlock, { type: "scenarios" }> }) {
+  return (
+    <BlockFrame type="scenarios">
+      <div className="vdoc-scenario-grid">
+        {block.items.map((item) => (
+          <article className={`vdoc-scenario vdoc-scenario--${item.id}`} key={item.id}>
+            <div className="vdoc-block__header">
+              <h3>{LABELS_ESCENARIO[item.id]}</h3>
+              <ConfidenceBadge value={item.confidence} />
+            </div>
+            <dl className="vdoc-scenario__metrics">
+              <div>
+                <dt>Contribución acumulada a 90 días</dt>
+                <dd>
+                  {item.contribution90d ? (
+                    <PublishedNumberView value={item.contribution90d} />
+                  ) : (
+                    <span className="vdoc-retained">Retenido</span>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Ritmo mensual al día 90</dt>
+                <dd>
+                  {item.monthlyPaceDay90 ? (
+                    <PublishedNumberView value={item.monthlyPaceDay90} />
+                  ) : (
+                    <span className="vdoc-retained">Retenido</span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+            {item.levers.length > 0 ? (
+              <div className="vdoc-subsection">
+                <h4>Palancas</h4>
+                <ul className="vdoc-levers">
+                  {item.levers.map((lever) => (
+                    <li key={lever.id}>
+                      <span>{lever.name}</span>
+                      <PublishedNumberView value={lever.contribution} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {item.assumptions.length > 0 ? (
+              <div className="vdoc-subsection">
+                <h4>Supuestos</h4>
+                <List items={item.assumptions.map((assumption) => assumption.valor)} />
+              </div>
+            ) : null}
+            {item.restrictions.length > 0 ? (
+              <div className="vdoc-subsection">
+                <h4>Restricciones del escenario</h4>
+                <List items={item.restrictions.map((restriction) => restriction.detalle)} />
+              </div>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </BlockFrame>
+  );
+}
+
+function RoadmapBlock({ block }: { block: Extract<DocumentBlock, { type: "roadmap" }> }) {
+  return (
+    <BlockFrame type="roadmap">
+      <ol className="vdoc-roadmap">
+        {block.items.map((item) => (
+          <li key={item.id}>
+            <div className="vdoc-roadmap__days">
+              Días {item.desdeDia}–{item.hastaDia}
+            </div>
+            <div>
+              <h3>{item.etiqueta}</h3>
+              <List items={item.acciones} />
+              <p className="vdoc-roadmap__result">Resultado: {item.resultadoEsperado}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </BlockFrame>
+  );
+}
+
+function ServicesBlock({ block }: { block: Extract<DocumentBlock, { type: "services" }> }) {
+  return (
+    <BlockFrame type="services">
+      <div className="vdoc-card-grid">
+        {block.items.map((item) => (
+          <article className="vdoc-card" key={item.id}>
+            <h3>{item.nombre}</h3>
+            <List items={item.alcance} emptyLabel="Alcance a validar" />
+          </article>
+        ))}
+      </div>
+    </BlockFrame>
+  );
+}
+
+function CommercialOfferBlock({
+  block,
+}: {
+  block: Extract<DocumentBlock, { type: "commercial-offer" }>;
+}) {
+  return (
+    <BlockFrame type="commercial-offer">
+      <article className="vdoc-offer">
+        <div className="vdoc-offer__headline">
+          <div>
+            <p className="vdoc-kicker">Paquete seleccionado</p>
+            <h3>{block.name}</h3>
+          </div>
+          {block.price ? <PublishedNumberView value={block.price} /> : null}
+        </div>
+        <div className="vdoc-offer__grid">
+          <div>
+            <h4>Alcance</h4>
+            <List items={block.scope} />
+          </div>
+          <div>
+            <h4>Entregables</h4>
+            <List items={block.deliverables} />
+          </div>
+          <div>
+            <h4>Exclusiones</h4>
+            <List items={block.exclusions} />
+          </div>
+        </div>
+        <div className="vdoc-offer__meta">
+          <span>{block.durationDays} días</span>
+          <span>{block.paymentTerms}</span>
+          {block.startDate ? <span>Inicio: {formatDocumentDate(block.startDate)}</span> : null}
+        </div>
+      </article>
+    </BlockFrame>
+  );
+}
+
+function RestrictionsBlock({ block }: { block: Extract<DocumentBlock, { type: "restrictions" }> }) {
+  return (
+    <BlockFrame type="restrictions">
+      <ul className="vdoc-restrictions">
+        {block.items.map((item) => (
+          <li key={item.id}>
+            <span className="vdoc-restrictions__icon" aria-hidden="true">
+              i
+            </span>
+            <div>
+              <h3>{item.etiqueta}</h3>
+              <p>{item.detalle}</p>
+              {item.bloquea.length > 0 ? (
+                <p className="vdoc-restrictions__scope">Condiciona: {item.bloquea.join(", ")}</p>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </BlockFrame>
+  );
+}
+
+function MethodologyBlock({ block }: { block: Extract<DocumentBlock, { type: "methodology" }> }) {
+  return (
+    <BlockFrame type="methodology">
+      <dl className="vdoc-methodology">
+        {block.items.map((item) => (
+          <div key={item.id}>
+            <dt>
+              {item.etiqueta} <span>{LABELS_ORIGEN[item.origen]}</span>
+            </dt>
+            <dd>{item.valor}</dd>
+          </div>
+        ))}
+      </dl>
+    </BlockFrame>
+  );
+}
+
+export function DocumentBlockView({ block }: { block: DocumentBlock }) {
+  switch (block.type) {
+    case "cover":
+      return <CoverBlock block={block} />;
+    case "coverage":
+      return <CoverageBlock block={block} />;
+    case "metric-grid":
+      return <MetricGridBlock block={block} />;
+    case "shipping":
+      return <ShippingBlock block={block} />;
+    case "findings":
+      return <FindingsBlock block={block} />;
+    case "scenarios":
+      return <ScenariosBlock block={block} />;
+    case "roadmap":
+      return <RoadmapBlock block={block} />;
+    case "services":
+      return <ServicesBlock block={block} />;
+    case "commercial-offer":
+      return <CommercialOfferBlock block={block} />;
+    case "restrictions":
+      return <RestrictionsBlock block={block} />;
+    case "methodology":
+      return <MethodologyBlock block={block} />;
+    case "transition":
+      return (
+        <BlockFrame type="transition">
+          <p>{block.label}</p>
+        </BlockFrame>
+      );
+    case "next-step":
+      return (
+        <BlockFrame type="next-step">
+          <p className="vdoc-kicker">Próximo paso</p>
+          <p>{block.label}</p>
+        </BlockFrame>
+      );
+  }
+}
+
+export function DocumentSectionView({ section }: { section: DocumentSection }) {
+  const headingId = section.title ? `vdoc-section-${section.id}` : undefined;
+  return (
+    <section
+      className={`vdoc-section vdoc-section--${section.tone}`}
+      data-section-id={section.id}
+      data-section-tone={section.tone}
+      aria-labelledby={headingId}
+    >
+      <div className="vdoc-section__inner">
+        {section.eyebrow ? <p className="vdoc-eyebrow">{section.eyebrow}</p> : null}
+        {section.title ? <h2 id={headingId}>{section.title}</h2> : null}
+        <div className="vdoc-section__blocks">
+          {section.blocks.map((block, index) => (
+            <DocumentBlockView block={block} key={`${section.id}-${block.type}-${index}`} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function DocumentWebRenderer({ model, className }: DocumentWebRendererProps) {
+  return (
+    <article
+      className={classNames("vdoc", className)}
+      data-document-kind={model.kind}
+      data-template-id={model.templateId}
+      lang="es"
+      aria-label={`${model.metadata.title} para ${model.metadata.clientName}`}
+    >
+      {model.sections.map((section) => (
+        <DocumentSectionView key={section.id} section={section} />
+      ))}
+      <footer className="vdoc-footer">
+        <span>Velocentum</span>
+        <span>
+          Diagnóstico {model.source.diagnosticId} · v{model.source.diagnosticVersion}
+        </span>
+      </footer>
+    </article>
+  );
+}
