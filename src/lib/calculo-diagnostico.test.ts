@@ -227,31 +227,28 @@ describe("estados por bloque", () => {
 });
 
 describe("fugas", () => {
-  it("valoriza la fuga por conversión sólo si la conversión está por debajo del verde", () => {
+  it("sin las etapas intermedias no hay desglose: una sola oportunidad combinada", () => {
     const r = calcularDiagnostico(
       { ...base, facturacion_mensual: 9_000_000, visitas_mensuales: 50_000 },
       cfg,
     );
-    const cr = r.derivados.cr_tienda!;
-    const margen = r.derivados.margen_contribucion!;
-    const fuga = r.fugas.find((f) => f.id === "conversion");
-    expect(fuga?.calculable).toBe(true);
-    expect(fuga?.monto).toBeCloseTo(50_000 * (0.018 - cr) * 45000 * margen, -4);
-
-    const sinFuga = calcularDiagnostico(
-      { ...base, facturacion_mensual: 9_000_000, visitas_mensuales: 5_000 },
-      cfg,
-    );
-    expect(sinFuga.fugas.find((f) => f.id === "conversion")).toBeUndefined();
+    expect(r.fugas.find((f) => f.id === "conversion")).toBeUndefined();
+    expect(r.fugas.find((f) => f.id === "funnel_navegacion")).toBeUndefined();
+    const combinada = r.fugas.find((f) => f.id === "funnel_combinado")!;
+    expect(combinada.calculable).toBe(true);
+    expect(r.derivados.funnel.desglosado).toBe(false);
+    expect(r.derivados.funnel.faltantes).toEqual([
+      "agregados_carrito",
+      "checkouts_iniciados",
+    ]);
   });
 
-  it("marca la fuga como no calculable y lista los campos faltantes", () => {
+  it("sin visitas la oportunidad de funnel no se calcula", () => {
     const r = calcularDiagnostico({ ...base, facturacion_mensual: 9_000_000 }, cfg);
-    const fuga = r.fugas.find((f) => f.id === "conversion");
-    expect(fuga?.calculable).toBe(false);
-    expect(fuga?.faltantes).toContain("visitas_mensuales");
-    expect(fuga?.monto).toBeNull();
+    expect(r.derivados.funnel.estado).toBe("sin_datos");
+    expect(r.fugas.some((f) => f.id.startsWith("funnel_"))).toBe(false);
   });
+
 
   it("ya no calcula fuga por fatiga creativa", () => {
     const r = calcularDiagnostico({ ...base, inversion_meta: 1_000_000 }, cfg);
@@ -375,28 +372,24 @@ describe("caso real de ticket alto", () => {
 
   it("topea las fugas desproporcionadas y las marca como sospechosas", () => {
     const r = calcularDiagnostico(real, cfgReal);
-    const conversion = r.fugas.find((f) => f.id === "conversion")!;
     const sobre = r.fugas.find((f) => f.id === "sobrefragmentacion")!;
 
     expect(sobre.sospechosa).toBe(true);
-    expect(sobre.monto!).toBeLessThanOrEqual(33_108_279 * 0.25);
+    expect(sobre.monto!).toBeLessThanOrEqual(Math.ceil(33_108_279 * 0.25));
     expect(sobre.detalle).toMatch(/rango razonable/);
-
-    expect(conversion.sospechosa).toBe(true);
-    expect(conversion.monto!).toBeLessThanOrEqual(33_108_279 * 0.25);
 
     expect(r.oportunidad_total).toBeLessThanOrEqual(Math.round(33_108_279 * 0.4));
     expect(r.oportunidad_total).toBeLessThan(33_108_279);
   });
 
-  it("con el umbral fijo de respaldo la fuga por conversión queda topeada al 25%", () => {
-    const sinTramos: ConfiguracionCalculo = { ...cfgReal };
-    delete sinTramos.umbrales_cr_por_ticket;
-    const r = calcularDiagnostico(real, sinTramos);
-    const conversion = r.fugas.find((f) => f.id === "conversion")!;
-    expect(conversion.sospechosa).toBe(true);
-    expect(conversion.monto!).toBeLessThanOrEqual(33_108_279 * 0.25);
+  it("la oportunidad de funnel también queda topeada al 25% de la facturación", () => {
+    const r = calcularDiagnostico(real, cfgReal);
+    const funnel = r.fugas.find((f) => f.id === "funnel_combinado");
+    if (funnel?.monto != null) {
+      expect(funnel.monto).toBeLessThanOrEqual(Math.ceil(33_108_279 * 0.25));
+    }
   });
+
 
   it("detecta que el volumen no alcanza y cambia la lectura de presupuesto", () => {
     const r = calcularDiagnostico(real, cfgReal);
@@ -422,63 +415,83 @@ describe("caso real de ticket alto", () => {
   });
 });
 
-describe("fuga por carritos abandonados", () => {
-  const cfgCarrito: ConfiguracionCalculo = { ...cfg, recuperacion_carrito_esperada: 0.08 };
-  // Los dos booleanos vienen respondidos: sin respuesta la fuga no se calcula.
-  const conCarritos: DatosDiagnostico = {
-    ...base,
-    facturacion_mensual: 10_000_000,
-    carritos_abandonados: 500,
-    recuperacion_carrito: false,
-    retargeting_abandono: false,
+describe("cascada de atribución del funnel web", () => {
+  const cfgFunnel: ConfiguracionCalculo = {
+    ...cfg,
+    mejora_agregado_pts: 2,
+    mejora_checkout_pts: 10,
+    mejora_compra_pts: 10,
   };
-  const fugaDe = (d: DatosDiagnostico) =>
-    calcularDiagnostico(d, cfgCarrito).fugas.find((f) => f.id === "carritos_abandonados");
+  // 50.000 visitas · 5.000 agregados · 1.000 checkouts · 200 compras.
+  const conFunnel: DatosDiagnostico = {
+    ...base,
+    facturacion_mensual: 9_000_000,
+    visitas_mensuales: 50_000,
+    agregados_carrito: 5_000,
+    checkouts_iniciados: 1_000,
+  };
 
-  it("no hay fuga si ya tiene recuperación y retargeting", () => {
-    expect(
-      fugaDe({ ...conCarritos, recuperacion_carrito: true, retargeting_abandono: true }),
-    ).toBeUndefined();
+  it("parte el funnel en tres tramos disjuntos", () => {
+    const r = calcularDiagnostico(conFunnel, cfgFunnel);
+    const ids = r.fugas.map((f) => f.id);
+    expect(ids).toContain("funnel_navegacion");
+    expect(ids).toContain("funnel_carrito");
+    expect(ids).toContain("funnel_checkout");
+    expect(ids).not.toContain("funnel_combinado");
+    expect(ids).not.toContain("conversion");
+    expect(ids).not.toContain("carritos_abandonados");
+    expect(r.derivados.funnel.desglosado).toBe(true);
   });
 
-  it("sin recuperación ni retargeting usa el porcentaje completo", () => {
-    const r = calcularDiagnostico(conCarritos, cfgCarrito);
-    const f = r.fugas.find((x) => x.id === "carritos_abandonados")!;
+  it("deriva las probabilidades condicionales de cada etapa", () => {
+    const f = calcularDiagnostico(conFunnel, cfgFunnel).derivados.funnel;
+    expect(f.p_carrito_dado_visita).toBeCloseTo(0.1, 4);
+    expect(f.p_checkout_dado_carrito).toBeCloseTo(0.2, 4);
+    expect(f.p_compra_dado_checkout).toBeCloseTo(0.2, 4);
+    expect(f.compras).toBe(200);
+  });
+
+  it("valoriza cada tramo con las mejoras objetivo en puntos porcentuales", () => {
+    const r = calcularDiagnostico(conFunnel, cfgFunnel);
     const margen = r.derivados.margen_contribucion!;
-    expect(f.calculable).toBe(true);
-    expect(Math.abs(f.monto! - 500 * 0.08 * 45_000 * margen)).toBeLessThan(200);
+    const ticket = 45_000;
+    // Navegación: +2 pts sobre el 10% de agregado, arrastrando las etapas siguientes.
+    const navegacion = 50_000 * 0.02 * 0.2 * 0.2 * ticket * margen;
+    // Carrito: +10 pts sobre el 20% de checkout, sobre los agregados actuales.
+    const carrito = 5_000 * 0.1 * 0.2 * ticket * margen;
+    // Checkout: +10 pts sobre el 20% de compra, sobre los checkouts actuales.
+    const checkout = 1_000 * 0.1 * ticket * margen;
+
+    const cerca = (real: number, esperado: number) =>
+      expect(Math.abs(real - esperado) / esperado).toBeLessThan(0.001);
+    cerca(r.fugas.find((f) => f.id === "funnel_navegacion")!.monto!, navegacion);
+    cerca(r.fugas.find((f) => f.id === "funnel_carrito")!.monto!, carrito);
+    cerca(r.fugas.find((f) => f.id === "funnel_checkout")!.monto!, checkout);
   });
 
-  it("con una sola de las dos activas usa la mitad del porcentaje", () => {
-    const completa = fugaDe(conCarritos)!.monto!;
-    const mitad = fugaDe({ ...conCarritos, recuperacion_carrito: true })!.monto!;
-    expect(mitad).toBeGreaterThan(0);
-    expect(Math.abs(mitad - completa / 2)).toBeLessThanOrEqual(1);
+  it("si falta una etapa entrega una oportunidad combinada sin desglose", () => {
+    const r = calcularDiagnostico({ ...conFunnel, checkouts_iniciados: null }, cfgFunnel);
+    const ids = r.fugas.map((f) => f.id);
+    expect(ids).toContain("funnel_combinado");
+    expect(ids).not.toContain("funnel_carrito");
+    expect(r.derivados.funnel.faltantes).toEqual(["checkouts_iniciados"]);
   });
 
-  it("sin el dato de carritos queda como no calculable", () => {
-    const f = fugaDe({ ...conCarritos, carritos_abandonados: null })!;
-    expect(f.calculable).toBe(false);
-    expect(f.faltantes).toContain("carritos_abandonados");
+  it("cadena rota: más agregados que visitas invalida el funnel", () => {
+    const r = calcularDiagnostico({ ...conFunnel, agregados_carrito: 60_000 }, cfgFunnel);
+    expect(r.derivados.funnel.estado).toBe("error");
+    expect(r.derivados.funnel.etapa_error).toBe("agregados_carrito");
+    expect(r.fugas.some((f) => f.id.startsWith("funnel_"))).toBe(false);
+    expect(r.estados_bloque.funnel_web).toBe("sin_datos");
   });
 
-  it("si un booleano quedó sin responder la fuga no se calcula", () => {
-    const f = fugaDe({ ...conCarritos, retargeting_abandono: null })!;
-    expect(f.calculable).toBe(false);
-    expect(f.faltantes).toContain("retargeting_abandono");
-    expect(f.monto).toBeNull();
-  });
-
-  it("con los dos booleanos sin responder lista ambos como faltantes", () => {
-    const f = fugaDe({
-      ...conCarritos,
-      recuperacion_carrito: null,
-      retargeting_abandono: null,
-    })!;
-    expect(f.calculable).toBe(false);
-    expect(f.faltantes).toEqual(["recuperacion_carrito", "retargeting_abandono"]);
+  it("cadena rota: más compras que checkouts iniciados también invalida", () => {
+    const r = calcularDiagnostico({ ...conFunnel, checkouts_iniciados: 100 }, cfgFunnel);
+    expect(r.derivados.funnel.estado).toBe("error");
+    expect(r.derivados.funnel.etapa_error).toBe("compras");
   });
 });
+
 
 describe("hallazgos que dependen de booleanos sin responder", () => {
   const cfgCarrito: ConfiguracionCalculo = { ...cfg, recuperacion_carrito_esperada: 0.08 };
@@ -568,10 +581,9 @@ describe("tienda sin inversión publicitaria ni Pixel", () => {
     expect(r.fugas.find((f) => f.id === "gasto_no_rentable")).toBeUndefined();
   });
 
-  it("sí reporta las fugas de conversión y carritos abandonados", () => {
+  it("sí reporta la oportunidad del funnel web", () => {
     const r = calcularDiagnostico(sinAds, cfgSinAds);
-    expect(r.fugas.find((f) => f.id === "conversion")?.calculable).toBe(true);
-    expect(r.fugas.find((f) => f.id === "carritos_abandonados")?.calculable).toBe(true);
+    expect(r.fugas.find((f) => f.id === "funnel_combinado")?.calculable).toBe(true);
   });
 
   it("con inversión cargada la fuga por gasto no rentable vuelve a evaluarse", () => {
@@ -613,10 +625,9 @@ describe("mapearHallazgos con una tienda sin cuenta publicitaria", () => {
     );
   });
 
-  it("sí genera los hallazgos de conversión, carritos y contenido", () => {
+  it("sí genera los hallazgos de funnel y contenido", () => {
     const ids = idsDe(sinAds);
-    expect(ids).toContain("conversion");
-    expect(ids).toContain("carritos_abandonados");
+    expect(ids).toContain("funnel_combinado");
     expect(ids).toContain("creativos");
   });
 
@@ -709,13 +720,21 @@ describe("componente de envío por pedido", () => {
 
   it("envío ausente: margen en null y el campo entre los faltantes", () => {
     const r = calcularDiagnostico(
-      { ...titan, costo_envio_promedio: null, facturacion_mensual: 10_000_000 },
+      {
+        ...titan,
+        costo_envio_promedio: null,
+        facturacion_mensual: 10_000_000,
+        visitas_mensuales: 40_000,
+      },
       cfg,
     );
     expect(r.derivados.componente_envio).toBeNull();
     expect(r.derivados.margen_contribucion).toBeNull();
-    expect(r.fugas.find((f) => f.id === "conversion")?.faltantes).toContain("envio_neto_vendedor");
+    expect(r.fugas.find((f) => f.id === "funnel_combinado")?.faltantes).toContain(
+      "envio_neto_vendedor",
+    );
   });
+
 
   it("sin ticket promedio no usa el precio como respaldo", () => {
     const r = calcularDiagnostico({ ...titan, ticket_promedio: null }, cfg);

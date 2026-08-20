@@ -26,9 +26,17 @@ import {
   type ComisionMarketplace,
   type EstadoCanal,
 } from "./canales";
+import {
+  evaluarFunnel,
+  tramosFunnel,
+  MEJORAS_FUNNEL_DEFECTO,
+  type FunnelDerivado,
+} from "./funnel";
 
 export { comisionEnEscalaSospechosa, COMISIONES_MARKETPLACE_DEFECTO, claveComisionPlataforma, comisionPlataformaDe, canalesSuperan100, coberturaCanales, canalPrincipal, estadoCanal, comisionEfectivaCanal };
 export type { CanalId } from "./canales";
+export { evaluarFunnel, tramosFunnel, MEJORAS_FUNNEL_DEFECTO };
+export type { FunnelDerivado } from "./funnel";
 
 // ---------------------------------------------------------------- configuración
 
@@ -50,6 +58,10 @@ export type ConfiguracionCalculo = {
   recuperacion_carrito_esperada?: number;
   tope_fuga_individual?: number;
   tope_fuga_total?: number;
+  /** Mejoras objetivo del funnel, en PUNTOS PORCENTUALES. */
+  mejora_agregado_pts?: number;
+  mejora_checkout_pts?: number;
+  mejora_compra_pts?: number;
 };
 
 
@@ -98,6 +110,8 @@ export type Derivados = {
   inversion_actual_mensual: number | null;
   pedidos_semanales: number | null;
   volumen_suficiente: boolean | null;
+  /** Cascada del funnel web del canal de tienda propia. */
+  funnel: FunnelDerivado;
 };
 
 
@@ -371,6 +385,10 @@ export type CanalDerivado = {
   comision_efectiva: number | null;
   comision_origen: string | null;
   comision_provisional: boolean;
+  /** Vigencia de la regla de comisión, si la configuración la declara. */
+  comision_vigencia: string | null;
+  /** Qué respalda a la comisión: liquidación, declaración del cliente o benchmark. */
+  comision_evidencia: "liquidacion_cliente" | "declarado_cliente" | "benchmark_sin_verificar";
   cargo_fijo_aplicado: boolean;
   /** Cargo fijo conocido de la regla, aplicado o no. Si no está verificado, no entra al cálculo. */
   cargo_fijo_disponible: CargoFijoDisponible | null;
@@ -531,6 +549,8 @@ function margenDeCanal(
     comision_efectiva: comision.valor,
     comision_origen: comision.origen,
     comision_provisional: comision.provisional,
+    comision_vigencia: comision.vigencia,
+    comision_evidencia: comision.evidencia,
     cargo_fijo_aplicado: comision.cargo_fijo_aplicado,
     cargo_fijo_disponible: comision.cargo_fijo_disponible,
     comision_escala_sospechosa: comision.escala_sospechosa,
@@ -678,6 +698,9 @@ export function calcularDiagnostico(
   // --- Umbral de conversión escalado por tramo de ticket promedio
   const uCr = umbralCr(cfg, d.ticket_promedio);
 
+  // --- Cascada del funnel: etapas del mismo canal y del mismo período.
+  const funnel = evaluarFunnel(d, cfg);
+
   const derivados: Derivados = {
     delta_medicion: red(delta, 4),
     margen_contribucion: red(margen, DECIMALES_TASA),
@@ -711,6 +734,7 @@ export function calcularDiagnostico(
     inversion_actual_mensual: red(inversionActualMensual, 0),
     pedidos_semanales: red(pedidosSemanales, 1),
     volumen_suficiente: volumenSuficiente,
+    funnel,
   };
 
 
@@ -741,8 +765,13 @@ export function calcularDiagnostico(
   }
 
   // uCr ya viene resuelto por tramo de ticket
+  // Si la cadena del funnel no cierra, los datos web no son utilizables.
   const estadoFunnel: EstadoBloque =
-    crTienda !== null && uCr ? porUmbral(crTienda, uCr, true) : "sin_datos";
+    funnel.estado === "error"
+      ? "sin_datos"
+      : crTienda !== null && uCr
+        ? porUmbral(crTienda, uCr, true)
+        : "sin_datos";
 
   // Contenido: cualitativo, no se semaforiza con umbrales numéricos.
   const camposContenido = [
@@ -765,40 +794,26 @@ export function calcularDiagnostico(
   // --- Fugas
   const fugas: Fuga[] = [];
 
-  // Conversión
-  {
-    const faltan = faltantes(datos, ["visitas_mensuales", "facturacion_mensual", "ticket_promedio"]);
-    if (margen === null) {
-      faltan.push("margen_contribucion");
+  // Cascada del funnel. Reemplaza a la vieja fuga por conversión y a la de
+  // carritos abandonados: aquellas dos se solapaban y contaban la misma gente
+  // dos veces. Los tres tramos de la cascada son disjuntos.
+  for (const t of tramosFunnel(funnel, cfg, margen)) {
+    const faltan = [...t.faltantes];
+    if (margen === null && faltan.includes("margen_contribucion")) {
       for (const f of faltantesMargen(datos)) if (!faltan.includes(f)) faltan.push(f);
     }
-    if (!uCr) faltan.push("umbrales_funnel_web.cr_tienda");
-    if (faltan.length > 0 || crTienda === null) {
-      if (crTienda === null && faltan.length === 0) faltan.push("visitas_mensuales");
-      fugas.push({
-        id: "conversion",
-        etiqueta: "Fuga por conversión",
-        tipo: "monto",
-        monto: null,
-        calculable: false,
-        faltantes: faltan,
-      });
-    } else if (crTienda < uCr!.verde) {
-      const monto =
-        (d.visitas_mensuales as number) *
-        (uCr!.verde - crTienda) *
-        (d.ticket_promedio as number) *
-        (margen as number);
-      fugas.push({
-        id: "conversion",
-        etiqueta: "Fuga por conversión",
-        tipo: "monto",
-        monto: Math.max(0, red(monto, 0) ?? 0),
-        calculable: true,
-        faltantes: [],
-      });
-    }
+    if (t.calculable && t.monto === 0) continue;
+    fugas.push({
+      id: t.id,
+      etiqueta: t.etiqueta,
+      tipo: "monto",
+      monto: t.monto,
+      calculable: t.calculable,
+      faltantes: faltan,
+      detalle: t.detalle,
+    });
   }
+
 
   // Gasto no rentable: sin inversión publicitaria la fuga no existe (ni como no calculable).
   if (inversionAds !== null && inversionAds > 0) {
@@ -861,68 +876,10 @@ export function calcularDiagnostico(
     }
   }
 
-  // Carritos abandonados sin flujo de recuperación
-  {
-    // Un booleano sin responder no es un "no": sin ambos valores cargados la fuga no se calcula.
-    const recuperacionCargada = typeof d.recuperacion_carrito === "boolean";
-    const retargetingCargado = typeof d.retargeting_abandono === "boolean";
-    const activos = (d.recuperacion_carrito === true ? 1 : 0) + (d.retargeting_abandono === true ? 1 : 0);
-    const pctEsperado = finito(cfg.recuperacion_carrito_esperada)
-      ? (cfg.recuperacion_carrito_esperada as number)
-      : null;
-    const DETALLE_CARRITO =
-      "Son compradores que ya eligieron el producto y quedaron a un paso, sin ningún flujo que los traiga de vuelta.";
+  // La vieja fuga por carritos abandonados quedó absorbida por el tramo de
+  // carrito de la cascada: no pueden coexistir sin contar dos veces a la misma
+  // gente.
 
-    if (!recuperacionCargada || !retargetingCargado) {
-      const faltan: string[] = [];
-      if (!recuperacionCargada) faltan.push("recuperacion_carrito");
-      if (!retargetingCargado) faltan.push("retargeting_abandono");
-      fugas.push({
-        id: "carritos_abandonados",
-        etiqueta: "Fuga por carritos abandonados",
-        tipo: "monto",
-        monto: null,
-        calculable: false,
-        faltantes: faltan,
-        detalle: DETALLE_CARRITO,
-      });
-    } else if (activos < 2) {
-      const faltan = faltantes(datos, ["carritos_abandonados", "ticket_promedio"]);
-      if (margen === null) {
-      faltan.push("margen_contribucion");
-      for (const f of faltantesMargen(datos)) if (!faltan.includes(f)) faltan.push(f);
-    }
-      if (pctEsperado === null) faltan.push("recuperacion_carrito_esperada");
-      if (faltan.length > 0) {
-        fugas.push({
-          id: "carritos_abandonados",
-          etiqueta: "Fuga por carritos abandonados",
-          tipo: "monto",
-          monto: null,
-          calculable: false,
-          faltantes: faltan,
-          detalle: DETALLE_CARRITO,
-        });
-      } else {
-        // Si ya trabaja una de las dos puntas, sólo queda la mitad por recuperar.
-        const pct = activos === 1 ? (pctEsperado as number) / 2 : (pctEsperado as number);
-        const monto =
-          (d.carritos_abandonados as number) *
-          pct *
-          (d.ticket_promedio as number) *
-          (margen as number);
-        fugas.push({
-          id: "carritos_abandonados",
-          etiqueta: "Fuga por carritos abandonados",
-          tipo: "monto",
-          monto: Math.max(0, red(monto, 0) ?? 0),
-          calculable: true,
-          faltantes: [],
-          detalle: DETALLE_CARRITO,
-        });
-      }
-    }
-  }
 
   // Medición: hallazgo de riesgo, nunca valorizado en pesos
   if (estadoMedicion === "rojo") {

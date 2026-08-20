@@ -212,6 +212,8 @@ function DetalleDiagnostico() {
 
         <SeccionCanales derivados={d} />
 
+        <SeccionFunnel funnel={d.funnel} />
+
         <div className="grid gap-8 lg:grid-cols-2">
           <EconomiaDetalle derivados={d} datos={datos} />
           <Presupuesto derivados={d} datos={datos} />
@@ -514,6 +516,52 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
   );
 }
 
+// ---------------------------------------------------------------- funnel web
+
+/**
+ * Cascada del funnel: tres tramos que no se solapan. Reemplaza a la vieja
+ * lectura de conversión más carritos abandonados, que contaba dos veces a la
+ * misma gente.
+ */
+function SeccionFunnel({ funnel }: { funnel: Derivados["funnel"] }) {
+  if (!funnel || funnel.estado === "no_aplica") return null;
+
+  return (
+    <section className="rounded-lg border border-border bg-card">
+      <header className="border-b border-border px-7 py-5">
+        <h2 className="text-[17px] font-medium text-foreground">Funnel web de la tienda</h2>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          Visitas, agregados al carrito, checkouts iniciados y compras del mismo período y del
+          mismo canal.
+        </p>
+      </header>
+
+      {funnel.estado === "error" ? (
+        <p className="px-7 py-6 text-[15px] leading-6 text-destructive">{funnel.error}</p>
+      ) : (
+        <>
+          <dl>
+            <Fila label="Visitas" value={numero(funnel.visitas, 0)} />
+            <Fila label="Agregados al carrito" value={numero(funnel.agregados_carrito, 0)} />
+            <Fila label="Checkouts iniciados" value={numero(funnel.checkouts_iniciados, 0)} />
+            <Fila label="Compras estimadas" value={numero(funnel.compras, 0)} />
+            <Fila label="Visita a carrito" value={pct(funnel.p_carrito_dado_visita, 2)} />
+            <Fila label="Carrito a checkout" value={pct(funnel.p_checkout_dado_carrito, 2)} />
+            <Fila label="Checkout a compra" value={pct(funnel.p_compra_dado_checkout, 2)} />
+            <Fila label="Conversión global" value={pct(funnel.cr_global, 2)} />
+          </dl>
+          {!funnel.desglosado && funnel.estado === "combinado" && (
+            <p className="border-t border-border px-7 py-6 text-[14px] leading-6 text-muted-foreground">
+              Faltan etapas intermedias del embudo, así que la oportunidad se muestra combinada,
+              sin repartir entre navegación, carrito y checkout.
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------- canales
 
 const NOMBRE_CANAL: Record<string, string> = {
@@ -521,10 +569,21 @@ const NOMBRE_CANAL: Record<string, string> = {
   mercado_libre: "Mercado Libre",
 };
 
-function origenLegible(origen: string | null) {
-  if (origen === "verificado_cliente") return "Verificado con el cliente";
+/**
+ * Un benchmark nunca se muestra como comisión verificada: sólo una liquidación
+ * del cliente cuenta como evidencia.
+ */
+function origenLegible(origen: string | null, evidencia?: string) {
   if (origen === null) return "Sin comisión resuelta";
-  return "Benchmark";
+  if (evidencia === "liquidacion_cliente" || origen === "verificado_cliente")
+    return "Verificada con la liquidación del cliente";
+  return "Benchmark de configuración";
+}
+
+function evidenciaLegible(evidencia: string) {
+  if (evidencia === "liquidacion_cliente") return "Liquidación del cliente";
+  if (evidencia === "declarado_cliente") return "Cargo declarado por el cliente";
+  return "Sin verificar";
 }
 
 /** Mix de canales: cada canal con su comisión, su margen y su breakeven. */
@@ -593,7 +652,14 @@ function SeccionCanales({ derivados }: { derivados: Derivados }) {
                 <dl className="mt-4 space-y-2.5">
                   <Fila label="Margen del canal" value={pct(c.margen)} />
                   <Fila label="Comisión efectiva" value={pct(c.comision_efectiva, 2)} />
-                  <Fila label="Origen de la comisión" value={origenLegible(c.comision_origen)} />
+                  <Fila
+                    label="Origen de la comisión"
+                    value={origenLegible(c.comision_origen, c.comision_evidencia)}
+                  />
+                  <Fila label="Evidencia" value={evidenciaLegible(c.comision_evidencia)} />
+                  {c.comision_vigencia && (
+                    <Fila label="Vigencia de la regla" value={c.comision_vigencia} />
+                  )}
                   <Fila label="MER del canal" value={numero(c.mer)} />
                   <Fila label="Breakeven del canal" value={numero(c.breakeven_roas)} />
                   {c.comision_provisional && (

@@ -174,6 +174,10 @@ export type DatosDiagnostico = {
 
   // Web
   visitas_mensuales: number | null;
+  /** Sesiones que agregaron al carrito en el mes. Etapa intermedia del funnel. */
+  agregados_carrito: number | null;
+  /** Sesiones que iniciaron el checkout en el mes. Etapa intermedia del funnel. */
+  checkouts_iniciados: number | null;
   carritos_abandonados: number | null;
   recuperacion_carrito: boolean | null;
   retargeting_abandono: boolean | null;
@@ -281,6 +285,8 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   csv_dias_periodo: null,
 
   visitas_mensuales: null,
+  agregados_carrito: null,
+  checkouts_iniciados: null,
   carritos_abandonados: null,
   recuperacion_carrito: null,
   retargeting_abandono: null,
@@ -399,7 +405,9 @@ export function camposPorBloque(modo: Modo, bloque: BloqueId): (keyof DatosDiagn
     return modo === "A" ? ["conjuntos_activos", "presupuesto_diario"] : ["gasto_diario", "cantidad_campanas"];
   }
   if (bloque === "web")
-    return modo === "A" ? ["visitas_mensuales", "carritos_abandonados"] : ["carritos_abandonados"];
+    return modo === "A"
+      ? ["visitas_mensuales", "agregados_carrito", "checkouts_iniciados", "carritos_abandonados"]
+      : ["agregados_carrito", "checkouts_iniciados", "carritos_abandonados"];
   return base;
 }
 
