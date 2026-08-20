@@ -51,6 +51,10 @@ import {
   costoFinanciacion,
   costoDescuento,
   participacionesSuperan100,
+  participacionesIncompatibles,
+  montosNetosDeDescuento,
+  montosNetosDeFinanciacion,
+
 } from "@/lib/calculo-diagnostico";
 import { cargarConfiguracion } from "@/lib/configuracion";
 
