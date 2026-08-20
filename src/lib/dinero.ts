@@ -132,3 +132,33 @@ export function ratioPesos(
   const r = cn / cd;
   return Number.isFinite(r) ? r : null;
 }
+
+/**
+ * Suma exacta en base decimal: escala cada término a enteros de 12 decimales
+ * usando su representación decimal en cadena, suma en BigInt y vuelve a número.
+ * Evita que el ruido binario de las sumas encadenadas (1 - 0,4 - 0,05375 ...)
+ * corra el medio punto justo antes de redondear.
+ */
+export function sumarDecimal(...valores: number[]): number {
+  const ESCALA = 12;
+  let acc = 0n;
+  for (const v of valores) {
+    if (!Number.isFinite(v)) return NaN;
+    acc += escalarADecimales(v, ESCALA);
+  }
+  const neg = acc < 0n;
+  let txt = (neg ? -acc : acc).toString().padStart(ESCALA + 1, "0");
+  txt = txt.slice(0, txt.length - ESCALA) + "." + txt.slice(txt.length - ESCALA);
+  return Number((neg ? "-" : "") + txt);
+}
+
+/** Convierte un número a entero BigInt escalado por 10^decimales, sin punto flotante. */
+function escalarADecimales(n: number, decimales: number): bigint {
+  const plano = aDecimalPlano(n);
+  const neg = plano.startsWith("-");
+  const cuerpo = neg ? plano.slice(1) : plano;
+  const [ent, frac = ""] = cuerpo.split(".") as [string, string?];
+  const fracRec = (frac + "0".repeat(decimales)).slice(0, decimales);
+  const v = BigInt(ent === "" ? "0" : ent) * 10n ** BigInt(decimales) + BigInt(fracRec || "0");
+  return neg ? -v : v;
+}
