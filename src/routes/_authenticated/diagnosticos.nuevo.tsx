@@ -917,34 +917,54 @@ function NuevoDiagnostico() {
           )}
 
           {bloque === "web" && (
-            <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
-              {modo === "A" && (
+            <div className="space-y-5">
+              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                {modo === "A" && (
+                  <CampoNumero
+                    label="Visitas mensuales"
+                    value={datos.visitas_mensuales}
+                    onChange={(v) => set("visitas_mensuales", v)}
+                    ayuda="Con esto se calcula la conversión de la tienda."
+                  />
+                )}
                 <CampoNumero
-                  label="Visitas mensuales"
-                  value={datos.visitas_mensuales}
-                  onChange={(v) => set("visitas_mensuales", v)}
-                  ayuda="Con esto se calcula la conversión de la tienda."
+                  label="Agregados al carrito en el mes"
+                  value={datos.agregados_carrito}
+                  onChange={(v) => set("agregados_carrito", v)}
+                  ayuda="Mismo período y mismo canal que las visitas. Tiendanube: Estadísticas, embudo de conversión."
                 />
-              )}
-              <CampoNumero
-                label="Carritos abandonados en el mes"
-                value={datos.carritos_abandonados}
-                onChange={(v) => set("carritos_abandonados", v)}
-                ayuda="Tiendanube, sección Carritos abandonados."
-              />
+                <CampoNumero
+                  label="Checkouts iniciados en el mes"
+                  value={datos.checkouts_iniciados}
+                  onChange={(v) => set("checkouts_iniciados", v)}
+                  ayuda="Cuántos llegaron a la pantalla de pago, hayan comprado o no."
+                />
+                <CampoNumero
+                  label="Carritos abandonados en el mes"
+                  value={datos.carritos_abandonados}
+                  onChange={(v) => set("carritos_abandonados", v)}
+                  ayuda="Tiendanube, sección Carritos abandonados. Es referencia: la oportunidad se calcula con el embudo."
+                />
 
-              <CampoSiNo
-                label="¿Tiene recuperación de carrito?"
-                value={datos.recuperacion_carrito}
-                onChange={(v) => set("recuperacion_carrito", v)}
-              />
-              <CampoSiNo
-                label="¿Hace retargeting a los que abandonaron?"
-                value={datos.retargeting_abandono}
-                onChange={(v) => set("retargeting_abandono", v)}
-              />
+                <CampoSiNo
+                  label="¿Tiene recuperación de carrito?"
+                  value={datos.recuperacion_carrito}
+                  onChange={(v) => set("recuperacion_carrito", v)}
+                />
+                <CampoSiNo
+                  label="¿Hace retargeting a los que abandonaron?"
+                  value={datos.retargeting_abandono}
+                  onChange={(v) => set("retargeting_abandono", v)}
+                />
+              </div>
+              {funnelForm.estado === "error" && funnelForm.error && (
+                <p className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-[13px] text-destructive">
+                  {funnelForm.error}
+                </p>
+              )}
             </div>
           )}
+
 
           {bloque === "contenido" && (
             <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
