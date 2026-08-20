@@ -48,7 +48,10 @@ export type Derivados = {
   componente_envio: number | null;
   comision_plataforma: number | null;
   comision_pasarela: number | null;
+  costo_financiacion_efectivo: number | null;
+  costo_descuento_efectivo: number | null;
   margenes_producto: (number | null)[];
+
   pesos_producto: (number | null)[];
   pedidos_mensuales: number | null;
   cr_tienda: number | null;
