@@ -770,10 +770,31 @@ export function calcularDiagnostico(
       ? pedidos / d.visitas_mensuales
       : null;
 
-  const inversionAds =
-    finito(d.inversion_meta) || finito(d.inversion_google)
-      ? (finito(d.inversion_meta) ? d.inversion_meta : 0) +
-        (finito(d.inversion_google) ? d.inversion_google : 0)
+  // Inversión publicitaria del negocio: Meta, Google y Product Ads. La ausencia
+  // de Meta y Google ya no se lee como "no invierte en publicidad".
+  const inversionAds = inversionPublicitariaTotal(d);
+  const hayInversionAds = hayInversionPublicitaria(d);
+  const inversionPropia = inversionCanal(d, "tienda_propia");
+  const inversionAdsML = inversionProductAds(d);
+
+  // MER por perímetro. Nunca se cruza la facturación de un canal con la
+  // inversión del otro.
+  const facturacionTienda = facturacionCanal(d, "tienda_propia") ??
+    (!hayCanales && finito(d.facturacion_mensual) ? d.facturacion_mensual : null);
+  const facturacionML = facturacionCanal(d, "mercado_libre");
+  const merTienda =
+    facturacionTienda !== null && inversionPropia !== null && inversionPropia > 0
+      ? facturacionTienda / inversionPropia
+      : null;
+  const merMarketplace =
+    facturacionML !== null && inversionAdsML !== null && inversionAdsML > 0
+      ? facturacionML / inversionAdsML
+      : null;
+
+  // ROAS de Product Ads: sólo lo atribuido a la pauta. Es otra cosa que el MER.
+  const roasProductAds =
+    finito(d.ml_ventas_product_ads) && inversionAdsML !== null && inversionAdsML > 0
+      ? d.ml_ventas_product_ads / inversionAdsML
       : null;
 
   const mer =
@@ -811,6 +832,18 @@ export function calcularDiagnostico(
   // --- Cascada del funnel: etapas del mismo canal y del mismo período.
   const funnel = evaluarFunnel(d, cfg);
 
+  // --- Contradicción contra el margen declarado por el cliente.
+  const contradiccion = evaluarContradiccion(
+    margen,
+    rangoDeclarado(d.margen_declarado_min, d.margen_declarado_max),
+    {
+      confirmado: d.margen_declarado_confirmado === true,
+      umbral_critico: cfg.umbral_contradiccion_critico,
+      umbral_validacion: cfg.umbral_contradiccion_validacion,
+    },
+  );
+  const margenBloqueado = contradiccion?.bloquea === true;
+
   const derivados: Derivados = {
     delta_medicion: red(delta, 4),
     margen_contribucion: red(margen, DECIMALES_TASA),
@@ -837,6 +870,12 @@ export function calcularDiagnostico(
     cpa_objetivo: red(cpaObjetivo, 0),
     roas_objetivo: red(roasObjetivo, 2),
     mer_actual: red(mer, 2),
+    mer_tienda_propia: red(merTienda, 2),
+    mer_marketplace: red(merMarketplace, 2),
+    roas_product_ads: red(roasProductAds, 2),
+    inversion_publicitaria_total: inversionAds,
+    hay_inversion_publicitaria: hayInversionAds,
+    contradiccion_margen: contradiccion,
     contribucion_marginal: red(contribucionMarginal, 0),
     piso_semanal_por_conjunto: red(pisoSemanalPorConjunto, 0),
     conjuntos_sostenibles: red(conjuntosSostenibles, 1),
