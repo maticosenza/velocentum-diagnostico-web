@@ -337,6 +337,7 @@ export type BloqueId = (typeof BLOQUES)[number]["id"];
 const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
   identificacion: ["nombre_tienda", "vertical", "plataforma", "plan_plataforma"],
   medicion: [],
+  canales: ["canal_tienda_pct", "canal_ml_pct"],
   economia: [
     "facturacion_mensual",
     "ticket_promedio",
@@ -441,6 +442,8 @@ export const ORIGEN_DATOS: Record<BloqueId, string> = {
   identificacion: "Conversado. El plan se ve en el panel del cliente.",
   medicion:
     "Events Manager, pestaña Resumen. Ojo que Meta solo guarda unos dos meses de historial.",
+  canales:
+    "Conversado, más el panel de cada canal. El porcentaje de cada canal sale de la facturación total del negocio.",
   economia: "Tiendanube: Estadísticas, Visión general.",
   productos: "Tiendanube: Estadísticas, Productos. Ahí están las unidades vendidas de cada uno.",
   cuenta:
