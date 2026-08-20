@@ -641,6 +641,73 @@ function NuevoDiagnostico() {
                 onChange={(v) => set("pasarela", v)}
                 opciones={PASARELAS}
               />
+
+              <div className="sm:col-span-2">
+                <p className="text-[13px] font-medium text-foreground">
+                  Financiación y descuentos
+                </p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  Cuotas sin interés y descuentos por transferencia: se restan al margen ponderados
+                  por la porción de ventas que alcanzan.
+                </p>
+              </div>
+              <CampoPorcentaje
+                label="Ventas pagadas en cuotas"
+                value={datos.financiacion_pct_ventas}
+                onChange={(v) => set("financiacion_pct_ventas", v)}
+                maximo={100}
+                ayuda="Qué porcentaje de las ventas se paga en cuotas."
+              />
+              <CampoPorcentaje
+                label="Costo de la financiación"
+                value={datos.financiacion_costo_pct}
+                onChange={(v) => set("financiacion_costo_pct", v)}
+                ayuda="Cuánto cuesta esa financiación, como porcentaje del monto financiado."
+              />
+              {costoFinanciacion(datos).faltan.length > 0 && (
+                <p className="text-[12px] text-destructive sm:col-span-2">
+                  Falta un dato de financiación para calcular el margen: cargá también{" "}
+                  {costoFinanciacion(datos).faltan[0] === "financiacion_costo_pct"
+                    ? "el costo de la financiación"
+                    : "el porcentaje de ventas en cuotas"}
+                  . No se asume cero.
+                </p>
+              )}
+              <CampoPorcentaje
+                label="Ventas con descuento"
+                value={datos.descuento_pct_ventas}
+                onChange={(v) => set("descuento_pct_ventas", v)}
+                maximo={100}
+                ayuda="Qué porcentaje de las ventas usa descuento (transferencia u otro)."
+              />
+              <CampoPorcentaje
+                label="Descuento aplicado"
+                value={datos.descuento_pct}
+                onChange={(v) => set("descuento_pct", v)}
+                ayuda="Cuánto es el descuento, como porcentaje del precio."
+              />
+              {datos.base_montos === "neto" && (
+                <p className="text-[12px] text-muted-foreground sm:col-span-2">
+                  Los montos ya están netos de descuentos, así que el descuento no se vuelve a
+                  restar del margen.
+                </p>
+              )}
+              {datos.base_montos !== "neto" && costoDescuento(datos).faltan.length > 0 && (
+                <p className="text-[12px] text-destructive sm:col-span-2">
+                  Falta un dato de descuento para calcular el margen: cargá también{" "}
+                  {costoDescuento(datos).faltan[0] === "descuento_pct"
+                    ? "el porcentaje de descuento"
+                    : "el porcentaje de ventas con descuento"}
+                  . No se asume cero.
+                </p>
+              )}
+              {participacionesSuperan100(datos) && (
+                <p className="text-[12px] text-amber-600 sm:col-span-2">
+                  Las participaciones suman más de 100%. Se calcula igual: una misma venta puede
+                  tener descuento y además pagarse en cuotas.
+                </p>
+              )}
+
               <CampoPesos
                 label="Inversión mensual en Meta"
                 value={datos.inversion_meta}
