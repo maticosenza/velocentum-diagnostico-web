@@ -399,14 +399,16 @@ export function calcularDiagnostico(
     for (const p of cargados) {
       const costoRelativo = ratioPesos(p.costo, p.precio);
       if (costoRelativo === null) continue;
-      const m =
-        1 -
-        costoRelativo -
-        comPlataforma -
-        comPasarela -
-        componenteEnvio -
-        finComp.valor -
-        descComp.valor;
+      const m = sumarDecimal(
+        1,
+        -costoRelativo,
+        -comPlataforma,
+        -comPasarela,
+        -componenteEnvio,
+        -finComp.valor,
+        -descComp.valor,
+      );
+
       if (!finito(m)) continue;
       margenesProducto[p.indice - 1] = red(m, 4);
 
