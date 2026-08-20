@@ -4,7 +4,7 @@
  */
 
 import type { DatosDiagnostico } from "./diagnostico-form";
-import { DECIMALES_TASA, ratioPesos, redondear, restarPesos } from "./dinero";
+import { DECIMALES_TASA, ratioPesos, redondear, restarPesos, sumarDecimal } from "./dinero";
 
 // ---------------------------------------------------------------- configuración
 
