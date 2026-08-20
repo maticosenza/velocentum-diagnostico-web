@@ -148,6 +148,8 @@ export type Fuga = {
   sospechosa?: boolean;
   /** Confianza del cálculo: "parcial" marca estimaciones sin desglose. */
   confianza?: "alta" | "parcial";
+  /** true cuando el monto depende del margen de contribución. */
+  usa_margen?: boolean;
 };
 
 
@@ -165,6 +167,9 @@ export type ResultadoCalculo = {
   fugas: Fuga[];
   oportunidad_total: number;
   oportunidad_conservadora: number;
+  /** true cuando una contradicción crítica confirmada bloquea todo lo que usa margen. */
+  margen_bloqueado: boolean;
+  contradiccion_margen: Contradiccion | null;
 };
 
 // ---------------------------------------------------------------- helpers
@@ -961,6 +966,7 @@ export function calcularDiagnostico(
       faltantes: faltan,
       detalle: t.detalle,
       confianza: t.confianza,
+      usa_margen: true,
     });
   }
 
@@ -980,6 +986,7 @@ export function calcularDiagnostico(
         monto: null,
         calculable: false,
         faltantes: faltan,
+        usa_margen: true,
       });
     } else if ((mer as number) < (breakevenRoas as number)) {
       const monto = (inversionAds as number) * (1 - (mer as number) / (breakevenRoas as number));
@@ -990,6 +997,7 @@ export function calcularDiagnostico(
         monto: Math.max(0, red(monto, 0) ?? 0),
         calculable: true,
         faltantes: [],
+        usa_margen: true,
       });
     }
   }
@@ -1007,6 +1015,7 @@ export function calcularDiagnostico(
         monto: null,
         calculable: false,
         faltantes: faltan,
+        usa_margen: true,
       });
     } else if (
       conjuntosSostenibles !== null &&
@@ -1022,6 +1031,7 @@ export function calcularDiagnostico(
         monto: Math.max(0, red(monto, 0) ?? 0),
         calculable: true,
         faltantes: [],
+        usa_margen: true,
       });
     }
   }
@@ -1042,6 +1052,22 @@ export function calcularDiagnostico(
       faltantes: [],
       detalle: "El desvío entre la facturación real y el Pixel invalida cualquier valorización en pesos.",
     });
+  }
+
+  // --- Contradicción crítica confirmada: se cae todo lo que depende del margen.
+  // Los hallazgos que no usan margen (medición, estructura, contenido, funnel,
+  // canales) siguen intactos.
+  if (margenBloqueado) {
+    for (const f of fugas) {
+      if (f.usa_margen !== true) continue;
+      f.monto = null;
+      f.calculable = false;
+      if (!f.faltantes.includes("margen_en_contradiccion")) {
+        f.faltantes.push("margen_en_contradiccion");
+      }
+      f.detalle =
+        "El margen calculado contradice al margen confirmado por el cliente: no se valoriza hasta resolver la diferencia.";
+    }
   }
 
   // --- Red de seguridad: ninguna fuga puede salirse del rango razonable
@@ -1087,7 +1113,10 @@ export function calcularDiagnostico(
     derivados,
     estados_bloque,
     fugas,
-    oportunidad_total: red(total, 0) ?? 0,
-    oportunidad_conservadora: red(total * 0.6, 0) ?? 0,
+    // La oportunidad mensual estimada no se muestra con el margen bloqueado.
+    oportunidad_total: margenBloqueado ? 0 : (red(total, 0) ?? 0),
+    oportunidad_conservadora: margenBloqueado ? 0 : (red(total * 0.6, 0) ?? 0),
+    margen_bloqueado: margenBloqueado,
+    contradiccion_margen: contradiccion,
   };
 }
