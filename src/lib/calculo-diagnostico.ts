@@ -48,7 +48,10 @@ export type Derivados = {
   componente_envio: number | null;
   comision_plataforma: number | null;
   comision_pasarela: number | null;
+  costo_financiacion_efectivo: number | null;
+  costo_descuento_efectivo: number | null;
   margenes_producto: (number | null)[];
+
   pesos_producto: (number | null)[];
   pedidos_mensuales: number | null;
   cr_tienda: number | null;
@@ -234,6 +237,62 @@ export function faltaEnvioCobrado(d: DatosDiagnostico): boolean {
   return finito(d.envio_bruto) && !finito(d.envio_cobrado_comprador);
 }
 
+/**
+ * Componente ponderado de costo variable (financiación o descuento).
+ * Cero y ausente son distintos de "cargado a medias":
+ *  - los dos ausentes: el componente vale cero y el margen se calcula normal;
+ *  - uno cargado sin el otro: no se calcula y se pide el campo faltante;
+ *  - valores negativos: no se calcula (el formulario ya los rechaza).
+ */
+function componentePonderado(
+  pct: number | null | undefined,
+  costo: number | null | undefined,
+  nombrePct: string,
+  nombreCosto: string,
+): { valor: number | null; faltan: string[] } {
+  const p = finito(pct) ? pct : null;
+  const c = finito(costo) ? costo : null;
+  if (p === null && c === null) return { valor: 0, faltan: [] };
+  if (p === null) return { valor: null, faltan: [nombrePct] };
+  if (c === null) return { valor: null, faltan: [nombreCosto] };
+  if (p < 0) return { valor: null, faltan: [nombrePct] };
+  if (c < 0) return { valor: null, faltan: [nombreCosto] };
+  return { valor: (p / 100) * (c / 100), faltan: [] };
+}
+
+/** Costo efectivo de la financiación en cuotas, ponderado por su participación en las ventas. */
+export function costoFinanciacion(d: DatosDiagnostico) {
+  return componentePonderado(
+    d.financiacion_pct_ventas,
+    d.financiacion_costo_pct,
+    "financiacion_pct_ventas",
+    "financiacion_costo_pct",
+  );
+}
+
+/**
+ * Costo efectivo del descuento (transferencia y similares).
+ * Con `base_montos = "neto"` no se resta: los montos cargados ya vienen netos
+ * de descuento y volver a restarlo sería contarlo dos veces.
+ */
+export function costoDescuento(d: DatosDiagnostico) {
+  if (d.base_montos === "neto") return { valor: 0, faltan: [], aplicado: false };
+  const r = componentePonderado(
+    d.descuento_pct_ventas,
+    d.descuento_pct,
+    "descuento_pct_ventas",
+    "descuento_pct",
+  );
+  return { ...r, aplicado: true };
+}
+
+/** true cuando la suma de participaciones declaradas supera el 100%. */
+export function participacionesSuperan100(d: DatosDiagnostico): boolean {
+  const a = finito(d.financiacion_pct_ventas) ? d.financiacion_pct_ventas : 0;
+  const b = finito(d.descuento_pct_ventas) ? d.descuento_pct_ventas : 0;
+  return a + b > 100;
+}
+
 /** Campos que impiden calcular el margen de contribución. */
 export function faltantesMargen(d: DatosDiagnostico): string[] {
   const faltan: string[] = [];
@@ -241,8 +300,11 @@ export function faltantesMargen(d: DatosDiagnostico): string[] {
   if (!finito(d.ticket_promedio) || (d.ticket_promedio as number) <= 0) {
     faltan.push("ticket_promedio");
   }
+  faltan.push(...costoFinanciacion(d).faltan);
+  faltan.push(...costoDescuento(d).faltan);
   return faltan;
 }
+
 
 // ---------------------------------------------------------------- cálculo
 
@@ -281,17 +343,35 @@ export function calcularDiagnostico(
       ? ratioPesos(envioNeto, d.ticket_promedio)
       : null;
 
+  // --- Costos variables sobre el precio: financiación en cuotas y descuentos
+  const finComp = costoFinanciacion(d);
+  const descComp = costoDescuento(d);
+
   const margenesProducto: (number | null)[] = [null, null, null];
   const pesosProducto: (number | null)[] = [null, null, null];
   const calculables: { indice: number; margen: number; pct: number | null }[] = [];
 
-  if (comPlataforma !== null && comPasarela !== null && componenteEnvio !== null) {
+  if (
+    comPlataforma !== null &&
+    comPasarela !== null &&
+    componenteEnvio !== null &&
+    finComp.valor !== null &&
+    descComp.valor !== null
+  ) {
     for (const p of cargados) {
       const costoRelativo = ratioPesos(p.costo, p.precio);
       if (costoRelativo === null) continue;
-      const m = 1 - costoRelativo - comPlataforma - comPasarela - componenteEnvio;
+      const m =
+        1 -
+        costoRelativo -
+        comPlataforma -
+        comPasarela -
+        componenteEnvio -
+        finComp.valor -
+        descComp.valor;
       if (!finito(m)) continue;
       margenesProducto[p.indice - 1] = red(m, 4);
+
       calculables.push({
         indice: p.indice,
         margen: m,
@@ -390,6 +470,9 @@ export function calcularDiagnostico(
     componente_envio: red(componenteEnvio, DECIMALES_TASA),
     comision_plataforma: comPlataforma,
     comision_pasarela: comPasarela,
+    costo_financiacion_efectivo: red(finComp.valor, DECIMALES_TASA),
+    costo_descuento_efectivo: red(descComp.valor, DECIMALES_TASA),
+
     margenes_producto: margenesProducto,
     pesos_producto: pesosProducto,
     pedidos_mensuales: red(pedidos, 0),

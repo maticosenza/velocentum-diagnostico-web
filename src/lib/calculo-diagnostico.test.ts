@@ -3,6 +3,8 @@ import {
   calcularDiagnostico,
   envioNetoVendedor,
   faltaEnvioCobrado,
+  faltantesMargen,
+  participacionesSuperan100,
   lecturaPresupuesto,
   type ConfiguracionCalculo,
 } from "./calculo-diagnostico";
@@ -738,5 +740,149 @@ describe("componente de envío por pedido", () => {
 
   it("el campo legado sigue funcionando como neto en diagnósticos guardados", () => {
     expect(envioNetoVendedor({ ...titan })).toBe(9000);
+  });
+});
+
+// -------------------------------------- entrega 2.2 · financiación y descuentos
+
+describe("costo de financiación y descuentos", () => {
+  /** S1: ticket 50.000, costo 40%, plataforma 1%, pasarela 5%, envío neto 5.000. */
+  const s1: DatosDiagnostico = {
+    ...DATOS_INICIALES,
+    nombre_tienda: "Sintético S1",
+    plataforma: "tiendanube",
+    plan_plataforma: "esencial",
+    pasarela: "mercado_pago",
+    ticket_promedio: 50000,
+    costo_envio_promedio: 5000,
+    base_montos: "bruto",
+    producto_1_nombre: "Único",
+    producto_1_costo: 20000,
+    producto_1_precio: 50000,
+  };
+
+  const margenDe = (d: DatosDiagnostico) => calcularDiagnostico(d, cfg).derivados.margen_contribucion;
+
+  it("base sin financiación ni descuento", () => {
+    expect(margenDe(s1)).toBe(0.44);
+  });
+
+  it("solo financiación: 50% de ventas al 10,75%", () => {
+    const r = calcularDiagnostico(
+      { ...s1, financiacion_pct_ventas: 50, financiacion_costo_pct: 10.75 },
+      cfg,
+    );
+    expect(r.derivados.costo_financiacion_efectivo).toBe(0.0538);
+    expect(r.derivados.costo_descuento_efectivo).toBe(0);
+    expect(r.derivados.margen_contribucion).toBe(0.3863);
+  });
+
+  it("solo descuento: 30% de ventas al 15%", () => {
+    const r = calcularDiagnostico({ ...s1, descuento_pct_ventas: 30, descuento_pct: 15 }, cfg);
+    expect(r.derivados.costo_descuento_efectivo).toBe(0.045);
+    expect(r.derivados.margen_contribucion).toBe(0.395);
+  });
+
+  it("ambos combinados", () => {
+    expect(
+      margenDe({
+        ...s1,
+        financiacion_pct_ventas: 50,
+        financiacion_costo_pct: 10.75,
+        descuento_pct_ventas: 30,
+        descuento_pct: 15,
+      }),
+    ).toBe(0.3413);
+  });
+
+  it("ambos combinados con base neto: el descuento no se resta dos veces", () => {
+    const r = calcularDiagnostico(
+      {
+        ...s1,
+        base_montos: "neto",
+        financiacion_pct_ventas: 50,
+        financiacion_costo_pct: 10.75,
+        descuento_pct_ventas: 30,
+        descuento_pct: 15,
+      },
+      cfg,
+    );
+    expect(r.derivados.costo_descuento_efectivo).toBe(0);
+    expect(r.derivados.margen_contribucion).toBe(0.3863);
+  });
+
+  it("financiación al 100% de las ventas", () => {
+    expect(
+      margenDe({ ...s1, financiacion_pct_ventas: 100, financiacion_costo_pct: 10.75 }),
+    ).toBe(0.3325);
+  });
+
+  it("costos en cero con participaciones cargadas: margen sin cambios", () => {
+    expect(
+      margenDe({
+        ...s1,
+        financiacion_pct_ventas: 50,
+        financiacion_costo_pct: 0,
+        descuento_pct_ventas: 30,
+        descuento_pct: 0,
+      }),
+    ).toBe(0.44);
+  });
+
+  it("participación en cero con costo positivo: componente cero", () => {
+    const r = calcularDiagnostico(
+      { ...s1, financiacion_pct_ventas: 0, financiacion_costo_pct: 10.75 },
+      cfg,
+    );
+    expect(r.derivados.costo_financiacion_efectivo).toBe(0);
+    expect(r.derivados.margen_contribucion).toBe(0.44);
+  });
+
+  it("todos los campos ausentes: margen idéntico a la entrega anterior", () => {
+    expect(margenDe(s1)).toBe(0.44);
+    expect(calcularDiagnostico(s1, cfg).derivados.costo_financiacion_efectivo).toBe(0);
+  });
+
+  it("participación cargada sin costo: componente no calculado y campo faltante", () => {
+    const d = { ...s1, financiacion_pct_ventas: 50 };
+    const r = calcularDiagnostico(d, cfg);
+    expect(r.derivados.costo_financiacion_efectivo).toBeNull();
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(faltantesMargen(d)).toContain("financiacion_costo_pct");
+  });
+
+  it("costo cargado sin participación: componente no calculado y campo faltante", () => {
+    const d = { ...s1, descuento_pct: 15 };
+    const r = calcularDiagnostico(d, cfg);
+    expect(r.derivados.costo_descuento_efectivo).toBeNull();
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(faltantesMargen(d)).toContain("descuento_pct_ventas");
+  });
+
+  it("valores negativos: no se calcula el componente", () => {
+    const d = { ...s1, descuento_pct_ventas: -10, descuento_pct: 15 };
+    expect(calcularDiagnostico(d, cfg).derivados.margen_contribucion).toBeNull();
+    expect(faltantesMargen(d)).toContain("descuento_pct_ventas");
+  });
+
+  it("suma de participaciones mayor a 100: advierte pero calcula", () => {
+    const d = {
+      ...s1,
+      financiacion_pct_ventas: 80,
+      financiacion_costo_pct: 10,
+      descuento_pct_ventas: 40,
+      descuento_pct: 10,
+    };
+    expect(participacionesSuperan100(d)).toBe(true);
+    expect(calcularDiagnostico(d, cfg).derivados.margen_contribucion).toBe(0.32);
+  });
+
+  it("los cálculos degenerados no devuelven NaN ni infinito", () => {
+    const r = calcularDiagnostico(
+      { ...s1, financiacion_pct_ventas: 100, financiacion_costo_pct: 200 },
+      cfg,
+    );
+    expect(Number.isFinite(r.derivados.margen_contribucion!)).toBe(true);
+    expect(r.derivados.breakeven_roas).toBeNull();
   });
 });

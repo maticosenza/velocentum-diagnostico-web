@@ -21,13 +21,19 @@ function mediaHaciaArriba(n: number): number {
   return n < 0 ? -Math.floor(-n + 0.5) : Math.floor(n + 0.5);
 }
 
-/** Redondeo genérico con la política única. Devuelve null si el valor no es finito. */
+/**
+ * Redondeo genérico con la política única. Devuelve null si el valor no es finito.
+ * Antes de redondear se normaliza el escalado a 12 dígitos significativos para que
+ * el ruido binario (0,38625 representado como 0,3862499999...) no baje el medio punto.
+ */
 export function redondear(n: number | null | undefined, decimales: number): number | null {
   if (!esFinito(n)) return null;
   const f = 10 ** decimales;
-  const r = mediaHaciaArriba(n * f) / f;
+  const escalado = Number((n * f).toPrecision(12));
+  const r = mediaHaciaArriba(escalado) / f;
   return Number.isFinite(r) ? r : null;
 }
+
 
 /** Redondea una tasa (margen, comisión, ratio) a 4 decimales. */
 export function redondearTasa(n: number | null | undefined): number | null {

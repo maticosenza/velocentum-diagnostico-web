@@ -63,7 +63,16 @@ export const CANTIDAD_CAMPANAS = [
   { value: "muchas", label: "Muchas" },
 ] as const;
 
+/** Base sobre la que están expresados facturación y ticket. */
+export type BaseMontos = "bruto" | "neto";
+
+export const BASES_MONTOS = [
+  { value: "bruto", label: "Bruto (antes de descuentos)" },
+  { value: "neto", label: "Neto (ya con descuentos aplicados)" },
+] as const;
+
 export type DatosDiagnostico = {
+
   // Identificación (compartido)
   nombre_tienda: string;
   vertical: string;
@@ -82,6 +91,8 @@ export type DatosDiagnostico = {
   // Economía (compartido)
   facturacion_mensual: number | null;
   ticket_promedio: number | null;
+  /** Indica si facturación y ticket vienen brutos o ya netos de descuentos. */
+  base_montos: BaseMontos;
   /** Legado: se interpreta como envío neto del vendedor. */
   costo_envio_promedio: number | null;
   /** Costo total del envío por pedido. */
@@ -89,8 +100,17 @@ export type DatosDiagnostico = {
   /** Cuánto del envío paga el comprador. */
   envio_cobrado_comprador: number | null;
   pasarela: string;
+  /** % de las ventas que se paga en cuotas. */
+  financiacion_pct_ventas: number | null;
+  /** Costo de esa financiación, como % del monto financiado. */
+  financiacion_costo_pct: number | null;
+  /** % de las ventas que usa descuento. */
+  descuento_pct_ventas: number | null;
+  /** Magnitud del descuento, como % del precio. */
+  descuento_pct: number | null;
   inversion_meta: number | null;
   inversion_google: number | null;
+
   // Productos (compartido; en modo B sólo el principal lleva costo y precio)
   producto_1_nombre: string;
   producto_1_costo: number | null;
@@ -152,10 +172,16 @@ export const DATOS_INICIALES: DatosDiagnostico = {
 
   facturacion_mensual: null,
   ticket_promedio: null,
+  base_montos: "bruto",
   costo_envio_promedio: null,
   envio_bruto: null,
   envio_cobrado_comprador: null,
   pasarela: "",
+  financiacion_pct_ventas: null,
+  financiacion_costo_pct: null,
+  descuento_pct_ventas: null,
+  descuento_pct: null,
+
   inversion_meta: null,
   inversion_google: null,
   producto_1_nombre: "",
