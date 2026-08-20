@@ -627,12 +627,15 @@ describe("componente de envío por pedido", () => {
     producto_1_nombre: "Campera Puffer",
     producto_1_costo: 40000,
     producto_1_precio: 180000,
+    producto_1_pct_facturacion: 30,
     producto_2_nombre: "Chaleco Tiffany",
     producto_2_costo: 35000,
     producto_2_precio: 125000,
+    producto_2_pct_facturacion: 20,
     producto_3_nombre: "Calza Street",
     producto_3_costo: 20000,
     producto_3_precio: 85000,
+    producto_3_pct_facturacion: 10,
   };
 
   const titan: DatosDiagnostico = {
