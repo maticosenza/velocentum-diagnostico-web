@@ -441,7 +441,29 @@ describe("cascada de atribución del funnel web", () => {
     expect(ids).not.toContain("conversion");
     expect(ids).not.toContain("carritos_abandonados");
     expect(r.derivados.funnel.desglosado).toBe(true);
+    for (const id of ["funnel_navegacion", "funnel_carrito", "funnel_checkout"]) {
+      expect(r.fugas.find((f) => f.id === id)!.confianza, id).toBe("alta");
+    }
   });
+
+  it("cascada y combinada son excluyentes entre sí", () => {
+    const conTodo = calcularDiagnostico(conFunnel, cfgFunnel).fugas.map((f) => f.id);
+    expect(conTodo).toContain("funnel_navegacion");
+    expect(conTodo).toContain("funnel_carrito");
+    expect(conTodo).toContain("funnel_checkout");
+    expect(conTodo).not.toContain("funnel_combinado");
+
+    for (const falta of ["agregados_carrito", "checkouts_iniciados"] as const) {
+      const r = calcularDiagnostico({ ...conFunnel, [falta]: null }, cfgFunnel);
+      const ids = r.fugas.map((f) => f.id);
+      expect(ids, falta).toContain("funnel_combinado");
+      expect(ids, falta).not.toContain("funnel_navegacion");
+      expect(ids, falta).not.toContain("funnel_carrito");
+      expect(ids, falta).not.toContain("funnel_checkout");
+      expect(r.fugas.find((f) => f.id === "funnel_combinado")!.confianza).toBe("parcial");
+    }
+  });
+
 
   it("deriva las probabilidades condicionales de cada etapa", () => {
     const f = calcularDiagnostico(conFunnel, cfgFunnel).derivados.funnel;
