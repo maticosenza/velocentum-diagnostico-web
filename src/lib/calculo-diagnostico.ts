@@ -27,6 +27,11 @@ import {
   type EstadoCanal,
 } from "./canales";
 import {
+  evaluarContradiccion,
+  rangoDeclarado,
+  type Contradiccion,
+} from "./contradiccion";
+import {
   evaluarFunnel,
   tramosFunnel,
   MEJORAS_FUNNEL_DEFECTO,
@@ -36,6 +41,8 @@ import {
 export { comisionEnEscalaSospechosa, COMISIONES_MARKETPLACE_DEFECTO, claveComisionPlataforma, comisionPlataformaDe, canalesSuperan100, coberturaCanales, canalPrincipal, estadoCanal, comisionEfectivaCanal };
 export type { CanalId } from "./canales";
 export { evaluarFunnel, tramosFunnel, MEJORAS_FUNNEL_DEFECTO };
+export { evaluarContradiccion, rangoDeclarado };
+export type { Contradiccion } from "./contradiccion";
 export type { FunnelDerivado } from "./funnel";
 
 // ---------------------------------------------------------------- configuración
@@ -62,6 +69,9 @@ export type ConfiguracionCalculo = {
   mejora_agregado_pts?: number;
   mejora_checkout_pts?: number;
   mejora_compra_pts?: number;
+  /** Umbrales de la regla de contradicción del margen declarado, en tasa. */
+  umbral_contradiccion_critico?: number;
+  umbral_contradiccion_validacion?: number;
 };
 
 
@@ -103,6 +113,17 @@ export type Derivados = {
   cpa_objetivo: number | null;
   roas_objetivo: number | null;
   mer_actual: number | null;
+  /** MER por perímetro: nunca mezcla canales ni plataformas de pauta. */
+  mer_tienda_propia: number | null;
+  mer_marketplace: number | null;
+  /** ROAS de Product Ads: ventas atribuidas sobre inversión en Product Ads. */
+  roas_product_ads: number | null;
+  /** Inversión publicitaria del negocio: Meta + Google + Product Ads. */
+  inversion_publicitaria_total: number | null;
+  /** null = no sabemos. false = declaró explícitamente que no invierte. */
+  hay_inversion_publicitaria: boolean | null;
+  /** Contradicción entre el margen calculado y el margen declarado por el cliente. */
+  contradiccion_margen: Contradiccion | null;
   contribucion_marginal: number | null;
   piso_semanal_por_conjunto: number | null;
   conjuntos_sostenibles: number | null;
@@ -403,6 +424,14 @@ export type CanalDerivado = {
   margen: number | null;
   margenes_producto: (number | null)[];
   mer: number | null;
+  /** Facturación del canal por su margen, ANTES de descontar publicidad. */
+  contribucion_antes_publicidad: number | null;
+  /** Inversión publicitaria del perímetro del canal. */
+  inversion_publicitaria: number | null;
+  /** Contribución antes de publicidad menos la inversión del canal. */
+  resultado_despues_publicidad: number | null;
+  /** ROAS de la pauta del canal: ventas atribuidas sobre inversión. */
+  roas_pauta: number | null;
   breakeven_roas: number | null;
   faltantes: string[];
   /** Margen sin redondear, para ponderar el mix sin arrastrar error. */
