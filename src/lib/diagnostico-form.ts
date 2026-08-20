@@ -112,8 +112,12 @@ export type DatosDiagnostico = {
   // Economía (compartido)
   facturacion_mensual: number | null;
   ticket_promedio: number | null;
-  /** Indica si facturación y ticket vienen brutos o ya netos de descuentos. */
-  base_montos: BaseMontos;
+  /** Legado. Se lee sólo si no están los dos indicadores nuevos. */
+  base_montos?: BaseMontos;
+  /** true si facturación y ticket ya vienen netos de descuentos comerciales. */
+  montos_netos_de_descuento?: boolean;
+  /** true si facturación y ticket ya vienen netos del costo financiero. */
+  montos_netos_de_financiacion?: boolean;
   /** Legado: se interpreta como envío neto del vendedor. */
   costo_envio_promedio: number | null;
   /** Costo total del envío por pedido. */
@@ -129,6 +133,9 @@ export type DatosDiagnostico = {
   descuento_pct_ventas: number | null;
   /** Magnitud del descuento, como % del precio. */
   descuento_pct: number | null;
+  /** Si cuotas y descuento pueden caer sobre la misma venta. */
+  relacion_financiacion_descuento?: RelacionFinDesc;
+
   inversion_meta: number | null;
   inversion_google: number | null;
 
