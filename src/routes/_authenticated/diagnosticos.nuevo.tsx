@@ -25,6 +25,7 @@ import { CargaCsvMeta } from "@/components/carga-csv-meta";
 import {
   BLOQUES,
   CAMPOS_EXCLUSIVOS,
+  BASES_MONTOS,
   CANTIDAD_CAMPANAS,
   CLAVE_BORRADOR,
   ESTADOS_CAPI,
@@ -47,6 +48,9 @@ import {
   calcularDiagnostico,
   envioNetoVendedor,
   faltaEnvioCobrado,
+  costoFinanciacion,
+  costoDescuento,
+  participacionesSuperan100,
 } from "@/lib/calculo-diagnostico";
 import { cargarConfiguracion } from "@/lib/configuracion";
 
