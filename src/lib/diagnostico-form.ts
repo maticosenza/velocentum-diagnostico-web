@@ -182,6 +182,42 @@ export type DatosDiagnostico = {
   ml_productos_publicados: number | null;
   ml_product_ads: boolean | null;
   ml_inversion_product_ads: number | null;
+
+  /**
+   * Mix de canales. Todos opcionales: los diagnósticos guardados no los tienen y
+   * NO se migran asumiendo que la tienda propia factura el 100%.
+   * Los porcentajes de comisión de canal se cargan en porcentaje (16,94), no en tasa.
+   */
+  canal_tienda_pct?: number | null;
+  canal_tienda_no_aplica?: boolean;
+  canal_tienda_facturacion?: number | null;
+  canal_tienda_ticket?: number | null;
+  canal_tienda_comision_pct?: number | null;
+  canal_tienda_cargo_fijo?: number | null;
+  canal_tienda_envio_neto?: number | null;
+  canal_tienda_financiacion_pct_ventas?: number | null;
+  canal_tienda_financiacion_costo_pct?: number | null;
+  canal_tienda_descuento_pct_ventas?: number | null;
+  canal_tienda_descuento_pct?: number | null;
+  canal_tienda_inversion?: number | null;
+  canal_tienda_periodo?: string;
+  canal_tienda_moneda?: string;
+
+  canal_ml_pct?: number | null;
+  canal_ml_no_aplica?: boolean;
+  canal_ml_facturacion?: number | null;
+  canal_ml_ticket?: number | null;
+  canal_ml_comision_pct?: number | null;
+  canal_ml_cargo_fijo?: number | null;
+  canal_ml_envio_neto?: number | null;
+  canal_ml_financiacion_pct_ventas?: number | null;
+  canal_ml_financiacion_costo_pct?: number | null;
+  canal_ml_descuento_pct_ventas?: number | null;
+  canal_ml_descuento_pct?: number | null;
+  canal_ml_inversion?: number | null;
+  canal_ml_tipo_publicacion?: string;
+  canal_ml_periodo?: string;
+  canal_ml_moneda?: string;
 };
 
 export type NotasDiagnostico = Record<string, string>;
