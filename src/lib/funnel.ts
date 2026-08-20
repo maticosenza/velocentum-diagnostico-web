@@ -253,6 +253,8 @@ export function evaluarFunnel(d: DatosDiagnostico, cfg: ConfigFunnel = {}): Funn
   };
 }
 
+export type ConfianzaTramo = "alta" | "parcial";
+
 export type TramoFunnel = {
   id: "funnel_navegacion" | "funnel_carrito" | "funnel_checkout" | "funnel_combinado";
   etiqueta: string;
@@ -261,7 +263,13 @@ export type TramoFunnel = {
   monto: number | null;
   calculable: boolean;
   faltantes: string[];
+  /**
+   * "alta" para los tramos disjuntos de la cascada completa; "parcial" para la
+   * oportunidad combinada, que estima sin poder repartir entre tramos.
+   */
+  confianza: ConfianzaTramo;
 };
+
 
 /**
  * La mejora nunca puede llevar una tasa por encima del 100%: el techo es el
