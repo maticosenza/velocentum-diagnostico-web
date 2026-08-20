@@ -58,6 +58,7 @@ import {
 
 } from "@/lib/calculo-diagnostico";
 import { cargarConfiguracion } from "@/lib/configuracion";
+import { evaluarFunnel } from "@/lib/funnel";
 
 export const Route = createFileRoute("/_authenticated/diagnosticos/nuevo")({
   validateSearch: (search: Record<string, unknown>): { desde?: string } =>
@@ -227,6 +228,10 @@ function NuevoDiagnostico() {
     if (real === null || pixel === null || real === 0) return null;
     return ((pixel - real) / real) * 100;
   }, [datos.facturacion_mensual, datos.facturacion_pixel]);
+
+  // Coherencia del embudo en vivo: si la cadena no cierra hay que avisarlo
+  // durante la llamada, no después de guardar.
+  const funnelForm = useMemo(() => evaluarFunnel(datos), [datos]);
 
   const planesFijos = PLANES_POR_PLATAFORMA[datos.plataforma];
 
