@@ -24,7 +24,7 @@ import {
   type EstadoCanal,
 } from "./canales";
 
-export { claveComisionPlataforma, comisionPlataformaDe };
+export { claveComisionPlataforma, comisionPlataformaDe, canalesSuperan100, coberturaCanales, canalPrincipal, estadoCanal, comisionEfectivaCanal };
 export type { CanalId } from "./canales";
 
 // ---------------------------------------------------------------- configuración
