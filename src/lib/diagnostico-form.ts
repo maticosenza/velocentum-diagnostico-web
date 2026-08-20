@@ -142,6 +142,13 @@ export type DatosDiagnostico = {
   /** Si cuotas y descuento pueden caer sobre la misma venta. */
   relacion_financiacion_descuento?: RelacionFinDesc;
 
+  /** Margen de contribución que declara el cliente, en porcentaje. Mínimo del rango. */
+  margen_declarado_min?: number | null;
+  /** Máximo del rango declarado. Sin máximo, el rango es el valor exacto del mínimo. */
+  margen_declarado_max?: number | null;
+  /** Sólo un margen declarado y confirmado puede bloquear el cálculo. */
+  margen_declarado_confirmado?: boolean;
+
   inversion_meta: number | null;
   inversion_google: number | null;
 
