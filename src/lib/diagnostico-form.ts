@@ -63,7 +63,16 @@ export const CANTIDAD_CAMPANAS = [
   { value: "muchas", label: "Muchas" },
 ] as const;
 
+/** Base sobre la que están expresados facturación y ticket. */
+export type BaseMontos = "bruto" | "neto";
+
+export const BASES_MONTOS = [
+  { value: "bruto", label: "Bruto (antes de descuentos)" },
+  { value: "neto", label: "Neto (ya con descuentos aplicados)" },
+] as const;
+
 export type DatosDiagnostico = {
+
   // Identificación (compartido)
   nombre_tienda: string;
   vertical: string;
