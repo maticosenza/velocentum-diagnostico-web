@@ -202,9 +202,20 @@ describe("regla de contradicción del margen declarado", () => {
 });
 
 describe("bloqueo por contradicción crítica", () => {
-  /** Tienda con margen calculado negativo y funnel completo. */
+  /** Tienda propia con margen alto y funnel completo: el declarado del 11% lo contradice. */
   const conFunnel: DatosDiagnostico = {
     ...titan,
+    canal_ml_pct: null,
+    canal_ml_facturacion: null,
+    canal_ml_no_aplica: true,
+    canal_tienda_no_aplica: false,
+    canal_tienda_pct: 100,
+    canal_tienda_facturacion: 50_000_000,
+    ticket_promedio: 225226,
+    costo_envio_promedio: 11000,
+    producto_1_costo: 40000,
+    producto_1_precio: 180000,
+    producto_1_pct_facturacion: 100,
     visitas_mensuales: 100_000,
     agregados_carrito: 8_000,
     checkouts_iniciados: 3_000,
