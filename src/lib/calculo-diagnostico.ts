@@ -470,6 +470,9 @@ export function calcularDiagnostico(
     componente_envio: red(componenteEnvio, DECIMALES_TASA),
     comision_plataforma: comPlataforma,
     comision_pasarela: comPasarela,
+    costo_financiacion_efectivo: red(finComp.valor, DECIMALES_TASA),
+    costo_descuento_efectivo: red(descComp.valor, DECIMALES_TASA),
+
     margenes_producto: margenesProducto,
     pesos_producto: pesosProducto,
     pedidos_mensuales: red(pedidos, 0),
