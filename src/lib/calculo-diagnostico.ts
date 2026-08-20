@@ -391,8 +391,10 @@ export function calcularDiagnostico(
     comPasarela !== null &&
     componenteEnvio !== null &&
     finComp.valor !== null &&
-    descComp.valor !== null
+    descComp.valor !== null &&
+    !participacionesIncompatibles(d)
   ) {
+
     for (const p of cargados) {
       const costoRelativo = ratioPesos(p.costo, p.precio);
       if (costoRelativo === null) continue;
