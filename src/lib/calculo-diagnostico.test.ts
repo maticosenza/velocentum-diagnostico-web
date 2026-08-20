@@ -664,6 +664,8 @@ describe("componente de envío por pedido", () => {
     const r = calcularDiagnostico(snake, cfg);
     expect(r.derivados.componente_envio).toBe(0.0488);
     expect(r.derivados.margenes_producto).toEqual([0.6589, 0.6012, 0.6459]);
+    expect(r.derivados.margen_contribucion).toBe(0.6375);
+    expect(r.derivados.breakeven_roas).toBe(1.5686);
   });
 
   it("caso B1 · Titan Web: el envío deja de comerse el precio unitario", () => {
