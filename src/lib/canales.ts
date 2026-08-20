@@ -186,8 +186,25 @@ export type ComisionResuelta = {
   cargo_fijo_disponible: CargoFijoDisponible | null;
   /** true si la comisión verificada parece cargada en tasa y no en porcentaje. */
   escala_sospechosa: boolean;
+  /** Vigencia declarada de la regla, si la configuración la trae. */
+  vigencia: string | null;
+  /**
+   * Qué respalda al número. Un benchmark NUNCA se muestra como verificado:
+   * sólo una liquidación del cliente cuenta como evidencia.
+   */
+  evidencia: "liquidacion_cliente" | "declarado_cliente" | "benchmark_sin_verificar";
   faltantes: string[];
 };
+
+/** Texto de vigencia a partir de las fechas de la regla. */
+function vigenciaDe(e: ComisionMarketplace | null): string | null {
+  if (!e) return null;
+  const desde = (e.vigencia_desde ?? "").trim();
+  const hasta = (e.vigencia_hasta ?? "").trim();
+  if (!desde && !hasta) return null;
+  if (desde && hasta) return `${desde} a ${hasta}`;
+  return desde ? `desde ${desde}` : `hasta ${hasta}`;
+}
 
 
 /** Clave compuesta plataforma_plan usada en la configuración de comisiones. */
@@ -309,6 +326,8 @@ export function comisionEfectivaCanal(
       cargo_fijo_aplicado: r.aplicado,
       cargo_fijo_disponible: r.disponible,
       escala_sospechosa: comisionEnEscalaSospechosa(verificada),
+      vigencia: null,
+      evidencia: "liquidacion_cliente",
       faltantes: [],
     };
   }
@@ -329,6 +348,8 @@ export function comisionEfectivaCanal(
         cargo_fijo_aplicado: false,
         cargo_fijo_disponible: null,
         escala_sospechosa: false,
+        vigencia: null,
+        evidencia: "benchmark_sin_verificar",
         faltantes: faltan,
       };
     }
@@ -340,6 +361,8 @@ export function comisionEfectivaCanal(
       cargo_fijo_aplicado: r.aplicado,
       cargo_fijo_disponible: r.disponible,
       escala_sospechosa: false,
+      vigencia: null,
+      evidencia: "benchmark_sin_verificar",
       faltantes: [],
     };
   }
@@ -353,6 +376,8 @@ export function comisionEfectivaCanal(
       cargo_fijo_aplicado: false,
       cargo_fijo_disponible: null,
       escala_sospechosa: false,
+      vigencia: null,
+      evidencia: "benchmark_sin_verificar",
       faltantes: ["comision_marketplace"],
     };
   }
@@ -378,6 +403,10 @@ export function comisionEfectivaCanal(
     cargo_fijo_aplicado: r.aplicado,
     cargo_fijo_disponible: r.disponible,
     escala_sospechosa: false,
+    vigencia: vigenciaDe(entrada),
+    // El cargo declarado por el cliente respalda al cargo, no a la comisión:
+    // la comisión sigue siendo un benchmark hasta ver una liquidación.
+    evidencia: usaDeclarado ? "declarado_cliente" : "benchmark_sin_verificar",
     faltantes: [],
   };
 

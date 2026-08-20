@@ -151,27 +151,40 @@ export function mapearHallazgos(
     }
   }
 
-  if (
-    estados.funnel_web !== "sin_datos" &&
-    (conMonto("conversion") || estados.funnel_web === "rojo")
-  ) {
-    h.push({
-      id: "conversion",
-      titulo: "Conversión de la tienda por debajo del umbral",
-      capa: "servicio",
+  // Un hallazgo por tramo del funnel: los tramos son disjuntos, así que no
+  // hay riesgo de contar dos veces a la misma gente.
+  const tramos: { fuga: string; id: string; titulo: string; servicio: string }[] = [
+    {
+      fuga: "funnel_navegacion",
+      id: "funnel_navegacion",
+      titulo: "Pocas visitas llegan a agregar al carrito",
       servicio: "Web e-commerce",
-    });
-  }
-
-
-  if (conMonto("carritos_abandonados") && datos.recuperacion_carrito === false) {
-    h.push({
-      id: "carritos_abandonados",
-      titulo: "Carritos abandonados sin flujo de recuperación",
-      capa: "servicio",
+    },
+    {
+      fuga: "funnel_carrito",
+      id: "funnel_carrito",
+      titulo: "Carritos que no llegan al checkout",
       servicio: "Web e-commerce y Meta Ads",
-    });
+    },
+    {
+      fuga: "funnel_checkout",
+      id: "funnel_checkout",
+      titulo: "Checkouts iniciados que no terminan en compra",
+      servicio: "Web e-commerce",
+    },
+    {
+      fuga: "funnel_combinado",
+      id: "funnel_combinado",
+      titulo: "Conversión del sitio por debajo del umbral",
+      servicio: "Web e-commerce",
+    },
+  ];
+  for (const t of tramos) {
+    if (estados.funnel_web !== "sin_datos" && conMonto(t.fuga)) {
+      h.push({ id: t.id, titulo: t.titulo, capa: "servicio", servicio: t.servicio });
+    }
   }
+
 
   if (datos.retargeting_abandono === false) {
     h.push({
