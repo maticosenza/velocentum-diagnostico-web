@@ -691,6 +691,12 @@ function NuevoDiagnostico() {
                 onChange={(v) => set("financiacion_costo_pct", v)}
                 ayuda="Cuánto cuesta esa financiación, como porcentaje del monto financiado."
               />
+              {montosNetosDeFinanciacion(datos) && (
+                <p className="text-[12px] text-muted-foreground sm:col-span-2">
+                  Los montos ya están netos del costo financiero, así que la financiación no se
+                  vuelve a restar del margen.
+                </p>
+              )}
               {costoFinanciacion(datos).faltan.length > 0 && (
                 <p className="text-[12px] text-destructive sm:col-span-2">
                   Falta un dato de financiación para calcular el margen: cargá también{" "}
@@ -713,13 +719,13 @@ function NuevoDiagnostico() {
                 onChange={(v) => set("descuento_pct", v)}
                 ayuda="Cuánto es el descuento, como porcentaje del precio."
               />
-              {datos.base_montos === "neto" && (
+              {montosNetosDeDescuento(datos) && (
                 <p className="text-[12px] text-muted-foreground sm:col-span-2">
                   Los montos ya están netos de descuentos, así que el descuento no se vuelve a
                   restar del margen.
                 </p>
               )}
-              {datos.base_montos !== "neto" && costoDescuento(datos).faltan.length > 0 && (
+              {costoDescuento(datos).faltan.length > 0 && (
                 <p className="text-[12px] text-destructive sm:col-span-2">
                   Falta un dato de descuento para calcular el margen: cargá también{" "}
                   {costoDescuento(datos).faltan[0] === "descuento_pct"
@@ -728,12 +734,35 @@ function NuevoDiagnostico() {
                   . No se asume cero.
                 </p>
               )}
-              {participacionesSuperan100(datos) && (
+              <div className="sm:col-span-2">
+                <CampoSelect
+                  label="¿Se pueden combinar cuotas y descuento?"
+                  value={datos.relacion_financiacion_descuento ?? "excluyentes"}
+                  onChange={(v) =>
+                    set(
+                      "relacion_financiacion_descuento",
+                      (v as "excluyentes" | "superpuestos") || "excluyentes",
+                    )
+                  }
+                  opciones={RELACIONES_FIN_DESC}
+                  placeholder="No, son excluyentes"
+                  ayuda="Cuotas con tarjeta y descuento por transferencia suelen ser excluyentes. Un cupón general sí puede combinarse con cuotas."
+                />
+              </div>
+              {participacionesIncompatibles(datos) && (
+                <p className="text-[12px] text-destructive sm:col-span-2">
+                  Las participaciones son incompatibles: declaraste que cuotas y descuento son
+                  excluyentes, así que no pueden sumar más de 100% de las ventas. Sin corregirlas no
+                  se calcula el margen.
+                </p>
+              )}
+              {!participacionesIncompatibles(datos) && participacionesSuperan100(datos) && (
                 <p className="text-[12px] text-amber-600 sm:col-span-2">
                   Las participaciones suman más de 100%. Se calcula igual: una misma venta puede
                   tener descuento y además pagarse en cuotas.
                 </p>
               )}
+
 
               <CampoPesos
                 label="Inversión mensual en Meta"
