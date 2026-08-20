@@ -82,7 +82,12 @@ export type DatosDiagnostico = {
   // Economía (compartido)
   facturacion_mensual: number | null;
   ticket_promedio: number | null;
+  /** Legado: se interpreta como envío neto del vendedor. */
   costo_envio_promedio: number | null;
+  /** Costo total del envío por pedido. */
+  envio_bruto: number | null;
+  /** Cuánto del envío paga el comprador. */
+  envio_cobrado_comprador: number | null;
   pasarela: string;
   inversion_meta: number | null;
   inversion_google: number | null;
@@ -148,6 +153,8 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   facturacion_mensual: null,
   ticket_promedio: null,
   costo_envio_promedio: null,
+  envio_bruto: null,
+  envio_cobrado_comprador: null,
   pasarela: "",
   inversion_meta: null,
   inversion_google: null,
