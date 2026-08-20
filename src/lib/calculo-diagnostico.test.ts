@@ -649,12 +649,15 @@ describe("componente de envío por pedido", () => {
     producto_1_nombre: "Bolsa tostado",
     producto_1_costo: 5890,
     producto_1_precio: 11650,
+    producto_1_pct_facturacion: 20,
     producto_2_nombre: "Molde pan lactal",
     producto_2_costo: 17330,
     producto_2_precio: 32990,
+    producto_2_pct_facturacion: 20,
     producto_3_nombre: "Cintura extensible",
     producto_3_costo: 15700,
     producto_3_precio: 30390,
+    producto_3_pct_facturacion: 20,
   };
 
   it("caso A · Snake Store: componente único de envío y márgenes por producto", () => {
