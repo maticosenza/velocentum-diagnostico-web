@@ -63,13 +63,34 @@ export const CANTIDAD_CAMPANAS = [
   { value: "muchas", label: "Muchas" },
 ] as const;
 
-/** Base sobre la que están expresados facturación y ticket. */
+/**
+ * Base sobre la que están expresados facturación y ticket. Legado: se conserva
+ * para poder leer diagnósticos guardados antes de los indicadores independientes.
+ */
 export type BaseMontos = "bruto" | "neto";
 
 export const BASES_MONTOS = [
   { value: "bruto", label: "Bruto (antes de descuentos)" },
   { value: "neto", label: "Neto (ya con descuentos aplicados)" },
 ] as const;
+
+/**
+ * Vocabulario de montos, para que no queden dudas de qué se resta y qué no:
+ *  - bruto: precio de lista, antes de cualquier deducción;
+ *  - neto de descuento: el ingreso después de aplicar los descuentos comerciales
+ *    (transferencia, cupones);
+ *  - neto de financiación: el ingreso después de que el procesador ya retuvo el
+ *    costo de las cuotas.
+ * Cada indicador es independiente: un mismo diagnóstico puede venir neto de
+ * descuento y bruto de financiación, o al revés.
+ */
+export type RelacionFinDesc = "excluyentes" | "superpuestos";
+
+export const RELACIONES_FIN_DESC = [
+  { value: "excluyentes", label: "No, son excluyentes" },
+  { value: "superpuestos", label: "Sí, se pueden combinar" },
+] as const;
+
 
 export type DatosDiagnostico = {
 
