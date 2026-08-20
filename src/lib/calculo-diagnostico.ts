@@ -394,6 +394,64 @@ export function faltantesMargen(d: DatosDiagnostico): string[] {
 
 
 
+// ---------------------------------------------------------------- inversión publicitaria
+
+/**
+ * Inversión en Product Ads de Mercado Libre.
+ * Tres estados distintos: positivo (se evalúa), cero explícito (el cliente
+ * declaró que no invierte) y null (no sabemos).
+ */
+export function inversionProductAds(d: DatosDiagnostico): number | null {
+  const delCanal = numeroCanal(d, "mercado_libre", "inversion");
+  if (delCanal !== null) return delCanal;
+  return finito(d.ml_inversion_product_ads) ? d.ml_inversion_product_ads : null;
+}
+
+/** Inversión en pauta de tienda propia: Meta más Google. */
+export function inversionMetaGoogle(d: DatosDiagnostico): number | null {
+  if (!finito(d.inversion_meta) && !finito(d.inversion_google)) return null;
+  return (finito(d.inversion_meta) ? d.inversion_meta : 0) +
+    (finito(d.inversion_google) ? d.inversion_google : 0);
+}
+
+/**
+ * Inversión publicitaria del negocio: Meta más Google más Product Ads.
+ * Sin ningún dato cargado devuelve null: no sabemos, no afirmamos.
+ */
+export function inversionPublicitariaTotal(d: DatosDiagnostico): number | null {
+  const propia = numeroCanal(d, "tienda_propia", "inversion") ?? inversionMetaGoogle(d);
+  const ads = inversionProductAds(d);
+  if (propia === null && ads === null) return null;
+  return (propia ?? 0) + (ads ?? 0);
+}
+
+/**
+ * ¿El negocio invierte en publicidad? Considera los tres frentes.
+ * null cuando no hay ningún dato cargado; false sólo con ceros explícitos.
+ */
+export function hayInversionPublicitaria(d: DatosDiagnostico): boolean | null {
+  const total = inversionPublicitariaTotal(d);
+  if (total === null) return null;
+  return total > 0;
+}
+
+/** Inversión publicitaria del perímetro de un canal. */
+export function inversionCanal(d: DatosDiagnostico, canal: CanalId): number | null {
+  if (canal === "mercado_libre") return inversionProductAds(d);
+  return numeroCanal(d, canal, "inversion") ?? inversionMetaGoogle(d);
+}
+
+/** Facturación del canal: la declarada o, en su defecto, la derivada del mix. */
+export function facturacionCanal(d: DatosDiagnostico, canal: CanalId): number | null {
+  const propia = numeroCanal(d, canal, "facturacion");
+  if (propia !== null) return propia;
+  const pct = pctCanal(d, canal);
+  if (pct !== null && finito(d.facturacion_mensual) && d.facturacion_mensual > 0) {
+    return (d.facturacion_mensual * pct) / 100;
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------- canales
 
 export type CanalDerivado = {
@@ -474,8 +532,8 @@ function margenDeCanal(
     numeroCanal(d, canal, "ticket") ??
     (finito(d.ticket_promedio) && d.ticket_promedio > 0 ? d.ticket_promedio : null);
   const envioNeto = numeroCanal(d, canal, "envio_neto") ?? envioNetoVendedor(d);
-  const facturacion = numeroCanal(d, canal, "facturacion");
-  const inversion = numeroCanal(d, canal, "inversion");
+  const facturacion = facturacionCanal(d, canal);
+  const inversion = inversionCanal(d, canal);
 
   const faltan: string[] = [];
   if (ticket === null || ticket <= 0) faltan.push("ticket_promedio");
@@ -565,8 +623,25 @@ function margenDeCanal(
   }
 
   const margenPositivo = margenExacto !== null && margenExacto > 0 ? margenExacto : null;
+  // MER por perímetro: la facturación del canal sobre la inversión del canal.
   const mer =
     facturacion !== null && inversion !== null && inversion > 0 ? facturacion / inversion : null;
+
+  // Tres números separados que nunca se mezclan. La inversión publicitaria se
+  // resta una sola vez, acá: NO entra en el margen de contribución.
+  const contribucionAntes =
+    facturacion !== null && margenExacto !== null ? facturacion * margenExacto : null;
+  const resultadoDespues =
+    contribucionAntes !== null ? contribucionAntes - (inversion ?? 0) : null;
+
+  // ROAS de la pauta: sólo lo atribuido. Sin ventas atribuidas queda sin datos,
+  // aunque el MER del canal sí se calcule.
+  const ventasAtribuidas =
+    canal === "mercado_libre" && finito(d.ml_ventas_product_ads) ? d.ml_ventas_product_ads : null;
+  const roasPauta =
+    ventasAtribuidas !== null && inversion !== null && inversion > 0
+      ? ventasAtribuidas / inversion
+      : null;
 
   return {
     id: canal,
@@ -591,6 +666,10 @@ function margenDeCanal(
     margen: red(margenExacto, DECIMALES_TASA),
     margenes_producto: margenesExactos.map((m) => red(m, DECIMALES_TASA)),
     mer: red(mer, 2),
+    contribucion_antes_publicidad: red(contribucionAntes, 0),
+    inversion_publicitaria: inversion,
+    resultado_despues_publicidad: red(resultadoDespues, 0),
+    roas_pauta: red(roasPauta, 2),
     breakeven_roas: margenPositivo !== null ? red(1 / margenPositivo, DECIMALES_TASA) : null,
     faltantes: faltan,
     margen_exacto: margenExacto,
