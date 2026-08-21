@@ -1,7 +1,8 @@
-import type { ResultadoCalculo } from "../../lib/calculo-diagnostico";
+import type { Fuga, ResultadoCalculo } from "../../lib/calculo-diagnostico";
 import { productosCargados } from "../../lib/calculo-diagnostico";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
 import { calcularEscenarios90d, umbralDispersionDe } from "../../lib/escenarios-90d";
+import { impactosDeFuga, type TipoImpactoClasificado } from "../../lib/impacto-economico";
 import { mapearHallazgos } from "../../lib/propuesta";
 import { escenariosDocumento } from "./escenarios-90d";
 import { construirResumenComercial } from "./resumen-comercial";
@@ -170,6 +171,20 @@ function restriccionesDocumento(args: {
   return restricciones;
 }
 
+/**
+ * De qué magnitud económica es el monto de una fuga (corrección aprobada
+ * 2026-08-21, punto 3). Usa el impacto tipado cuyo monto coincide con el
+ * monto legado publicado; `null` para riesgos o montos legados sin
+ * clasificar (nunca adivina la magnitud de un dato viejo).
+ */
+function magnitudDeFuga(fuga: Fuga): TipoImpactoClasificado | null {
+  if (!finito(fuga.monto)) return null;
+  const impacto = impactosDeFuga(fuga).find(
+    (i) => i.tipo !== "no_clasificado" && i.confianza !== "retenida" && i.montoMensual === fuga.monto,
+  );
+  return impacto ? (impacto.tipo as TipoImpactoClasificado) : null;
+}
+
 function hallazgosDocumento(
   datos: DatosDiagnostico,
   resultado: ResultadoCalculo,
@@ -213,6 +228,7 @@ function hallazgosDocumento(
             evidenciaIds: [`fuga_${fuga.id}`],
           })
         : null,
+      magnitud: fuga ? magnitudDeFuga(fuga) : null,
       servicioId: hallazgo.servicio ? idServicio(hallazgo.servicio) : null,
     };
   });

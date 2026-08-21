@@ -116,6 +116,24 @@ describe("construirResumenComercial", () => {
     expect(resumen.redaccion).toBeNull();
   });
 
+  it("sin ninguna fuga calculable (ni base ni potencial tienen contribución), el límite superior también queda retenido", () => {
+    // Snake Store sin funnel ni pauta, con envío ya resuelto (no aplica):
+    // ninguno de los tres escenarios tiene contribución incremental
+    // calculable por falta de oportunidad, no por envío/margen, así que ni
+    // "potencial" ni "base" pueden servir de límite superior.
+    const datos: DatosDiagnostico = { ...casoSnakeStore, absorbe_costo_envio: false };
+    const resumen = armar(datos, "alta");
+    expect(resumen.idEscenarioLimiteSuperior).toBeNull();
+    // Cae al motivo propio de "base" (no hay oportunidad detectada), que es
+    // más preciso que un mensaje genérico: base sí existe como escenario,
+    // simplemente no tiene contribución calculable.
+    expect(resumen.limiteSuperior.estado).toBe("retenido");
+    if (resumen.limiteSuperior.estado === "retenido") {
+      expect(resumen.limiteSuperior.motivos.join(" ")).toMatch(/No hay oportunidad/);
+    }
+    expect(resumen.redaccion).toBeNull();
+  });
+
   it("margen bloqueado: la cifra principal queda retenida (contribución depende de margen)", () => {
     const datos: DatosDiagnostico = {
       ...casoConOportunidad,
@@ -128,5 +146,23 @@ describe("construirResumenComercial", () => {
     if (resumen.cifraPrincipal.estado === "retenido") {
       expect(resumen.cifraPrincipal.motivos.join(" ")).toMatch(/contradice/);
     }
+  });
+
+  it("si ni base ni potencial existieran en el array de escenarios (fixture malformado), cae al motivo genérico de límite superior", () => {
+    // Caso defensivo: no ocurre con la salida real de `escenariosDocumento`
+    // (siempre trae los tres ids), pero sí puede ocurrir con un fixture
+    // armado a mano que omite escenarios (como los de test-fixtures.ts).
+    const resumen = construirResumenComercial({
+      escenariosCalculados: [],
+      escenariosDocumento: [],
+      umbralDispersion: 2.5,
+    });
+    expect(resumen.idEscenarioLimiteSuperior).toBeNull();
+    expect(resumen.limiteSuperior.estado).toBe("retenido");
+    if (resumen.limiteSuperior.estado === "retenido") {
+      expect(resumen.limiteSuperior.motivos.join(" ")).toMatch(/escenario de contexto/);
+    }
+    expect(resumen.cifraPrincipal.estado).toBe("retenido");
+    expect(resumen.redaccion).toBeNull();
   });
 });

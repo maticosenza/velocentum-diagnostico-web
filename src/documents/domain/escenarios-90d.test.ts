@@ -49,6 +49,60 @@ describe("escenariosDocumento", () => {
     expect(potencial.visible).toBe(false);
   });
 
+  it("propaga el supuesto de rampa dentro de CADA ValorPublicable de la línea, no sólo en escenario.supuestos (corrección aprobada 2026-08-21, punto 5)", () => {
+    const { resultado, envio } = envioYResultado(casoConOportunidad);
+    const escenarios = escenariosDocumento(casoConOportunidad, resultado, "alta", envio);
+
+    for (const escenario of escenarios) {
+      const supuestoFC = `rampa_escenario_${escenario.id}`;
+      const supuestoAhorro = `rampa_ahorro_${escenario.id}`;
+
+      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("calculado");
+      if (escenario.facturacionIncremental.acumulado90d.estado === "calculado") {
+        expect(escenario.facturacionIncremental.acumulado90d.supuestos).toContain(supuestoFC);
+        expect(escenario.facturacionIncremental.ritmoMensualDia90).toMatchObject({
+          estado: "calculado",
+          supuestos: [supuestoFC],
+        });
+      }
+      for (const palanca of escenario.facturacionIncremental.palancas) {
+        expect(palanca.monto).toMatchObject({ estado: "calculado", supuestos: [supuestoFC] });
+      }
+
+      if (escenario.ahorroPublicitario.acumulado90d.estado === "calculado") {
+        expect(escenario.ahorroPublicitario.acumulado90d.supuestos).toContain(supuestoAhorro);
+      }
+      for (const palanca of escenario.ahorroPublicitario.palancas) {
+        expect(palanca.monto).toMatchObject({ estado: "calculado", supuestos: [supuestoAhorro] });
+      }
+
+      for (const mes of escenario.mensual) {
+        if (mes.facturacionIncrementalHabilitada.estado === "calculado") {
+          expect(mes.facturacionIncrementalHabilitada.supuestos).toContain(supuestoFC);
+        }
+        if (mes.contribucionIncrementalHabilitada.estado === "calculado") {
+          expect(mes.contribucionIncrementalHabilitada.supuestos).toContain(supuestoFC);
+        }
+        if (mes.ahorroPublicitarioHabilitado.estado === "calculado") {
+          expect(mes.ahorroPublicitarioHabilitado.supuestos).toContain(supuestoAhorro);
+        }
+      }
+    }
+  });
+
+  it("un valor retenido nunca lleva `supuestos` (el estado ni siquiera tiene ese campo)", () => {
+    // Titan B1 es 100% Mercado Libre: no hay funnel de tienda propia, así que
+    // facturación/contribución incremental quedan retenidas.
+    const resultado = calcularDiagnostico(casoTitanWebB1, configuracionRegresionFase2);
+    const envio = politicaEnvioDocumento(casoTitanWebB1, resultado);
+    const escenarios = escenariosDocumento(casoTitanWebB1, resultado, "media", envio);
+
+    for (const escenario of escenarios) {
+      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("retenido");
+      expect(escenario.facturacionIncremental.acumulado90d).not.toHaveProperty("supuestos");
+    }
+  });
+
   it("deja visible al escenario potencial sólo con confianza alta", () => {
     const { resultado, envio } = envioYResultado(casoConOportunidad);
     const escenarios = escenariosDocumento(casoConOportunidad, resultado, "alta", envio);

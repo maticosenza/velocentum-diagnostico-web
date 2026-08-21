@@ -130,10 +130,6 @@ export function construirResumenComercial(args: {
       ? "base"
       : null;
 
-  const supuestoIds = conservadorDoc?.supuestos
-    .filter((s) => s.id === `rampa_escenario_conservador`)
-    .map((s) => s.id) ?? [];
-
   const ambosCalculados =
     limiteInferior.estado === "calculado" && limiteSuperior.estado === "calculado";
   const redaccion = ambosCalculados
@@ -166,6 +162,5 @@ export function construirResumenComercial(args: {
     idEscenarioLimiteSuperior,
     dispersion,
     redaccion,
-    supuestoIds,
   };
 }

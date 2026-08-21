@@ -146,6 +146,7 @@ export function buildFindings(context: DocumentContextV1): {
       prioridad: finding.prioridad,
       confianza: finding.confianza,
       evidenciaIds: [...finding.evidenciaIds],
+      magnitud: finding.magnitud,
       amount,
     };
   });

@@ -112,6 +112,7 @@ describe("validación del contexto documental", () => {
       confianza: "media" as const,
       evidenciaIds: [],
       monto: null,
+      magnitud: null,
       servicioId: null,
     };
     contexto.hallazgos.push(hallazgo, { ...hallazgo });
@@ -132,7 +133,6 @@ describe("validación del contexto documental", () => {
       idEscenarioLimiteSuperior: "base",
       dispersion: { ratio: 2, umbral: 2.5, alta: false, datosParaCerrarla: [] },
       redaccion: "texto",
-      supuestoIds: [],
     };
 
     expect(validarContextoDocumento(contexto)).toContainEqual({
@@ -152,7 +152,6 @@ describe("validación del contexto documental", () => {
       idEscenarioLimiteSuperior: "base",
       dispersion: { ratio: 2, umbral: 2.5, alta: false, datosParaCerrarla: [] },
       redaccion: "Con estos datos, vas a ganar mucho dinero.",
-      supuestoIds: [],
     };
 
     const problemas = validarContextoDocumento(contexto);
@@ -170,7 +169,6 @@ describe("validación del contexto documental", () => {
       idEscenarioLimiteSuperior: "potencial",
       dispersion: { ratio: 3, umbral: 2.5, alta: true, datosParaCerrarla: ["algo"] },
       redaccion: "texto",
-      supuestoIds: [],
     };
 
     expect(validarContextoDocumento(contexto)).toContainEqual({

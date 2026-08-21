@@ -51,15 +51,32 @@ function ConfidenceBadge({ value }: { value: keyof typeof LABELS_CONFIANZA }) {
   );
 }
 
+/**
+ * Toda cifra que dependa de una curva de adopción configurable (no de
+ * evidencia del cliente) lleva una marca visible distinta de un dato
+ * observado, con acceso al supuesto (corrección aprobada 2026-08-21, punto
+ * 5). La lista completa de supuestos ya se renderiza debajo de cada tarjeta
+ * de escenario; esta marca es la señal de que hay que mirarla.
+ */
 export function PublishedNumberView({ value }: { value: PublishedNumber }) {
+  const esSupuesto = value.assumptions.length > 0;
+  const titulo = esSupuesto
+    ? `${LABELS_CONFIANZA[value.confidence]} · Depende de un supuesto de curva de adopción (política comercial, no evidencia del cliente). Ver "Supuestos" abajo.`
+    : LABELS_CONFIANZA[value.confidence];
   return (
     <span
-      className="vdoc-number"
+      className={classNames("vdoc-number", esSupuesto && "vdoc-number--supuesto")}
       data-value={String(value.value)}
       data-value-format={value.format}
-      title={LABELS_CONFIANZA[value.confidence]}
+      data-supuesto={esSupuesto}
+      title={titulo}
     >
       {formatPublishedNumber(value)}
+      {esSupuesto ? (
+        <sup className="vdoc-number__mark" aria-hidden="true">
+          †
+        </sup>
+      ) : null}
     </span>
   );
 }

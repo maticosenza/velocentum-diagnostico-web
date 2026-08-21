@@ -53,7 +53,7 @@ export type DocumentBlock =
       items: Array<
         Pick<
           HallazgoDocumento,
-          "id" | "titulo" | "capa" | "prioridad" | "confianza" | "evidenciaIds"
+          "id" | "titulo" | "capa" | "prioridad" | "confianza" | "evidenciaIds" | "magnitud"
         > & {
           amount: PublishedNumber | null;
         }

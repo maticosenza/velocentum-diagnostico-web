@@ -261,6 +261,24 @@
   white-space: nowrap;
 }
 
+/**
+ * Marca de supuesto (corrección aprobada 2026-08-21, punto 5): toda cifra
+ * que dependa de una curva de adopción configurable se distingue
+ * visualmente de un dato observado. El subrayado punteado + el superíndice
+ * son la marca; el título (tooltip) y la lista de "Supuestos" ya renderizada
+ * en cada tarjeta de escenario son el acceso al supuesto.
+ */
+.vdoc-number--supuesto {
+  border-bottom: 0.1rem dashed var(--vdoc-accent);
+  cursor: help;
+}
+
+.vdoc-number__mark {
+  margin-left: 0.15rem;
+  color: var(--vdoc-accent);
+  font-weight: 700;
+}
+
 .vdoc-badge,
 .vdoc-tag {
   display: inline-flex;

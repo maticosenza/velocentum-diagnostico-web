@@ -146,3 +146,38 @@ describe("adaptador conservador a DocumentContextV1", () => {
     );
   });
 });
+
+describe("hallazgos: magnitud (corrección aprobada 2026-08-21, punto 3)", () => {
+  it("etiqueta un hallazgo de funnel como contribución incremental y uno de publicidad como ahorro publicitario", () => {
+    const datos: DatosDiagnostico = {
+      ...casoSnakeStore,
+      facturacion_mensual: 22_522_600,
+      visitas_mensuales: 5000,
+      agregados_carrito: 1000,
+      checkouts_iniciados: 300,
+      inversion_meta: 5_000_000,
+      conjuntos_activos: 50,
+      presupuesto_diario: 500,
+    };
+    const c = contexto(datos);
+
+    const funnel = c.hallazgos.find((h) => h.id.startsWith("funnel_"));
+    expect(funnel).toBeDefined();
+    expect(funnel!.magnitud).toBe("contribucion_incremental");
+
+    const publicidad = c.hallazgos.find(
+      (h) => h.id === "gasto_no_rentable" || h.id === "sobrefragmentacion",
+    );
+    if (publicidad) {
+      expect(publicidad.magnitud).toBe("ahorro_publicitario");
+    }
+  });
+
+  it("un hallazgo de riesgo (sin monto) no tiene magnitud", () => {
+    const c = contexto(casoSnakeStore);
+    const conMonto = c.hallazgos.filter((h) => h.monto === null);
+    for (const h of conMonto) {
+      expect(h.magnitud).toBeNull();
+    }
+  });
+});

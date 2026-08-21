@@ -44,6 +44,7 @@ export function buildTitanContext(): DocumentContextV1 {
         confianza: "bloqueada",
         evidenciaIds: ["productos"],
         monto: valorRetenido("La comisión efectiva todavía no está verificada."),
+        magnitud: null,
         servicioId: "auditoria-marketplace",
       },
     ],
@@ -105,7 +106,6 @@ export function buildTitanContext(): DocumentContextV1 {
       idEscenarioLimiteSuperior: "potencial",
       dispersion: { ratio: null, umbral: 2.5, alta: false, datosParaCerrarla: [] },
       redaccion: null,
-      supuestoIds: [],
     },
     roadmap: [
       {
@@ -170,6 +170,7 @@ export function buildSnakeContext(): DocumentContextV1 {
         confianza: "alta",
         evidenciaIds: ["fixture"],
         monto: null,
+        magnitud: null,
         servicioId: "medicion",
       },
     ],

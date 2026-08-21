@@ -6,6 +6,8 @@
  * no se puede publicar y algo que no corresponde al negocio.
  */
 
+import type { TipoImpactoClasificado } from "../../lib/impacto-economico";
+
 export type EstadoEvidencia = "verificado" | "declarado" | "no_disponible" | "no_aplica";
 
 export type Evidencia<T> =
@@ -77,6 +79,13 @@ export type HallazgoDocumento = {
   confianza: ConfianzaDocumento;
   evidenciaIds: string[];
   monto: ValorPublicable<number> | null;
+  /**
+   * De qué magnitud económica es este monto (corrección aprobada
+   * 2026-08-21, punto 3: "magnitudes identificadas con su etiqueta"). `null`
+   * para hallazgos sin monto (riesgos) o con un monto legado sin
+   * clasificar.
+   */
+  magnitud: TipoImpactoClasificado | null;
   servicioId: string | null;
 };
 
@@ -168,6 +177,14 @@ export type DispersionContribucion = {
  * potencial sólo aparecen como el límite superior de contexto, nunca como
  * encabezado. `null` en el `DocumentContextV1` de un diagnóstico: esa pieza
  * no proyecta (punto 3).
+ *
+ * Marca de supuesto (punto 5): no hay un campo agregado de "supuestos" acá
+ * a propósito — `cifraPrincipal`, `limiteInferior` y `limiteSuperior` ya
+ * son `ValorPublicable<number>`, y cada uno trae su propio `supuestos`
+ * correcto (el de la rampa del escenario del que efectivamente salió ese
+ * valor: conservador para los primeros dos, base o potencial para el
+ * tercero según `idEscenarioLimiteSuperior`). El renderer debe marcar cada
+ * valor por separado, nunca asumir un único supuesto para los tres.
  */
 export type ResumenComercial90d = {
   escenarioComunicado: "conservador";
@@ -188,8 +205,6 @@ export type ResumenComercial90d = {
    * rango calculable que describir.
    */
   redaccion: string | null;
-  /** ids de los supuestos (curvas) de los que depende esta cifra, para la marca visible (punto 5). */
-  supuestoIds: string[];
 };
 
 export type SeleccionComercial = {
