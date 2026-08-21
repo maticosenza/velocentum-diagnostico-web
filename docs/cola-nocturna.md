@@ -49,7 +49,7 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 | # | Ítem | Estado | Nota |
 |---|---|---|---|
 | B1 | Auditoría de hallazgos vs. evidencia (fase 3) | completado | ya resuelto en sesiones previas (`fase3-bugfixes.test.ts`, `entrega-2-5.test.ts`) + esta sesión reactivó `clips_ml` con su propio triestado |
-| B2 | Invariantes de consistencia de hallazgos (todo id único, servicio ∈ `SERVICIOS` o null, capa válida) | pendiente | no existe un test que lo garantice como contrato; es una red de seguridad barata contra falsos positivos futuros |
+| B2 | Invariantes de consistencia de hallazgos | completado | ver bloque 2 abajo. Nota: `servicio` no se restringió a `SERVICIOS` porque el mapeo usa legítimamente combinaciones como `"Web e-commerce y Meta Ads"` que no son miembros literales de esa lista — restringirlo habría sido un falso positivo propio |
 | B3 | Revisión de financiación/descuento/canales/Product Ads/envío triestado | completado | cubierto extensamente en `calculo-diagnostico.test.ts`, `fase3-bugfixes.test.ts`, `regresion-2-6.test.ts`; no se encontraron gaps nuevos en esta pasada de lectura |
 | B4 | Caso B2 de Titan Web (envío neto + liquidación real verificados) | bloqueado_datos | `it.todo` explícito; instrucción explícita del usuario de no cerrarlo; no se inventan datos de Titan Web |
 | B5 | Hallazgo "plan de plataforma mal dimensionado" | bloqueado_datos | necesita costo real del plan actual, costo de alternativa, límite en uso y ahorro verificable — ninguno se releva hoy (`docs/fase3-evidencia-pendiente.md`) |
@@ -89,7 +89,7 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 ## Bloques de esta madrugada (en orden de ejecución)
 
 1. ~~**A9** — extraer y testear helpers de formato de `diagnosticos.$id.tsx`.~~ **completado**
-2. **B2** — invariantes de consistencia de hallazgos.
+2. ~~**B2** — invariantes de consistencia de hallazgos.~~ **completado**
 3. **A10 + E7** — accesibilidad y manejo de error/carga de la ruta de previsualización.
 4. **C4** — auditoría dirigida de campos condicionables no condicionados (sin tocar UI si no hay hallazgo concreto y seguro).
 5. **E5** — auditoría de código muerto en archivos de esta rama.
@@ -107,3 +107,20 @@ cola → seguir con el siguiente.
   la garantía documental "un cero real nunca es un guión" también en la capa
   de vista, no sólo en el motor documental.
 - Suite: 211 pruebas + 1 todo (antes 200 + 1). Typecheck y build limpios.
+
+### Bloque 2 · B2 (commit siguiente)
+
+- `domain/validation.ts`: los hallazgos ahora se validan por ID único, igual
+  que ya se hacía con los escenarios de 90 días. Si `mapearHallazgos` alguna
+  vez empujara dos hallazgos con el mismo ID, `validarContextoDocumento` lo
+  rechaza en vez de dejar pasar un finding duplicado a la propuesta.
+- `src/lib/propuesta-invariantes.test.ts` (nuevo): corre `mapearHallazgos`
+  contra 7 datasets representativos (Snake Store, Titan B1, Titan antes de
+  canales, vacío, y tres variantes sintéticas con triestados en positivo,
+  negativo y sin responder) y fija cuatro invariantes estructurales: IDs sin
+  duplicar, ID/título no vacíos, capa válida, servicio no vacío cuando existe.
+  Se decidió **no** restringir `servicio` a la lista `SERVICIOS`: el mapeo usa
+  legítimamente combinaciones como `"Web e-commerce y Meta Ads"` que no son
+  miembros literales de esa lista — esa restricción habría sido un falso
+  positivo del propio test.
+- Suite: 242 pruebas + 1 todo (antes 211 + 1). Typecheck y build limpios.

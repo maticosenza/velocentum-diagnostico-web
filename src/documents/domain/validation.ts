@@ -139,12 +139,20 @@ export function validarContextoDocumento(
   }
   problemas.push(...validarEnvio(contexto.envio));
 
+  const idsHallazgo = new Set<string>();
   for (const [indice, hallazgo] of contexto.hallazgos.entries()) {
     if (!textoNoVacio(hallazgo.id)) {
       problemas.push({
         path: `hallazgos.${indice}.id`,
         mensaje: "El hallazgo necesita un ID estable.",
       });
+    } else if (idsHallazgo.has(hallazgo.id)) {
+      problemas.push({
+        path: `hallazgos.${indice}.id`,
+        mensaje: "El hallazgo está duplicado.",
+      });
+    } else {
+      idsHallazgo.add(hallazgo.id);
     }
     if (hallazgo.monto) {
       problemas.push(...validarValorPublicable(hallazgo.monto, `hallazgos.${indice}.monto`));

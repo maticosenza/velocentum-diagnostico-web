@@ -87,4 +87,24 @@ describe("validación del contexto documental", () => {
       mensaje: "El escenario potencial requiere confianza alta.",
     });
   });
+
+  it("rechaza dos hallazgos con el mismo ID, para no duplicar un finding en la propuesta", () => {
+    const contexto = contextoValido();
+    const hallazgo = {
+      id: "mer_bajo",
+      titulo: "MER por debajo del breakeven",
+      capa: "servicio" as const,
+      prioridad: "alta" as const,
+      confianza: "media" as const,
+      evidenciaIds: [],
+      monto: null,
+      servicioId: null,
+    };
+    contexto.hallazgos.push(hallazgo, { ...hallazgo });
+
+    expect(validarContextoDocumento(contexto)).toContainEqual({
+      path: "hallazgos.1.id",
+      mensaje: "El hallazgo está duplicado.",
+    });
+  });
 });
