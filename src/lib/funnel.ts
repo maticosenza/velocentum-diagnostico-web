@@ -17,6 +17,7 @@
 import { canalPrincipal, estadoCanal, numeroCanal } from "./canales";
 import type { DatosDiagnostico } from "./diagnostico-form";
 import { redondear } from "./dinero";
+import { impactoCalculado, impactoRetenido, type ImpactoEconomico } from "./impacto-economico";
 
 /** Mejoras objetivo, en PUNTOS PORCENTUALES. Editables desde `configuracion`. */
 export const MEJORAS_FUNNEL_DEFECTO = {
@@ -268,6 +269,15 @@ export type TramoFunnel = {
    * oportunidad combinada, que estima sin poder repartir entre tramos.
    */
   confianza: ConfianzaTramo;
+  /**
+   * Facturación incremental (unidades × ticket) y contribución incremental
+   * (facturación incremental × margen) de este tramo, con retención
+   * independiente: sin ticket se retiene la primera, sin margen se retiene
+   * sólo la segunda. `monto` arriba sigue siendo exactamente la contribución
+   * (así se calculaba antes de este modelo): este array no lo reemplaza, lo
+   * tipa.
+   */
+  impactos: ImpactoEconomico[];
 };
 
 
@@ -310,6 +320,63 @@ export function tramosFunnel(
     return unidades * ticket * margen;
   };
 
+  const confianzaImpacto = (c: ConfianzaTramo): "alta" | "media" => (c === "alta" ? "alta" : "media");
+
+  /** Facturación incremental (unidades × ticket), retenida sin unidades o sin ticket. */
+  const impactoFacturacion = (unidades: number | null, confianza: ConfianzaTramo): ImpactoEconomico => {
+    if (unidades === null) {
+      return impactoRetenido({
+        tipo: "facturacion_incremental",
+        motivo:
+          "Faltan etapas del funnel para calcular las unidades recuperables de este tramo.",
+        dependencias: ["visitas_mensuales", "agregados_carrito", "checkouts_iniciados"],
+      });
+    }
+    if (ticket === null || ticket <= 0) {
+      return impactoRetenido({
+        tipo: "facturacion_incremental",
+        motivo: "No se declaró el ticket promedio.",
+        dependencias: ["ticket_promedio"],
+      });
+    }
+    return impactoCalculado({
+      tipo: "facturacion_incremental",
+      montoMensual: Math.max(0, redondear(unidades * ticket, 0) ?? 0),
+      confianza: confianzaImpacto(confianza),
+      dependencias: ["ticket_promedio"],
+    });
+  };
+
+  /** Contribución incremental (facturación incremental × margen), retenida sin margen. */
+  const impactoContribucion = (
+    facturacion: ImpactoEconomico,
+    confianza: ConfianzaTramo,
+  ): ImpactoEconomico => {
+    if (facturacion.confianza === "retenida") {
+      return impactoRetenido({
+        tipo: "contribucion_incremental",
+        motivo: facturacion.motivoRetencion as string,
+        dependencias: facturacion.dependencias,
+      });
+    }
+    if (margen === null) {
+      return impactoRetenido({
+        tipo: "contribucion_incremental",
+        motivo: "No se declaró (o no es válido) el margen de contribución.",
+        dependencias: ["margen_contribucion"],
+      });
+    }
+    return impactoCalculado({
+      tipo: "contribucion_incremental",
+      montoMensual: Math.max(
+        0,
+        redondear((facturacion.montoMensual as number) * margen, 0) ?? 0,
+      ),
+      confianza: confianzaImpacto(confianza),
+      dependencias: ["ticket_promedio", "margen_contribucion"],
+    });
+  };
+
   /**
    * `faltan` es informativo: dice qué datos harían más preciso al tramo. Lo que
    * bloquea el monto es no tener unidades, ticket o margen confiable.
@@ -324,6 +391,8 @@ export function tramosFunnel(
   ): TramoFunnel => {
     const todos = [...faltanBase, ...faltan];
     const monto = valorizar(unidades);
+    const facturacion = impactoFacturacion(unidades, confianza);
+    const contribucion = impactoContribucion(facturacion, confianza);
     return {
       id,
       etiqueta,
@@ -332,6 +401,7 @@ export function tramosFunnel(
       calculable: monto !== null,
       faltantes: todos,
       confianza,
+      impactos: [facturacion, contribucion],
     };
   };
 

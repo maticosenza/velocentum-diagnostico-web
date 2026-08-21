@@ -71,10 +71,13 @@ describe("armado del modelo desde un diagnóstico persistido", () => {
 
     expect(bloqueEscenarios).toBeDefined();
     const items = bloqueEscenarios && "items" in bloqueEscenarios ? bloqueEscenarios.items : [];
-    // Envío sin confirmar: se muestran retenidos, nunca con un acumulado fabricado.
+    // Envío sin confirmar: contribución y ahorro se muestran retenidos, nunca
+    // con un acumulado fabricado (facturación incremental no depende de
+    // envío, pero Titan tampoco tiene funnel de tienda propia: también retiene).
     for (const item of items) {
       expect(item.contribution90d).toBeNull();
-      expect(item.monthlyPaceDay90).toBeNull();
+      expect(item.contributionPaceDay90).toBeNull();
+      expect(item.adSavings90d).toBeNull();
     }
   });
 
@@ -99,16 +102,19 @@ describe("armado del modelo desde un diagnóstico persistido", () => {
     expect(base).toBeDefined();
     expect(base!.monthly.map((mes) => mes.month)).toEqual([1, 2, 3]);
     // El acumulado de 90 días no es el ritmo mensual del día 90 multiplicado por 3.
-    const sumaMeses = base!.monthly.reduce(
-      (acc, mes) => acc + (mes.opportunityEnabled?.value ?? 0),
+    const sumaMesesContribucion = base!.monthly.reduce(
+      (acc, mes) => acc + (mes.contributionEnabled?.value ?? 0),
       0,
     );
-    expect(base!.contribution90d?.value).toBe(sumaMeses);
-    expect(base!.contribution90d?.value).not.toBe((base!.monthlyPaceDay90?.value ?? 0) * 3);
-    // La facturación proyectada de cada mes es la actual más la oportunidad de ese mes.
+    expect(base!.contribution90d?.value).toBe(sumaMesesContribucion);
+    expect(base!.contribution90d?.value).not.toBe((base!.contributionPaceDay90?.value ?? 0) * 3);
+    // Facturación incremental y contribución incremental son magnitudes distintas.
+    expect(base!.revenue90d?.value).not.toBe(base!.contribution90d?.value);
+    // La facturación proyectada de cada mes es la actual más la FACTURACIÓN
+    // incremental habilitada ese mes — nunca la contribución ni el ahorro.
     for (const mes of base!.monthly) {
       expect(mes.revenueProjected?.value).toBe(
-        (datosConOportunidad.facturacion_mensual as number) + (mes.opportunityEnabled?.value ?? 0),
+        (datosConOportunidad.facturacion_mensual as number) + (mes.revenueEnabled?.value ?? 0),
       );
     }
   });

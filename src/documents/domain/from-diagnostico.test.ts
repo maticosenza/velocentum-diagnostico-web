@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { calcularDiagnostico } from "../../lib/calculo-diagnostico";
 import { casoSnakeStore, configuracionRegresionFase2 } from "../../lib/fixtures-casos";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
+import { calcularEscenarios90d } from "../../lib/escenarios-90d";
 import { buildDocumentContext } from "./build-context";
 import {
   buildDocumentContextDesdeDiagnostico,
@@ -55,6 +56,35 @@ describe("reconstrucción del resultado persistido", () => {
     expect(resultadoDesdeDiagnostico(fila).oportunidad_total).toBe(0);
   });
 
+  it("un diagnóstico legado (fugas sin `impactos`) no se reinterpreta: el motor de escenarios lo trata como no clasificado", () => {
+    const datosConOportunidad: DatosDiagnostico = {
+      ...casoSnakeStore,
+      facturacion_mensual: 22_522_600,
+      visitas_mensuales: 5000,
+      agregados_carrito: 1000,
+      checkouts_iniciados: 300,
+    };
+    const fila = filaGuardada(datosConOportunidad);
+    // Emula una fila persistida ANTES de este modelo: sin el campo `impactos`.
+    const filaLegada: DiagnosticoAlmacenado = {
+      ...fila,
+      fugas: fila.fugas!.map(({ impactos: _impactos, ...resto }) => resto),
+    };
+
+    const resultado = resultadoDesdeDiagnostico(filaLegada);
+    expect(resultado.fugas.some((f) => f.calculable && (f.monto ?? 0) > 0)).toBe(true);
+    expect(resultado.fugas.every((f) => !("impactos" in f))).toBe(true);
+
+    // El monto legado sigue existiendo (compatibilidad de lectura), pero el
+    // motor de escenarios no lo reclasifica: sin impactos tipados, no hay
+    // magnitud calculable.
+    const escenarios = calcularEscenarios90d(datosConOportunidad, resultado);
+    for (const escenario of escenarios) {
+      expect(escenario.facturacionIncremental.calculable).toBe(false);
+      expect(escenario.contribucionIncremental.calculable).toBe(false);
+    }
+  });
+
   it("trata los bloques ausentes como falta de dato, no como verde", () => {
     expect(estadosBloqueCompletos(null)).toEqual({
       medicion: "sin_datos",
@@ -101,8 +131,8 @@ describe("contexto documental desde el diagnóstico persistido", () => {
     // retenidos, nunca con un acumulado fabricado.
     expect(contexto.escenarios90d).toHaveLength(3);
     for (const escenario of contexto.escenarios90d) {
-      expect(escenario.contribucionAcumulada90d).toMatchObject({ estado: "retenido" });
-      expect(escenario.ritmoMensualDia90).toMatchObject({ estado: "retenido" });
+      expect(escenario.contribucionIncremental.acumulado90d).toMatchObject({ estado: "retenido" });
+      expect(escenario.contribucionIncremental.ritmoMensualDia90).toMatchObject({ estado: "retenido" });
     }
     expect(contexto.roadmap).toEqual([]);
     expect(contexto.comercial).toBeNull();

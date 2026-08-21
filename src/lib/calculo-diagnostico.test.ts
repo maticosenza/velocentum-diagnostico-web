@@ -1493,3 +1493,99 @@ describe("cargo fijo del marketplace y escala de la comisión verificada", () =>
     expect(r.derivados.canal_principal).toBe("mercado_libre");
   });
 });
+
+describe("impactos económicos: ahorro publicitario tipado", () => {
+  const conAdsRentables: DatosDiagnostico = {
+    ...base,
+    facturacion_mensual: 9_000_000,
+    inversion_meta: 5_000_000,
+    conjuntos_activos: 20,
+    presupuesto_diario: 1_000,
+  };
+
+  it("gasto_no_rentable y sobrefragmentación cargan un impacto ahorro_publicitario calculable", () => {
+    const r = calcularDiagnostico(conAdsRentables, cfg);
+    const gasto = r.fugas.find((f) => f.id === "gasto_no_rentable")!;
+    const sobre = r.fugas.find((f) => f.id === "sobrefragmentacion")!;
+    expect(gasto.calculable).toBe(true);
+    expect(sobre.calculable).toBe(true);
+
+    for (const fuga of [gasto, sobre]) {
+      expect(fuga.impactos).toHaveLength(1);
+      const impacto = fuga.impactos![0]!;
+      expect(impacto.tipo).toBe("ahorro_publicitario");
+      expect(impacto.confianza).toBe("alta");
+      // El impacto tipado nunca diverge del monto legado, incluso topeado.
+      expect(impacto.montoMensual).toBe(fuga.monto);
+      // Nunca supera la inversión publicitaria elegible del mismo perímetro.
+      expect(impacto.montoMensual as number).toBeLessThanOrEqual(
+        r.derivados.inversion_publicitaria_total as number,
+      );
+    }
+  });
+
+  it("cuando no son calculables, el impacto queda retenido (nunca 0 ni el monto legado reinterpretado)", () => {
+    const r = calcularDiagnostico(
+      { ...base, producto_1_costo: null, producto_1_precio: null, inversion_meta: 1_000_000 },
+      cfg,
+    );
+    const gasto = r.fugas.find((f) => f.id === "gasto_no_rentable")!;
+    expect(gasto.calculable).toBe(false);
+    expect(gasto.impactos).toHaveLength(1);
+    expect(gasto.impactos![0]!.confianza).toBe("retenida");
+    expect(gasto.impactos![0]!.montoMensual).toBeNull();
+    expect(gasto.impactos![0]!.motivoRetencion).toBeTruthy();
+  });
+
+  it("el ahorro tipado nunca supera la inversión elegible, aunque el tope legado (25% de facturación) lo permita", () => {
+    const r = calcularDiagnostico(real, cfgReal);
+    const sobre = r.fugas.find((f) => f.id === "sobrefragmentacion")!;
+    expect(sobre.sospechosa).toBe(true);
+    expect(sobre.impactos).toHaveLength(1);
+
+    const inversionElegible = r.derivados.inversion_publicitaria_total as number;
+    // El tope legado (25% de facturación) es más laxo que la inversión
+    // publicitaria elegible en este caso real: por eso hace falta el tope
+    // adicional del modelo tipado.
+    expect(sobre.monto as number).toBeGreaterThan(inversionElegible);
+    expect(sobre.impactos![0]!.montoMensual).toBe(inversionElegible);
+    expect(sobre.impactos![0]!.montoMensual as number).toBeLessThanOrEqual(inversionElegible);
+  });
+});
+
+describe("impactos económicos: retención por margen bloqueado", () => {
+  const casoConFunnelYAds: DatosDiagnostico = {
+    ...casoSnakeStore,
+    facturacion_mensual: 22_522_600,
+    visitas_mensuales: 5_000,
+    agregados_carrito: 1_000,
+    checkouts_iniciados: 300,
+    margen_declarado_min: 90,
+    margen_declarado_max: 90,
+    margen_declarado_confirmado: true,
+  };
+
+  it("margen bloqueado retiene contribución incremental pero NO facturación incremental", () => {
+    const r = calcularDiagnostico(casoConFunnelYAds, cfg);
+    expect(r.margen_bloqueado).toBe(true);
+
+    const tramosFunnelIds = ["funnel_navegacion", "funnel_carrito", "funnel_checkout"];
+    const fugasFunnel = r.fugas.filter((f) => tramosFunnelIds.includes(f.id));
+    expect(fugasFunnel.length).toBeGreaterThan(0);
+
+    for (const fuga of fugasFunnel) {
+      const facturacion = fuga.impactos!.find((i) => i.tipo === "facturacion_incremental")!;
+      const contribucion = fuga.impactos!.find((i) => i.tipo === "contribucion_incremental")!;
+      // Facturación incremental no depende de margen: sigue publicada.
+      expect(facturacion.confianza).not.toBe("retenida");
+      expect(facturacion.montoMensual).toBeGreaterThan(0);
+      // Contribución sí depende de margen: queda retenida.
+      expect(contribucion.confianza).toBe("retenida");
+      expect(contribucion.montoMensual).toBeNull();
+      expect(contribucion.motivoRetencion).toMatch(/contradice/);
+      // El monto legado (contribución) sigue null, sin cambiar el comportamiento previo.
+      expect(fuga.monto).toBeNull();
+      expect(fuga.calculable).toBe(false);
+    }
+  });
+});

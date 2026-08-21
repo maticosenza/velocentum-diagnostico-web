@@ -28,10 +28,14 @@ import {
 } from "./canales";
 import { evaluarContradiccion, rangoDeclarado, type Contradiccion } from "./contradiccion";
 import { evaluarFunnel, tramosFunnel, MEJORAS_FUNNEL_DEFECTO, type FunnelDerivado } from "./funnel";
-import { RAMPAS_ESCENARIO_90D_DEFECTO, type ConfigEscenarios90d } from "./escenarios-90d";
-import type { ImpactoEconomico } from "./impacto-economico";
+import {
+  RAMPAS_FACTURACION_CONTRIBUCION_90D_DEFECTO,
+  RAMPAS_AHORRO_PUBLICITARIO_90D_DEFECTO,
+  type ConfigEscenarios90d,
+} from "./escenarios-90d";
+import { impactoCalculado, impactoRetenido, type ImpactoEconomico } from "./impacto-economico";
 
-export { RAMPAS_ESCENARIO_90D_DEFECTO };
+export { RAMPAS_FACTURACION_CONTRIBUCION_90D_DEFECTO, RAMPAS_AHORRO_PUBLICITARIO_90D_DEFECTO };
 export type { ConfigEscenarios90d, RampaAdopcion, IdEscenario } from "./escenarios-90d";
 
 export {
@@ -1021,6 +1025,7 @@ export function calcularDiagnostico(
       detalle: t.detalle,
       confianza: t.confianza,
       usa_margen: true,
+      impactos: t.impactos,
     });
   }
 
@@ -1040,17 +1045,34 @@ export function calcularDiagnostico(
         calculable: false,
         faltantes: faltan,
         usa_margen: true,
+        impactos: [
+          impactoRetenido({
+            tipo: "ahorro_publicitario",
+            motivo: "No se pudo calcular el ahorro por gasto no rentable con los datos actuales.",
+            dependencias: faltan,
+          }),
+        ],
       });
     } else if ((mer as number) < (breakevenRoas as number)) {
       const monto = (inversionAds as number) * (1 - (mer as number) / (breakevenRoas as number));
+      const montoAcotado = Math.max(0, red(monto, 0) ?? 0);
       fugas.push({
         id: "gasto_no_rentable",
         etiqueta: "Fuga por gasto no rentable",
         tipo: "monto",
-        monto: Math.max(0, red(monto, 0) ?? 0),
+        monto: montoAcotado,
         calculable: true,
         faltantes: [],
         usa_margen: true,
+        impactos: [
+          impactoCalculado({
+            tipo: "ahorro_publicitario",
+            // Ya acotado a inversionAds: el factor (1 − mer/breakeven) nunca supera 1.
+            montoMensual: montoAcotado,
+            confianza: "alta",
+            dependencias: ["inversion_meta", "inversion_google", "inversion_product_ads", "margen_contribucion", "facturacion_mensual"],
+          }),
+        ],
       });
     }
   }
@@ -1069,6 +1091,13 @@ export function calcularDiagnostico(
         calculable: false,
         faltantes: faltan,
         usa_margen: true,
+        impactos: [
+          impactoRetenido({
+            tipo: "ahorro_publicitario",
+            motivo: "No se pudo calcular el ahorro por sobrefragmentación con los datos actuales.",
+            dependencias: faltan,
+          }),
+        ],
       });
     } else if (
       conjuntosSostenibles !== null &&
@@ -1077,14 +1106,27 @@ export function calcularDiagnostico(
       const monto =
         (((d.conjuntos_activos as number) - conjuntosSostenibles) * 50 * (cpaObjetivo as number)) /
         4;
+      const montoLegado = Math.max(0, red(monto, 0) ?? 0);
       fugas.push({
         id: "sobrefragmentacion",
         etiqueta: "Fuga por sobrefragmentación",
         tipo: "monto",
-        monto: Math.max(0, red(monto, 0) ?? 0),
+        monto: montoLegado,
         calculable: true,
         faltantes: [],
         usa_margen: true,
+        impactos: [
+          // El tope a la inversión publicitaria elegible (a diferencia de
+          // gasto_no_rentable, esta fórmula no lo trae incorporado) se aplica
+          // al final, después de la red de seguridad por fuga sospechosa, para
+          // no aplicar dos topes independientes sobre bases distintas.
+          impactoCalculado({
+            tipo: "ahorro_publicitario",
+            montoMensual: montoLegado,
+            confianza: "alta",
+            dependencias: ["conjuntos_activos", "presupuesto_diario", "cpa_objetivo"],
+          }),
+        ],
       });
     }
   }
@@ -1107,6 +1149,31 @@ export function calcularDiagnostico(
     });
   }
 
+  /**
+   * Retiene únicamente los impactos que dependen del margen (contribución y
+   * ahorro): facturación incremental no depende de margen y sigue publicándose.
+   */
+  const MOTIVO_MARGEN_BLOQUEADO =
+    "El margen calculado contradice al margen confirmado por el cliente: no se valoriza hasta resolver la diferencia.";
+  function retenerImpactosDeMargen(f: Fuga, motivo: string): void {
+    if (!f.impactos) return;
+    f.impactos = f.impactos.map((imp) =>
+      imp.tipo === "facturacion_incremental"
+        ? imp
+        : impactoRetenido({ tipo: imp.tipo, motivo, dependencias: imp.dependencias }),
+    );
+  }
+
+  /** Escala los impactos no retenidos de una fuga por el mismo factor que su monto legado. */
+  function escalarImpactosNoRetenidos(f: Fuga, factor: number): void {
+    if (!f.impactos) return;
+    f.impactos = f.impactos.map((imp) =>
+      imp.confianza === "retenida" || imp.montoMensual === null
+        ? imp
+        : { ...imp, montoMensual: Math.max(0, red(imp.montoMensual * factor, 0) ?? 0) },
+    );
+  }
+
   // --- Contradicción crítica confirmada: se cae todo lo que depende del margen.
   // Los hallazgos que no usan margen (medición, estructura, contenido, funnel,
   // canales) siguen intactos.
@@ -1118,8 +1185,8 @@ export function calcularDiagnostico(
       if (!f.faltantes.includes("margen_en_contradiccion")) {
         f.faltantes.push("margen_en_contradiccion");
       }
-      f.detalle =
-        "El margen calculado contradice al margen confirmado por el cliente: no se valoriza hasta resolver la diferencia.";
+      f.detalle = MOTIVO_MARGEN_BLOQUEADO;
+      retenerImpactosDeMargen(f, MOTIVO_MARGEN_BLOQUEADO);
     }
   }
 
@@ -1135,9 +1202,11 @@ export function calcularDiagnostico(
     const limite = facturacion * topeInd;
     for (const f of fugas) {
       if (f.tipo === "monto" && finito(f.monto) && (f.monto as number) > limite) {
+        const original = f.monto as number;
         f.monto = red(limite, 0) ?? 0;
         f.sospechosa = true;
         f.detalle = DETALLE_SOSPECHOSA;
+        if (original > 0) escalarImpactosNoRetenidos(f, (f.monto as number) / original);
       }
     }
   }
@@ -1151,6 +1220,7 @@ export function calcularDiagnostico(
     const factor = (facturacion * topeTot) / total;
     for (const f of fugas) {
       if (f.tipo === "monto" && finito(f.monto)) {
+        escalarImpactosNoRetenidos(f, factor);
         f.monto = red((f.monto as number) * factor, 0) ?? 0;
         f.sospechosa = true;
         f.detalle = DETALLE_SOSPECHOSA;
@@ -1160,6 +1230,24 @@ export function calcularDiagnostico(
       (acc, f) => (f.tipo === "monto" && finito(f.monto) ? acc + (f.monto as number) : acc),
       0,
     );
+  }
+
+  // --- Tope final: ningún ahorro publicitario tipado puede superar la
+  // inversión publicitaria elegible del mismo perímetro, sin importar qué
+  // escalado haya aplicado la red de seguridad de arriba.
+  if (inversionAds !== null && inversionAds > 0) {
+    const inversionAcotada = Math.max(0, red(inversionAds, 0) ?? 0);
+    for (const f of fugas) {
+      if (!f.impactos) continue;
+      f.impactos = f.impactos.map((imp) =>
+        imp.tipo === "ahorro_publicitario" &&
+        imp.confianza !== "retenida" &&
+        typeof imp.montoMensual === "number" &&
+        imp.montoMensual > inversionAcotada
+          ? { ...imp, montoMensual: inversionAcotada }
+          : imp,
+      );
+    }
   }
 
   return {

@@ -110,26 +110,38 @@ export type ServicioDocumento = {
   alcance: string[];
 };
 
-/** Un mes del trimestre proyectado. El nivel es acumulativo (saturación), no incremental. */
+/**
+ * Una magnitud del escenario (facturación incremental, contribución
+ * incremental o ahorro publicitario), con su propia retención: una puede
+ * estar calculada mientras otra del mismo escenario está retenida.
+ */
+export type LineaImpacto90d = {
+  acumulado90d: ValorPublicable<number>;
+  ritmoMensualDia90: ValorPublicable<number>;
+  palancas: { id: string; nombre: string; monto: ValorPublicable<number> }[];
+};
+
+/**
+ * Un mes del trimestre proyectado. El nivel es acumulativo (saturación), no
+ * incremental. Las tres magnitudes habilitadas nunca se suman entre sí, y
+ * `facturacionProyectada` nunca incluye contribución ni ahorro.
+ */
 export type MesEscenario90d = {
   mes: 1 | 2 | 3;
   facturacionProyectada: ValorPublicable<number>;
-  /** Oportunidad habilitada ESE mes, ya incluida en `facturacionProyectada`. */
-  oportunidadHabilitada: ValorPublicable<number>;
+  facturacionIncrementalHabilitada: ValorPublicable<number>;
+  contribucionIncrementalHabilitada: ValorPublicable<number>;
+  ahorroPublicitarioHabilitado: ValorPublicable<number>;
 };
 
 export type Escenario90d = {
   id: "conservador" | "base" | "potencial";
   visible: boolean;
   confianza: ConfianzaDocumento;
-  contribucionAcumulada90d: ValorPublicable<number>;
-  ritmoMensualDia90: ValorPublicable<number>;
-  palancas: {
-    id: string;
-    nombre: string;
-    contribucion: ValorPublicable<number>;
-  }[];
-  /** Vacío cuando el escenario está retenido. */
+  facturacionIncremental: LineaImpacto90d;
+  contribucionIncremental: LineaImpacto90d;
+  ahorroPublicitario: LineaImpacto90d;
+  /** Vacío únicamente cuando las tres magnitudes están retenidas. */
   mensual: MesEscenario90d[];
   supuestos: SupuestoDocumento[];
   restriccionesAplicadas: RestriccionDocumento[];

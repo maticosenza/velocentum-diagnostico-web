@@ -177,7 +177,7 @@ describe("Velocentum document templates v1", () => {
         "retenido:margenTotal",
         "retenido:roasProductAds",
         "envio:no-confirmado",
-        "retenido:escenario:base:contribucion",
+        "retenido:escenario:base:contribution:acumulado",
       ]),
     );
     expect(blocksOf(projection, "shipping")).toHaveLength(0);
@@ -189,7 +189,7 @@ describe("Velocentum document templates v1", () => {
     expect(titanScenarioBlock).toBeDefined();
     const titanScenarios = titanScenarioBlock?.items ?? [];
     expect(titanScenarios.map((scenario) => scenario.id)).toEqual(["base"]);
-    expect(titanScenarios[0]?.monthlyPaceDay90?.value).toBe(0);
+    expect(titanScenarios[0]?.revenuePaceDay90?.value).toBe(0);
 
     const snake = buildProyeccion90dDocument(buildSnakeContext());
     const snakeScenarioBlock = blocksOf(snake, "scenarios")[0];

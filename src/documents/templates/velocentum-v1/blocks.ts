@@ -162,44 +162,68 @@ export function buildScenarios(context: DocumentContextV1): {
 } {
   const restrictions: RestriccionDocumento[] = [];
   const items = context.escenarios90d.filter(escenarioPuedeMostrarse).map((scenario) => {
-    const contribution90d = publishValue(scenario.contribucionAcumulada90d, "money");
-    const monthlyPaceDay90 = publishValue(scenario.ritmoMensualDia90, "money");
-    const retained = [
-      retainedRestriction(
-        `escenario:${scenario.id}:contribucion`,
-        `Contribución retenida · ${scenario.id}`,
-        scenario.contribucionAcumulada90d,
-      ),
-      retainedRestriction(
-        `escenario:${scenario.id}:ritmo`,
-        `Ritmo mensual retenido · ${scenario.id}`,
-        scenario.ritmoMensualDia90,
-      ),
-    ].filter((value): value is RestriccionDocumento => value !== null);
-    restrictions.push(...retained);
+    const lineas = [
+      { key: "revenue", label: "Facturación incremental", linea: scenario.facturacionIncremental },
+      { key: "contribution", label: "Contribución incremental", linea: scenario.contribucionIncremental },
+      { key: "adSavings", label: "Ahorro publicitario", linea: scenario.ahorroPublicitario },
+    ] as const;
 
-    const levers = scenario.palancas.flatMap((lever) => {
-      const contribution = publishValue(lever.contribucion, "money");
-      const restriction = retainedRestriction(
-        `escenario:${scenario.id}:palanca:${lever.id}`,
-        `Palanca retenida · ${lever.nombre}`,
-        lever.contribucion,
-      );
-      if (restriction) restrictions.push(restriction);
-      return contribution ? [{ id: lever.id, name: lever.nombre, contribution }] : [];
-    });
+    const publicado: Record<string, PublishedNumber | null> = {};
+    const paso90: Record<string, PublishedNumber | null> = {};
+    const levers: Extract<DocumentBlock, { type: "scenarios" }>["items"][number]["levers"] = [];
+
+    for (const { key, label, linea } of lineas) {
+      publicado[key] = publishValue(linea.acumulado90d, "money");
+      paso90[key] = publishValue(linea.ritmoMensualDia90, "money");
+      const retained = [
+        retainedRestriction(
+          `escenario:${scenario.id}:${key}:acumulado`,
+          `${label} retenida · ${scenario.id}`,
+          linea.acumulado90d,
+        ),
+        retainedRestriction(
+          `escenario:${scenario.id}:${key}:ritmo`,
+          `${label} (ritmo) retenida · ${scenario.id}`,
+          linea.ritmoMensualDia90,
+        ),
+      ].filter((value): value is RestriccionDocumento => value !== null);
+      restrictions.push(...retained);
+
+      const tipo =
+        key === "revenue"
+          ? ("facturacion_incremental" as const)
+          : key === "contribution"
+            ? ("contribucion_incremental" as const)
+            : ("ahorro_publicitario" as const);
+      for (const lever of linea.palancas) {
+        const amount = publishValue(lever.monto, "money");
+        const restriction = retainedRestriction(
+          `escenario:${scenario.id}:palanca:${key}:${lever.id}`,
+          `Palanca retenida · ${lever.nombre}`,
+          lever.monto,
+        );
+        if (restriction) restrictions.push(restriction);
+        if (amount) levers.push({ id: lever.id, name: lever.nombre, type: tipo, amount });
+      }
+    }
 
     const monthly = scenario.mensual.map((mes) => ({
       month: mes.mes,
       revenueProjected: publishValue(mes.facturacionProyectada, "money"),
-      opportunityEnabled: publishValue(mes.oportunidadHabilitada, "money"),
+      revenueEnabled: publishValue(mes.facturacionIncrementalHabilitada, "money"),
+      contributionEnabled: publishValue(mes.contribucionIncrementalHabilitada, "money"),
+      adSavingsEnabled: publishValue(mes.ahorroPublicitarioHabilitado, "money"),
     }));
 
     return {
       id: scenario.id,
       confidence: scenario.confianza,
-      contribution90d,
-      monthlyPaceDay90,
+      revenue90d: publicado["revenue"] ?? null,
+      contribution90d: publicado["contribution"] ?? null,
+      adSavings90d: publicado["adSavings"] ?? null,
+      revenuePaceDay90: paso90["revenue"] ?? null,
+      contributionPaceDay90: paso90["contribution"] ?? null,
+      adSavingsPaceDay90: paso90["adSavings"] ?? null,
       monthly,
       levers,
       assumptions: [...scenario.supuestos],

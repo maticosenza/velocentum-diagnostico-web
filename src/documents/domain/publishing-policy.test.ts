@@ -10,7 +10,7 @@ import {
   valorNoAplica,
   valorRetenido,
 } from "./publishing-policy";
-import type { Escenario90d } from "./types";
+import type { Escenario90d, LineaImpacto90d } from "./types";
 
 describe("política de valores publicables", () => {
   it("conserva un cero calculado y no lo confunde con retenido", () => {
@@ -121,6 +121,12 @@ describe("triestado de envío", () => {
 });
 
 describe("visibilidad de escenarios", () => {
+  const lineaRetenida = (): LineaImpacto90d => ({
+    acumulado90d: valorRetenido("Motor de escenarios pendiente."),
+    ritmoMensualDia90: valorRetenido("Motor de escenarios pendiente."),
+    palancas: [],
+  });
+
   const escenario = (
     id: Escenario90d["id"],
     confianza: Escenario90d["confianza"],
@@ -128,9 +134,9 @@ describe("visibilidad de escenarios", () => {
     id,
     visible: true,
     confianza,
-    contribucionAcumulada90d: valorRetenido("Motor de escenarios pendiente."),
-    ritmoMensualDia90: valorRetenido("Motor de escenarios pendiente."),
-    palancas: [],
+    facturacionIncremental: lineaRetenida(),
+    contribucionIncremental: lineaRetenida(),
+    ahorroPublicitario: lineaRetenida(),
     mensual: [],
     supuestos: [],
     restriccionesAplicadas: [],

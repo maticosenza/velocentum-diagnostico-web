@@ -198,7 +198,17 @@ function ScenariosBlock({ block }: { block: Extract<DocumentBlock, { type: "scen
             </div>
             <dl className="vdoc-scenario__metrics">
               <div>
-                <dt>Contribución acumulada a 90 días</dt>
+                <dt>Facturación incremental acumulada a 90 días</dt>
+                <dd>
+                  {item.revenue90d ? (
+                    <PublishedNumberView value={item.revenue90d} />
+                  ) : (
+                    <span className="vdoc-retained">Retenido</span>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Contribución incremental acumulada a 90 días</dt>
                 <dd>
                   {item.contribution90d ? (
                     <PublishedNumberView value={item.contribution90d} />
@@ -208,10 +218,10 @@ function ScenariosBlock({ block }: { block: Extract<DocumentBlock, { type: "scen
                 </dd>
               </div>
               <div>
-                <dt>Ritmo mensual al día 90</dt>
+                <dt>Ahorro publicitario acumulado a 90 días</dt>
                 <dd>
-                  {item.monthlyPaceDay90 ? (
-                    <PublishedNumberView value={item.monthlyPaceDay90} />
+                  {item.adSavings90d ? (
+                    <PublishedNumberView value={item.adSavings90d} />
                   ) : (
                     <span className="vdoc-retained">Retenido</span>
                   )}
@@ -223,9 +233,9 @@ function ScenariosBlock({ block }: { block: Extract<DocumentBlock, { type: "scen
                 <h4>Palancas</h4>
                 <ul className="vdoc-levers">
                   {item.levers.map((lever) => (
-                    <li key={lever.id}>
+                    <li key={`${lever.type}:${lever.id}`}>
                       <span>{lever.name}</span>
-                      <PublishedNumberView value={lever.contribution} />
+                      <PublishedNumberView value={lever.amount} />
                     </li>
                   ))}
                 </ul>

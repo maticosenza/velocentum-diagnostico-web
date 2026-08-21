@@ -21,19 +21,29 @@ function envioYResultado(datos: DatosDiagnostico, cfg: ConfiguracionCalculo = co
 }
 
 describe("escenariosDocumento", () => {
-  it("calcula los tres escenarios con confianza y evidencia cuando el envío está confirmado", () => {
+  it("calcula las tres magnitudes con confianza y evidencia cuando el envío está confirmado", () => {
     const { resultado, envio } = envioYResultado(casoConOportunidad);
     const escenarios = escenariosDocumento(casoConOportunidad, resultado, "media", envio);
 
     expect(escenarios.map((e) => e.id)).toEqual(["conservador", "base", "potencial"]);
     for (const escenario of escenarios) {
-      expect(escenario.contribucionAcumulada90d.estado).toBe("calculado");
-      expect(escenario.ritmoMensualDia90.estado).toBe("calculado");
+      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("calculado");
+      expect(escenario.contribucionIncremental.acumulado90d.estado).toBe("calculado");
       expect(escenario.mensual).toHaveLength(3);
       expect(escenario.supuestos.map((s) => s.id)).toContain(`rampa_escenario_${escenario.id}`);
+      expect(escenario.supuestos.map((s) => s.id)).toContain(`rampa_ahorro_${escenario.id}`);
+      // Nunca la misma cifra: facturación y contribución son magnitudes distintas.
+      if (
+        escenario.facturacionIncremental.acumulado90d.estado === "calculado" &&
+        escenario.contribucionIncremental.acumulado90d.estado === "calculado"
+      ) {
+        expect(escenario.facturacionIncremental.acumulado90d.valor).not.toBe(
+          escenario.contribucionIncremental.acumulado90d.valor,
+        );
+      }
     }
 
-    // El potencial sólo queda visible porque la confianza pasada es "alta" en el otro test;
+    // El potencial sólo queda visible porque la confianza pasada es "alta" en otro test;
     // acá, con confianza "media", el contrato lo oculta aunque esté calculado.
     const potencial = escenarios.find((e) => e.id === "potencial")!;
     expect(potencial.visible).toBe(false);
@@ -45,7 +55,7 @@ describe("escenariosDocumento", () => {
     expect(escenarios.find((e) => e.id === "potencial")!.visible).toBe(true);
   });
 
-  it("retiene los tres escenarios cuando la política de envío no está confirmada, aunque el margen sea calculable", () => {
+  it("retiene contribución y ahorro cuando la política de envío no está confirmada, pero NUNCA facturación incremental", () => {
     // Titan Web B1 no confirma absorbe_costo_envio: no_confirmado.
     const resultado = calcularDiagnostico(casoTitanWebB1, configuracionRegresionFase2);
     const envio = politicaEnvioDocumento(casoTitanWebB1, resultado);
@@ -53,11 +63,29 @@ describe("escenariosDocumento", () => {
 
     const escenarios = escenariosDocumento(casoTitanWebB1, resultado, "media", envio);
     for (const escenario of escenarios) {
-      expect(escenario.contribucionAcumulada90d).toMatchObject({ estado: "retenido" });
-      expect(escenario.ritmoMensualDia90.estado).toBe("retenido");
-      if (escenario.contribucionAcumulada90d.estado === "retenido") {
-        expect(escenario.contribucionAcumulada90d.motivos[0]).toMatch(/política de envío/);
+      expect(escenario.contribucionIncremental.acumulado90d).toMatchObject({ estado: "retenido" });
+      expect(escenario.ahorroPublicitario.acumulado90d).toMatchObject({ estado: "retenido" });
+      if (escenario.contribucionIncremental.acumulado90d.estado === "retenido") {
+        expect(escenario.contribucionIncremental.acumulado90d.motivos[0]).toMatch(/política de envío/);
       }
+      if (escenario.ahorroPublicitario.acumulado90d.estado === "retenido") {
+        expect(escenario.ahorroPublicitario.acumulado90d.motivos[0]).toMatch(/política de envío/);
+      }
+    }
+  });
+
+  it("facturación incremental no depende de envío ni de margen: sigue publicada aunque el envío no esté confirmado", () => {
+    // Mismo caso que arriba, pero Titan B1 no tiene funnel de tienda propia
+    // (100% Mercado Libre): usamos Snake Store con funnel + envío sin confirmar.
+    const datos: DatosDiagnostico = { ...casoConOportunidad, absorbe_costo_envio: null };
+    const resultado = calcularDiagnostico(datos, configuracionRegresionFase2);
+    const envio = politicaEnvioDocumento(datos, resultado);
+    expect(envio.estado).toBe("no_confirmado");
+
+    const escenarios = escenariosDocumento(datos, resultado, "media", envio);
+    for (const escenario of escenarios) {
+      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("calculado");
+      expect(escenario.contribucionIncremental.acumulado90d.estado).toBe("retenido");
     }
   });
 
@@ -73,10 +101,21 @@ describe("escenariosDocumento", () => {
 
     const escenarios = escenariosDocumento(datos, resultado, "media", envio);
     for (const escenario of escenarios) {
-      expect(escenario.contribucionAcumulada90d.estado).toBe("retenido");
-      if (escenario.contribucionAcumulada90d.estado === "retenido") {
-        expect(escenario.contribucionAcumulada90d.motivos[0]).toMatch(/contradice/);
+      expect(escenario.contribucionIncremental.acumulado90d.estado).toBe("retenido");
+      if (escenario.contribucionIncremental.acumulado90d.estado === "retenido") {
+        expect(escenario.contribucionIncremental.acumulado90d.motivos[0]).toMatch(/contradice/);
       }
+      // Facturación incremental no depende de margen: sigue publicada.
+      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("calculado");
+    }
+  });
+
+  it("nunca publica un impacto total que sume las tres magnitudes", () => {
+    const { resultado, envio } = envioYResultado(casoConOportunidad);
+    const escenarios = escenariosDocumento(casoConOportunidad, resultado, "alta", envio);
+    for (const escenario of escenarios) {
+      expect(escenario).not.toHaveProperty("impactoTotal90d");
+      expect(escenario).not.toHaveProperty("totalAcumulado90d");
     }
   });
 });

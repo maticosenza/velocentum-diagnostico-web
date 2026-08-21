@@ -64,15 +64,35 @@ export type DocumentBlock =
       items: {
         id: "conservador" | "base" | "potencial";
         confidence: ConfianzaDocumento;
+        /**
+         * Tres magnitudes independientes: nunca se suman entre sí ni se
+         * combinan en un "impacto total". `revenue90d` es facturación
+         * incremental (unidades × ticket), `contribution90d` es esa misma
+         * facturación incremental × margen, y `adSavings90d` es ahorro
+         * publicitario consolidado (máximo entre gasto no rentable y
+         * sobrefragmentación, nunca la suma).
+         */
+        revenue90d: PublishedNumber | null;
         contribution90d: PublishedNumber | null;
-        monthlyPaceDay90: PublishedNumber | null;
-        /** Los tres meses del trimestre, vacío cuando el escenario está retenido. */
+        adSavings90d: PublishedNumber | null;
+        revenuePaceDay90: PublishedNumber | null;
+        contributionPaceDay90: PublishedNumber | null;
+        adSavingsPaceDay90: PublishedNumber | null;
+        /** Los tres meses del trimestre, vacío cuando las tres magnitudes están retenidas. */
         monthly: {
           month: 1 | 2 | 3;
+          /** facturación actual + facturación incremental habilitada. Nunca incluye contribución ni ahorro. */
           revenueProjected: PublishedNumber | null;
-          opportunityEnabled: PublishedNumber | null;
+          revenueEnabled: PublishedNumber | null;
+          contributionEnabled: PublishedNumber | null;
+          adSavingsEnabled: PublishedNumber | null;
         }[];
-        levers: { id: string; name: string; contribution: PublishedNumber }[];
+        levers: {
+          id: string;
+          name: string;
+          type: "facturacion_incremental" | "contribucion_incremental" | "ahorro_publicitario";
+          amount: PublishedNumber;
+        }[];
         assumptions: SupuestoDocumento[];
         restrictions: RestriccionDocumento[];
       }[];

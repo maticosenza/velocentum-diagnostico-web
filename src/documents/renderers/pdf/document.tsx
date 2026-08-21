@@ -333,26 +333,34 @@ function renderBlock(block: DocumentBlock, dark: boolean): React.ReactNode {
                 <Text style={badgeStyle}>{labelConfidence(item.confidence)}</Text>
               </View>
               <View style={styles.scenarioMetrics}>
+                {item.revenue90d ? (
+                  <View style={styles.scenarioMetric}>
+                    <Text style={styles.scenarioMetricLabel}>Facturación incremental 90 días</Text>
+                    <Text style={styles.scenarioMetricValue}>
+                      {formatPublishedNumber(item.revenue90d)}
+                    </Text>
+                  </View>
+                ) : null}
                 {item.contribution90d ? (
                   <View style={styles.scenarioMetric}>
-                    <Text style={styles.scenarioMetricLabel}>Contribución 90 días</Text>
+                    <Text style={styles.scenarioMetricLabel}>Contribución incremental 90 días</Text>
                     <Text style={styles.scenarioMetricValue}>
                       {formatPublishedNumber(item.contribution90d)}
                     </Text>
                   </View>
                 ) : null}
-                {item.monthlyPaceDay90 ? (
+                {item.adSavings90d ? (
                   <View style={styles.scenarioMetric}>
-                    <Text style={styles.scenarioMetricLabel}>Ritmo al día 90</Text>
+                    <Text style={styles.scenarioMetricLabel}>Ahorro publicitario 90 días</Text>
                     <Text style={styles.scenarioMetricValue}>
-                      {formatPublishedNumber(item.monthlyPaceDay90)}
+                      {formatPublishedNumber(item.adSavings90d)}
                     </Text>
                   </View>
                 ) : null}
               </View>
               {item.levers.map((lever) => (
-                <Text key={lever.id} style={bodyStyle}>
-                  {lever.name}: {formatPublishedNumber(lever.contribution)}
+                <Text key={`${lever.type}:${lever.id}`} style={bodyStyle}>
+                  {lever.name}: {formatPublishedNumber(lever.amount)}
                 </Text>
               ))}
               {item.restrictions.map((restriction) => (

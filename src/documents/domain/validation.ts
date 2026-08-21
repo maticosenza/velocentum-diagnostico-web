@@ -174,16 +174,22 @@ export function validarContextoDocumento(
         mensaje: "El escenario potencial requiere confianza alta.",
       });
     }
-    problemas.push(
-      ...validarValorPublicable(
-        escenario.contribucionAcumulada90d,
-        `escenarios90d.${indice}.contribucionAcumulada90d`,
-      ),
-      ...validarValorPublicable(
-        escenario.ritmoMensualDia90,
-        `escenarios90d.${indice}.ritmoMensualDia90`,
-      ),
-    );
+    for (const [magnitud, linea] of [
+      ["facturacionIncremental", escenario.facturacionIncremental],
+      ["contribucionIncremental", escenario.contribucionIncremental],
+      ["ahorroPublicitario", escenario.ahorroPublicitario],
+    ] as const) {
+      problemas.push(
+        ...validarValorPublicable(
+          linea.acumulado90d,
+          `escenarios90d.${indice}.${magnitud}.acumulado90d`,
+        ),
+        ...validarValorPublicable(
+          linea.ritmoMensualDia90,
+          `escenarios90d.${indice}.${magnitud}.ritmoMensualDia90`,
+        ),
+      );
+    }
   }
 
   if (contexto.comercial && contexto.comercial.aprobadaManualmente !== true) {
