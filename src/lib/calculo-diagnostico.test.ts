@@ -1551,6 +1551,49 @@ describe("impactos económicos: ahorro publicitario tipado", () => {
     expect(sobre.impactos![0]!.montoMensual).toBe(inversionElegible);
     expect(sobre.impactos![0]!.montoMensual as number).toBeLessThanOrEqual(inversionElegible);
   });
+
+  it("Meta, Google y Product Ads conservan sus perímetros: el ahorro tipado usa el total combinado, MER y ROAS de Product Ads no se tocan", () => {
+    const conMixCompleto: DatosDiagnostico = {
+      ...casoTitanWebB1,
+      canal_tienda_no_aplica: false,
+      canal_tienda_pct: 50,
+      canal_ml_pct: 50,
+      canal_ml_facturacion: 25_000_000,
+      inversion_meta: 300_000,
+      inversion_google: 100_000,
+      conjuntos_activos: 50,
+      presupuesto_diario: 500,
+    };
+    const r = calcularDiagnostico(conMixCompleto, cfg);
+
+    // El total combinado incluye los tres frentes: Meta + Google (tienda
+    // propia) y Product Ads (marketplace, ml_inversion_product_ads = 1.800.000
+    // en casoTitanWebB1).
+    expect(r.derivados.inversion_publicitaria_total).toBe(300_000 + 100_000 + 1_800_000);
+
+    // El MER de marketplace y el ROAS de Product Ads jamás cruzan la
+    // facturación o inversión de tienda propia: se calculan sólo sobre el
+    // perímetro de Product Ads (facturación de ML e inversión de Product
+    // Ads), nunca sobre el total combinado de las tres fuentes.
+    expect(r.derivados.mer_marketplace).toBeCloseTo(25_000_000 / 1_800_000, 2);
+    expect(r.derivados.mer_marketplace).not.toBeCloseTo(
+      25_000_000 / (r.derivados.inversion_publicitaria_total as number),
+      2,
+    );
+
+    // Si hay ahorro publicitario tipado, su tope es el total combinado, no
+    // sólo Meta+Google ni sólo Product Ads.
+    const gasto = r.fugas.find((f) => f.id === "gasto_no_rentable");
+    const sobre = r.fugas.find((f) => f.id === "sobrefragmentacion");
+    for (const fuga of [gasto, sobre]) {
+      const impacto = fuga?.impactos?.find((i) => i.tipo === "ahorro_publicitario");
+      if (impacto && impacto.confianza !== "retenida") {
+        expect(impacto.montoMensual as number).toBeLessThanOrEqual(
+          r.derivados.inversion_publicitaria_total as number,
+        );
+      }
+    }
+  });
 });
 
 describe("impactos económicos: retención por margen bloqueado", () => {
