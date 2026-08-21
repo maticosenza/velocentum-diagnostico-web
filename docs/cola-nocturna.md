@@ -4,6 +4,10 @@ Controlador autónomo sobre `feat/noche-continuacion`. Este documento es la cola
 de trabajo: se actualiza después de cada bloque, nunca se reescribe la
 historia de lo ya hecho.
 
+> **Cierre:** los 5 bloques quedaron completados. Ningún ítem quedó en
+> `pendiente`. Resumen ejecutivo y bloqueos en
+> `docs/handoff-nocturno-2026-08-20-controlador.md`.
+
 ## Fuentes revisadas
 
 - `docs/motor-documental-v1.md` (el único documento de "plan" versionado en
