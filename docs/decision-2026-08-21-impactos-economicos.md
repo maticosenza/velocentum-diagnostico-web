@@ -30,7 +30,9 @@ convive con lo anterior. Nada existente se borra ni se reinterpreta.
 type TipoImpacto =
   | "facturacion_incremental"
   | "contribucion_incremental"
-  | "ahorro_publicitario";
+  | "ahorro_publicitario"
+  /** Monto legado sin tipo (§4): nunca participa de una agregación por magnitud. */
+  | "no_clasificado";
 
 type ConfianzaImpacto = "alta" | "media" | "retenida";
 
