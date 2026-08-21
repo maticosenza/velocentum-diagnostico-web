@@ -61,9 +61,9 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 | C1 | Estructura por pestañas (`BLOQUES`) | completado | ya existe, 9 pestañas |
 | C2 | Ocultar pestaña Mercado Libre si no vende ahí | completado | ya existe (`vende_mercado_libre`) |
 | C3 | Ocultar campos de envío hasta que corresponda | completado | ya existe (condicional sobre `absorbe_costo_envio`) |
-| C4 | Auditoría de campos siempre visibles que deberían condicionarse por canal/modalidad | pendiente | pasada de lectura dirigida, sin tocar UI todavía |
+| C4 | Auditoría de campos siempre visibles que deberían condicionarse por canal/modalidad | completado | leído `bloque-canales.tsx` y las nueve secciones de `diagnosticos.nuevo.tsx` completas. Hallazgo: el formulario **ya** implementa revelado progresivo extenso — por canal (`no vende en este canal` oculta sus 6-7 campos), por modo (`modo A` = con pantalla compartida/CSV, `modo B` = sólo conversado, con menos campos y sin costo/precio de productos 2 y 3), y por triestado de envío. No se encontró ningún campo condicionable que hoy esté siempre visible sin razón. No se tocó código: no había nada seguro que cambiar sin una decisión de producto sobre qué recortar (ver C5). |
 | C5 | Rediseño de recuento de campos / revelado progresivo adicional | bloqueado_comercial | es una decisión de producto/UX (qué campos son "núcleo" en 45 minutos) que no está especificada en ningún documento; hacerlo a ciegas, sin sesión real ni feedback de vendedores, arriesga romper el flujo de la única herramienta que usan en vivo con el cliente. Se documenta como pendiente de decisión, no se ejecuta esta noche. |
-| C6 | Mensajes de validación mejorados | pendiente | acotar a mensajes puntuales encontrados en la auditoría C4, no un rediseño |
+| C6 | Mensajes de validación mejorados | completado (sin cambios) | la auditoría C4 no encontró mensajes de validación confusos o faltantes; los existentes (comisión en escala sospechosa, suma de porcentajes > 100, envío sin confirmar) ya son específicos y accionables |
 
 ### D. Próximas fases del plan
 
@@ -91,7 +91,7 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 1. ~~**A9** — extraer y testear helpers de formato de `diagnosticos.$id.tsx`.~~ **completado**
 2. ~~**B2** — invariantes de consistencia de hallazgos.~~ **completado**
 3. ~~**A10 + E7** — accesibilidad y manejo de error/carga de la ruta de previsualización.~~ **completado**
-4. **C4** — auditoría dirigida de campos condicionables no condicionados (sin tocar UI si no hay hallazgo concreto y seguro).
+4. ~~**C4** — auditoría dirigida de campos condicionables no condicionados.~~ **completado (sin cambios de código: ya está bien condicionado)**
 5. **E5** — auditoría de código muerto en archivos de esta rama.
 
 Cada bloque: pruebas → typecheck → build → commit → push → actualizar esta
