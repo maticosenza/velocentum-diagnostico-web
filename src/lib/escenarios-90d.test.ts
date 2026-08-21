@@ -371,6 +371,8 @@ describe("corrección de producto aprobada 2026-08-21 (veredicto sobre 2685999)"
       expect(umbralDispersionDe({ umbral_dispersion: 3 })).toBe(3);
       expect(umbralDispersionDe({ umbral_dispersion: 0 })).toBe(UMBRAL_DISPERSION_90D_DEFECTO);
       expect(umbralDispersionDe({ umbral_dispersion: -1 })).toBe(UMBRAL_DISPERSION_90D_DEFECTO);
+      expect(umbralDispersionDe({ umbral_dispersion: NaN })).toBe(UMBRAL_DISPERSION_90D_DEFECTO);
+      expect(umbralDispersionDe({ umbral_dispersion: Infinity })).toBe(UMBRAL_DISPERSION_90D_DEFECTO);
     });
 
     it("con las curvas aprobadas, el cociente potencial/conservador de contribución es ~1,57: nunca dispara el umbral por defecto", () => {

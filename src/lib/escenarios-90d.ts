@@ -351,11 +351,12 @@ export type DispersionContribucion =
  * cero ni por un valor negativo).
  *
  * Con las curvas hoy aprobadas (25/50/75 conservador, 50/85/100 potencial,
- * ambas sobre la MISMA oportunidad mensual base) este cociente es un techo
- * matemático fijo de 235/150 ≈ 1,57 — nunca supera el umbral por defecto
- * de 2,5. La regla queda como red de seguridad ante una reconfiguración
- * futura de las rampas (`ConfigEscenarios90d` ya lo permite), no porque se
- * espere que dispare hoy.
+ * ambas sobre la MISMA oportunidad mensual base) este cociente converge a
+ * 235/150 ≈ 1,57 (el redondeo a peso entero de cada mes puede moverlo en
+ * una fracción despreciable) — muy por debajo del umbral por defecto de
+ * 2,5. La regla queda como red de seguridad ante una reconfiguración futura
+ * de las rampas (`ConfigEscenarios90d` ya lo permite), no porque se espere
+ * que dispare hoy.
  */
 export function evaluarDispersionContribucion(
   escenarios: EscenarioCalculado[],
