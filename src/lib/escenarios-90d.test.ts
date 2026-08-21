@@ -181,6 +181,52 @@ describe("calcularEscenarios90d", () => {
   });
 });
 
+describe("reglas comerciales aprobadas 2026-08-21", () => {
+  it("el escenario potencial nunca incorpora una palanca fuera de las fugas detectadas por el motor", () => {
+    // Regla 2: contenido, stock y capacidad operativa son condiciones de
+    // viabilidad, nunca generadores directos de facturación en el escenario.
+    const resultado = resultadoConFunnel();
+    const [, , potencial] = calcularEscenarios90d(casoConFunnel, resultado);
+    const idsFugasCalculables = resultado.fugas
+      .filter((f) => f.calculable && typeof f.monto === "number" && f.monto > 0)
+      .map((f) => f.id)
+      .sort();
+    expect(potencial!.palancas.map((p) => p.id).sort()).toEqual(idsFugasCalculables);
+    // Ninguna palanca del escenario potencial excede la fuga que la originó,
+    // aun en el mes de mayor adopción (100%): no se infla nada.
+    for (const palanca of potencial!.palancas) {
+      const fuga = resultado.fugas.find((f) => f.id === palanca.id)!;
+      expect(palanca.contribucionMensualDia90).toBeLessThanOrEqual(fuga.monto as number);
+    }
+  });
+
+  it("Meta y Google se tratan como pool combinado: invertir el reparto entre ambos no cambia la proyección", () => {
+    // Regla 3: nunca se suman conversiones declaradas por separado de Meta y
+    // Google. El motor de escenarios ni siquiera lee inversion_meta/inversion_google
+    // por separado: sólo consume las fugas ya calculadas sobre el pool combinado.
+    const base: DatosDiagnostico = {
+      ...casoConFunnel,
+      inversion_meta: 300_000,
+      inversion_google: 100_000,
+    };
+    const invertido: DatosDiagnostico = {
+      ...casoConFunnel,
+      inversion_meta: 100_000,
+      inversion_google: 300_000,
+    };
+
+    const escenariosBase = calcularEscenarios90d(base, calcularDiagnostico(base, cfg));
+    const escenariosInvertido = calcularEscenarios90d(invertido, calcularDiagnostico(invertido, cfg));
+
+    expect(escenariosInvertido.map((e) => e.acumulado90d)).toEqual(
+      escenariosBase.map((e) => e.acumulado90d),
+    );
+    expect(escenariosInvertido.map((e) => e.ritmoMensualDia90)).toEqual(
+      escenariosBase.map((e) => e.ritmoMensualDia90),
+    );
+  });
+});
+
 describe("rampaDe", () => {
   it("usa el valor por defecto aprobado cuando la configuración no trae una rampa", () => {
     expect(rampaDe({}, "conservador")).toEqual(RAMPAS_ESCENARIO_90D_DEFECTO.conservador);
