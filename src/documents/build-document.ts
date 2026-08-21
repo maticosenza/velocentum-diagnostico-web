@@ -65,10 +65,6 @@ export const DOCUMENTOS_DISPONIBLES: readonly DocumentoDisponible[] = [
   },
 ] as const;
 
-export function esDocumentoDisponible(valor: unknown): valor is VelocentumTemplateId {
-  return DOCUMENTOS_DISPONIBLES.some((documento) => documento.id === valor);
-}
-
 export function documentoDisponible(id: VelocentumTemplateId): DocumentoDisponible {
   const encontrado = DOCUMENTOS_DISPONIBLES.find((documento) => documento.id === id);
   if (!encontrado) throw new Error(`Plantilla desconocida: ${id}`);

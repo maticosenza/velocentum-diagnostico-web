@@ -82,7 +82,7 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 | E2 | Typecheck limpio | completado | verificado en cada bloque anterior |
 | E3 | Build limpio (cliente/SSR/Nitro) | completado | verificado en cada bloque anterior |
 | E4 | Lint de archivos modificados | completado | verificado en cada bloque anterior |
-| E5 | Código muerto introducido por esta rama | pendiente | pasada de auditoría rápida (imports/exports sin uso en los archivos nuevos) |
+| E5 | Código muerto introducido por esta rama | completado | ver bloque 5 abajo |
 | E6 | Casos heredados (diagnósticos guardados antes de estos cambios) | completado | cubierto por `from-diagnostico.test.ts` |
 | E7 | Manejo de errores / estados vacíos en la nueva ruta | completado | ya existía desde el bloque de creación de la ruta (carga, no encontrado, imposible de armar); este bloque le sumó semántica de accesibilidad |
 
@@ -92,7 +92,7 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 2. ~~**B2** — invariantes de consistencia de hallazgos.~~ **completado**
 3. ~~**A10 + E7** — accesibilidad y manejo de error/carga de la ruta de previsualización.~~ **completado**
 4. ~~**C4** — auditoría dirigida de campos condicionables no condicionados.~~ **completado (sin cambios de código: ya está bien condicionado)**
-5. **E5** — auditoría de código muerto en archivos de esta rama.
+5. ~~**E5** — auditoría de código muerto en archivos de esta rama.~~ **completado**
 
 Cada bloque: pruebas → typecheck → build → commit → push → actualizar esta
 cola → seguir con el siguiente.
@@ -140,3 +140,22 @@ cola → seguir con el siguiente.
   typecheck + build limpios.
 - Suite: sin cambio en el conteo (242 + 1); el bloque es de accesibilidad de
   UI, no de lógica pura testeable.
+
+### Bloque 5 · E5 (commit siguiente)
+
+- Se comparó cada símbolo exportado por los tres módulos nuevos de esta rama
+  (`build-document.ts`, `domain/from-diagnostico.ts`, `lib/vista-diagnostico.ts`)
+  contra el resto del repositorio.
+- Único hallazgo real: `esDocumentoDisponible` no lo consumía nadie más que su
+  propio test — `documentoPorSlug` ya cubre la misma necesidad donde
+  realmente se usa (la ruta de previsualización). Se eliminó la función y sus
+  tres aserciones dedicadas; el resto de la cobertura de `documentoDisponible`
+  se mantiene intacta.
+- Se descartaron dos falsos positivos de la primera pasada automática
+  (`DocumentoDisponible` y `BuildDocumentContextDesdeDiagnosticoArgs`): son
+  tipos que sí se usan dentro de su propio módulo como firma de función, sólo
+  que ningún otro archivo los importa todavía — no es código muerto, es una
+  API interna correctamente tipada.
+- Suite: 242 pruebas + 1 todo (sin cambio neto: se quitó un `it` de 3
+  aserciones y se dejó uno de 1, ambos cuentan como un solo caso). Typecheck,
+  lint y build limpios.

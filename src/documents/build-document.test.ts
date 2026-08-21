@@ -8,7 +8,6 @@ import {
   documentoDisponible,
   documentoPorSlug,
   DOCUMENTOS_DISPONIBLES,
-  esDocumentoDisponible,
 } from "./build-document";
 import { VELOCENTUM_V1_TEMPLATES } from "./templates/velocentum-v1";
 
@@ -33,10 +32,7 @@ describe("catálogo de documentos", () => {
     );
   });
 
-  it("reconoce y rechaza identificadores de plantilla", () => {
-    expect(esDocumentoDisponible("velocentum-diagnostico/v1")).toBe(true);
-    expect(esDocumentoDisponible("velocentum-inexistente/v9")).toBe(false);
-    expect(esDocumentoDisponible(undefined)).toBe(false);
+  it("rechaza un identificador de plantilla desconocido", () => {
     expect(() => documentoDisponible("velocentum-inexistente/v9" as never)).toThrow(/desconocida/);
   });
 
