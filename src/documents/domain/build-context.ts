@@ -1,8 +1,10 @@
 import type { ResultadoCalculo } from "../../lib/calculo-diagnostico";
 import { productosCargados } from "../../lib/calculo-diagnostico";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
+import { calcularEscenarios90d, umbralDispersionDe } from "../../lib/escenarios-90d";
 import { mapearHallazgos } from "../../lib/propuesta";
 import { escenariosDocumento } from "./escenarios-90d";
+import { construirResumenComercial } from "./resumen-comercial";
 import {
   envioBloqueaRentabilidad,
   resolverPoliticaEnvio,
@@ -218,6 +220,26 @@ function hallazgosDocumento(
 }
 
 /**
+ * `null` para un diagnóstico: esa pieza no proyecta (corrección aprobada
+ * 2026-08-21, punto 3) — el contrato ni siquiera lo carga, para que no
+ * pueda filtrarse a esa plantilla por accidente en el futuro.
+ */
+function resumenComercialDocumento(args: {
+  datos: DatosDiagnostico;
+  resultado: ResultadoCalculo;
+  confianza: ConfianzaDocumento;
+  envio: PoliticaEnvio;
+  tipoDocumento: TipoDocumento;
+}): DocumentContextV1["resumenComercial"] {
+  if (args.tipoDocumento === "diagnostico") return null;
+  return construirResumenComercial({
+    escenariosCalculados: calcularEscenarios90d(args.datos, args.resultado),
+    escenariosDocumento: escenariosDocumento(args.datos, args.resultado, args.confianza, args.envio),
+    umbralDispersion: umbralDispersionDe({}),
+  });
+}
+
+/**
  * Traduce el diagnóstico ya calculado al contrato común de documentos.
  * No recalcula el negocio, no genera escenarios y no completa ausencias con cero.
  */
@@ -360,11 +382,13 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
           : "La política de envío no está confirmada.",
       );
 
+  const tipoDocumento = args.tipoDocumento ?? "diagnostico";
+
   return {
     schemaVersion: "document-context/1",
     templateVersion: args.templateVersion ?? "velocentum-diagnostico/v1",
     rulesetVersion: args.rulesetVersion ?? "calculo/2.5",
-    tipoDocumento: args.tipoDocumento ?? "diagnostico",
+    tipoDocumento,
     diagnostico: args.diagnostico,
     cliente: {
       nombre: datos.nombre_tienda,
@@ -431,6 +455,7 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
     envio,
     hallazgos: salidaHallazgos.hallazgos,
     escenarios90d: escenariosDocumento(datos, resultado, confianza, envio),
+    resumenComercial: resumenComercialDocumento({ datos, resultado, confianza, envio, tipoDocumento }),
     roadmap: [],
     servicios: salidaHallazgos.servicios,
     comercial: null,

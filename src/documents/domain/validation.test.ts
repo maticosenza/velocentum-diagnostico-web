@@ -35,6 +35,7 @@ function contextoValido(): DocumentContextV1 {
     envio: { estado: "no_confirmado", costoNeto: null, mostrarEnDocumentos: false },
     hallazgos: [],
     escenarios90d: [],
+    resumenComercial: null,
     roadmap: [],
     servicios: [],
     comercial: null,
@@ -118,6 +119,63 @@ describe("validación del contexto documental", () => {
     expect(validarContextoDocumento(contexto)).toContainEqual({
       path: "hallazgos.1.id",
       mensaje: "El hallazgo está duplicado.",
+    });
+  });
+
+  it("rechaza un diagnóstico que trae resumenComercial: no debe proyectar (punto 3)", () => {
+    const contexto = contextoValido();
+    contexto.resumenComercial = {
+      escenarioComunicado: "conservador",
+      cifraPrincipal: calculado(1_000_000),
+      limiteInferior: calculado(1_000_000),
+      limiteSuperior: calculado(2_000_000),
+      idEscenarioLimiteSuperior: "base",
+      dispersion: { ratio: 2, umbral: 2.5, alta: false, datosParaCerrarla: [] },
+      redaccion: "texto",
+      supuestoIds: [],
+    };
+
+    expect(validarContextoDocumento(contexto)).toContainEqual({
+      path: "resumenComercial",
+      mensaje: "Un diagnóstico no proyecta: resumenComercial debe ser null.",
+    });
+  });
+
+  it("rechaza una redacción con una frase prohibida", () => {
+    const contexto = contextoValido();
+    contexto.tipoDocumento = "proyeccion_90d";
+    contexto.resumenComercial = {
+      escenarioComunicado: "conservador",
+      cifraPrincipal: calculado(1_000_000),
+      limiteInferior: calculado(1_000_000),
+      limiteSuperior: calculado(2_000_000),
+      idEscenarioLimiteSuperior: "base",
+      dispersion: { ratio: 2, umbral: 2.5, alta: false, datosParaCerrarla: [] },
+      redaccion: "Con estos datos, vas a ganar mucho dinero.",
+      supuestoIds: [],
+    };
+
+    const problemas = validarContextoDocumento(contexto);
+    expect(problemas.some((p) => p.path === "resumenComercial.redaccion")).toBe(true);
+  });
+
+  it("rechaza una cifra principal calculada cuando la dispersión es alta", () => {
+    const contexto = contextoValido();
+    contexto.tipoDocumento = "proyeccion_90d";
+    contexto.resumenComercial = {
+      escenarioComunicado: "conservador",
+      cifraPrincipal: calculado(1_000_000),
+      limiteInferior: calculado(1_000_000),
+      limiteSuperior: calculado(3_000_000),
+      idEscenarioLimiteSuperior: "potencial",
+      dispersion: { ratio: 3, umbral: 2.5, alta: true, datosParaCerrarla: ["algo"] },
+      redaccion: "texto",
+      supuestoIds: [],
+    };
+
+    expect(validarContextoDocumento(contexto)).toContainEqual({
+      path: "resumenComercial.cifraPrincipal",
+      mensaje: "Con dispersión alta no se debe publicar una cifra principal.",
     });
   });
 });

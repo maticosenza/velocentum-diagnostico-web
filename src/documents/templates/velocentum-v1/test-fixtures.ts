@@ -95,6 +95,18 @@ export function buildTitanContext(): DocumentContextV1 {
         restriccionesAplicadas: [],
       },
     ],
+    // Este fixture no incluye un escenario "conservador" (sólo base/potencial):
+    // el resumen comercial queda retenido, tal como lo estaría en un caso real.
+    resumenComercial: {
+      escenarioComunicado: "conservador",
+      cifraPrincipal: valorRetenido("El escenario conservador no es calculable con los datos actuales."),
+      limiteInferior: valorRetenido("El escenario conservador no es calculable con los datos actuales."),
+      limiteSuperior: metric(5_000_000),
+      idEscenarioLimiteSuperior: "potencial",
+      dispersion: { ratio: null, umbral: 2.5, alta: false, datosParaCerrarla: [] },
+      redaccion: null,
+      supuestoIds: [],
+    },
     roadmap: [
       {
         id: "validacion",
@@ -209,6 +221,8 @@ export function buildSnakeContext(): DocumentContextV1 {
         restriccionesAplicadas: [],
       },
     ],
+    // Diagnóstico: no proyecta (corrección aprobada 2026-08-21, punto 3).
+    resumenComercial: null,
     roadmap: [
       {
         id: "base",

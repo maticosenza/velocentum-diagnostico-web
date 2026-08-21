@@ -89,23 +89,43 @@ function lineaRetenidaDocumento(motivo: string): LineaImpacto90d {
   };
 }
 
+/**
+ * `supuestoId` marca de qué curva depende esta línea (rampa de
+ * facturación/contribución o rampa de ahorro): toda cifra que dependa de
+ * una curva de adopción debe poder distinguirse de un dato observado
+ * (corrección aprobada 2026-08-21, punto 5). Se propaga a `supuestos` en
+ * cada `ValorPublicable` calculado, nunca en uno retenido (retenido ya no
+ * lleva número que marcar).
+ */
 function lineaDocumento(
   linea: LineaImpacto90dCalculada,
   confianzaDocumento: ConfianzaDocumento,
   overrideMotivo: string | null,
+  supuestoId: string,
 ): LineaImpacto90d {
   if (overrideMotivo !== null) return lineaRetenidaDocumento(overrideMotivo);
   if (!linea.calculable) return lineaRetenidaDocumento(linea.motivo);
 
   const confianza = confianzaValorable(confianzaDocumento);
   const evidenciaIds = linea.palancas.map((p: PalancaLinea) => `fuga_${p.id}`);
+  const supuestos = [supuestoId];
   return {
-    acumulado90d: valorCalculado({ valor: linea.acumulado90d, confianza, evidenciaIds }),
-    ritmoMensualDia90: valorCalculado({ valor: linea.ritmoMensualDia90, confianza, evidenciaIds }),
+    acumulado90d: valorCalculado({ valor: linea.acumulado90d, confianza, evidenciaIds, supuestos }),
+    ritmoMensualDia90: valorCalculado({
+      valor: linea.ritmoMensualDia90,
+      confianza,
+      evidenciaIds,
+      supuestos,
+    }),
     palancas: linea.palancas.map((p: PalancaLinea) => ({
       id: p.id,
       nombre: p.nombre,
-      monto: valorCalculado({ valor: p.montoMensualDia90, confianza, evidenciaIds: [`fuga_${p.id}`] }),
+      monto: valorCalculado({
+        valor: p.montoMensualDia90,
+        confianza,
+        evidenciaIds: [`fuga_${p.id}`],
+        supuestos,
+      }),
     })),
   };
 }
@@ -115,11 +135,12 @@ function celdaMes(
   overrideMotivo: string | null,
   mes: 1 | 2 | 3,
   confianza: Exclude<ConfianzaDocumento, "bloqueada">,
+  supuestoId: string,
 ): ValorPublicable<number> {
   if (overrideMotivo !== null) return valorRetenido(overrideMotivo);
   if (!linea.calculable) return valorRetenido(linea.motivo);
   const habilitado = linea.mensual.find((m) => m.mes === mes)!.habilitado;
-  return valorCalculado({ valor: habilitado, confianza, evidenciaIds: [] });
+  return valorCalculado({ valor: habilitado, confianza, evidenciaIds: [], supuestos: [supuestoId] });
 }
 
 function mensualDocumento(
@@ -135,6 +156,8 @@ function mensualDocumento(
   if (todoRetenido) return [];
 
   const confianza = confianzaValorable(confianzaDocumento);
+  const supuestoFC = `rampa_escenario_${c.id}`;
+  const supuestoAhorro = `rampa_ahorro_${c.id}`;
   const meses: (1 | 2 | 3)[] = [1, 2, 3];
   return meses.map((mes) => ({
     mes,
@@ -144,15 +167,23 @@ function mensualDocumento(
           valor: c.facturacionProyectada.mensual.find((m) => m.mes === mes)!.valor,
           confianza,
           evidenciaIds: ["facturacion_mensual"],
+          supuestos: [supuestoFC],
         }),
-    facturacionIncrementalHabilitada: celdaMes(c.facturacionIncremental, null, mes, confianza),
+    facturacionIncrementalHabilitada: celdaMes(c.facturacionIncremental, null, mes, confianza, supuestoFC),
     contribucionIncrementalHabilitada: celdaMes(
       c.contribucionIncremental,
       overrideMargenEnvio,
       mes,
       confianza,
+      supuestoFC,
     ),
-    ahorroPublicitarioHabilitado: celdaMes(c.ahorroPublicitario, overrideMargenEnvio, mes, confianza),
+    ahorroPublicitarioHabilitado: celdaMes(
+      c.ahorroPublicitario,
+      overrideMargenEnvio,
+      mes,
+      confianza,
+      supuestoAhorro,
+    ),
   }));
 }
 
@@ -162,17 +193,25 @@ function escenarioCalculadoADocumento(
   /** Motivo de retención adicional de la capa documental (envío no confirmado), sólo para contribución y ahorro. */
   overrideMargenEnvio: string | null,
 ): Escenario90d {
+  const supuestoFC = `rampa_escenario_${c.id}`;
+  const supuestoAhorro = `rampa_ahorro_${c.id}`;
   return {
     id: c.id,
     visible: visiblePara(c.id, confianzaDocumento),
     confianza: confianzaDocumento,
-    facturacionIncremental: lineaDocumento(c.facturacionIncremental, confianzaDocumento, null),
+    facturacionIncremental: lineaDocumento(c.facturacionIncremental, confianzaDocumento, null, supuestoFC),
     contribucionIncremental: lineaDocumento(
       c.contribucionIncremental,
       confianzaDocumento,
       overrideMargenEnvio,
+      supuestoFC,
     ),
-    ahorroPublicitario: lineaDocumento(c.ahorroPublicitario, confianzaDocumento, overrideMargenEnvio),
+    ahorroPublicitario: lineaDocumento(
+      c.ahorroPublicitario,
+      confianzaDocumento,
+      overrideMargenEnvio,
+      supuestoAhorro,
+    ),
     mensual: mensualDocumento(c, confianzaDocumento, overrideMargenEnvio),
     supuestos: supuestosRampa(c.id),
     restriccionesAplicadas: [],

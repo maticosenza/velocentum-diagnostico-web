@@ -1,3 +1,4 @@
+import { fraseProhibidaEncontrada } from "./resumen-comercial";
 import type { DocumentContextV1, Evidencia, PoliticaEnvio, ValorPublicable } from "./types";
 
 export type ProblemaValidacionDocumento = {
@@ -189,6 +190,37 @@ export function validarContextoDocumento(
           `escenarios90d.${indice}.${magnitud}.ritmoMensualDia90`,
         ),
       );
+    }
+  }
+
+  if (contexto.tipoDocumento === "diagnostico") {
+    if (contexto.resumenComercial !== null) {
+      problemas.push({
+        path: "resumenComercial",
+        mensaje: "Un diagnóstico no proyecta: resumenComercial debe ser null.",
+      });
+    }
+  } else if (contexto.resumenComercial) {
+    const r = contexto.resumenComercial;
+    problemas.push(
+      ...validarValorPublicable(r.cifraPrincipal, "resumenComercial.cifraPrincipal"),
+      ...validarValorPublicable(r.limiteInferior, "resumenComercial.limiteInferior"),
+      ...validarValorPublicable(r.limiteSuperior, "resumenComercial.limiteSuperior"),
+    );
+    if (r.redaccion !== null) {
+      const frase = fraseProhibidaEncontrada(r.redaccion);
+      if (frase !== null) {
+        problemas.push({
+          path: "resumenComercial.redaccion",
+          mensaje: `La redacción contiene una frase prohibida: "${frase}".`,
+        });
+      }
+    }
+    if (r.dispersion.alta && r.cifraPrincipal.estado === "calculado") {
+      problemas.push({
+        path: "resumenComercial.cifraPrincipal",
+        mensaje: "Con dispersión alta no se debe publicar una cifra principal.",
+      });
     }
   }
 

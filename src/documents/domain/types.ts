@@ -147,6 +147,51 @@ export type Escenario90d = {
   restriccionesAplicadas: RestriccionDocumento[];
 };
 
+/**
+ * Cociente entre la contribución incremental acumulada a 90 días del
+ * escenario potencial y la del conservador (corrección aprobada
+ * 2026-08-21, punto 7). `alta` en true significa que el rango es demasiado
+ * ancho para comunicar una cifra principal defendible.
+ */
+export type DispersionContribucion = {
+  ratio: number | null;
+  umbral: number;
+  alta: boolean;
+  /** Qué haría falta para acotar el rango. Vacío cuando `alta` es false. */
+  datosParaCerrarla: string[];
+};
+
+/**
+ * Resumen comercial de 90 días: la cifra dominante es SIEMPRE contribución
+ * incremental (nunca facturación — corrección aprobada 2026-08-21, punto
+ * 2), y el escenario comunicado es SIEMPRE el conservador (punto 6). Base y
+ * potencial sólo aparecen como el límite superior de contexto, nunca como
+ * encabezado. `null` en el `DocumentContextV1` de un diagnóstico: esa pieza
+ * no proyecta (punto 3).
+ */
+export type ResumenComercial90d = {
+  escenarioComunicado: "conservador";
+  /**
+   * Cifra única de encabezado (punto 4). Retenida —nunca un número— cuando
+   * la dispersión es alta (punto 7) o cuando el conservador no es
+   * calculable; en ese caso sólo se publica el rango de abajo.
+   */
+  cifraPrincipal: ValorPublicable<number>;
+  limiteInferior: ValorPublicable<number>;
+  limiteSuperior: ValorPublicable<number>;
+  idEscenarioLimiteSuperior: "base" | "potencial" | null;
+  dispersion: DispersionContribucion;
+  /**
+   * Redacción obligatoria ya armada (punto 6): "Con los datos disponibles y
+   * bajo estos supuestos, existe un rango de contribución incremental
+   * potencial de X a Y durante los próximos 90 días." `null` cuando no hay
+   * rango calculable que describir.
+   */
+  redaccion: string | null;
+  /** ids de los supuestos (curvas) de los que depende esta cifra, para la marca visible (punto 5). */
+  supuestoIds: string[];
+};
+
 export type SeleccionComercial = {
   aprobadaManualmente: true;
   paqueteId: string;
@@ -211,6 +256,11 @@ export type DocumentContextV1 = {
   envio: PoliticaEnvio;
   hallazgos: HallazgoDocumento[];
   escenarios90d: Escenario90d[];
+  /**
+   * `null` para un diagnóstico (esa pieza no proyecta — punto 3 de la
+   * corrección aprobada 2026-08-21). Presente para proyección y propuesta.
+   */
+  resumenComercial: ResumenComercial90d | null;
   roadmap: EtapaRoadmap[];
   servicios: ServicioDocumento[];
   comercial: SeleccionComercial | null;
