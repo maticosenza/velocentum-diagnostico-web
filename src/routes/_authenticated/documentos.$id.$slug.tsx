@@ -66,7 +66,7 @@ function VistaPreviaDocumento() {
     return (
       <>
         <PageHeader title="Vista previa del documento" actions={volver} />
-        <div className="px-8 py-10">
+        <div className="px-8 py-10" role="status" aria-live="polite">
           <p className="text-[14px] text-muted-foreground">Cargando el diagnóstico…</p>
         </div>
       </>
@@ -77,7 +77,7 @@ function VistaPreviaDocumento() {
     return (
       <>
         <PageHeader title="Vista previa del documento" actions={volver} />
-        <div className="px-8 py-10">
+        <div className="px-8 py-10" role="status" aria-live="polite">
           <EmptyState
             title="No encontramos este diagnóstico"
             description="Puede que se haya borrado o que el enlace esté mal. Volvé al diagnóstico y probá de nuevo."
@@ -95,7 +95,7 @@ function VistaPreviaDocumento() {
     return (
       <>
         <PageHeader title="Vista previa del documento" actions={volver} />
-        <div className="px-8 py-10">
+        <div className="px-8 py-10" role="status" aria-live="polite">
           <EmptyState
             title="Este diagnóstico todavía no tiene lo necesario para armar el documento"
             description={
@@ -129,7 +129,7 @@ function VistaPreviaDocumento() {
 
   const acciones = (
     <div className="flex items-center gap-3">
-      <Button size="sm" onClick={descargarPdf} disabled={descargando}>
+      <Button size="sm" onClick={descargarPdf} disabled={descargando} aria-busy={descargando}>
         {descargando ? "Generando PDF…" : "Descargar PDF"}
       </Button>
       {volver}
@@ -144,7 +144,10 @@ function VistaPreviaDocumento() {
         actions={acciones}
       />
 
-      <nav className="flex flex-wrap gap-2 border-b border-border bg-card px-8 py-4">
+      <nav
+        aria-label="Documentos disponibles"
+        className="flex flex-wrap gap-2 border-b border-border bg-card px-8 py-4"
+      >
         {DOCUMENTOS_DISPONIBLES.map((opcion) => (
           <TabDocumento
             key={opcion.slug}
@@ -157,7 +160,10 @@ function VistaPreviaDocumento() {
       </nav>
 
       {errorDescarga && (
-        <div className="border-b border-estado-rojo/40 bg-card px-8 py-3 text-[13px] text-estado-rojo">
+        <div
+          role="alert"
+          className="border-b border-estado-rojo/40 bg-card px-8 py-3 text-[13px] text-estado-rojo"
+        >
           {errorDescarga}
         </div>
       )}
@@ -186,6 +192,7 @@ function TabDocumento({
     <Link
       to="/documentos/$id/$slug"
       params={{ id, slug }}
+      aria-current={activo ? "page" : undefined}
       className={cn(
         "rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
         activo

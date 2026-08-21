@@ -41,7 +41,7 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 | A7 | Pruebas de armado de modelo y render (unit/integration) | completado | `build-document.test.ts`, `document-renderer.test.tsx`, `document.test.tsx` |
 | A8 | Pruebas de la ruta de previsualización en sí (componente) | bloqueado_migracion | el repo no tiene `@testing-library/react` ni `jsdom` configurado y ninguna ruta tiene test de componente hoy; agregar ese arnés es un cambio de infraestructura de testing, no un bloque chico. Se documenta y no se hace esta noche. |
 | A9 | Extraer y testear helpers puros de formato usados en las rutas de detalle (`pesos`, `numero`, `pct`, `etiqueta`) | completado | movidos a `src/lib/vista-diagnostico.ts` con 11 casos nuevos, incluyendo la garantía de que un cero real nunca se muestra como guión |
-| A10 | Accesibilidad de la vista de previsualización (estados de carga/error, landmarks) | pendiente | revisar `documentos.$id.$slug.tsx` |
+| A10 | Accesibilidad de la vista de previsualización (estados de carga/error, landmarks) | completado | ver bloque 3 abajo |
 | A11 | Accesibilidad/responsive/impresión del renderer web | completado | ya cubierto en `document-renderer.css` (`@media print`, `@media max-width`) y en `document-renderer.test.tsx` (aria-label, tonos de sección) |
 
 ### B. Bugs y consistencia
@@ -84,13 +84,13 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 | E4 | Lint de archivos modificados | completado | verificado en cada bloque anterior |
 | E5 | Código muerto introducido por esta rama | pendiente | pasada de auditoría rápida (imports/exports sin uso en los archivos nuevos) |
 | E6 | Casos heredados (diagnósticos guardados antes de estos cambios) | completado | cubierto por `from-diagnostico.test.ts` |
-| E7 | Manejo de errores / estados vacíos en la nueva ruta | pendiente | mismo alcance que A10 |
+| E7 | Manejo de errores / estados vacíos en la nueva ruta | completado | ya existía desde el bloque de creación de la ruta (carga, no encontrado, imposible de armar); este bloque le sumó semántica de accesibilidad |
 
 ## Bloques de esta madrugada (en orden de ejecución)
 
 1. ~~**A9** — extraer y testear helpers de formato de `diagnosticos.$id.tsx`.~~ **completado**
 2. ~~**B2** — invariantes de consistencia de hallazgos.~~ **completado**
-3. **A10 + E7** — accesibilidad y manejo de error/carga de la ruta de previsualización.
+3. ~~**A10 + E7** — accesibilidad y manejo de error/carga de la ruta de previsualización.~~ **completado**
 4. **C4** — auditoría dirigida de campos condicionables no condicionados (sin tocar UI si no hay hallazgo concreto y seguro).
 5. **E5** — auditoría de código muerto en archivos de esta rama.
 
@@ -124,3 +124,19 @@ cola → seguir con el siguiente.
   miembros literales de esa lista — esa restricción habría sido un falso
   positivo del propio test.
 - Suite: 242 pruebas + 1 todo (antes 211 + 1). Typecheck y build limpios.
+
+### Bloque 3 · A10 + E7 (commit siguiente)
+
+- `documentos.$id.$slug.tsx`: los estados de carga, no-encontrado y "no se
+  pudo armar el documento" ahora llevan `role="status" aria-live="polite"`,
+  para que un lector de pantalla anuncie el cambio sin que el usuario tenga
+  que ir a buscarlo. El error de descarga de PDF usa `role="alert"` (más
+  urgente, porque responde a una acción explícita del usuario). El botón
+  "Descargar PDF" expone `aria-busy` mientras genera el archivo. La barra de
+  tabs es un `<nav aria-label="Documentos disponibles">` y el documento activo
+  lleva `aria-current="page"`.
+- No se agregaron pruebas automatizadas de esta ruta: sigue sin existir un
+  arnés de testing de componentes en el repo (ver A8). Se verificó con
+  typecheck + build limpios.
+- Suite: sin cambio en el conteo (242 + 1); el bloque es de accesibilidad de
+  UI, no de lógica pura testeable.
