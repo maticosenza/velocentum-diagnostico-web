@@ -10,10 +10,13 @@ import {
 import {
   RAMPAS_AHORRO_PUBLICITARIO_90D_DEFECTO,
   RAMPAS_FACTURACION_CONTRIBUCION_90D_DEFECTO,
+  UMBRAL_DISPERSION_90D_DEFECTO,
   aplicarRampa,
   calcularEscenarios90d,
+  evaluarDispersionContribucion,
   rampaAhorroPublicitarioDe,
   rampaFacturacionContribucionDe,
+  umbralDispersionDe,
   type ConfigEscenarios90d,
 } from "./escenarios-90d";
 import type { DatosDiagnostico } from "./diagnostico-form";
@@ -336,5 +339,69 @@ describe("reglas comerciales aprobadas 2026-08-21", () => {
     expect(escenariosInvertido.map((e) => e.contribucionIncremental)).toEqual(
       escenariosBase.map((e) => e.contribucionIncremental),
     );
+  });
+});
+
+describe("corrección de producto aprobada 2026-08-21 (veredicto sobre 2685999)", () => {
+  it("punto 1: la curva potencial de ahorro publicitario es 85/100/100, no 100/100/100", () => {
+    expect(RAMPAS_AHORRO_PUBLICITARIO_90D_DEFECTO.potencial).toEqual({
+      mes1: 0.85,
+      mes2: 1,
+      mes3: 1,
+    });
+    // Las demás curvas de ahorro quedan sin cambios.
+    expect(RAMPAS_AHORRO_PUBLICITARIO_90D_DEFECTO.conservador).toEqual({
+      mes1: 0.5,
+      mes2: 0.75,
+      mes3: 1,
+    });
+    expect(RAMPAS_AHORRO_PUBLICITARIO_90D_DEFECTO.base).toEqual({ mes1: 0.75, mes2: 1, mes3: 1 });
+  });
+
+  it("punto 1: el mes 1 del escenario potencial de ahorro ya no captura el 100% de la base", () => {
+    const r = aplicarRampa(100_000, RAMPAS_AHORRO_PUBLICITARIO_90D_DEFECTO.potencial);
+    expect(r.mensual[0]!.habilitado).toBe(85_000);
+    expect(r.mensual[0]!.habilitado).not.toBe(100_000);
+    expect(r.mensual[2]!.habilitado).toBe(100_000);
+  });
+
+  describe("punto 7: umbralDispersionDe / evaluarDispersionContribucion", () => {
+    it("usa 2,5 por defecto y respeta la configuración cuando es válida", () => {
+      expect(umbralDispersionDe({})).toBe(UMBRAL_DISPERSION_90D_DEFECTO);
+      expect(umbralDispersionDe({ umbral_dispersion: 3 })).toBe(3);
+      expect(umbralDispersionDe({ umbral_dispersion: 0 })).toBe(UMBRAL_DISPERSION_90D_DEFECTO);
+      expect(umbralDispersionDe({ umbral_dispersion: -1 })).toBe(UMBRAL_DISPERSION_90D_DEFECTO);
+    });
+
+    it("con las curvas aprobadas, el cociente potencial/conservador de contribución es ~1,57: nunca dispara el umbral por defecto", () => {
+      const resultado = resultadoConFunnel();
+      const escenarios = calcularEscenarios90d(casoConFunnel, resultado);
+      const d = evaluarDispersionContribucion(escenarios);
+      expect(d.evaluable).toBe(true);
+      if (d.evaluable) {
+        // 235/150 (suma de curva potencial / suma de curva conservador para contribución/facturación).
+        expect(d.ratio).toBeCloseTo(235 / 150, 4);
+        expect(d.alta).toBe(false);
+      }
+    });
+
+    it("un umbral configurado más bajo que el cociente real dispara la dispersión alta", () => {
+      const resultado = resultadoConFunnel();
+      const escenarios = calcularEscenarios90d(casoConFunnel, resultado);
+      const d = evaluarDispersionContribucion(escenarios, { umbral_dispersion: 1.5 });
+      expect(d.evaluable).toBe(true);
+      if (d.evaluable) {
+        expect(d.ratio).toBeGreaterThan(1.5);
+        expect(d.alta).toBe(true);
+      }
+    });
+
+    it("no es evaluable sin ambos escenarios calculables (por ejemplo, sin ninguna fuga)", () => {
+      const resultado = calcularDiagnostico(casoSnakeStore, cfg);
+      const escenarios = calcularEscenarios90d(casoSnakeStore, resultado);
+      const d = evaluarDispersionContribucion(escenarios);
+      expect(d.evaluable).toBe(false);
+      expect(d.umbral).toBe(UMBRAL_DISPERSION_90D_DEFECTO);
+    });
   });
 });

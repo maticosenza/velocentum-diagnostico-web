@@ -60,10 +60,17 @@ export const RAMPAS_FACTURACION_CONTRIBUCION_90D_DEFECTO: Record<IdEscenario, Ra
  * dejar de perder plata en pauta no rentable es una decisión, no un proceso
  * de conversión que hay que mejorar mes a mes.
  */
+/**
+ * Corrección de producto aprobada 2026-08-21 (veredicto sobre 2685999,
+ * punto 1): el potencial NO llega a 100% en el mes 1. Consolidar el gasto
+ * no rentable el primer día no significa que todo el mes corra bajo la
+ * estructura nueva: una parte sigue bajo compromisos/estructura previa. Las
+ * demás curvas (conservador, base) quedan sin cambios.
+ */
 export const RAMPAS_AHORRO_PUBLICITARIO_90D_DEFECTO: Record<IdEscenario, RampaAdopcion> = {
   conservador: { mes1: 0.5, mes2: 0.75, mes3: 1 },
   base: { mes1: 0.75, mes2: 1, mes3: 1 },
-  potencial: { mes1: 1, mes2: 1, mes3: 1 },
+  potencial: { mes1: 0.85, mes2: 1, mes3: 1 },
 };
 
 export type ConfigEscenarios90d = {
@@ -73,7 +80,23 @@ export type ConfigEscenarios90d = {
   rampa_ahorro_conservador?: RampaAdopcion;
   rampa_ahorro_base?: RampaAdopcion;
   rampa_ahorro_potencial?: RampaAdopcion;
+  /**
+   * Umbral del cociente potencial/conservador de contribución incremental
+   * acumulada a 90 días (corrección aprobada 2026-08-21, punto 7). Por
+   * encima de este umbral, el rango es demasiado ancho para comunicar una
+   * cifra principal defendible: se muestra el rango, no un número.
+   */
+  umbral_dispersion?: number;
 };
+
+/** Política comercial, no evidencia observada: reconfigurable sin tocar código. */
+export const UMBRAL_DISPERSION_90D_DEFECTO = 2.5;
+
+export function umbralDispersionDe(cfg: ConfigEscenarios90d): number {
+  return finito(cfg.umbral_dispersion) && (cfg.umbral_dispersion as number) > 0
+    ? (cfg.umbral_dispersion as number)
+    : UMBRAL_DISPERSION_90D_DEFECTO;
+}
 
 function finito(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n);
@@ -314,4 +337,38 @@ export function calcularEscenarios90d(
       facturacionProyectada,
     };
   });
+}
+
+export type DispersionContribucion =
+  | { evaluable: true; ratio: number; umbral: number; alta: boolean }
+  | { evaluable: false; umbral: number };
+
+/**
+ * Cociente entre la contribución incremental acumulada a 90 días del
+ * escenario potencial y la del conservador (corrección aprobada
+ * 2026-08-21, punto 7). No evaluable sin ambos escenarios calculables, o
+ * con un conservador en cero (el cociente no significa nada dividiendo por
+ * cero ni por un valor negativo).
+ *
+ * Con las curvas hoy aprobadas (25/50/75 conservador, 50/85/100 potencial,
+ * ambas sobre la MISMA oportunidad mensual base) este cociente es un techo
+ * matemático fijo de 235/150 ≈ 1,57 — nunca supera el umbral por defecto
+ * de 2,5. La regla queda como red de seguridad ante una reconfiguración
+ * futura de las rampas (`ConfigEscenarios90d` ya lo permite), no porque se
+ * espere que dispare hoy.
+ */
+export function evaluarDispersionContribucion(
+  escenarios: EscenarioCalculado[],
+  cfg: ConfigEscenarios90d = {},
+): DispersionContribucion {
+  const umbral = umbralDispersionDe(cfg);
+  const conservador = escenarios.find((e) => e.id === "conservador")?.contribucionIncremental;
+  const potencial = escenarios.find((e) => e.id === "potencial")?.contribucionIncremental;
+
+  if (!conservador?.calculable || !potencial?.calculable || conservador.acumulado90d <= 0) {
+    return { evaluable: false, umbral };
+  }
+
+  const ratio = potencial.acumulado90d / conservador.acumulado90d;
+  return { evaluable: true, ratio, umbral, alta: ratio > umbral };
 }

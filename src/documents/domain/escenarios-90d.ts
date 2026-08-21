@@ -49,7 +49,7 @@ const ETIQUETA_RAMPA_FACTURACION_CONTRIBUCION: Record<IdEscenario, string> = {
 const ETIQUETA_RAMPA_AHORRO: Record<IdEscenario, string> = {
   conservador: "Rampa conservadora (ahorro publicitario): 50% / 75% / 100% en los meses 1, 2 y 3.",
   base: "Rampa base (ahorro publicitario): 75% / 100% / 100% en los meses 1, 2 y 3.",
-  potencial: "Rampa potencial (ahorro publicitario): 100% / 100% / 100% en los meses 1, 2 y 3.",
+  potencial: "Rampa potencial (ahorro publicitario): 85% / 100% / 100% en los meses 1, 2 y 3.",
 };
 
 function supuestosRampa(id: IdEscenario): SupuestoDocumento[] {
