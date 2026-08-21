@@ -66,6 +66,12 @@ export type DocumentBlock =
         confidence: ConfianzaDocumento;
         contribution90d: PublishedNumber | null;
         monthlyPaceDay90: PublishedNumber | null;
+        /** Los tres meses del trimestre, vacío cuando el escenario está retenido. */
+        monthly: {
+          month: 1 | 2 | 3;
+          revenueProjected: PublishedNumber | null;
+          opportunityEnabled: PublishedNumber | null;
+        }[];
         levers: { id: string; name: string; contribution: PublishedNumber }[];
         assumptions: SupuestoDocumento[];
         restrictions: RestriccionDocumento[];

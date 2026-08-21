@@ -78,6 +78,41 @@ describe("armado del modelo desde un diagnóstico persistido", () => {
     }
   });
 
+  it("publica facturación proyectada y oportunidad habilitada de los tres meses cuando el escenario calcula", () => {
+    const datosConOportunidad: DatosDiagnostico = {
+      ...casoSnakeStore,
+      facturacion_mensual: 22_522_600,
+      visitas_mensuales: 5000,
+      agregados_carrito: 1000,
+      checkouts_iniciados: 300,
+      absorbe_costo_envio: true,
+    };
+    const model = buildDocumentModelDesdeDiagnostico(
+      fila(datosConOportunidad, "snake-con-oportunidad"),
+      "velocentum-proyeccion-90d/v1",
+    );
+    const bloques = model.sections.flatMap((seccion) => seccion.blocks);
+    const bloqueEscenarios = bloques.find((bloque) => bloque.type === "scenarios");
+    expect(bloqueEscenarios).toBeDefined();
+    const items = bloqueEscenarios && "items" in bloqueEscenarios ? bloqueEscenarios.items : [];
+    const base = items.find((item) => item.id === "base");
+    expect(base).toBeDefined();
+    expect(base!.monthly.map((mes) => mes.month)).toEqual([1, 2, 3]);
+    // El acumulado de 90 días no es el ritmo mensual del día 90 multiplicado por 3.
+    const sumaMeses = base!.monthly.reduce(
+      (acc, mes) => acc + (mes.opportunityEnabled?.value ?? 0),
+      0,
+    );
+    expect(base!.contribution90d?.value).toBe(sumaMeses);
+    expect(base!.contribution90d?.value).not.toBe((base!.monthlyPaceDay90?.value ?? 0) * 3);
+    // La facturación proyectada de cada mes es la actual más la oportunidad de ese mes.
+    for (const mes of base!.monthly) {
+      expect(mes.revenueProjected?.value).toBe(
+        (datosConOportunidad.facturacion_mensual as number) + (mes.opportunityEnabled?.value ?? 0),
+      );
+    }
+  });
+
   it("no publica el bloque comercial sin una selección aprobada", () => {
     const model = buildDocumentModelDesdeDiagnostico(
       fila(casoSnakeStore),

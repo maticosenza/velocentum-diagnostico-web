@@ -189,11 +189,18 @@ export function buildScenarios(context: DocumentContextV1): {
       return contribution ? [{ id: lever.id, name: lever.nombre, contribution }] : [];
     });
 
+    const monthly = scenario.mensual.map((mes) => ({
+      month: mes.mes,
+      revenueProjected: publishValue(mes.facturacionProyectada, "money"),
+      opportunityEnabled: publishValue(mes.oportunidadHabilitada, "money"),
+    }));
+
     return {
       id: scenario.id,
       confidence: scenario.confianza,
       contribution90d,
       monthlyPaceDay90,
+      monthly,
       levers,
       assumptions: [...scenario.supuestos],
       restrictions: [...scenario.restriccionesAplicadas],
