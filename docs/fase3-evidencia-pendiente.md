@@ -13,8 +13,9 @@ El nombre del plan contratado no demuestra que esté mal dimensionado. Para just
 
 Hasta incorporar esa comparación estructurada, el hallazgo no se genera.
 
-## Clips de Mercado Libre
+## Clips de Mercado Libre — resuelto (2026-08-20)
 
-Vender en Mercado Libre no demuestra que las publicaciones carezcan de clips. Para justificar el hallazgo hace falta un campo triestado específico, por ejemplo `ml_tiene_clips: true | false | null`, donde solo `false` explícito lo active.
-
-Hasta incorporar ese campo al formulario y al modelo de datos, el hallazgo no se genera.
+Se incorporó el campo triestado `ml_tiene_clips: boolean | null` al formulario y al modelo de
+datos. El hallazgo `clips_ml` sólo se genera cuando `vende_mercado_libre` es `true` y
+`ml_tiene_clips` es `false` explícito; `null` (no preguntado) o `true` no lo activan. No requirió
+migración: `datos` es una columna JSON.

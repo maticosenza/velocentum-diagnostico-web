@@ -77,7 +77,6 @@ export function mapearHallazgos(
     });
   }
 
-
   if (!margenBloqueado && (conMonto("gasto_no_rentable") || estados.economia === "rojo")) {
     h.push({
       id: "mer_bajo",
@@ -188,13 +187,23 @@ export function mapearHallazgos(
     }
   }
 
-
   if (datos.retargeting_abandono === false) {
     h.push({
       id: "sin_retargeting",
       titulo: "Sin retargeting a abandonos",
       capa: "servicio",
       servicio: "Meta Ads",
+    });
+  }
+
+  // Vender en Mercado Libre no prueba que falten clips: sólo el triestado
+  // explícito en false activa el hallazgo. null o true no afirman nada.
+  if (datos.vende_mercado_libre === true && datos.ml_tiene_clips === false) {
+    h.push({
+      id: "clips_ml",
+      titulo: "Publicaciones de Mercado Libre sin clips",
+      capa: "servicio",
+      servicio: "Product Ads en Mercado Libre",
     });
   }
 
@@ -431,7 +440,9 @@ export function normalizarPropuesta(valor: unknown): PropuestaGenerada | null {
     : [];
 
   const servicios = Array.isArray(v["servicios_recomendados"])
-    ? (v["servicios_recomendados"] as unknown[]).map((s) => texto(s)).filter((s): s is string => !!s)
+    ? (v["servicios_recomendados"] as unknown[])
+        .map((s) => texto(s))
+        .filter((s): s is string => !!s)
     : [];
 
   return {

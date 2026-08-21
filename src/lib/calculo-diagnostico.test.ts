@@ -529,6 +529,25 @@ describe("hallazgos que dependen de booleanos sin responder", () => {
     ).toContain("sin_retargeting");
   });
 
+  it("no afirma que faltan clips de Mercado Libre sin el campo triestado en false", () => {
+    expect(hallazgosDe({ ...conDatos, vende_mercado_libre: true })).not.toContain("clips_ml");
+    expect(
+      hallazgosDe({ ...conDatos, vende_mercado_libre: true, ml_tiene_clips: true }),
+    ).not.toContain("clips_ml");
+  });
+
+  it("no genera el hallazgo de clips si el negocio no vende en Mercado Libre", () => {
+    expect(
+      hallazgosDe({ ...conDatos, vende_mercado_libre: false, ml_tiene_clips: false }),
+    ).not.toContain("clips_ml");
+  });
+
+  it("genera el hallazgo de clips solo con vende_mercado_libre y ml_tiene_clips en false", () => {
+    expect(
+      hallazgosDe({ ...conDatos, vende_mercado_libre: true, ml_tiene_clips: false }),
+    ).toContain("clips_ml");
+  });
+
   it("no genera el hallazgo de ángulo si los dos campos de contenido están vacíos", () => {
     expect(hallazgosDe({ ...conDatos, angulo_que_funciona: "", dolor_cliente: "" })).not.toContain(
       "angulo",

@@ -1076,6 +1076,12 @@ function NuevoDiagnostico() {
                   onChange={(v) => set("ml_ventas_product_ads", v)}
                   ayuda="Opcional. Habilita el ROAS de Product Ads; el MER del canal se calcula igual sin este dato."
                 />
+                <CampoSiNo
+                  label="¿Las publicaciones tienen clips?"
+                  value={datos.ml_tiene_clips}
+                  onChange={(v) => set("ml_tiene_clips", v)}
+                  ayuda="Vacío significa que no se preguntó: no se asume que faltan."
+                />
               </div>
             )}
 

@@ -206,6 +206,11 @@ export type DatosDiagnostico = {
   ml_inversion_product_ads: number | null;
   /** Ventas atribuidas a Product Ads, en pesos. Opcional: habilita el ROAS del canal. */
   ml_ventas_product_ads?: number | null;
+  /**
+   * Triestado explícito: sólo `false` habilita el hallazgo de falta de clips.
+   * `null` significa que no se preguntó; no se asume que faltan.
+   */
+  ml_tiene_clips: boolean | null;
 
   /**
    * Mix de canales. Todos opcionales: los diagnósticos guardados no los tienen y
@@ -317,6 +322,7 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   ml_product_ads: null,
   ml_inversion_product_ads: null,
   ml_ventas_product_ads: null,
+  ml_tiene_clips: null,
 
   canal_tienda_pct: null,
   canal_tienda_no_aplica: false,
@@ -409,6 +415,7 @@ const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
     "ml_product_ads",
     "ml_inversion_product_ads",
     "ml_ventas_product_ads",
+    "ml_tiene_clips",
   ],
 };
 
