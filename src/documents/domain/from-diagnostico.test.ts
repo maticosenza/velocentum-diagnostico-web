@@ -90,14 +90,20 @@ describe("contexto documental desde el diagnóstico persistido", () => {
     expect(desdeFila).toEqual(directo);
   });
 
-  it("no fabrica escenarios ni propuesta comercial al leer un diagnóstico vivo", () => {
+  it("retiene los escenarios (no inventa) y no fabrica roadmap ni propuesta comercial al leer un diagnóstico vivo", () => {
     const contexto = buildDocumentContextDesdeDiagnostico({
       fila: filaGuardada(casoSnakeStore),
       tipoDocumento: "proyeccion_90d",
     });
 
     expect(contexto.tipoDocumento).toBe("proyeccion_90d");
-    expect(contexto.escenarios90d).toEqual([]);
+    // Snake Store no confirmó la política de envío: los tres escenarios quedan
+    // retenidos, nunca con un acumulado fabricado.
+    expect(contexto.escenarios90d).toHaveLength(3);
+    for (const escenario of contexto.escenarios90d) {
+      expect(escenario.contribucionAcumulada90d).toMatchObject({ estado: "retenido" });
+      expect(escenario.ritmoMensualDia90).toMatchObject({ estado: "retenido" });
+    }
     expect(contexto.roadmap).toEqual([]);
     expect(contexto.comercial).toBeNull();
   });

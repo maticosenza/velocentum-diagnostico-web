@@ -110,6 +110,14 @@ export type ServicioDocumento = {
   alcance: string[];
 };
 
+/** Un mes del trimestre proyectado. El nivel es acumulativo (saturación), no incremental. */
+export type MesEscenario90d = {
+  mes: 1 | 2 | 3;
+  facturacionProyectada: ValorPublicable<number>;
+  /** Oportunidad habilitada ESE mes, ya incluida en `facturacionProyectada`. */
+  oportunidadHabilitada: ValorPublicable<number>;
+};
+
 export type Escenario90d = {
   id: "conservador" | "base" | "potencial";
   visible: boolean;
@@ -121,6 +129,8 @@ export type Escenario90d = {
     nombre: string;
     contribucion: ValorPublicable<number>;
   }[];
+  /** Vacío cuando el escenario está retenido. */
+  mensual: MesEscenario90d[];
   supuestos: SupuestoDocumento[];
   restriccionesAplicadas: RestriccionDocumento[];
 };

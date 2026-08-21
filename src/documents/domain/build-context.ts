@@ -2,6 +2,7 @@ import type { ResultadoCalculo } from "../../lib/calculo-diagnostico";
 import { productosCargados } from "../../lib/calculo-diagnostico";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
 import { mapearHallazgos } from "../../lib/propuesta";
+import { escenariosDocumento } from "./escenarios-90d";
 import {
   envioBloqueaRentabilidad,
   resolverPoliticaEnvio,
@@ -85,7 +86,7 @@ function coberturaProductos(datos: DatosDiagnostico): number {
  * El motor conserva ese monto para compatibilidad, pero el PDF debe esperar una
  * decisión explícita del cliente.
  */
-function politicaEnvioDocumento(
+export function politicaEnvioDocumento(
   datos: DatosDiagnostico,
   resultado: ResultadoCalculo,
 ): PoliticaEnvio {
@@ -429,7 +430,7 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
     },
     envio,
     hallazgos: salidaHallazgos.hallazgos,
-    escenarios90d: [],
+    escenarios90d: escenariosDocumento(datos, resultado, confianza, envio),
     roadmap: [],
     servicios: salidaHallazgos.servicios,
     comercial: null,

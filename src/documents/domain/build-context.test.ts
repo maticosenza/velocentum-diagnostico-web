@@ -30,7 +30,12 @@ describe("adaptador conservador a DocumentContextV1", () => {
       estado: "declarado",
       valor: 1_800_000,
     });
-    expect(c.escenarios90d).toEqual([]);
+    // Envío sin confirmar: retiene los tres escenarios, igual que el margen total.
+    expect(c.escenarios90d).toHaveLength(3);
+    for (const escenario of c.escenarios90d) {
+      expect(escenario.contribucionAcumulada90d).toMatchObject({ estado: "retenido" });
+      expect(escenario.ritmoMensualDia90).toMatchObject({ estado: "retenido" });
+    }
     expect(c.comercial).toBeNull();
   });
 

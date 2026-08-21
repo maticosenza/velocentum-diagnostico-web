@@ -61,14 +61,21 @@ describe("armado del modelo desde un diagnóstico persistido", () => {
     }
   });
 
-  it("no publica escenarios de 90 días mientras el motor no los produzca", () => {
+  it("publica el bloque de escenarios retenido mientras Titan no confirme la política de envío", () => {
     const model = buildDocumentModelDesdeDiagnostico(
       fila(casoTitanWebB1),
       "velocentum-proyeccion-90d/v1",
     );
     const bloques = model.sections.flatMap((seccion) => seccion.blocks);
+    const bloqueEscenarios = bloques.find((bloque) => bloque.type === "scenarios");
 
-    expect(bloques.some((bloque) => bloque.type === "scenarios")).toBe(false);
+    expect(bloqueEscenarios).toBeDefined();
+    const items = bloqueEscenarios && "items" in bloqueEscenarios ? bloqueEscenarios.items : [];
+    // Envío sin confirmar: se muestran retenidos, nunca con un acumulado fabricado.
+    for (const item of items) {
+      expect(item.contribution90d).toBeNull();
+      expect(item.monthlyPaceDay90).toBeNull();
+    }
   });
 
   it("no publica el bloque comercial sin una selección aprobada", () => {

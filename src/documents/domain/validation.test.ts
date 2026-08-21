@@ -78,6 +78,7 @@ describe("validación del contexto documental", () => {
       contribucionAcumulada90d: valorRetenido("Sin motor de escenarios."),
       ritmoMensualDia90: valorRetenido("Sin motor de escenarios."),
       palancas: [],
+      mensual: [],
       supuestos: [],
       restriccionesAplicadas: [],
     });

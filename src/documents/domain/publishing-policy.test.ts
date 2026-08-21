@@ -131,6 +131,7 @@ describe("visibilidad de escenarios", () => {
     contribucionAcumulada90d: valorRetenido("Motor de escenarios pendiente."),
     ritmoMensualDia90: valorRetenido("Motor de escenarios pendiente."),
     palancas: [],
+    mensual: [],
     supuestos: [],
     restriccionesAplicadas: [],
   });
