@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EstadoPunto, ETIQUETA_ESTADO } from "@/components/estado-punto";
 import { supabase } from "@/integrations/supabase/client";
-import { formatARS, formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
+import { formatFecha, formatPorcentaje } from "@/lib/format";
+import { etiqueta, GUION, numero, pct, pesos } from "@/lib/vista-diagnostico";
 import {
   notasVisibles,
   PASARELAS,
@@ -54,25 +55,6 @@ export const Route = createFileRoute("/_authenticated/diagnosticos/$id")({
 });
 
 // ---------------------------------------------------------------- helpers de vista
-
-const GUION = "—";
-
-function etiqueta(lista: readonly { value: string; label: string }[], value?: string | null) {
-  if (!value) return null;
-  return lista.find((o) => o.value === value)?.label ?? value;
-}
-
-function pesos(n: number | null | undefined) {
-  return typeof n === "number" && Number.isFinite(n) ? formatARS(n) : GUION;
-}
-
-function numero(n: number | null | undefined, decimales = 2) {
-  return typeof n === "number" && Number.isFinite(n) ? formatNumero(n, decimales) : GUION;
-}
-
-function pct(n: number | null | undefined, decimales = 1) {
-  return typeof n === "number" && Number.isFinite(n) ? formatPorcentaje(n * 100, decimales) : GUION;
-}
 
 const ETIQUETAS_CAMPO: Record<string, string> = {
   visitas_mensuales: "visitas mensuales",

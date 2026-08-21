@@ -40,7 +40,7 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 | A6 | Compatibilidad con diagnósticos guardados sin campos nuevos | completado | probado en `from-diagnostico.test.ts` (versión/fecha ausentes, bloques ausentes) |
 | A7 | Pruebas de armado de modelo y render (unit/integration) | completado | `build-document.test.ts`, `document-renderer.test.tsx`, `document.test.tsx` |
 | A8 | Pruebas de la ruta de previsualización en sí (componente) | bloqueado_migracion | el repo no tiene `@testing-library/react` ni `jsdom` configurado y ninguna ruta tiene test de componente hoy; agregar ese arnés es un cambio de infraestructura de testing, no un bloque chico. Se documenta y no se hace esta noche. |
-| A9 | Extraer y testear helpers puros de formato usados en las rutas de detalle (`pesos`, `numero`, `pct`, `etiqueta`) | pendiente | hoy están inline en `diagnosticos.$id.tsx` sin test directo |
+| A9 | Extraer y testear helpers puros de formato usados en las rutas de detalle (`pesos`, `numero`, `pct`, `etiqueta`) | completado | movidos a `src/lib/vista-diagnostico.ts` con 11 casos nuevos, incluyendo la garantía de que un cero real nunca se muestra como guión |
 | A10 | Accesibilidad de la vista de previsualización (estados de carga/error, landmarks) | pendiente | revisar `documentos.$id.$slug.tsx` |
 | A11 | Accesibilidad/responsive/impresión del renderer web | completado | ya cubierto en `document-renderer.css` (`@media print`, `@media max-width`) y en `document-renderer.test.tsx` (aria-label, tonos de sección) |
 
@@ -88,7 +88,7 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 
 ## Bloques de esta madrugada (en orden de ejecución)
 
-1. **A9** — extraer y testear helpers de formato de `diagnosticos.$id.tsx`.
+1. ~~**A9** — extraer y testear helpers de formato de `diagnosticos.$id.tsx`.~~ **completado**
 2. **B2** — invariantes de consistencia de hallazgos.
 3. **A10 + E7** — accesibilidad y manejo de error/carga de la ruta de previsualización.
 4. **C4** — auditoría dirigida de campos condicionables no condicionados (sin tocar UI si no hay hallazgo concreto y seguro).
@@ -96,3 +96,14 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 
 Cada bloque: pruebas → typecheck → build → commit → push → actualizar esta
 cola → seguir con el siguiente.
+
+## Registro de bloques ejecutados
+
+### Bloque 1 · A9 (commit siguiente)
+
+- `src/lib/vista-diagnostico.ts`: `GUION`, `etiqueta`, `pesos`, `numero`, `pct`
+  movidos desde `diagnosticos.$id.tsx` a un módulo puro reutilizable.
+- `src/lib/vista-diagnostico.test.ts`: 11 casos nuevos. Cubren explícitamente
+  la garantía documental "un cero real nunca es un guión" también en la capa
+  de vista, no sólo en el motor documental.
+- Suite: 211 pruebas + 1 todo (antes 200 + 1). Typecheck y build limpios.
