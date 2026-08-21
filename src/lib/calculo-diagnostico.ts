@@ -28,6 +28,10 @@ import {
 } from "./canales";
 import { evaluarContradiccion, rangoDeclarado, type Contradiccion } from "./contradiccion";
 import { evaluarFunnel, tramosFunnel, MEJORAS_FUNNEL_DEFECTO, type FunnelDerivado } from "./funnel";
+import { RAMPAS_ESCENARIO_90D_DEFECTO, type ConfigEscenarios90d } from "./escenarios-90d";
+
+export { RAMPAS_ESCENARIO_90D_DEFECTO };
+export type { ConfigEscenarios90d, RampaAdopcion, IdEscenario } from "./escenarios-90d";
 
 export {
   comisionEnEscalaSospechosa,
@@ -73,7 +77,7 @@ export type ConfiguracionCalculo = {
   /** Umbrales de la regla de contradicción del margen declarado, en tasa. */
   umbral_contradiccion_critico?: number;
   umbral_contradiccion_validacion?: number;
-};
+} & ConfigEscenarios90d;
 
 /** Arma el objeto de configuración a partir de las filas crudas de la tabla. */
 export function armarConfiguracion(
