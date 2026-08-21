@@ -52,6 +52,19 @@ describe("impactoCalculado / impactoRetenido", () => {
     expect(impacto.motivoRetencion).toBe(RETENIDO_NO_ES_CERO_MANUAL.retenido.motivo);
   });
 
+  it("impactoCalculado falla explícito ante un monto no finito, en vez de disfrazarlo de calculado", () => {
+    expect(() =>
+      impactoCalculado({ tipo: "facturacion_incremental", montoMensual: NaN, confianza: "alta" }),
+    ).toThrow(/no finito/);
+    expect(() =>
+      impactoCalculado({
+        tipo: "ahorro_publicitario",
+        montoMensual: Infinity,
+        confianza: "alta",
+      }),
+    ).toThrow(/no finito/);
+  });
+
   it("cero real y retenido nunca son el mismo objeto: 0 !== null", () => {
     const ceroReal = impactoCalculado({
       tipo: "facturacion_incremental",

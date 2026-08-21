@@ -30,6 +30,15 @@ export type TipoImpacto =
 
 export type ConfianzaImpacto = "alta" | "media" | "retenida";
 
+/**
+ * Nota de diseño: este tipo es plano, no una unión discriminada por
+ * `confianza`. La invariante "`montoMensual` es null únicamente cuando
+ * `confianza` es 'retenida'" no la garantiza TypeScript por construcción:
+ * la garantizan `impactoCalculado`/`impactoRetenido`, que son el ÚNICO punto
+ * de creación permitido. Ninguna otra capa debe construir un
+ * `ImpactoEconomico` a mano (con un literal `{ tipo, montoMensual, ... }`);
+ * si lo hace, rompe la invariante sin que el compilador lo detecte.
+ */
 export type ImpactoEconomico = {
   tipo: TipoImpacto;
   /** null únicamente cuando `confianza` es "retenida". Nunca un cero inventado. */
@@ -49,13 +58,26 @@ function finito(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n);
 }
 
-/** Un impacto con un monto real (incluido cero real). */
+/**
+ * Un impacto con un monto real (incluido cero real).
+ *
+ * Falla explícito ante un monto no finito (`NaN`/`Infinity`) en vez de
+ * producir silenciosamente un impacto "calculado" inutilizable: un impacto
+ * calculado con un número inválido es peor que no tener el dato, porque se
+ * ve como un valor publicable.
+ */
 export function impactoCalculado(args: {
   tipo: TipoImpactoClasificado;
   montoMensual: number;
   confianza: Exclude<ConfianzaImpacto, "retenida">;
   dependencias?: string[];
 }): ImpactoEconomico {
+  if (!finito(args.montoMensual)) {
+    throw new Error(
+      `impactoCalculado(${args.tipo}) recibió un montoMensual no finito: ${String(args.montoMensual)}. ` +
+        "Un impacto retenido no puede tener un monto inválido disfrazado de calculado.",
+    );
+  }
   return {
     tipo: args.tipo,
     montoMensual: args.montoMensual,
@@ -89,6 +111,16 @@ export type FugaConImpactosOpcional = {
   impactos?: ImpactoEconomico[];
 };
 
+/**
+ * Un array presente (aunque vacío) cuenta como "ya tiene el modelo nuevo":
+ * distingue "este cálculo no produjo ningún impacto de ninguna magnitud"
+ * (dato nuevo, real, legítimamente vacío) de "este campo no existía todavía
+ * cuando se persistió" (dato legado, `undefined`). No caer al adaptador
+ * legado ante `impactos: []` es intencional, no un descuido: un array vacío
+ * nunca lo produce el motor actual (toda fuga con impactos siempre carga al
+ * menos uno), pero si algún día lo hiciera, tratarlo como legado
+ * reinterpretaría "no hay nada que reportar" como "monto sin clasificar".
+ */
 export function tieneImpactosTipados(
   fuga: FugaConImpactosOpcional,
 ): fuga is FugaConImpactosOpcional & { impactos: ImpactoEconomico[] } {
