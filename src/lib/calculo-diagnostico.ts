@@ -29,6 +29,7 @@ import {
 import { evaluarContradiccion, rangoDeclarado, type Contradiccion } from "./contradiccion";
 import { evaluarFunnel, tramosFunnel, MEJORAS_FUNNEL_DEFECTO, type FunnelDerivado } from "./funnel";
 import { RAMPAS_ESCENARIO_90D_DEFECTO, type ConfigEscenarios90d } from "./escenarios-90d";
+import type { ImpactoEconomico } from "./impacto-economico";
 
 export { RAMPAS_ESCENARIO_90D_DEFECTO };
 export type { ConfigEscenarios90d, RampaAdopcion, IdEscenario } from "./escenarios-90d";
@@ -175,6 +176,14 @@ export type Fuga = {
   confianza?: "alta" | "parcial";
   /** true cuando el monto depende del margen de contribución. */
   usa_margen?: boolean;
+  /**
+   * Impactos tipados (facturación incremental, contribución incremental,
+   * ahorro publicitario), en paralelo al `monto` legado. Opcional: una fuga
+   * persistida antes de este modelo no lo trae. Leer siempre a través de
+   * `impactosDeFuga` (`impacto-economico.ts`), nunca directamente, para no
+   * reinterpretar un monto legado sin tipo.
+   */
+  impactos?: ImpactoEconomico[];
 };
 
 export type EstadosBloque = {
