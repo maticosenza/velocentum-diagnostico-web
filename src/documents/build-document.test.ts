@@ -6,6 +6,7 @@ import type { DiagnosticoAlmacenado } from "./domain/from-diagnostico";
 import {
   buildDocumentModelDesdeDiagnostico,
   documentoDisponible,
+  documentoPorSlug,
   DOCUMENTOS_DISPONIBLES,
   esDocumentoDisponible,
 } from "./build-document";
@@ -37,6 +38,13 @@ describe("catálogo de documentos", () => {
     expect(esDocumentoDisponible("velocentum-inexistente/v9")).toBe(false);
     expect(esDocumentoDisponible(undefined)).toBe(false);
     expect(() => documentoDisponible("velocentum-inexistente/v9" as never)).toThrow(/desconocida/);
+  });
+
+  it("resuelve cada slug de URL a una plantilla única y rechaza slugs desconocidos", () => {
+    for (const documento of DOCUMENTOS_DISPONIBLES) {
+      expect(documentoPorSlug(documento.slug)).toEqual(documento);
+    }
+    expect(documentoPorSlug("no-existe")).toBeNull();
   });
 });
 

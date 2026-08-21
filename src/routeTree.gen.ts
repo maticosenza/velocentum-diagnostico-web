@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedDiagnosticosIdRouteImport } from './routes/_authenticated/diagnosticos.$id'
 import { Route as AuthenticatedDiagnosticosNuevoRouteImport } from './routes/_authenticated/diagnosticos.nuevo'
+import { Route as AuthenticatedDocumentosIdSlugRouteImport } from './routes/_authenticated/documentos.$id.$slug'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -41,18 +42,26 @@ const AuthenticatedDiagnosticosNuevoRoute =
     path: '/diagnosticos/nuevo',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDocumentosIdSlugRoute =
+  AuthenticatedDocumentosIdSlugRouteImport.update({
+    id: '/documentos/$id/$slug',
+    path: '/documentos/$id/$slug',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
   '/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
+  '/documentos/$id/$slug': typeof AuthenticatedDocumentosIdSlugRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/': typeof AuthenticatedIndexRoute
   '/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
   '/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
+  '/documentos/$id/$slug': typeof AuthenticatedDocumentosIdSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,12 +70,23 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/diagnosticos/$id': typeof AuthenticatedDiagnosticosIdRoute
   '/_authenticated/diagnosticos/nuevo': typeof AuthenticatedDiagnosticosNuevoRoute
+  '/_authenticated/documentos/$id/$slug': typeof AuthenticatedDocumentosIdSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/diagnosticos/$id'
+    | '/diagnosticos/nuevo'
+    | '/documentos/$id/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/' | '/diagnosticos/$id' | '/diagnosticos/nuevo'
+  to:
+    | '/auth'
+    | '/'
+    | '/diagnosticos/$id'
+    | '/diagnosticos/nuevo'
+    | '/documentos/$id/$slug'
   id:
     | '__root__'
     | '/_authenticated'
@@ -74,6 +94,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/diagnosticos/$id'
     | '/_authenticated/diagnosticos/nuevo'
+    | '/_authenticated/documentos/$id/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,6 +139,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDiagnosticosNuevoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/documentos/$id/$slug': {
+      id: '/_authenticated/documentos/$id/$slug'
+      path: '/documentos/$id/$slug'
+      fullPath: '/documentos/$id/$slug'
+      preLoaderRoute: typeof AuthenticatedDocumentosIdSlugRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -125,12 +153,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedDiagnosticosIdRoute: typeof AuthenticatedDiagnosticosIdRoute
   AuthenticatedDiagnosticosNuevoRoute: typeof AuthenticatedDiagnosticosNuevoRoute
+  AuthenticatedDocumentosIdSlugRoute: typeof AuthenticatedDocumentosIdSlugRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedDiagnosticosIdRoute: AuthenticatedDiagnosticosIdRoute,
   AuthenticatedDiagnosticosNuevoRoute: AuthenticatedDiagnosticosNuevoRoute,
+  AuthenticatedDocumentosIdSlugRoute: AuthenticatedDocumentosIdSlugRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

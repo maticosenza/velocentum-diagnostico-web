@@ -1,9 +1,16 @@
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EstadoPunto, ETIQUETA_ESTADO } from "@/components/estado-punto";
 import { supabase } from "@/integrations/supabase/client";
 import { formatARS, formatFecha, formatNumero, formatPorcentaje } from "@/lib/format";
@@ -19,13 +26,8 @@ import { lecturaPresupuesto } from "@/lib/calculo-diagnostico";
 import { cn } from "@/lib/utils";
 import { PropuestaSeccion } from "@/components/propuesta-seccion";
 import { normalizarPropuesta } from "@/lib/propuesta";
-import type {
-  Derivados,
-  EstadoBloque,
-  EstadosBloque,
-  Fuga,
-} from "@/lib/calculo-diagnostico";
-
+import { DOCUMENTOS_DISPONIBLES } from "@/documents/build-document";
+import type { Derivados, EstadoBloque, EstadosBloque, Fuga } from "@/lib/calculo-diagnostico";
 
 export const Route = createFileRoute("/_authenticated/diagnosticos/$id")({
   head: () => ({
@@ -36,7 +38,10 @@ export const Route = createFileRoute("/_authenticated/diagnosticos/$id")({
         content: "Resultado del diagnóstico de performance para la tienda del prospecto.",
       },
       { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "Detalle del diagnóstico · Velocentum · Diagnóstico e-commerce" },
+      {
+        property: "og:title",
+        content: "Detalle del diagnóstico · Velocentum · Diagnóstico e-commerce",
+      },
       {
         property: "og:description",
         content: "Resultado del diagnóstico de performance para la tienda del prospecto.",
@@ -85,7 +90,8 @@ const ETIQUETAS_CAMPO: Record<string, string> = {
 };
 
 const EXPLICACION_FUGA: Record<string, string> = {
-  conversion: "Sesiones que no convierten contra el piso sano de conversión, valorizadas al margen.",
+  conversion:
+    "Sesiones que no convierten contra el piso sano de conversión, valorizadas al margen.",
   gasto_no_rentable: "Parte de la inversión en ads que hoy trabaja por debajo del breakeven.",
   fatiga_creativa: "Porción de la inversión en Meta que se pierde por frecuencia alta.",
   sobrefragmentacion: "Conjuntos por encima de los que el presupuesto puede sostener con señal.",
@@ -187,6 +193,23 @@ function DetalleDiagnostico() {
 
   const acciones = (
     <div className="flex items-center gap-3">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="outline">
+            Ver documentos
+            <ChevronDown className="ml-1.5 size-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {DOCUMENTOS_DISPONIBLES.map((documento) => (
+            <DropdownMenuItem key={documento.slug} asChild>
+              <Link to="/documentos/$id/$slug" params={{ id: data.id, slug: documento.slug }}>
+                Ver {documento.etiqueta.toLowerCase()}
+              </Link>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Button asChild size="sm">
         <Link to="/diagnosticos/nuevo" search={{ desde: data.id }}>
           Editar y recalcular
@@ -198,7 +221,11 @@ function DetalleDiagnostico() {
 
   return (
     <>
-      <PageHeader title={tienda} {...(subtitulo ? { description: subtitulo } : {})} actions={acciones} />
+      <PageHeader
+        title={tienda}
+        {...(subtitulo ? { description: subtitulo } : {})}
+        actions={acciones}
+      />
 
       {version > 1 && data.origen_diagnostico_id && (
         <div className="border-b border-border bg-card px-6 py-2 text-[12px] text-muted-foreground">
@@ -469,7 +496,6 @@ function Semaforo({
             >
               {texto}
             </p>
-
           </article>
         );
       })}
@@ -487,8 +513,6 @@ function MarcaParcial() {
     </p>
   );
 }
-
-
 
 function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
   const [expandido, setExpandido] = useState(false);
@@ -578,13 +602,7 @@ function Fila({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EconomiaDetalle({
-  derivados,
-  datos,
-}: {
-  derivados: Derivados;
-  datos: DatosDiagnostico;
-}) {
+function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: DatosDiagnostico }) {
   return (
     <section className="rounded-lg border border-border bg-card">
       <header className="border-b border-border px-7 py-5">
@@ -602,7 +620,10 @@ function EconomiaDetalle({
         <Fila label="CPA objetivo" value={pesos(derivados.cpa_objetivo)} />
         <Fila label="ROAS objetivo" value={numero(derivados.roas_objetivo)} />
         <Fila label="MER actual (combinado)" value={numero(derivados.mer_actual)} />
-        <Fila label="MER tienda propia (Meta + Google)" value={numero(derivados.mer_tienda_propia)} />
+        <Fila
+          label="MER tienda propia (Meta + Google)"
+          value={numero(derivados.mer_tienda_propia)}
+        />
         <Fila label="MER Mercado Libre (Product Ads)" value={numero(derivados.mer_marketplace)} />
         <Fila
           label="ROAS de Product Ads"
@@ -629,7 +650,6 @@ function EconomiaDetalle({
 // ---------------------------------------------------------------- 6 · presupuesto
 
 function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosDiagnostico }) {
-
   const lectura = lecturaPresupuesto(derivados);
   return (
     <section className="rounded-lg border border-border bg-card">
@@ -647,7 +667,6 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
           value={`${numero(datos.conjuntos_activos, 0)} / ${numero(derivados.conjuntos_sostenibles, 1)}`}
         />
         <Fila label="Compras semanales estimadas" value={numero(derivados.pedidos_semanales, 1)} />
-
       </dl>
       <p className="border-t border-border px-7 py-6 text-[15px] leading-6 text-foreground">
         {lectura ?? "Faltan datos de presupuesto para dar una lectura."}
@@ -671,8 +690,8 @@ function SeccionFunnel({ funnel }: { funnel: Derivados["funnel"] }) {
       <header className="border-b border-border px-7 py-5">
         <h2 className="text-[17px] font-medium text-foreground">Funnel web de la tienda</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          Visitas, agregados al carrito, checkouts iniciados y compras del mismo período y del
-          mismo canal.
+          Visitas, agregados al carrito, checkouts iniciados y compras del mismo período y del mismo
+          canal.
         </p>
       </header>
 
@@ -692,8 +711,8 @@ function SeccionFunnel({ funnel }: { funnel: Derivados["funnel"] }) {
           </dl>
           {!funnel.desglosado && funnel.estado === "combinado" && (
             <p className="border-t border-border px-7 py-6 text-[14px] leading-6 text-muted-foreground">
-              Faltan etapas intermedias del embudo, así que la oportunidad se muestra combinada,
-              sin repartir entre navegación, carrito y checkout.
+              Faltan etapas intermedias del embudo, así que la oportunidad se muestra combinada, sin
+              repartir entre navegación, carrito y checkout.
             </p>
           )}
         </>
@@ -805,7 +824,10 @@ function SeccionCanales({ derivados }: { derivados: Derivados }) {
                     label="Contribución antes de publicidad"
                     value={pesos(c.contribucion_antes_publicidad)}
                   />
-                  <Fila label="Inversión publicitaria del canal" value={pesos(c.inversion_publicitaria)} />
+                  <Fila
+                    label="Inversión publicitaria del canal"
+                    value={pesos(c.inversion_publicitaria)}
+                  />
                   <Fila
                     label="Resultado después de publicidad"
                     value={pesos(c.resultado_despues_publicidad)}
