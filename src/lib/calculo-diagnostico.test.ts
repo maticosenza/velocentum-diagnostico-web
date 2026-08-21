@@ -1563,35 +1563,41 @@ describe("impactos económicos: ahorro publicitario tipado", () => {
       inversion_google: 100_000,
       conjuntos_activos: 50,
       presupuesto_diario: 500,
+      // Sin esto, roas_product_ads queda null y esa parte del invariante
+      // ("ROAS de Product Ads no se toca") no tendría nada que verificar.
+      ml_ventas_product_ads: 3_600_000,
     };
     const r = calcularDiagnostico(conMixCompleto, cfg);
 
     // El total combinado incluye los tres frentes: Meta + Google (tienda
     // propia) y Product Ads (marketplace, ml_inversion_product_ads = 1.800.000
     // en casoTitanWebB1).
-    expect(r.derivados.inversion_publicitaria_total).toBe(300_000 + 100_000 + 1_800_000);
+    const inversionElegible = r.derivados.inversion_publicitaria_total as number;
+    expect(inversionElegible).toBe(300_000 + 100_000 + 1_800_000);
 
-    // El MER de marketplace y el ROAS de Product Ads jamás cruzan la
-    // facturación o inversión de tienda propia: se calculan sólo sobre el
-    // perímetro de Product Ads (facturación de ML e inversión de Product
-    // Ads), nunca sobre el total combinado de las tres fuentes.
+    // El MER de marketplace jamás cruza la facturación o inversión de tienda
+    // propia: se calcula sólo sobre el perímetro de Product Ads (facturación
+    // de ML e inversión de Product Ads), nunca sobre el total combinado.
     expect(r.derivados.mer_marketplace).toBeCloseTo(25_000_000 / 1_800_000, 2);
-    expect(r.derivados.mer_marketplace).not.toBeCloseTo(
-      25_000_000 / (r.derivados.inversion_publicitaria_total as number),
-      2,
-    );
+    expect(r.derivados.mer_marketplace).not.toBeCloseTo(25_000_000 / inversionElegible, 2);
 
-    // Si hay ahorro publicitario tipado, su tope es el total combinado, no
-    // sólo Meta+Google ni sólo Product Ads.
+    // El ROAS de Product Ads (ventas atribuidas / inversión de Product Ads)
+    // tampoco se cruza con el total combinado: es otra cosa que el MER.
+    expect(r.derivados.roas_product_ads).toBe(3_600_000 / 1_800_000);
+    expect(r.derivados.roas_product_ads).not.toBeCloseTo(3_600_000 / inversionElegible, 2);
+
+    // El ahorro publicitario tipado de ambas fugas debe ser efectivamente
+    // calculable con este fixture (si no lo fuera, la aserción del tope de
+    // abajo quedaría vacía y no probaría nada) y su tope es el total
+    // combinado, no sólo Meta+Google ni sólo Product Ads.
     const gasto = r.fugas.find((f) => f.id === "gasto_no_rentable");
     const sobre = r.fugas.find((f) => f.id === "sobrefragmentacion");
+    expect(gasto?.calculable).toBe(true);
+    expect(sobre?.calculable).toBe(true);
     for (const fuga of [gasto, sobre]) {
       const impacto = fuga?.impactos?.find((i) => i.tipo === "ahorro_publicitario");
-      if (impacto && impacto.confianza !== "retenida") {
-        expect(impacto.montoMensual as number).toBeLessThanOrEqual(
-          r.derivados.inversion_publicitaria_total as number,
-        );
-      }
+      expect(impacto?.confianza).not.toBe("retenida");
+      expect(impacto?.montoMensual as number).toBeLessThanOrEqual(inversionElegible);
     }
   });
 });
