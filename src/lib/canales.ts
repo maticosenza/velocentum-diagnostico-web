@@ -81,8 +81,145 @@ export const COMISIONES_MARKETPLACE_DEFECTO: Record<string, ComisionMarketplace>
   },
 };
 
+/**
+ * Comisión de plataforma (Tiendanube, Shopify, WooCommerce, Empretienda...)
+ * con los mismos metadatos de vigencia y evidencia que `ComisionMarketplace`
+ * (fase 4, auditoría de planes y comisiones, 2026-08-21). El plan puntual
+ * (`inicial`, `esencial`, `grow`, etc.) ya viaja en la clave compuesta
+ * (`claveComisionPlataforma`); `plan` acá es sólo para mostrarlo sin tener
+ * que parsear la clave de vuelta.
+ */
+export type ComisionPlataforma = {
+  comision: number;
+  plataforma?: string;
+  plan?: string;
+  vigencia_desde?: string;
+  vigencia_hasta?: string;
+  pais?: string;
+  origen?: string;
+  fuente?: string;
+  /** true sólo cuando el número viene de una liquidación real, nunca de un benchmark. */
+  verificado?: boolean;
+  /** true cuando el número es un benchmark pendiente de verificar. */
+  provisional?: boolean;
+};
+
+/**
+ * Valores por defecto de comisión de plataforma, definidos en el código
+ * (igual que `COMISIONES_MARKETPLACE_DEFECTO`): la tabla `configuracion` los
+ * sobreescribe únicamente si la fila existe. Todos `verificado: false` y
+ * `provisional: true` porque son benchmarks públicos, no una liquidación ni
+ * una factura del cliente.
+ *
+ * WooCommerce y Empretienda: comisión de plataforma en 0 porque ninguna de
+ * las dos cobra un take-rate por venta (WooCommerce es autohosteado —el
+ * costo es hosting/plugins, fuera de este modelo—; Empretienda cobra
+ * suscripción mensual fija, no comisión variable). El costo de la pasarela
+ * de pago sigue aplicando por separado (`comision_pasarela`), igual que en
+ * las demás plataformas.
+ */
+export const COMISIONES_PLATAFORMA_DEFECTO: Record<string, ComisionPlataforma> = {
+  tiendanube_inicial: {
+    comision: 0.02,
+    plataforma: "tiendanube",
+    plan: "inicial",
+    pais: "AR",
+    vigencia_desde: "2026-08-21",
+    origen: "benchmark_provisional",
+    fuente: "benchmark_provisional_pendiente_verificacion",
+    verificado: false,
+    provisional: true,
+  },
+  tiendanube_esencial: {
+    comision: 0.01,
+    plataforma: "tiendanube",
+    plan: "esencial",
+    pais: "AR",
+    vigencia_desde: "2026-08-21",
+    origen: "benchmark_provisional",
+    fuente: "benchmark_provisional_pendiente_verificacion",
+    verificado: false,
+    provisional: true,
+  },
+  tiendanube_impulso: {
+    comision: 0.007,
+    plataforma: "tiendanube",
+    plan: "impulso",
+    pais: "AR",
+    vigencia_desde: "2026-08-21",
+    origen: "benchmark_provisional",
+    fuente: "benchmark_provisional_pendiente_verificacion",
+    verificado: false,
+    provisional: true,
+  },
+  shopify_basic: {
+    comision: 0.02,
+    plataforma: "shopify",
+    plan: "basic",
+    vigencia_desde: "2026-08-21",
+    origen: "benchmark_provisional",
+    fuente: "benchmark_provisional_pendiente_verificacion",
+    verificado: false,
+    provisional: true,
+  },
+  shopify_grow: {
+    comision: 0.01,
+    plataforma: "shopify",
+    plan: "grow",
+    vigencia_desde: "2026-08-21",
+    origen: "benchmark_provisional",
+    fuente: "benchmark_provisional_pendiente_verificacion",
+    verificado: false,
+    provisional: true,
+  },
+  shopify_advanced: {
+    comision: 0.005,
+    plataforma: "shopify",
+    plan: "advanced",
+    vigencia_desde: "2026-08-21",
+    origen: "benchmark_provisional",
+    fuente: "benchmark_provisional_pendiente_verificacion",
+    verificado: false,
+    provisional: true,
+  },
+  shopify_plus: {
+    comision: 0.002,
+    plataforma: "shopify",
+    plan: "plus",
+    vigencia_desde: "2026-08-21",
+    origen: "benchmark_provisional",
+    fuente: "benchmark_provisional_pendiente_verificacion",
+    verificado: false,
+    provisional: true,
+  },
+  woocommerce: {
+    comision: 0,
+    plataforma: "woocommerce",
+    vigencia_desde: "2026-08-21",
+    origen: "benchmark_provisional",
+    fuente: "autohosteado_sin_take_rate",
+    verificado: false,
+    provisional: true,
+  },
+  empretienda: {
+    comision: 0,
+    plataforma: "empretienda",
+    pais: "AR",
+    vigencia_desde: "2026-08-21",
+    origen: "benchmark_provisional",
+    fuente: "suscripcion_fija_sin_take_rate",
+    verificado: false,
+    provisional: true,
+  },
+};
+
 export type ConfigComisiones = {
-  comision_plataforma?: Record<string, number>;
+  /**
+   * Acepta el formato legado (número plano) o el nuevo con metadatos
+   * (`ComisionPlataforma`). Un número plano se trata como
+   * `{ comision: valor }`, sin metadatos de vigencia/evidencia.
+   */
+  comision_plataforma?: Record<string, number | ComisionPlataforma>;
   comision_pasarela?: Record<string, number>;
   comision_marketplace?: Record<string, ComisionMarketplace>;
 };
@@ -190,14 +327,26 @@ export type ComisionResuelta = {
   vigencia: string | null;
   /**
    * Qué respalda al número. Un benchmark NUNCA se muestra como verificado:
-   * sólo una liquidación del cliente cuenta como evidencia.
+   * `liquidacion_cliente` es un valor cargado en ESTE diagnóstico puntual;
+   * `liquidacion_verificada` es una regla de configuración marcada
+   * `verificado: true` (una liquidación real ya cargada para todos los
+   * diagnósticos de esa plataforma/plan, no sólo éste — ver fase 4); el resto
+   * es benchmark sin verificar.
    */
-  evidencia: "liquidacion_cliente" | "declarado_cliente" | "benchmark_sin_verificar";
+  evidencia:
+    | "liquidacion_cliente"
+    | "declarado_cliente"
+    | "liquidacion_verificada"
+    | "benchmark_sin_verificar";
+  /** Plan o tipo de publicación de la regla resuelta, cuando lo trae (fase 4). */
+  plan: string | null;
+  /** País de la regla resuelta, cuando lo trae (fase 4). */
+  pais: string | null;
   faltantes: string[];
 };
 
 /** Texto de vigencia a partir de las fechas de la regla. */
-function vigenciaDe(e: ComisionMarketplace | null): string | null {
+function vigenciaDe(e: { vigencia_desde?: string; vigencia_hasta?: string } | null): string | null {
   if (!e) return null;
   const desde = (e.vigencia_desde ?? "").trim();
   const hasta = (e.vigencia_hasta ?? "").trim();
@@ -215,13 +364,38 @@ export function claveComisionPlataforma(plataforma: string, plan: string): strin
   return pl ? `${p}_${pl}` : p;
 }
 
-export function comisionPlataformaDe(cfg: ConfigComisiones, d: DatosDiagnostico): number | null {
-  const tabla = cfg.comision_plataforma ?? {};
+/** Un número plano legado se trata como `{ comision: valor }`, sin metadatos. */
+function normalizarEntradaPlataforma(
+  v: number | ComisionPlataforma | undefined,
+): ComisionPlataforma | null {
+  if (v === undefined) return null;
+  if (typeof v === "number") return finito(v) ? { comision: v } : null;
+  return finito(v.comision) ? v : null;
+}
+
+/**
+ * Entrada de comisión de plataforma (Tiendanube, Shopify, WooCommerce,
+ * Empretienda...), con metadatos completos (fase 4, 2026-08-21). La
+ * configuración de la tabla `configuracion` pisa al valor por defecto del
+ * código; si la fila no existe, se usa `COMISIONES_PLATAFORMA_DEFECTO`.
+ */
+export function entradaPlataforma(
+  cfg: ConfigComisiones,
+  d: DatosDiagnostico,
+): ComisionPlataforma | null {
+  const tabla: Record<string, number | ComisionPlataforma> = {
+    ...COMISIONES_PLATAFORMA_DEFECTO,
+    ...(cfg.comision_plataforma ?? {}),
+  };
   const compuesta = claveComisionPlataforma(d.plataforma, d.plan_plataforma);
-  if (finito(tabla[compuesta])) return tabla[compuesta] as number;
+  const porCompuesta = normalizarEntradaPlataforma(tabla[compuesta]);
+  if (porCompuesta) return porCompuesta;
   const simple = (d.plataforma || "").trim();
-  if (finito(tabla[simple])) return tabla[simple] as number;
-  return null;
+  return normalizarEntradaPlataforma(tabla[simple]);
+}
+
+export function comisionPlataformaDe(cfg: ConfigComisiones, d: DatosDiagnostico): number | null {
+  return entradaPlataforma(cfg, d)?.comision ?? null;
 }
 
 /**
@@ -328,12 +502,14 @@ export function comisionEfectivaCanal(
       escala_sospechosa: comisionEnEscalaSospechosa(verificada),
       vigencia: null,
       evidencia: "liquidacion_cliente",
+      plan: null,
+      pais: null,
       faltantes: [],
     };
   }
 
   if (canal === "tienda_propia") {
-    const plataforma = comisionPlataformaDe(cfg, d);
+    const plataforma = entradaPlataforma(cfg, d);
     const pasarela = finito(cfg.comision_pasarela?.[d.pasarela])
       ? (cfg.comision_pasarela![d.pasarela] as number)
       : null;
@@ -350,19 +526,28 @@ export function comisionEfectivaCanal(
         escala_sospechosa: false,
         vigencia: null,
         evidencia: "benchmark_sin_verificar",
+        plan: plataforma?.plan ?? null,
+        pais: plataforma?.pais ?? null,
         faltantes: faltan,
       };
     }
-    const r = conCargo((plataforma as number) + (pasarela as number), { cargo: cargoDeclarado });
+    const r = conCargo((plataforma as ComisionPlataforma).comision + (pasarela as number), {
+      cargo: cargoDeclarado,
+    });
+    // Una regla de plataforma marcada `verificado: true` es una liquidación
+    // real cargada en configuración (fase 4), no un benchmark del código.
+    const plataformaVerificada = (plataforma as ComisionPlataforma).verificado === true;
     return {
       valor: r.valor,
-      origen: "benchmark_configuracion",
-      provisional: false,
+      origen: (plataforma as ComisionPlataforma).origen ?? "benchmark_configuracion",
+      provisional: !plataformaVerificada,
       cargo_fijo_aplicado: r.aplicado,
       cargo_fijo_disponible: r.disponible,
       escala_sospechosa: false,
-      vigencia: null,
-      evidencia: "benchmark_sin_verificar",
+      vigencia: vigenciaDe(plataforma),
+      evidencia: plataformaVerificada ? "liquidacion_verificada" : "benchmark_sin_verificar",
+      plan: (plataforma as ComisionPlataforma).plan ?? null,
+      pais: (plataforma as ComisionPlataforma).pais ?? null,
       faltantes: [],
     };
   }
@@ -378,6 +563,8 @@ export function comisionEfectivaCanal(
       escala_sospechosa: false,
       vigencia: null,
       evidencia: "benchmark_sin_verificar",
+      plan: null,
+      pais: null,
       faltantes: ["comision_marketplace"],
     };
   }
@@ -396,18 +583,27 @@ export function comisionEfectivaCanal(
     fuente: usaDeclarado ? "declarado_cliente" : (entrada.fuente ?? null),
     verificado: usaDeclarado ? true : entrada.verificado === true,
   });
+  // Una regla de marketplace marcada `verificado: true` es una liquidación
+  // real cargada en configuración (fase 4: "dejar preparada la estructura
+  // para cargar una liquidación real de marketplace"), no un benchmark del
+  // código. El cargo declarado por el cliente sigue respaldando sólo al
+  // cargo (rama `usaDeclarado`), nunca a la comisión entera.
+  const entradaVerificada = !usaDeclarado && entrada.verificado === true;
   return {
     valor: r.valor,
     origen: entrada.origen ?? "benchmark_configuracion",
-    provisional: entrada.provisional === true,
+    provisional: !entradaVerificada && entrada.provisional === true,
     cargo_fijo_aplicado: r.aplicado,
     cargo_fijo_disponible: r.disponible,
     escala_sospechosa: false,
     vigencia: vigenciaDe(entrada),
-    // El cargo declarado por el cliente respalda al cargo, no a la comisión:
-    // la comisión sigue siendo un benchmark hasta ver una liquidación.
-    evidencia: usaDeclarado ? "declarado_cliente" : "benchmark_sin_verificar",
+    evidencia: usaDeclarado
+      ? "declarado_cliente"
+      : entradaVerificada
+        ? "liquidacion_verificada"
+        : "benchmark_sin_verificar",
+    plan: entrada.tipo_publicacion ?? null,
+    pais: entrada.pais ?? null,
     faltantes: [],
   };
-
 }

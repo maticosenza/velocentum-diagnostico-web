@@ -14,6 +14,7 @@ import {
   coberturaCanales,
   comisionEfectivaCanal,
   comisionPlataformaDe,
+  entradaPlataforma,
   claveComisionPlataforma,
   estadoCanal,
   hayCanalesDeclarados,
@@ -21,9 +22,11 @@ import {
   pctCanal,
   type CanalId,
   COMISIONES_MARKETPLACE_DEFECTO,
+  COMISIONES_PLATAFORMA_DEFECTO,
   comisionEnEscalaSospechosa,
   type CargoFijoDisponible,
   type ComisionMarketplace,
+  type ComisionPlataforma,
   type EstadoCanal,
 } from "./canales";
 import { evaluarContradiccion, rangoDeclarado, type Contradiccion } from "./contradiccion";
@@ -41,15 +44,17 @@ export type { ConfigEscenarios90d, RampaAdopcion, IdEscenario } from "./escenari
 export {
   comisionEnEscalaSospechosa,
   COMISIONES_MARKETPLACE_DEFECTO,
+  COMISIONES_PLATAFORMA_DEFECTO,
   claveComisionPlataforma,
   comisionPlataformaDe,
+  entradaPlataforma,
   canalesSuperan100,
   coberturaCanales,
   canalPrincipal,
   estadoCanal,
   comisionEfectivaCanal,
 };
-export type { CanalId } from "./canales";
+export type { CanalId, ComisionMarketplace, ComisionPlataforma } from "./canales";
 export { evaluarFunnel, tramosFunnel, MEJORAS_FUNNEL_DEFECTO };
 export { evaluarContradiccion, rangoDeclarado };
 export type { Contradiccion } from "./contradiccion";
@@ -64,7 +69,7 @@ export type TramoCr = { hasta: number | null; verde: number; rojo: number };
 
 export type ConfiguracionCalculo = {
   reserva_default?: number;
-  comision_plataforma?: Record<string, number>;
+  comision_plataforma?: Record<string, number | ComisionPlataforma>;
   comision_pasarela?: Record<string, number>;
   comision_marketplace?: Record<string, ComisionMarketplace>;
   umbrales_funnel_web?: Record<string, Umbral>;
@@ -529,7 +534,15 @@ export type CanalDerivado = {
   /** Vigencia de la regla de comisión, si la configuración la declara. */
   comision_vigencia: string | null;
   /** Qué respalda a la comisión: liquidación, declaración del cliente o benchmark. */
-  comision_evidencia: "liquidacion_cliente" | "declarado_cliente" | "benchmark_sin_verificar";
+  comision_evidencia:
+    | "liquidacion_cliente"
+    | "declarado_cliente"
+    | "liquidacion_verificada"
+    | "benchmark_sin_verificar";
+  /** Plan o tipo de publicación de la regla resuelta (fase 4), si la trae. */
+  comision_plan: string | null;
+  /** País de la regla resuelta (fase 4), si lo trae. */
+  comision_pais: string | null;
   cargo_fijo_aplicado: boolean;
   /** Cargo fijo conocido de la regla, aplicado o no. Si no está verificado, no entra al cálculo. */
   cargo_fijo_disponible: CargoFijoDisponible | null;
@@ -725,6 +738,8 @@ function margenDeCanal(
     comision_provisional: comision.provisional,
     comision_vigencia: comision.vigencia,
     comision_evidencia: comision.evidencia,
+    comision_plan: comision.plan,
+    comision_pais: comision.pais,
     cargo_fijo_aplicado: comision.cargo_fijo_aplicado,
     cargo_fijo_disponible: comision.cargo_fijo_disponible,
     comision_escala_sospechosa: comision.escala_sospechosa,
