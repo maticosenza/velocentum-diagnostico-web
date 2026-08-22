@@ -5,7 +5,7 @@
  * cargar una liquidación real de marketplace (Mercado Libre, próximos días).
  */
 import { describe, expect, it } from "vitest";
-import { DATOS_INICIALES, type DatosDiagnostico } from "./diagnostico-form";
+import { DATOS_INICIALES, PLANES_POR_PLATAFORMA, type DatosDiagnostico } from "./diagnostico-form";
 import {
   CAPACIDADES_PLATAFORMA_DEFECTO,
   COMISIONES_MARKETPLACE_DEFECTO,
@@ -13,6 +13,7 @@ import {
   claveComisionPlataforma,
   comisionEfectivaCanal,
   comisionPlataformaDe,
+  entradaCapacidadesPlataforma,
   entradaMarketplace,
   entradaPlataforma,
   type ConfigComisiones,
@@ -66,7 +67,7 @@ describe("COMISIONES_PLATAFORMA_DEFECTO: metadatos completos", () => {
 });
 
 describe("CAPACIDADES_PLATAFORMA_DEFECTO: relevamiento de carrito nativo y mayorista (2026-08-22, sólo estructura de datos)", () => {
-  it("cubre Tiendanube (5 planes, incluidos Escala/Evolución aunque el formulario todavía no los ofrezca), Shopify (4 planes), WooCommerce, Empretienda y Mercado Libre", () => {
+  it("cubre Tiendanube (5 planes, incluidos Escala/Evolución), Shopify (4 planes), WooCommerce, Empretienda y Mercado Libre", () => {
     expect(Object.keys(CAPACIDADES_PLATAFORMA_DEFECTO).sort()).toEqual(
       [
         "tiendanube_inicial",
@@ -133,6 +134,74 @@ describe("CAPACIDADES_PLATAFORMA_DEFECTO: relevamiento de carrito nativo y mayor
         expect(entrada.canal_mayorista_detalle, `${clave}.canal_mayorista_detalle`).toBeTruthy();
       }
     }
+  });
+});
+
+describe("planes reales de Tiendanube (Escala/Evolución, relevado 2026-08-22)", () => {
+  it("PLANES_POR_PLATAFORMA ofrece los 5 planes reales de Tiendanube, en el mismo orden que la página oficial", () => {
+    expect(PLANES_POR_PLATAFORMA["tiendanube"]!.map((p) => p.value)).toEqual([
+      "inicial",
+      "esencial",
+      "impulso",
+      "escala",
+      "evolucion",
+    ]);
+  });
+
+  it("los 3 planes preexistentes siguen resolviendo idéntico a antes de este bloque", () => {
+    const d = (plan: string) => datosCon({ plataforma: "tiendanube", plan_plataforma: plan });
+    expect(comisionPlataformaDe({}, d("inicial"))).toBe(0.02);
+    expect(comisionPlataformaDe({}, d("esencial"))).toBe(0.01);
+    expect(comisionPlataformaDe({}, d("impulso"))).toBe(0.007);
+  });
+
+  it("ningún plan preexistente fue renombrado: se agregaron Escala y Evolución, no se tocó ningún nombre", () => {
+    for (const plan of ["inicial", "esencial", "impulso"]) {
+      expect(COMISIONES_PLATAFORMA_DEFECTO[`tiendanube_${plan}`], plan).toBeDefined();
+      expect(CAPACIDADES_PLATAFORMA_DEFECTO[`tiendanube_${plan}`], plan).toBeDefined();
+    }
+  });
+
+  it("Escala y Evolución no tienen comisión pública fija (Tiendanube la muestra como 'a convenir'): resuelven null, no un número inventado", () => {
+    const d = (plan: string) => datosCon({ plataforma: "tiendanube", plan_plataforma: plan });
+    expect(COMISIONES_PLATAFORMA_DEFECTO["tiendanube_escala"]).toBeUndefined();
+    expect(COMISIONES_PLATAFORMA_DEFECTO["tiendanube_evolucion"]).toBeUndefined();
+    expect(comisionPlataformaDe({}, d("escala"))).toBeNull();
+    expect(comisionPlataformaDe({}, d("evolucion"))).toBeNull();
+  });
+
+  it("un plan de Tiendanube que no existe en ningún lado sigue devolviendo null, sin inventar número", () => {
+    const d = datosCon({ plataforma: "tiendanube", plan_plataforma: "plan_inexistente" });
+    expect(comisionPlataformaDe({}, d)).toBeNull();
+  });
+
+  it("la capacidad de carrito nativo resuelve correctamente por plan, incluidos Escala y Evolución", () => {
+    const d = (plataforma: string, plan: string) => datosCon({ plataforma, plan_plataforma: plan });
+    expect(entradaCapacidadesPlataforma(d("tiendanube", "inicial"))?.recuperacion_carrito_nativa).toBe(
+      false,
+    );
+    expect(entradaCapacidadesPlataforma(d("tiendanube", "esencial"))?.recuperacion_carrito_nativa).toBe(
+      true,
+    );
+    expect(entradaCapacidadesPlataforma(d("tiendanube", "escala"))?.recuperacion_carrito_nativa).toBe(
+      true,
+    );
+    expect(
+      entradaCapacidadesPlataforma(d("tiendanube", "evolucion"))?.recuperacion_carrito_nativa,
+    ).toBe(true);
+    expect(entradaCapacidadesPlataforma(d("shopify", "plus"))?.canal_mayorista).toBe(true);
+  });
+
+  it("una plataforma/plan sin relevamiento resuelve null (capacidades), no un valor supuesto", () => {
+    const d = datosCon({ plataforma: "vtex", plan_plataforma: "" });
+    expect(entradaCapacidadesPlataforma(d)).toBeNull();
+  });
+
+  it("empretienda (plataforma sin plan) resuelve sus capacidades por la clave simple", () => {
+    const d = datosCon({ plataforma: "empretienda", plan_plataforma: "" });
+    const capacidades = entradaCapacidadesPlataforma(d);
+    expect(capacidades?.canal_mayorista).toBe(true);
+    expect(capacidades?.recuperacion_carrito_nativa).toBeNull();
   });
 });
 

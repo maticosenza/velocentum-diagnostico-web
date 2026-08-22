@@ -117,6 +117,14 @@ export type ComisionPlataforma = {
  * suscripción mensual fija, no comisión variable). El costo de la pasarela
  * de pago sigue aplicando por separado (`comision_pasarela`), igual que en
  * las demás plataformas.
+ *
+ * Tiendanube Escala y Evolución (relevado 2026-08-22,
+ * `docs/relevamiento-planes-tiendanube.md`) NO tienen entrada acá a
+ * propósito: la página oficial de precios muestra su comisión por venta
+ * como "a convenir" por comercio, sin un porcentaje público fijo. Agregar
+ * un número acá sería inventarlo. Sin entrada, `comisionPlataformaDe()`
+ * resuelve `null` para esos dos planes — mismo comportamiento que
+ * cualquier plataforma sin benchmark (p. ej. VTEX), no un error.
  */
 export const COMISIONES_PLATAFORMA_DEFECTO: Record<string, ComisionPlataforma> = {
   tiendanube_inicial: {
@@ -260,16 +268,11 @@ export type CapacidadesPlataforma = {
  * inventado: donde no hubo fuente oficial confiable, queda `null`
  * explícito, no una suposición.
  *
- * Nota: Tiendanube tiene hoy cinco planes activos (Inicial, Esencial,
- * Impulso, Escala, Evolución) según su página oficial de precios — dos más
- * de los tres que modela `PLANES_POR_PLATAFORMA`
- * (`src/lib/diagnostico-form.ts`). Se incluyen igual acá (`tiendanube_escala`,
- * `tiendanube_evolucion`) porque describen la plataforma real, aunque el
- * formulario todavía no los ofrezca como opción seleccionable — esa
- * discrepancia queda documentada en
- * docs/relevamiento-carrito-mayorista-plataformas.md, no corregida en este
- * bloque (es un cambio de formulario, fuera del alcance de "sólo estructura
- * de datos para los dos atributos nuevos").
+ * Nota (actualizada 2026-08-22): Tiendanube tiene cinco planes activos
+ * (Inicial, Esencial, Impulso, Escala, Evolución) según su página oficial
+ * de precios. Los cinco ya están modelados en `PLANES_POR_PLATAFORMA`
+ * (`src/lib/diagnostico-form.ts`) y acá. Detalle completo, con fuente y
+ * fecha por plan, en `docs/relevamiento-planes-tiendanube.md`.
  */
 export const CAPACIDADES_PLATAFORMA_DEFECTO: Record<string, CapacidadesPlataforma> = {
   tiendanube_inicial: {
@@ -304,7 +307,6 @@ export const CAPACIDADES_PLATAFORMA_DEFECTO: Record<string, CapacidadesPlataform
       "https://www.tiendanube.com/planes-y-precios; https://ayuda.tiendanube.com/es_ES/ventas-mayoristas/que-es-y-como-configurar-la-funcion-de-ventas-mayoristas-y-minoristas-de-tiendanube",
     verificado: false,
   },
-  /** No modelado todavía en `PLANES_POR_PLATAFORMA` — ver nota arriba. */
   tiendanube_escala: {
     plataforma: "tiendanube",
     plan: "escala",
@@ -317,7 +319,6 @@ export const CAPACIDADES_PLATAFORMA_DEFECTO: Record<string, CapacidadesPlataform
       "https://www.tiendanube.com/planes-y-precios; https://ayuda.tiendanube.com/es_ES/ventas-mayoristas/que-es-y-como-configurar-la-funcion-de-ventas-mayoristas-y-minoristas-de-tiendanube",
     verificado: false,
   },
-  /** No modelado todavía en `PLANES_POR_PLATAFORMA` — ver nota arriba. */
   tiendanube_evolucion: {
     plataforma: "tiendanube",
     plan: "evolucion",
@@ -405,6 +406,24 @@ export const CAPACIDADES_PLATAFORMA_DEFECTO: Record<string, CapacidadesPlataform
     verificado: false,
   },
 };
+
+/**
+ * Resuelve las capacidades de plataforma/plan (recuperación de carrito
+ * nativa, canal mayorista) por la misma clave compuesta que
+ * `entradaPlataforma`. Sólo lectura de `CAPACIDADES_PLATAFORMA_DEFECTO`:
+ * todavía no hay una tabla de configuración hermana para pisar estos
+ * valores (no se relevan por cliente, a diferencia de la comisión), así
+ * que no hace falta el merge de `entradaPlataforma`. Un plan sin entrada
+ * (por ejemplo, sin comisión pública, o una plataforma no relevada) resuelve
+ * `null`, igual que `entradaPlataforma` con una plataforma sin benchmark.
+ */
+export function entradaCapacidadesPlataforma(d: DatosDiagnostico): CapacidadesPlataforma | null {
+  const compuesta = claveComisionPlataforma(d.plataforma, d.plan_plataforma);
+  const porCompuesta = CAPACIDADES_PLATAFORMA_DEFECTO[compuesta];
+  if (porCompuesta) return porCompuesta;
+  const simple = (d.plataforma || "").trim();
+  return CAPACIDADES_PLATAFORMA_DEFECTO[simple] ?? null;
+}
 
 export type ConfigComisiones = {
   /**

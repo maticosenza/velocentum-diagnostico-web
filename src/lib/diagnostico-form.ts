@@ -36,10 +36,24 @@ export const PLATAFORMAS = [
 ] as const;
 
 export const PLANES_POR_PLATAFORMA: Record<string, { value: string; label: string }[]> = {
+  /**
+   * Tiendanube tiene hoy 5 planes reales (relevado 2026-08-22,
+   * https://www.tiendanube.com/planes-y-precios): Inicial, Esencial,
+   * Impulso, Escala y Evolución. Los 3 primeros son los mismos nombres que
+   * ya modelaba el formulario, sin cambios (no hubo renombre que requiera
+   * alias). Escala y Evolución se agregan acá; su comisión por venta no
+   * tiene un porcentaje público fijo (Tiendanube la muestra como
+   * "a convenir" por comercio) — no tienen entrada en
+   * `COMISIONES_PLATAFORMA_DEFECTO` a propósito, para no inventar un
+   * número (ver `src/lib/canales.ts` y
+   * `docs/relevamiento-planes-tiendanube.md`).
+   */
   tiendanube: [
     { value: "inicial", label: "Inicial" },
     { value: "esencial", label: "Esencial" },
     { value: "impulso", label: "Impulso" },
+    { value: "escala", label: "Escala" },
+    { value: "evolucion", label: "Evolución" },
   ],
   shopify: [
     { value: "basic", label: "Basic" },
