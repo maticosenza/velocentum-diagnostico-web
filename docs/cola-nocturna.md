@@ -75,7 +75,7 @@ Estado: `pendiente` (implementable ya) · `en_curso` · `completado` ·
 |---|---|---|---|
 | D1 | Motor de escenarios a 90 días (fórmulas reales) | bloqueado_comercial | sin fórmulas documentadas; ya evaluado y documentado en la sesión anterior |
 | D2 | Reglas comerciales mayoristas | bloqueado_comercial | no hay ninguna definición de precios/condiciones mayoristas en el repo |
-| D3 | Fases de auditoría por plataforma / mayorista-mixto / retención / rediseño integral | bloqueado_comercial | mencionadas en el handoff previo como parte de "el plan", pero no hay documento con su alcance en este repositorio; no se puede planificar en el vacío sin inventar alcance |
+| D3 | Fases de auditoría por plataforma / mayorista-mixto / retención / rediseño integral | bloqueado_comercial (**desbloqueado el 2026-08-21**) | mencionadas acá como parte de "el plan", pero sin documento con su alcance en este repositorio al cierre de esta sesión (20 de agosto). **Nota posterior:** en la sesión del 21 de agosto, Matías dio el alcance directamente en la instrucción de trabajo — quedó implementado como fase 4 (auditoría de plataformas y comisiones), fase 5 (productos dinámicos y cobertura) y fase 6 (presupuesto de arranque). Mayorista-mixto, retención y rediseño integral siguen sin alcance documentado. Ver `docs/handoff-2026-08-21-fases-4-5-6.md`. |
 | D4 | Logo y tipografías oficiales del PDF/web | bloqueado_datos | assets no están en el repositorio |
 
 ### E. Calidad final
