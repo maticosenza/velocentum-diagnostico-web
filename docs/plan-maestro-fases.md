@@ -6,7 +6,18 @@ Bloque estrictamente documental: no se implementó ni se corrigió código
 para producir este documento. Toda observación de "corrección necesaria"
 queda anotada para un bloque técnico posterior, no aplicada acá.
 
-**Línea base verificada en el árbol actual** (no contra handoffs previos):
+**Fuentes incorporadas al repositorio en este bloque** (ya no dependen de
+un archivo suelto pasado por chat):
+
+- `docs/plan-maestro-consolidado-2026-08-21.md` — plan maestro consolidado
+  de catorce fases, recibido de Matías el 2026-08-22, reproducido tal cual.
+- `docs/especificacion-visual-pdfs-fases-11-13.md` — especificación visual
+  de los tres PDF (diagnóstico, proyección, propuesta), material de
+  referencia para las fases 11 a 13, recibida el mismo día.
+
+**Línea base verificada en el árbol actual** (no contra handoffs previos ni
+contra la línea base de 366 pruebas del plan maestro consolidado, que
+corresponde a un HEAD anterior, `c4cb51a`):
 
 - Rama: `feat/noche-continuacion`.
 - **HEAD: `d07fcac`** (`Margen total exige 100% de cobertura de productos;
@@ -17,20 +28,11 @@ queda anotada para un bloque técnico posterior, no aplicada acá.
 - `npm run build`: exitoso (sólo warnings preexistentes de
   `fontkit`/`@react-pdf`, no relacionados con este repositorio).
 
-## Advertencia: nueve de las catorce fases no tienen definición verificable en este repositorio
-
-El plan maestro consolidado que este documento reconcilia numera catorce
-fases. De esas catorce, este repositorio (código, tests, docs, handoffs,
-commits) sólo permite verificar contenido real para **cinco**: fase 3, fase
-5, fase 6, fase 7 y fase 8 — las que la instrucción de este bloque nombró
-explícitamente. Para las fases 1, 2, 4, 9, 10, 11, 12, 13 y 14 no hay, en
-este repositorio, ningún nombre, alcance ni evidencia que permita
-completarlas sin inventar contenido. No se inventaron: quedan marcadas
-explícitamente como **SIN DEFINICIÓN VERIFICABLE ACÁ** en la matriz de abajo,
-siguiendo la misma regla de parada que rige el resto de este trabajo (no
-tomar una decisión o dar por cierto un dato que no está resuelto en los
-documentos existentes). Esto se registra también como decisión/dato
-pendiente en `docs/decisiones-pendientes.md` (entrada 3).
+Con la incorporación del plan maestro consolidado, las catorce fases quedan
+con nombre y alcance verificable. La matriz de abajo reconcilia cada una
+contra el código real de este HEAD — no contra el HEAD `c4cb51a` que el plan
+maestro usó como línea base, ni contra el texto del plan sin verificar.
+Queda cerrada la decisión pendiente #3 (`docs/decisiones-pendientes.md`).
 
 ## 1 · Tabla de equivalencias (numeración histórica del handoff del 21/08 vs. plan maestro)
 
@@ -56,23 +58,74 @@ equivalente · estado real (verificado contra código) · evidencia (archivo y
 línea) · pruebas existentes · pruebas faltantes · riesgo · bloqueo ·
 siguiente acción.
 
-### Fase 1 — SIN DEFINICIÓN VERIFICABLE ACÁ
+### Fase 1 — Baseline, fixtures y gobernanza — **COMPLETA**
 
-No hay nombre, alcance ni evidencia de esta fase en el repositorio.
-**Siguiente acción:** obtener del plan maestro externo el nombre y alcance
-antes de auditar o programar nada bajo este número.
+- **Denominación del plan maestro:** "Baseline, fixtures y gobernanza".
+- **Estado real:** completa, consistente con el plan maestro consolidado
+  (`docs/plan-maestro-consolidado-2026-08-21.md`, sección 4).
+- **Evidencia:**
+  - Casos de regresión compartidos (Snake Store, Titan Web B1, estado
+    intermedio antes de canales): `src/lib/fixtures-casos.ts:37-129`.
+  - Titan Web B2 deliberadamente sin datos inventados:
+    `casoTitanWebB2Pendiente` (`src/lib/fixtures-casos.ts:142-145`) y el
+    `it.todo` correspondiente en `src/lib/regresion-2-6.test.ts` (sigue
+    intacto en este HEAD).
+  - Reglas de ausencia y triestado (cero/false/null tratados como hechos
+    distintos, nunca intercambiables): `EstadoCanal = "declarado" |
+    "ausente" | "no_aplica"` (`src/lib/canales.ts:32`); patrón repetido en
+    `envioNetoVendedor()`, `componentePonderado()`, `hayInversionPublicitaria()`
+    (`src/lib/calculo-diagnostico.ts`).
+  - Compatibilidad con datos legados: `montosNetosDeDescuento()` respeta
+    `base_montos === "neto"` de diagnósticos guardados antes del campo
+    triestado (`src/lib/calculo-diagnostico.ts:457-461`); `envioNetoVendedor()`
+    interpreta el campo legado `costo_envio_promedio` como neto.
+  - Handoffs de sesión versionados en `docs/handoff-*.md` (bitácora, no
+    fuente de estado — ese rol ahora lo cumple este documento).
+- **Pruebas existentes:** `src/lib/regresion-2-6.test.ts`,
+  `src/lib/entrega-2-5.test.ts`, y prácticamente toda la suite depende de
+  estos fixtures compartidos (30 archivos, 398 pruebas).
+- **Pruebas faltantes:** ninguna identificada para el alcance declarado.
+- **Riesgo:** ninguno nuevo.
+- **Bloqueo:** Titan Web B2 sigue bloqueado por datos externos (envío neto
+  y liquidación real), tal como el plan maestro lo declara — no es un
+  bloqueo de esta fase, es la razón por la que el `it.todo` sigue abierto.
+- **Siguiente acción:** ninguna pendiente; fase cerrada.
 
-### Fase 2 — SIN DEFINICIÓN VERIFICABLE ACÁ
+### Fase 2 — Corrección económica y canales — **COMPLETA**
 
-Mismo caso que fase 1. El repositorio sí tiene trabajo histórico rotulado
-"fase 2" en nombres de archivo (`configuracionRegresionFase2`,
-`esperadosFase2` en `src/lib/fixtures-casos.ts`, `regresion-2-6.test.ts`),
-pero esa numeración es la del código/tests de una entrega técnica anterior
-(motor de cálculo base: margen por canal, envío, comisiones), **no**
-necesariamente la fase 2 del plan maestro de catorce fases — no hay
-confirmación de que sean la misma cosa. **Siguiente acción:** confirmar con
-el plan maestro externo si "fase 2" del plan maestro corresponde a este
-trabajo o a otra cosa, antes de asumir la equivalencia.
+- **Denominación del plan maestro:** "Corrección económica y canales".
+- **Estado real:** completa. El plan maestro la cerró el 21/08 sobre
+  `c4cb51a`; desde entonces, la regla de contradicción de margen (parte de
+  esta fase) se enriqueció sin reabrir el resto del alcance (ver bloque del
+  22/08, commit `d07fcac`).
+- **Evidencia:**
+  - Envío por pedido/ticket, triestado, compatibilidad legada:
+    `envioNetoVendedor()`, `faltaEnvioCobrado()`
+    (`src/lib/calculo-diagnostico.ts:405-423`).
+  - Financiación y descuentos (participación, netos, anti doble descuento):
+    `costoFinanciacion()`, `costoDescuento()`, `participacionesIncompatibles()`
+    (`src/lib/calculo-diagnostico.ts:468-529`).
+  - Mix de canales, comisión por canal, cero contaminación tienda/marketplace:
+    `margenDeCanal()` (`src/lib/calculo-diagnostico.ts:667-833`),
+    `comisionEfectivaCanal()` (`src/lib/canales.ts`).
+  - Product Ads incorporado a inversión y MER por perímetro:
+    `inversionProductAds()`, `mer_tienda_propia`/`mer_marketplace`
+    (`src/lib/calculo-diagnostico.ts:538-542,1095-1096`, nunca cruzados).
+  - Cascada de funnel sin doble conteo: `src/lib/funnel.ts`.
+  - Contradicción de margen: `src/lib/contradiccion.ts` — enriquecida el
+    22/08 con `origen_margen`/`confianza_base` (commit `d07fcac`) sin
+    cambiar umbrales ni la regla de cambio de signo.
+  - Precisión decimal: `DECIMALES_TASA = 4`, `redondear()`
+    (`src/lib/dinero.ts:12,53`).
+- **Pruebas existentes:** `src/lib/calculo-diagnostico.test.ts`,
+  `src/lib/canales.test.ts`, `src/lib/funnel.test.ts`,
+  `src/lib/dinero.test.ts`, `src/lib/contradiccion.test.ts`,
+  `src/lib/entrega-2-5.test.ts`, `src/lib/regresion-2-6.test.ts`.
+- **Pruebas faltantes:** ninguna identificada para el alcance declarado.
+- **Riesgo:** ninguno nuevo desde el cierre del 21/08, más allá de lo ya
+  documentado en las entradas 1 y 3 de la contradicción (bloque del 22/08).
+- **Bloqueo:** ninguno.
+- **Siguiente acción:** ninguna pendiente; fase cerrada.
 
 ### Fase 3 — Productos dinámicos y cobertura — **COMPLETA**
 
@@ -104,13 +157,41 @@ trabajo o a otra cosa, antes de asumir la equivalencia.
 - **Bloqueo:** ninguno.
 - **Siguiente acción:** ninguna pendiente; fase cerrada.
 
-### Fase 4 — SIN DEFINICIÓN VERIFICABLE ACÁ
+### Fase 4 — Evidencia, notas y hallazgos — **MAYORMENTE COMPLETA**
 
-No hay nombre, alcance ni evidencia de esta fase en el repositorio bajo la
-numeración del plan maestro. (No confundir con "fase 4" del handoff 21/08,
-que corresponde a **Fase 5** del plan maestro — ver tabla de equivalencias
-arriba). **Siguiente acción:** obtener del plan maestro externo el nombre y
-alcance antes de auditar o programar nada bajo este número.
+- **Denominación del plan maestro:** "Evidencia, notas y hallazgos". (No
+  confundir con "fase 4" del handoff 21/08, que corresponde a **Fase 5**
+  del plan maestro — ver tabla de equivalencias arriba).
+- **Estado real:** mayormente completa, igual que declara el plan maestro
+  consolidado.
+- **Evidencia:**
+  - Evidencia estructurada por estado (verificado/declarado/estimado/no
+    disponible/no aplica): `export type Evidencia<T>`
+    (`src/documents/domain/types.ts:13`).
+  - Estados ausente/no aplica por canal: `EstadoCanal`
+    (`src/lib/canales.ts:32`).
+  - Notas visibles, filtrando vacíos: `notasVisibles()`
+    (`src/lib/diagnostico-form.ts:393`).
+  - Contradicción: `src/lib/contradiccion.ts` (ver fase 2).
+  - Creativos evaluados por contenido, no por completitud:
+    `evaluarEstadoCreativos()` (`src/lib/calculo-diagnostico.ts:126-139`).
+  - Clips de Mercado Libre con campo triestado (`ml_tiene_clips`),
+    resuelto y documentado en `docs/fase3-evidencia-pendiente.md`.
+  - Financiación/descuento sólo con evidencia completa (participación Y
+    costo, nunca uno solo): `componentePonderado()`
+    (`src/lib/calculo-diagnostico.ts:432-446`).
+- **Pruebas existentes:** `src/lib/fase3-bugfixes.test.ts`,
+  `src/lib/vista-diagnostico.test.ts`, partes de
+  `src/lib/calculo-diagnostico.test.ts`.
+- **Pruebas faltantes:** ninguna identificada para el alcance implementado.
+- **Riesgo:** ninguno nuevo.
+- **Bloqueo:** el hallazgo "plan de plataforma mal dimensionado" sigue
+  bloqueado por falta de datos (costo del plan actual, costo de
+  alternativa, límite de uso, ahorro verificable) —
+  `docs/fase3-evidencia-pendiente.md`. Es el único pendiente de esta fase,
+  y coincide exactamente con lo que declara el plan maestro consolidado.
+- **Siguiente acción:** relevar esos cuatro datos en el formulario antes de
+  reactivar el hallazgo — no forma parte de este bloque documental.
 
 ### Fase 5 — Plataformas y comisiones — **COMPLETA**
 
@@ -279,17 +360,192 @@ alcance antes de auditar o programar nada bajo este número.
   esta fase o es una fase separada) antes de programar nada — no se
   implementó nada en este bloque.
 
-### Fases 9 a 14 — SIN DEFINICIÓN VERIFICABLE ACÁ
+### Fase 9 — Mayorista y Mixto — **PENDIENTE**
 
-No hay nombre, alcance ni evidencia de estas seis fases en el repositorio.
-`docs/cola-nocturna.md` menciona, sin numeración ni alcance documentado,
-"mayorista/mixto, retención y rediseño integral" como trabajo futuro
-mencionado por Matías en una sesión anterior (20 de agosto) — es posible
-que alguna de estas fases corresponda a ese contenido, pero no hay forma de
-confirmarlo desde este repositorio sin el texto del plan maestro. **No se
-asume la equivalencia.** **Siguiente acción:** obtener del plan maestro
-externo el nombre y alcance de cada una antes de auditar o programar nada
-bajo estos números.
+- **Denominación del plan maestro:** "Mayorista y Mixto".
+- **Estado real:** pendiente, sin cambios desde el 21/08. Corresponde al
+  trabajo que `docs/cola-nocturna.md` menciona sin numeración ni alcance
+  como "mayorista-mixto" — confirmado ahora que es la fase 9.
+- **Evidencia de lo poco que existe:** sólo un *placeholder* de tipo y un
+  valor hardcodeado, sin ninguna lógica de negocio detrás:
+  `modalidad: { minorista: boolean; mayorista: boolean }`
+  (`src/documents/domain/types.ts:257-258`),
+  consumido como `modalidad: { minorista: true, mayorista: false }` fijo
+  (`src/documents/domain/build-context.ts:417`) — no depende de ningún
+  dato del formulario, es un valor constante.
+- **Qué falta concretamente:** todo lo que el plan maestro pide — precios y
+  escalas mayoristas, pedido mínimo, costos B2B, condiciones de pago,
+  funnel de cuentas, recompra, capacidad, concentración, adquisición
+  (Mayorista); canales activables, variables compartidas una sola vez,
+  comparabilidad, anti-canibalización (Mixto). No existe ningún campo en
+  `src/lib/diagnostico-form.ts` para pedido mínimo, precio por escala,
+  condiciones de pago B2B ni concentración de cartera.
+- **Pruebas existentes:** ninguna (no hay lógica que probar).
+- **Pruebas faltantes:** todas — dependen del alcance que se defina.
+- **Riesgo:** ninguno técnico nuevo; el riesgo es puramente de alcance.
+- **Bloqueo:** comercial — el plan maestro es explícito: hace falta
+  definir qué servicios B2B vende Velocentum antes de programar esta fase.
+- **Siguiente acción:** no programar nada hasta esa definición comercial.
+
+### Fase 10 — Motor de escenarios a 90 días — **TÉCNICAMENTE COMPLETA**
+
+- **Denominación del plan maestro:** "Motor de escenarios a 90 días".
+- **Estado real:** técnicamente completa, tal como declara el plan maestro.
+- **Evidencia:**
+  - Tres escenarios (conservador/base/potencial), detalle mensual,
+    separación acumulado 90 días vs. ritmo mensual del día 90:
+    `calcularEscenarios90d()` (`src/lib/escenarios-90d.ts`).
+  - Curvas por magnitud, verificadas exactamente contra el plan maestro:
+    `RAMPAS_FACTURACION_CONTRIBUCION_90D_DEFECTO` — conservador 25/50/75,
+    base 40/70/100, potencial 50/85/100
+    (`src/lib/escenarios-90d.ts:51-55`);
+    `RAMPAS_AHORRO_PUBLICITARIO_90D_DEFECTO` — conservador 50/75/100, base
+    75/100/100, potencial 85/100/100 (`src/lib/escenarios-90d.ts:70-74`).
+  - Retención por evidencia/margen/envío: `contradiccionSinConfirmarBloqueaProyeccion()`
+    (`src/lib/escenarios-90d.ts:291-295`).
+  - Límites y supuestos visibles en cada línea (`ValorPublicable<T>` con
+    `supuestos: string[]`).
+- **Pruebas existentes:** `src/lib/escenarios-90d.test.ts`,
+  `src/documents/domain/escenarios-90d.test.ts`,
+  `src/lib/fixtures-correccion-producto.ts`,
+  `src/lib/fixtures-impactos-manual.ts`.
+- **Pruebas faltantes:** ninguna a nivel de motor. El plan maestro señala
+  una falta de **producto**, no de código: validar el lenguaje y los
+  escenarios con 2-3 casos reales antes de integrarlo — no hay evidencia en
+  este repositorio de que ese piloto se haya hecho.
+- **Riesgo:** ninguno técnico nuevo.
+- **Bloqueo:** ninguno técnico; el piloto con casos reales es un paso de
+  producto, no de código.
+- **Siguiente acción:** ninguna de código pendiente; considerar el piloto
+  de validación con 2-3 casos reales antes de apoyarse en el lenguaje de
+  escenarios frente a un cliente.
+
+### Fase 11 — Documento de diagnóstico — **FUNCIONAL / VISUAL PENDIENTE**
+
+- **Denominación del plan maestro:** "Documento de diagnóstico".
+- **Estado real:** funcional (motor → plantilla → render → PDF completo),
+  visual pendiente — coincide con el plan maestro.
+- **Evidencia funcional:**
+  - Plantilla versionada: `src/documents/templates/velocentum-v1/diagnostico.ts`.
+  - Modelo documental: `DocumentContextV1` (`src/documents/domain/types.ts`).
+  - Render web y PDF: `src/documents/renderers/web/document-renderer.tsx`,
+    `src/documents/renderers/pdf/document.tsx`.
+  - Guardrails de redacción (frases prohibidas, sin placeholders/`NaN`):
+    `src/documents/templates/velocentum-v1/copy-guardrails.test.ts`.
+  - Descarga: wireado en las rutas de `src/routes/_authenticated/`.
+  - Regla "no debe mostrar escenarios/paquete/precio" ya respetada
+    estructuralmente: `diagnostico.ts` no referencia `scenarios` ni
+    `comercial` en ningún bloque (verificado por grep).
+- **Evidencia de lo visual pendiente:** el render PDF ya usa formato
+  horizontal 16:9 (`PAGE_SIZE: [number, number] = [960, 540]`,
+  `src/documents/renderers/pdf/document.tsx:22`), pero el tema
+  (`VELOCENTUM_LIGHT_V1`, `src/documents/theme/velocentum-light-v1.ts:5-16`)
+  no usa todavía la paleta de la especificación visual
+  (`docs/especificacion-visual-pdfs-fases-11-13.md`): `primary: "#2A1EC9"`
+  y `accent: "#7B5CFF"` en el tema actual vs. `#3B2EF5` (primario) y
+  `#7A6BFF` (primario suave) en la especificación aprobada; `ink: "#0F0A2E"`
+  vs. `#0D0B2D` (navy); `border: "#E8E7F2"` vs. `#D9D3FF`/`#E9E5FF`. En
+  cambio, `background: "#FAF9FF"`, `surfaceSoft: "#F2EFFF"`,
+  `success: "#20A464"`, `warning: "#FBBF24"`, `risk: "#D64A4A"` y la
+  tipografía (Satoshi/Inter) **ya coinciden exactamente** con la
+  especificación — no es un rediseño desde cero, es un ajuste de paleta.
+  No existe un perfil A4 separado (sólo el de pantalla 16:9).
+- **Pruebas existentes:** `src/documents/build-document.test.ts`,
+  `src/documents/domain/build-context.test.ts`,
+  `src/documents/renderers/pdf/document.test.tsx`,
+  `src/documents/renderers/web/document-renderer.test.tsx`,
+  `src/documents/theme/velocentum-light-v1.test.ts`.
+- **Pruebas faltantes:** QA visual página por página (criterio de
+  aceptación de la especificación, sección 10) — no automatizado hoy.
+- **Riesgo:** ninguno funcional; el riesgo es puramente de que el
+  documento actual no transmite todavía la identidad visual aprobada.
+- **Bloqueo:** ninguno técnico.
+- **Siguiente acción:** con la especificación ya versionada
+  (`docs/especificacion-visual-pdfs-fases-11-13.md`), el bloque técnico de
+  fase 11 debe devolver primero los cinco puntos que la propia
+  especificación pide antes de tocar código (inventario de componentes,
+  estructura de datos por componente, wireframes, estrategia 16:9/A4,
+  criterios de prueba) — no implementar directamente.
+
+### Fase 12 — Documento de proyección — **FUNCIONAL / VISUAL PENDIENTE**
+
+- **Denominación del plan maestro:** "Documento de proyección".
+- **Estado real:** funcional, visual pendiente — mismo diagnóstico que
+  fase 11, comparten el mismo tema y el mismo renderer.
+- **Evidencia:**
+  - Plantilla versionada con escenarios y tabla mensual:
+    `src/documents/templates/velocentum-v1/proyeccion-90d.ts:23-66`
+    (`buildScenarios`, bloque `"scenarios"` con eyebrow "Escenarios").
+  - Contribución como cifra dominante, facturación como contexto
+    secundario: `src/documents/domain/resumen-comercial.ts`
+    (`redaccionRangoContribucion`, "nunca la misma cifra").
+- **Pruebas existentes:** `src/documents/domain/escenarios-90d.test.ts`,
+  `src/documents/domain/resumen-comercial.test.ts`,
+  `src/documents/templates/velocentum-v1/copy-guardrails.test.ts`
+  (casos de proyección a 90 días).
+- **Pruebas faltantes:** las mismas que fase 11 (QA visual).
+- **Riesgo:** ninguno funcional nuevo.
+- **Bloqueo:** ninguno técnico.
+- **Siguiente acción:** se resuelve en el mismo bloque técnico que fase 11
+  (comparten tema y renderer); no es un bloque separado de trabajo visual.
+
+### Fase 13 — Propuesta comercial y rediseño visual — **PARCIAL**
+
+- **Denominación del plan maestro:** "Propuesta comercial y rediseño
+  visual".
+- **Estado real:** parcial, coincide con el plan maestro.
+- **Evidencia funcional construida:**
+  - Plantilla de propuesta: `src/documents/templates/velocentum-v1/propuesta.ts`.
+  - Salida combinada proyección + propuesta: `src/documents/templates/velocentum-v1/composicion.ts`.
+- **Evidencia de lo pendiente funcional:** existe el tipo que exige
+  selección manual (`SeleccionComercial`, con `aprobadaManualmente: true`
+  literal — `src/documents/domain/types.ts:210-222`), pero no hay ningún
+  flujo ni interfaz que lo complete: `buildDocumentContext()` fija
+  `comercial: null` de forma incondicional
+  (`src/documents/domain/build-context.ts:479`). El sistema no inventa
+  precios porque **no hay forma de cargar ninguno todavía**, ni siquiera
+  manualmente.
+- **Evidencia de lo pendiente visual:** mismo diagnóstico de paleta que
+  fase 11 (tema compartido). No hay perfil A4 diferenciado del de pantalla
+  16:9. No se encontró rediseño de la interfaz de la herramienta (fuera de
+  documentos) hacia el sistema visual aprobado.
+- **Pruebas existentes:** `src/documents/templates/velocentum-v1/templates.test.ts`,
+  `src/documents/renderers/pdf/filename.test.ts`,
+  `src/documents/renderers/pdf/format.test.ts`.
+- **Pruebas faltantes:** todo lo relacionado con el selector manual de
+  servicios/paquete/precio (no existe UI que probar); QA visual de la
+  interfaz de la herramienta.
+- **Riesgo:** ninguna propuesta real puede llevar precio hoy sin editar el
+  dato a mano fuera del flujo normal — el selector manual es un vacío
+  funcional real, no sólo visual.
+- **Bloqueo:** ninguno técnico; el selector manual depende de decidir la
+  UX de carga (quién completa `SeleccionComercial` y dónde).
+- **Siguiente acción:** dos bloques separados — (a) construir el selector
+  manual de servicios/paquete/precio (funcional, no visual); (b) aplicar el
+  sistema visual aprobado a los tres PDF y a la interfaz (comparte alcance
+  con fases 11/12 para la parte de documentos).
+
+### Fase 14 — QA final, integración y publicación — **PENDIENTE**
+
+- **Denominación del plan maestro:** "QA final, integración y
+  publicación".
+- **Estado real:** pendiente, sin ningún avance — coincide con el plan
+  maestro. Confirmado: no existe ningún framework de pruebas E2E en este
+  repositorio (`grep` de `playwright`/`cypress`/`e2e` sin resultados en
+  `package.json` ni en el árbol de archivos).
+- **Evidencia:** el orden que pide el plan maestro (QA numérico, QA visual,
+  E2E, piloto, seguridad/compatibilidad/rollback, PR a `main`, publicación
+  controlada) no tiene ningún paso iniciado en este repositorio más allá
+  del QA numérico que ya cubre la suite de 398 pruebas (que corresponde a
+  fases anteriores, no a un QA final consolidado).
+- **Pruebas existentes:** ninguna de integración/E2E.
+- **Pruebas faltantes:** todas las de esta fase.
+- **Riesgo:** ninguno nuevo; es la fase de cierre, depende de que 3, 6, 7,
+  8, 9, 11, 12 y 13 avancen primero.
+- **Bloqueo:** depende de que las fases de producto (7, 8, 9) y de diseño
+  (11, 12, 13) avancen antes de tener sentido.
+- **Siguiente acción:** ninguna todavía — es, por diseño del propio plan
+  maestro, la última fase.
 
 ## 3 · Campos y derivados implementados que ningún documento de producto describe todavía
 

@@ -113,9 +113,22 @@ compra), reemplazar el 20% por ese número en la fila `configuracion` de la
 base (clave `factor_costo_evento_intermedio`) — no requiere tocar código. Si
 no hay objeción, el valor por defecto queda como está.
 
-## 3 · Nueve de las catorce fases del plan maestro no tienen definición verificable en este repositorio
+## 3 · Nueve de las catorce fases del plan maestro no tienen definición verificable en este repositorio — **RESUELTA el 2026-08-22**
 
-**Contexto.** La reconciliación del plan maestro (2026-08-22,
+**Resolución.** Matías compartió el plan maestro consolidado completo
+(`docs/plan-maestro-consolidado-2026-08-21.md`, incorporado al repositorio
+tal cual) y la especificación visual de las fases 11 a 13
+(`docs/especificacion-visual-pdfs-fases-11-13.md`). Con esa fuente, las
+nueve fases quedaron reconciliadas contra el código real en
+`docs/plan-maestro-fases.md`: fase 1 y 2 **COMPLETA**, fase 4
+**MAYORMENTE COMPLETA** (ya cubiertas antes, sólo faltaba el nombre), fase 9
+**PENDIENTE**, fase 10 **TÉCNICAMENTE COMPLETA**, fases 11 y 12
+**FUNCIONAL / VISUAL PENDIENTE**, fase 13 **PARCIAL**, fase 14
+**PENDIENTE**. Ninguna quedó con contenido inventado: cada estado tiene
+evidencia archivo:línea verificada contra el HEAD `d07fcac`, no contra la
+línea base de 366 pruebas que el plan maestro usó (`c4cb51a`).
+
+**Contexto original.** La reconciliación del plan maestro (2026-08-22,
 `docs/plan-maestro-fases.md`) pidió un único documento con las catorce
 fases normalizadas. La instrucción dio nombre y estado real para cinco:
 fase 3 (productos dinámicos y cobertura), fase 5 (plataformas y
