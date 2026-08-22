@@ -21,6 +21,13 @@ import { formatPublishedNumber, labelConfidence } from "./format";
 const theme = VELOCENTUM_LIGHT_V1;
 const PAGE_SIZE: [number, number] = [960, 540];
 
+/** Etiqueta de magnitud económica (corrección aprobada 2026-08-21, punto 3). */
+const LABELS_MAGNITUD = {
+  facturacion_incremental: "Facturación incremental",
+  contribucion_incremental: "Contribución incremental",
+  ahorro_publicitario: "Ahorro publicitario",
+} as const;
+
 Font.registerHyphenationCallback((word) => [word]);
 
 const styles = StyleSheet.create({
@@ -213,6 +220,30 @@ const styles = StyleSheet.create({
   scenarioMetric: { flex: 1 },
   scenarioMetricLabel: { fontSize: 7.5, color: theme.colors.muted, marginBottom: 3 },
   scenarioMetricValue: { fontSize: 14, fontFamily: "Helvetica-Bold" },
+  // Contribución incremental es la cifra dominante (corrección aprobada
+  // 2026-08-21, punto 2): más grande y con el color de acento.
+  scenarioMetricValuePrimary: {
+    fontSize: 18,
+    fontFamily: "Helvetica-Bold",
+    color: theme.colors.primary,
+  },
+  scenarioNote: { fontSize: 8, color: theme.colors.muted, marginTop: 4, lineHeight: 1.3 },
+  commercialSummaryKicker: {
+    fontSize: 9,
+    color: theme.colors.accent,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 6,
+    textTransform: "uppercase",
+  },
+  commercialSummaryNumber: { fontSize: 34, fontFamily: "Helvetica-Bold" },
+  commercialSummaryRange: { fontSize: 24, fontFamily: "Helvetica-Bold" },
+  commercialSummaryStatement: {
+    maxWidth: 480,
+    marginTop: 10,
+    fontSize: 9.5,
+    color: theme.colors.muted,
+    lineHeight: 1.4,
+  },
   roadmapCard: { flexDirection: "row", gap: 13, paddingVertical: 10 },
   roadmapDays: {
     width: 84,
@@ -313,6 +344,7 @@ function renderBlock(block: DocumentBlock, dark: boolean): React.ReactNode {
               <Text style={styles.itemTitle}>{item.titulo}</Text>
               <Text style={bodyStyle}>
                 {item.capa} - confianza {item.confianza}
+                {item.magnitud ? ` - ${LABELS_MAGNITUD[item.magnitud]}` : ""}
               </Text>
               {item.amount ? (
                 <Text style={[styles.amount, dark ? styles.amountDark : {}]}>
@@ -321,6 +353,38 @@ function renderBlock(block: DocumentBlock, dark: boolean): React.ReactNode {
               ) : null}
             </View>
           ))}
+        </View>
+      );
+    case "commercial-summary":
+      return (
+        <View key="commercial-summary" style={[...cardStyle, styles.cardWide]} wrap={false}>
+          {block.headline ? (
+            <>
+              <Text style={styles.commercialSummaryKicker}>
+                Contribución incremental a 90 días · Escenario conservador
+              </Text>
+              <Text style={styles.commercialSummaryNumber}>
+                {formatPublishedNumber(block.headline)}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.commercialSummaryKicker}>
+                Rango de contribución incremental a 90 días
+              </Text>
+              <Text style={styles.commercialSummaryRange}>
+                {block.range.lower ? formatPublishedNumber(block.range.lower) : "Retenido"}
+                {" – "}
+                {block.range.upper ? formatPublishedNumber(block.range.upper) : "Retenido"}
+              </Text>
+              {block.dispersion.dataToCloseIt.length > 0 ? (
+                <BulletList items={block.dispersion.dataToCloseIt} />
+              ) : null}
+            </>
+          )}
+          {block.statement ? (
+            <Text style={styles.commercialSummaryStatement}>{block.statement}</Text>
+          ) : null}
         </View>
       );
     case "scenarios":
@@ -333,19 +397,19 @@ function renderBlock(block: DocumentBlock, dark: boolean): React.ReactNode {
                 <Text style={badgeStyle}>{labelConfidence(item.confidence)}</Text>
               </View>
               <View style={styles.scenarioMetrics}>
+                {item.contribution90d ? (
+                  <View style={styles.scenarioMetric}>
+                    <Text style={styles.scenarioMetricLabel}>Contribución incremental 90 días</Text>
+                    <Text style={styles.scenarioMetricValuePrimary}>
+                      {formatPublishedNumber(item.contribution90d)}
+                    </Text>
+                  </View>
+                ) : null}
                 {item.revenue90d ? (
                   <View style={styles.scenarioMetric}>
                     <Text style={styles.scenarioMetricLabel}>Facturación incremental 90 días</Text>
                     <Text style={styles.scenarioMetricValue}>
                       {formatPublishedNumber(item.revenue90d)}
-                    </Text>
-                  </View>
-                ) : null}
-                {item.contribution90d ? (
-                  <View style={styles.scenarioMetric}>
-                    <Text style={styles.scenarioMetricLabel}>Contribución incremental 90 días</Text>
-                    <Text style={styles.scenarioMetricValue}>
-                      {formatPublishedNumber(item.contribution90d)}
                     </Text>
                   </View>
                 ) : null}
@@ -358,6 +422,11 @@ function renderBlock(block: DocumentBlock, dark: boolean): React.ReactNode {
                   </View>
                 ) : null}
               </View>
+              <Text style={styles.scenarioNote}>
+                El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso
+                ocurre, el efecto sería mayor al proyectado. Esta versión trata el ahorro de forma
+                conservadora y no asume esa reinversión.
+              </Text>
               {item.levers.map((lever) => (
                 <Text key={`${lever.type}:${lever.id}`} style={bodyStyle}>
                   {lever.name}: {formatPublishedNumber(lever.amount)}

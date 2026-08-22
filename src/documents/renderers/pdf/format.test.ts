@@ -22,3 +22,18 @@ describe("PDF number formatting", () => {
     expect(formatPublishedNumber(value(27.8, "ratio"))).toBe("27,8x");
   });
 });
+
+describe("marca de supuesto (corrección aprobada 2026-08-21, punto 5)", () => {
+  it("no marca un valor observado (sin supuestos)", () => {
+    expect(formatPublishedNumber(value(1_000_000, "money"))).toBe("$ 1.000.000");
+    expect(formatPublishedNumber(value(1_000_000, "money"))).not.toContain("†");
+  });
+
+  it("marca visiblemente un valor que depende de una curva de adopción, con el símbolo †", () => {
+    const conSupuesto: PublishedNumber = {
+      ...value(1_000_000, "money"),
+      assumptions: ["rampa_escenario_conservador"],
+    };
+    expect(formatPublishedNumber(conSupuesto)).toBe("$ 1.000.000 †");
+  });
+});

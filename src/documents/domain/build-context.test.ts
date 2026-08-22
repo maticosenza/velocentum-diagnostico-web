@@ -6,7 +6,9 @@ import {
   configuracionRegresionFase2,
 } from "../../lib/fixtures-casos";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
-import { buildDocumentContext } from "./build-context";
+import { buildDocumentContext, magnitudDeFuga } from "./build-context";
+import { impactoCalculado } from "../../lib/impacto-economico";
+import type { Fuga } from "../../lib/calculo-diagnostico";
 import { validarContextoDocumento } from "./validation";
 
 function contexto(datos: DatosDiagnostico) {
@@ -179,5 +181,38 @@ describe("hallazgos: magnitud (corrección aprobada 2026-08-21, punto 3)", () =>
     for (const h of conMonto) {
       expect(h.magnitud).toBeNull();
     }
+  });
+
+  it("nunca elige facturación incremental aunque su monto coincida por casualidad con el de contribución (margen 100% teórico)", () => {
+    // Caso construido a mano: un margen de exactamente 100% haría que
+    // facturación incremental y contribución incremental tuvieran el mismo
+    // montoMensual. magnitudDeFuga no debe confundir una con la otra: sólo
+    // busca entre contribución y ahorro (facturación no tiene análogo
+    // legado), así que la ambigüedad nunca puede ocurrir.
+    const fugaConMargen100: Fuga = {
+      id: "funnel_carrito",
+      etiqueta: "Fuga por carrito",
+      tipo: "monto",
+      monto: 50_000,
+      calculable: true,
+      faltantes: [],
+      impactos: [
+        impactoCalculado({ tipo: "facturacion_incremental", montoMensual: 50_000, confianza: "alta" }),
+        impactoCalculado({ tipo: "contribucion_incremental", montoMensual: 50_000, confianza: "alta" }),
+      ],
+    };
+    expect(magnitudDeFuga(fugaConMargen100)).toBe("contribucion_incremental");
+  });
+
+  it("magnitudDeFuga: un monto legado sin impactos tipados no se reclasifica", () => {
+    const fugaLegada: Fuga = {
+      id: "funnel_carrito",
+      etiqueta: "Fuga por carrito",
+      tipo: "monto",
+      monto: 50_000,
+      calculable: true,
+      faltantes: [],
+    };
+    expect(magnitudDeFuga(fugaLegada)).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import type { DocumentContextV1 } from "../../domain";
-import { buildCommercialOffer, buildFindings, mergeRestrictions } from "./blocks";
+import { buildCommercialOffer, buildCommercialSummary, buildFindings, mergeRestrictions } from "./blocks";
 import {
   contentSection,
   coverSection,
@@ -12,10 +12,12 @@ import {
 export function buildPropuestaDocument(context: DocumentContextV1) {
   const findings = buildFindings(context);
   const commercial = buildCommercialOffer(context);
+  const summary = buildCommercialSummary(context);
   const restrictions = mergeRestrictions(
     context.restricciones,
     findings.restrictions,
     commercial.restrictions,
+    summary.restrictions,
   );
 
   return createModel({
@@ -29,6 +31,15 @@ export function buildPropuestaDocument(context: DocumentContextV1) {
         "Propuesta de trabajo",
         "Una intervención alineada con las prioridades validadas.",
       ),
+      // Una sola cifra arriba (corrección aprobada 2026-08-21, punto 4): el
+      // resto (hallazgos, alcance, paquete) va abajo, en detalle.
+      contentSection({
+        id: "commercial-summary",
+        eyebrow: "Lo que importa",
+        title: "Contribución incremental proyectada",
+        blocks: [summary.block],
+        tone: "dark",
+      }),
       contentSection({
         id: "proposal-context",
         eyebrow: "Por qué ahora",

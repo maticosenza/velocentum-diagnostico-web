@@ -32,6 +32,13 @@ const LABELS_ESCENARIO = {
   potencial: "Potencial",
 } as const;
 
+/** Etiqueta de magnitud económica (corrección aprobada 2026-08-21, punto 3). */
+const LABELS_MAGNITUD = {
+  facturacion_incremental: "Facturación incremental",
+  contribucion_incremental: "Contribución incremental",
+  ahorro_publicitario: "Ahorro publicitario",
+} as const;
+
 const LABELS_ORIGEN = {
   observado: "Observado",
   declarado: "Declarado",
@@ -187,6 +194,9 @@ function FindingsBlock({ block }: { block: Extract<DocumentBlock, { type: "findi
                   Prioridad {item.prioridad}
                 </span>
                 <span className="vdoc-tag">{LABELS_CAPA[item.capa]}</span>
+                {item.magnitud ? (
+                  <span className="vdoc-tag">{LABELS_MAGNITUD[item.magnitud]}</span>
+                ) : null}
               </div>
               <h3>{item.titulo}</h3>
               {item.amount ? (
@@ -203,6 +213,52 @@ function FindingsBlock({ block }: { block: Extract<DocumentBlock, { type: "findi
   );
 }
 
+/**
+ * Encabezado comercial de 90 días (corrección aprobada 2026-08-21, puntos
+ * 2, 4, 6 y 7): una sola cifra —contribución incremental del escenario
+ * conservador— o, cuando la dispersión es alta, el rango sin cifra
+ * principal. La redacción obligatoria (`statement`) siempre acompaña al
+ * número: nunca se muestra un valor sin la salvedad de que depende de
+ * supuestos.
+ */
+function CommercialSummaryBlock({
+  block,
+}: {
+  block: Extract<DocumentBlock, { type: "commercial-summary" }>;
+}) {
+  return (
+    <BlockFrame type="commercial-summary">
+      <div className="vdoc-commercial-summary">
+        {block.headline ? (
+          <div className="vdoc-commercial-summary__headline">
+            <p className="vdoc-kicker">Contribución incremental a 90 días · Escenario conservador</p>
+            <p className="vdoc-commercial-summary__number">
+              <PublishedNumberView value={block.headline} />
+            </p>
+          </div>
+        ) : (
+          <div className="vdoc-commercial-summary__headline">
+            <p className="vdoc-kicker">Rango de contribución incremental a 90 días</p>
+            <p className="vdoc-commercial-summary__range">
+              {block.range.lower ? <PublishedNumberView value={block.range.lower} /> : (
+                <span className="vdoc-retained">Retenido</span>
+              )}
+              {" – "}
+              {block.range.upper ? <PublishedNumberView value={block.range.upper} /> : (
+                <span className="vdoc-retained">Retenido</span>
+              )}
+            </p>
+            {block.dispersion.dataToCloseIt.length > 0 ? (
+              <List items={block.dispersion.dataToCloseIt} />
+            ) : null}
+          </div>
+        )}
+        {block.statement ? <p className="vdoc-commercial-summary__statement">{block.statement}</p> : null}
+      </div>
+    </BlockFrame>
+  );
+}
+
 function ScenariosBlock({ block }: { block: Extract<DocumentBlock, { type: "scenarios" }> }) {
   return (
     <BlockFrame type="scenarios">
@@ -214,17 +270,13 @@ function ScenariosBlock({ block }: { block: Extract<DocumentBlock, { type: "scen
               <ConfidenceBadge value={item.confidence} />
             </div>
             <dl className="vdoc-scenario__metrics">
-              <div>
-                <dt>Facturación incremental acumulada a 90 días</dt>
-                <dd>
-                  {item.revenue90d ? (
-                    <PublishedNumberView value={item.revenue90d} />
-                  ) : (
-                    <span className="vdoc-retained">Retenido</span>
-                  )}
-                </dd>
-              </div>
-              <div>
+              {/*
+                Contribución incremental es la cifra dominante (corrección
+                aprobada 2026-08-21, punto 2): un cliente puede facturar más
+                y ganar menos. Facturación queda en bloque secundario, nunca
+                primero.
+              */}
+              <div className="vdoc-scenario__metric--primary">
                 <dt>Contribución incremental acumulada a 90 días</dt>
                 <dd>
                   {item.contribution90d ? (
@@ -234,7 +286,17 @@ function ScenariosBlock({ block }: { block: Extract<DocumentBlock, { type: "scen
                   )}
                 </dd>
               </div>
-              <div>
+              <div className="vdoc-scenario__metric--secondary">
+                <dt>Facturación incremental acumulada a 90 días</dt>
+                <dd>
+                  {item.revenue90d ? (
+                    <PublishedNumberView value={item.revenue90d} />
+                  ) : (
+                    <span className="vdoc-retained">Retenido</span>
+                  )}
+                </dd>
+              </div>
+              <div className="vdoc-scenario__metric--secondary">
                 <dt>Ahorro publicitario acumulado a 90 días</dt>
                 <dd>
                   {item.adSavings90d ? (
@@ -245,6 +307,11 @@ function ScenariosBlock({ block }: { block: Extract<DocumentBlock, { type: "scen
                 </dd>
               </div>
             </dl>
+            <p className="vdoc-scenario__note">
+              El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre,
+              el efecto sería mayor al proyectado. Esta versión trata el ahorro de forma
+              conservadora y no asume esa reinversión.
+            </p>
             {item.levers.length > 0 ? (
               <div className="vdoc-subsection">
                 <h4>Palancas</h4>
@@ -404,6 +471,8 @@ export function DocumentBlockView({ block }: { block: DocumentBlock }) {
       return <ShippingBlock block={block} />;
     case "findings":
       return <FindingsBlock block={block} />;
+    case "commercial-summary":
+      return <CommercialSummaryBlock block={block} />;
     case "scenarios":
       return <ScenariosBlock block={block} />;
     case "roadmap":

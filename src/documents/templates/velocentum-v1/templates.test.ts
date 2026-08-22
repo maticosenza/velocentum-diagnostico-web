@@ -42,6 +42,13 @@ describe("Velocentum document templates v1", () => {
           },
           {
             "blocks": [
+              "commercial-summary",
+            ],
+            "id": "commercial-summary",
+            "tone": "dark",
+          },
+          {
+            "blocks": [
               "coverage",
             ],
             "id": "coverage",
@@ -235,5 +242,71 @@ describe("Velocentum document templates v1", () => {
     expect(
       getVelocentumV1Template("velocentum-diagnostico/v1").build(buildSnakeContext()).kind,
     ).toBe("diagnostico");
+  });
+
+  it("diagnóstico nunca incluye un bloque commercial-summary ni scenarios (punto 3: no proyecta)", () => {
+    const model = buildDiagnosticoDocument(buildSnakeContext());
+    expect(blocksOf(model, "commercial-summary")).toHaveLength(0);
+    expect(blocksOf(model, "scenarios")).toHaveLength(0);
+  });
+
+  it("propuesta y proyección muestran el encabezado de contribución dominante (puntos 2 y 4)", () => {
+    // buildTitanContext trae resumenComercial no nulo (tipoDocumento
+    // "proyeccion_90d"); buildSnakeContext es "diagnostico" y por contrato
+    // trae resumenComercial: null, así que no sirve para este caso.
+    const propuesta = buildPropuestaDocument(buildTitanContext());
+    const proyeccion = buildProyeccion90dDocument(buildTitanContext());
+    expect(blocksOf(propuesta, "commercial-summary")).toHaveLength(1);
+    expect(blocksOf(proyeccion, "commercial-summary")).toHaveLength(1);
+    expect(blocksOf(propuesta, "commercial-summary")[0]?.scenarioCommunicated).toBe("conservador");
+  });
+
+  it("con dispersión alta, el encabezado comercial muestra el rango sin cifra principal (punto 7)", () => {
+    const contexto = buildSnakeContext();
+    // buildSnakeContext no incluye un escenario "conservador"; forzamos un
+    // resumenComercial con dispersión alta a mano para probar la rama de
+    // renderizado sin depender de curvas reconfiguradas.
+    contexto.resumenComercial = {
+      escenarioComunicado: "conservador",
+      cifraPrincipal: {
+        estado: "retenido",
+        valor: null,
+        confianza: "bloqueada",
+        motivos: ["El rango entre el escenario conservador y el potencial es demasiado amplio."],
+      },
+      limiteInferior: {
+        estado: "calculado",
+        valor: 1_000_000,
+        confianza: "alta",
+        evidenciaIds: [],
+        supuestos: ["rampa_escenario_conservador"],
+      },
+      limiteSuperior: {
+        estado: "calculado",
+        valor: 4_000_000,
+        confianza: "alta",
+        evidenciaIds: [],
+        supuestos: ["rampa_escenario_potencial"],
+      },
+      idEscenarioLimiteSuperior: "potencial",
+      dispersion: {
+        ratio: 4,
+        umbral: 2.5,
+        alta: true,
+        datosParaCerrarla: ["Confirmar si la curva configurada sigue siendo la aprobada."],
+      },
+      redaccion:
+        "Con los datos disponibles y bajo estos supuestos, existe un rango de contribución incremental potencial de $ 1.000.000 a $ 4.000.000 durante los próximos 90 días.",
+    };
+
+    const model = buildProyeccion90dDocument(contexto);
+    const summary = blocksOf(model, "commercial-summary")[0];
+    expect(summary).toBeDefined();
+    expect(summary?.headline).toBeNull();
+    expect(summary?.range.lower?.value).toBe(1_000_000);
+    expect(summary?.range.upper?.value).toBe(4_000_000);
+    expect(summary?.dispersion.high).toBe(true);
+    expect(summary?.dispersion.dataToCloseIt.length).toBeGreaterThan(0);
+    expect(summary?.statement).toContain("rango de contribución incremental potencial");
   });
 });

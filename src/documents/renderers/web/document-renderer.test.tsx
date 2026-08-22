@@ -7,12 +7,25 @@ import {
   buildProyeccionPropuestaDocument,
 } from "../../templates/velocentum-v1";
 import { buildSnakeContext, buildTitanContext } from "../../templates/velocentum-v1/test-fixtures";
-import { DocumentWebRenderer } from "./document-renderer";
+import type { PublishedNumber } from "../../templates/velocentum-v1";
+import { DocumentWebRenderer, PublishedNumberView } from "./document-renderer";
 import { formatPublishedNumber } from "./format";
+import { calcularDiagnostico } from "../../../lib/calculo-diagnostico";
+import { casoSnakeStore, configuracionRegresionFase2 } from "../../../lib/fixtures-casos";
+import { buildDocumentContext } from "../../domain";
+import type { DatosDiagnostico } from "../../../lib/diagnostico-form";
 
 function render(model: ReturnType<typeof buildDiagnosticoDocument>) {
   return renderToStaticMarkup(<DocumentWebRenderer model={model} />);
 }
+
+const numeroBase: PublishedNumber = {
+  value: 1_000_000,
+  format: "money",
+  confidence: "alta",
+  evidenceIds: [],
+  assumptions: [],
+};
 
 describe("renderer web documental", () => {
   it("renderiza diagnóstico con sandwich visual, estructura accesible y cero real", () => {
@@ -110,5 +123,51 @@ describe("renderer web documental", () => {
         assumptions: [],
       }),
     ).toBe("27,8×");
+  });
+});
+
+describe("PublishedNumberView: marca de supuesto (corrección aprobada 2026-08-21, punto 5)", () => {
+  it("no marca un valor observado (sin supuestos)", () => {
+    const html = renderToStaticMarkup(<PublishedNumberView value={numeroBase} />);
+    expect(html).toContain('data-supuesto="false"');
+    expect(html).not.toContain("vdoc-number--supuesto");
+    expect(html).not.toContain("vdoc-number__mark");
+    expect(html).not.toContain("†");
+  });
+
+  it("marca visiblemente un valor que depende de una curva de adopción", () => {
+    const conSupuesto: PublishedNumber = { ...numeroBase, assumptions: ["rampa_escenario_conservador"] };
+    const html = renderToStaticMarkup(<PublishedNumberView value={conSupuesto} />);
+    expect(html).toContain('data-supuesto="true"');
+    expect(html).toContain("vdoc-number--supuesto");
+    expect(html).toContain("vdoc-number__mark");
+    expect(html).toContain("†");
+    expect(html).toMatch(/title="[^"]*supuesto[^"]*"/i);
+  });
+
+  it("la marca aparece efectivamente en el bloque de escenarios de un documento con datos reales", () => {
+    // buildSnakeContext() es un fixture armado a mano (no depende del
+    // calculador, por diseño): sus ValorPublicable nunca traen `supuestos`.
+    // Para probar la marca en un render real hace falta el pipeline
+    // completo (calcularDiagnostico + buildDocumentContext), que es donde
+    // escenariosDocumento efectivamente propaga el supuesto de la rampa.
+    const datosConOportunidad: DatosDiagnostico = {
+      ...casoSnakeStore,
+      facturacion_mensual: 22_522_600,
+      visitas_mensuales: 5000,
+      agregados_carrito: 1000,
+      checkouts_iniciados: 300,
+      absorbe_costo_envio: true,
+    };
+    const resultado = calcularDiagnostico(datosConOportunidad, configuracionRegresionFase2);
+    const contexto = buildDocumentContext({
+      datos: datosConOportunidad,
+      resultado,
+      diagnostico: { id: "test-marca-supuesto", version: 1, fecha: "2026-08-20" },
+      tipoDocumento: "proyeccion_90d",
+    });
+    const html = render(buildProyeccion90dDocument(contexto));
+    expect(html).toContain("vdoc-number--supuesto");
+    expect(html).toContain("vdoc-number__mark");
   });
 });

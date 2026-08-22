@@ -173,14 +173,25 @@ function restriccionesDocumento(args: {
 
 /**
  * De qué magnitud económica es el monto de una fuga (corrección aprobada
- * 2026-08-21, punto 3). Usa el impacto tipado cuyo monto coincide con el
- * monto legado publicado; `null` para riesgos o montos legados sin
- * clasificar (nunca adivina la magnitud de un dato viejo).
+ * 2026-08-21, punto 3). `fuga.monto` (legado) nunca representó facturación
+ * incremental: por diseño, siempre fue contribución (tramos de funnel) o
+ * ahorro publicitario (gasto no rentable/sobrefragmentación) — facturación
+ * incremental es una magnitud nueva sin análogo legado. Por eso esta
+ * función busca sólo entre esos dos tipos, nunca entre los tres: si
+ * buscara también facturación, un margen de exactamente 100% (facturación
+ * == contribución) haría que el monto coincidiera con dos impactos
+ * distintos, y cuál gane sería arbitrario. Restringir a contribución/ahorro
+ * hace que, para cualquier fuga real, coincida con uno solo. `null` para
+ * riesgos o montos legados sin clasificar (nunca adivina la magnitud de un
+ * dato viejo).
  */
-function magnitudDeFuga(fuga: Fuga): TipoImpactoClasificado | null {
+export function magnitudDeFuga(fuga: Fuga): TipoImpactoClasificado | null {
   if (!finito(fuga.monto)) return null;
   const impacto = impactosDeFuga(fuga).find(
-    (i) => i.tipo !== "no_clasificado" && i.confianza !== "retenida" && i.montoMensual === fuga.monto,
+    (i) =>
+      (i.tipo === "contribucion_incremental" || i.tipo === "ahorro_publicitario") &&
+      i.confianza !== "retenida" &&
+      i.montoMensual === fuga.monto,
   );
   return impacto ? (impacto.tipo as TipoImpactoClasificado) : null;
 }

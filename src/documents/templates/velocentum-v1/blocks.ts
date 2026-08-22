@@ -238,6 +238,48 @@ export function buildScenarios(context: DocumentContextV1): {
   };
 }
 
+/**
+ * Encabezado comercial de 90 días (corrección aprobada 2026-08-21, puntos
+ * 2, 4, 6 y 7). `null` cuando el documento no proyecta (diagnóstico:
+ * `context.resumenComercial` ya es `null` desde el contrato).
+ */
+export function buildCommercialSummary(context: DocumentContextV1): {
+  block: DocumentBlock | null;
+  restrictions: RestriccionDocumento[];
+} {
+  if (!context.resumenComercial) return { block: null, restrictions: [] };
+  const r = context.resumenComercial;
+  const restrictions: RestriccionDocumento[] = [];
+
+  const headline = publishValue(r.cifraPrincipal, "money");
+  const headlineRetained = retainedRestriction(
+    "resumen-comercial:cifra-principal",
+    "Cifra principal retenida",
+    r.cifraPrincipal,
+  );
+  if (headlineRetained) restrictions.push(headlineRetained);
+
+  const lower = publishValue(r.limiteInferior, "money");
+  const upper = publishValue(r.limiteSuperior, "money");
+
+  return {
+    block: {
+      type: "commercial-summary",
+      scenarioCommunicated: r.escenarioComunicado,
+      headline,
+      range: { lower, upper, upperScenarioId: r.idEscenarioLimiteSuperior },
+      statement: r.redaccion,
+      dispersion: {
+        ratio: r.dispersion.ratio,
+        threshold: r.dispersion.umbral,
+        high: r.dispersion.alta,
+        dataToCloseIt: [...r.dispersion.datosParaCerrarla],
+      },
+    },
+    restrictions,
+  };
+}
+
 export function buildCommercialOffer(context: DocumentContextV1): {
   block: DocumentBlock | null;
   restrictions: RestriccionDocumento[];

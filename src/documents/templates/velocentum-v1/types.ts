@@ -97,6 +97,32 @@ export type DocumentBlock =
         restrictions: RestriccionDocumento[];
       }[];
     }
+  | {
+      /**
+       * Encabezado comercial de 90 días (corrección aprobada 2026-08-21,
+       * puntos 2, 4, 6 y 7): la cifra dominante es SIEMPRE contribución
+       * incremental del escenario conservador, nunca facturación. `headline`
+       * es `null` cuando la dispersión es alta o el conservador no es
+       * calculable — en ese caso sólo se muestra el rango (`range`), nunca
+       * un número principal inventado.
+       */
+      type: "commercial-summary";
+      scenarioCommunicated: "conservador";
+      headline: PublishedNumber | null;
+      range: {
+        lower: PublishedNumber | null;
+        upper: PublishedNumber | null;
+        upperScenarioId: "base" | "potencial" | null;
+      };
+      /** Redacción obligatoria ya armada (punto 6). `null` sin rango calculable que describir. */
+      statement: string | null;
+      dispersion: {
+        ratio: number | null;
+        threshold: number;
+        high: boolean;
+        dataToCloseIt: string[];
+      };
+    }
   | { type: "roadmap"; items: EtapaRoadmap[] }
   | { type: "services"; items: ServicioDocumento[] }
   | {

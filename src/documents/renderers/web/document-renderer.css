@@ -369,6 +369,61 @@
   margin-top: 1.75rem !important;
 }
 
+/**
+ * Contribución incremental es la cifra dominante (corrección aprobada
+ * 2026-08-21, punto 2): más grande y con el color de acento. Facturación
+ * queda en bloque secundario, nunca primero.
+ */
+.vdoc-scenario__metric--primary dt {
+  font-weight: 700;
+}
+
+.vdoc-scenario__metric--primary .vdoc-number {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  color: var(--vdoc-accent);
+}
+
+.vdoc-scenario__metric--secondary .vdoc-number {
+  font-size: 1rem;
+}
+
+.vdoc-scenario__note {
+  margin-top: 1rem;
+  color: var(--vdoc-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/**
+ * Encabezado comercial de 90 días (corrección aprobada 2026-08-21, puntos
+ * 2, 4, 6 y 7): una sola cifra dominante o, con dispersión alta, el rango
+ * sin cifra principal. La redacción siempre acompaña al número.
+ */
+.vdoc-commercial-summary__headline {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.vdoc-commercial-summary__number {
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.vdoc-commercial-summary__range {
+  font-size: clamp(1.6rem, 3.6vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.vdoc-commercial-summary__statement {
+  max-width: 60ch;
+  margin-top: 1.25rem;
+  color: var(--vdoc-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
 .vdoc-retained {
   color: var(--vdoc-warning);
   font-size: 0.85rem;
