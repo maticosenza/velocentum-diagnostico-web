@@ -45,3 +45,25 @@ bloque; el cierre consolidado va al final del archivo.
   consume `derivados.mayorista` — el `modalidad` que ve el PDF sigue
   hardcodeado en `{ minorista: true, mayorista: false }`. Se integrará
   cuando se trabajen las fases 11-13 con la capa documental.
+
+## Bloque 3 · Fases 11/12, estructura de contenido de los PDFs — **COMMITEADO**
+
+**Commit:** `33945d2`.
+
+- Cinco puntos previos entregados en `docs/fase11-12-diseno-tecnico.md`
+  (inventario, estructura de datos, wireframes, exportación 16:9/A4,
+  criterios de prueba) antes de tocar código, como pide la especificación.
+- `diagnostico.ts` (12 secciones) y `proyeccion-90d.ts` (11 secciones)
+  reestructurados reutilizando el vocabulario de bloques existente: cero
+  tipos de bloque nuevos, cero cambios en los renderers — "no capa visual"
+  respetado arquitectónicamente.
+- Riesgos/contradicciones y datos faltantes: mismo array de restricciones,
+  particiones disjuntas. Prioridades inmediatas: subconjunto filtrado de
+  hallazgos. Próximo paso activado con el bloque `next-step` ya existente.
+- Auditoría: APROBADO CON OBSERVACIONES (2 no bloqueantes, ambas
+  corregidas con datasets que sí ejercitan las ramas antes no probadas).
+- Suite: 515 passed | 1 todo. Typecheck y build limpios.
+- Pendiente documentado a propósito: desglose real por canal/producto/
+  publicidad/funnel-retención sigue usando el `metric-grid` general —
+  requiere campos nuevos en `DocumentContextV1`, diseño ya especificado en
+  `docs/fase11-12-diseno-tecnico.md` punto 2 para un bloque posterior.
