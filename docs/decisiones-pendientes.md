@@ -42,6 +42,68 @@ compra), reemplazar el 20% por ese número en la fila `configuracion` de la
 base (clave `factor_costo_evento_intermedio`) — no requiere tocar código. Si
 no hay objeción, el valor por defecto queda como está.
 
+### 8 · Algoritmo de reparto de servicios en la escalera de paquetes
+
+**Contexto.** Al implementar el generador de paquetes (bloque técnico,
+2026-08-22, `src/lib/paquetes.ts`) que cierra la entrada 7, la decisión
+comercial 7 deja sin especificar dos cosas:
+
+1. Con varios servicios justificados por hallazgos, **en qué orden y en
+   qué nivel entra cada uno** (¿todos los servicios ligados a Meta Ads van
+   primero? ¿se reparte parejo entre los niveles habilitados?).
+2. **Cómo escala la cantidad** de un servicio numérico (campañas activas,
+   piezas por mes) ya incluido en un nivel al subir al siguiente — la
+   decisión dice "más servicios o alcance adicional" pero no da una
+   fórmula.
+
+**Qué se implementó mientras tanto (default razonable, no una decisión
+de negocio).** `generarEscaleraPaquetes()` reparte los servicios
+justificados en el orden fijo del catálogo `SERVICIOS`, lo más parejo
+posible entre los niveles habilitados (nunca más de tres), y escala la
+cantidad de cada servicio numérico linealmente con el índice del nivel
+(nivel 1 = base configurable, nivel 2 = base × 2, nivel 3 = base × 3).
+Está documentado en el comentario de cabecera de `src/lib/paquetes.ts` y
+es completamente editable en la pantalla de confirmación
+(`src/components/confirmacion-paquetes.tsx`): el vendedor puede mover
+servicios entre niveles y cambiar cualquier cantidad antes de confirmar.
+
+**Por qué no bloqueó el bloque.** El generador y la pantalla de
+confirmación no dependen de que este reparto sea "el correcto": son
+válidos con cualquier distribución, y la confirmación manual obligatoria
+existe precisamente para que el vendedor corrija el default del sistema
+antes de que se convierta en una propuesta real.
+
+**Qué decidir.** Si Matías define un criterio distinto (por ejemplo,
+Meta/Google Ads siempre en el nivel 1, contenido recién en el nivel 2),
+es un cambio acotado a la función de reparto en `src/lib/paquetes.ts`, sin
+tocar el resto del generador ni la UI de confirmación.
+
+### 9 · Persistencia de la selección comercial confirmada (requiere cambio de base)
+
+**Contexto.** La pantalla de confirmación de paquetes
+(`src/components/confirmacion-paquetes.tsx`) sólo guarda la escalera
+editada y confirmada en estado de React, en memoria: se pierde si se
+recarga la página. `SeleccionComercial`
+(`src/documents/domain/types.ts:210-222`) es el tipo que el PDF de
+propuesta necesita para mostrar paquete/alcance/precio, pero
+`buildDocumentContext()` sigue fijando `comercial: null` de forma
+incondicional (`src/documents/domain/build-context.ts:479`): no hay
+ninguna columna ni tabla en Supabase para guardar una selección
+confirmada por diagnóstico.
+
+**Por qué no se implementó.** Agregar esa persistencia requiere una
+migración de base de datos (columna o tabla nueva). Está expresamente
+fuera de lo que este trabajo autónomo puede hacer por sí solo
+("restricciones permanentes: no tocar... la base... ni migraciones").
+
+**Qué decidir.** El generador de paquetes y la pantalla de confirmación
+quedan listos y probados (`src/lib/paquetes.ts`,
+`src/lib/paquetes.test.ts`, `src/components/confirmacion-paquetes.tsx`),
+pero el circuito completo ("confirmar y que el PDF de propuesta lo use")
+necesita, como paso siguiente y con aprobación explícita de Matías: una
+migración que agregue dónde guardar la selección confirmada, y wireado de
+esa selección hacia `SeleccionComercial`/`buildDocumentContext()`.
+
 ## Cerradas
 
 ### 1 · ¿Debe "margen total" en el motor de cálculo exigir 100% de cobertura de productos, igual que ya exige el documento? — **RESUELTA el 2026-08-22**
@@ -276,68 +338,6 @@ obligatoria:
 implementado en el bloque que registra esta decisión) debe respetar estas
 ocho reglas exactamente; ninguna se puede relajar sin una nueva decisión
 explícita.
-
-### 8 · Algoritmo de reparto de servicios en la escalera de paquetes — **PENDIENTE**
-
-**Contexto.** Al implementar el generador de paquetes (bloque técnico,
-2026-08-22, `src/lib/paquetes.ts`) que cierra la entrada 7, la decisión
-comercial 7 deja sin especificar dos cosas:
-
-1. Con varios servicios justificados por hallazgos, **en qué orden y en
-   qué nivel entra cada uno** (¿todos los servicios ligados a Meta Ads van
-   primero? ¿se reparte parejo entre los niveles habilitados?).
-2. **Cómo escala la cantidad** de un servicio numérico (campañas activas,
-   piezas por mes) ya incluido en un nivel al subir al siguiente — la
-   decisión dice "más servicios o alcance adicional" pero no da una
-   fórmula.
-
-**Qué se implementó mientras tanto (default razonable, no una decisión
-de negocio).** `generarEscaleraPaquetes()` reparte los servicios
-justificados en el orden fijo del catálogo `SERVICIOS`, lo más parejo
-posible entre los niveles habilitados (nunca más de tres), y escala la
-cantidad de cada servicio numérico linealmente con el índice del nivel
-(nivel 1 = base configurable, nivel 2 = base × 2, nivel 3 = base × 3).
-Está documentado en el comentario de cabecera de `src/lib/paquetes.ts` y
-es completamente editable en la pantalla de confirmación
-(`src/components/confirmacion-paquetes.tsx`): el vendedor puede mover
-servicios entre niveles y cambiar cualquier cantidad antes de confirmar.
-
-**Por qué no bloqueó el bloque.** El generador y la pantalla de
-confirmación no dependen de que este reparto sea "el correcto": son
-válidos con cualquier distribución, y la confirmación manual obligatoria
-existe precisamente para que el vendedor corrija el default del sistema
-antes de que se convierta en una propuesta real.
-
-**Consecuencia.** Si Matías define un criterio distinto (por ejemplo,
-Meta/Google Ads siempre en el nivel 1, contenido recién en el nivel 2),
-es un cambio acotado a la función de reparto en `src/lib/paquetes.ts`, sin
-tocar el resto del generador ni la UI de confirmación.
-
-### 9 · Persistencia de la selección comercial confirmada — **PENDIENTE (requiere cambio de base)**
-
-**Contexto.** La pantalla de confirmación de paquetes
-(`src/components/confirmacion-paquetes.tsx`) sólo guarda la escalera
-editada y confirmada en estado de React, en memoria: se pierde si se
-recarga la página. `SeleccionComercial`
-(`src/documents/domain/types.ts:210-222`) es el tipo que el PDF de
-propuesta necesita para mostrar paquete/alcance/precio, pero
-`buildDocumentContext()` sigue fijando `comercial: null` de forma
-incondicional (`src/documents/domain/build-context.ts:479`): no hay
-ninguna columna ni tabla en Supabase para guardar una selección
-confirmada por diagnóstico.
-
-**Por qué no se implementó.** Agregar esa persistencia requiere una
-migración de base de datos (columna o tabla nueva). Está expresamente
-fuera de lo que este trabajo autónomo puede hacer por sí solo
-("restricciones permanentes: no tocar... la base... ni migraciones").
-
-**Consecuencia.** El generador de paquetes y la pantalla de confirmación
-quedan listos y probados (`src/lib/paquetes.ts`,
-`src/lib/paquetes.test.ts`, `src/components/confirmacion-paquetes.tsx`),
-pero el circuito completo ("confirmar y que el PDF de propuesta lo use")
-necesita, como paso siguiente y con aprobación explícita de Matías: una
-migración que agregue dónde guardar la selección confirmada, y wireado de
-esa selección hacia `SeleccionComercial`/`buildDocumentContext()`.
 
 ---
 
