@@ -63,6 +63,13 @@ describe("Velocentum document templates v1", () => {
           },
           {
             "blocks": [
+              "restrictions",
+            ],
+            "id": "restrictions",
+            "tone": "soft",
+          },
+          {
+            "blocks": [
               "transition",
             ],
             "id": "projection-transition",
@@ -77,9 +84,9 @@ describe("Velocentum document templates v1", () => {
           },
           {
             "blocks": [
-              "restrictions",
+              "methodology",
             ],
-            "id": "restrictions",
+            "id": "methodology",
             "tone": "soft",
           },
           {
@@ -91,16 +98,9 @@ describe("Velocentum document templates v1", () => {
           },
           {
             "blocks": [
-              "methodology",
+              "next-step",
             ],
-            "id": "methodology",
-            "tone": "soft",
-          },
-          {
-            "blocks": [
-              "transition",
-            ],
-            "id": "projection-close",
+            "id": "next-step",
             "tone": "dark",
           },
         ],
@@ -151,16 +151,16 @@ describe("Velocentum document templates v1", () => {
           },
           {
             "blocks": [
-              "roadmap",
+              "findings",
             ],
-            "id": "roadmap",
+            "id": "immediate-priorities",
             "tone": "light",
           },
           {
             "blocks": [
-              "transition",
+              "next-step",
             ],
-            "id": "diagnostic-close",
+            "id": "next-step",
             "tone": "dark",
           },
         ],

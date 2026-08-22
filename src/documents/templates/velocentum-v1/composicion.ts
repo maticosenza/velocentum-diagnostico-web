@@ -9,7 +9,10 @@ import {
   transitionSection,
 } from "./shared";
 
-const OMITTED_PROJECTION_SECTION_IDS = new Set(["cover", "projection-close"]);
+// "next-step" reemplazó a la vieja "projection-close" (fase 11/12,
+// 2026-08-22): el documento combinado arma su propio next-step, con
+// redacción de propuesta, más abajo — el de la proyección se omite acá.
+const OMITTED_PROJECTION_SECTION_IDS = new Set(["cover", "next-step"]);
 
 export function buildProyeccionPropuestaDocument(context: DocumentContextV1) {
   const projection = buildProyeccion90dDocument(context);

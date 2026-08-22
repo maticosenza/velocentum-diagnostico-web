@@ -509,11 +509,44 @@ siguiente acción.
   de validación con 2-3 casos reales antes de apoyarse en el lenguaje de
   escenarios frente a un cliente.
 
-### Fase 11 — Documento de diagnóstico — **FUNCIONAL / VISUAL PENDIENTE**
+### Fase 11 — Documento de diagnóstico — **FUNCIONAL, estructura de contenido ampliada (2026-08-22) / VISUAL PENDIENTE**
 
 - **Denominación del plan maestro:** "Documento de diagnóstico".
 - **Estado real:** funcional (motor → plantilla → render → PDF completo),
   visual pendiente — coincide con el plan maestro.
+- **Bloque técnico 2026-08-22 (fase 11/12, "parte funcional"):** primero se
+  entregaron los cinco puntos que pide
+  `docs/especificacion-visual-pdfs-fases-11-13.md` sección 12 — ver
+  `docs/fase11-12-diseno-tecnico.md` (inventario de componentes, estructura
+  de datos, wireframes, estrategia 16:9/A4, criterios de prueba). Después
+  se reestructuró `diagnostico.ts` a las doce secciones del plan maestro:
+  portada, cobertura, foto actual/canales/economía/productos/publicidad
+  (comparten hoy el mismo `metric-grid` general — ver más abajo qué
+  falta), funnel y hallazgos, riesgos y contradicciones, prioridades
+  inmediatas, datos faltantes, próximo paso. "Riesgos y contradicciones"
+  (`riskSection`) y "datos faltantes" (`missingDataSection`,
+  `src/documents/templates/velocentum-v1/shared.ts`) son el MISMO array de
+  restricciones, particionado por `bloquea.length > 0` — nunca una
+  restricción duplicada entre las dos. "Prioridades inmediatas"
+  (`immediatePrioritiesSection`) es un subconjunto filtrado de "Hallazgos
+  priorizados" (`prioridad === "alta"`), no un dato nuevo. Se activó el
+  bloque `next-step` (tipo ya declarado, sin usar en estos dos documentos)
+  para la sección "Próximo paso". Se quitó `roadmapSection` del
+  diagnóstico (no estaba en la lista de doce secciones del plan maestro; ya
+  era un no-op porque `context.roadmap` está vacío para todo tipo de
+  documento hoy — sin cambio de comportamiento real).
+- **Qué NO se implementó en este bloque (documentado a propósito, no
+  fue un olvido):** el desglose real por canal, por producto, de
+  publicidad/medición y de funnel/retención (secciones 3, 5, 6 y 7 del
+  plan maestro) sigue usando el `metric-grid` general existente, no una
+  vista propia por ítem — porque `DocumentContextV1` hoy no tiene esos
+  campos (no hay per-canal, per-producto, ni funnel/retención en el
+  contrato documental), aunque el motor de cálculo SÍ los calcula
+  (`derivados.canales`, `productosCargados()`, `derivados.funnel`). Es
+  trabajo de plomería real pero no trivial: el diseño exacto de los campos
+  nuevos que haría falta agregar está en
+  `docs/fase11-12-diseno-tecnico.md`, punto 2, listo para implementar en un
+  bloque técnico posterior sin tener que rediseñarlo de nuevo.
 - **Evidencia funcional:**
   - Plantilla versionada: `src/documents/templates/velocentum-v1/diagnostico.ts`.
   - Modelo documental: `DocumentContextV1` (`src/documents/domain/types.ts`).
@@ -544,26 +577,43 @@ siguiente acción.
   `src/documents/renderers/pdf/document.test.tsx`,
   `src/documents/renderers/web/document-renderer.test.tsx`,
   `src/documents/theme/velocentum-light-v1.test.ts`.
+- **Pruebas existentes (agregadas 2026-08-22):**
+  `src/documents/templates/velocentum-v1/estructura-contenido-fase11-12.test.ts`
+  (7 casos): el diagnóstico nunca trae `scenarios`/`commercial-summary`/
+  `commercial-offer` en tres datasets distintos; riesgos y datos faltantes
+  son particiones disjuntas del mismo array; prioridades inmediatas es un
+  subconjunto verificado de hallazgos priorizados.
 - **Pruebas faltantes:** QA visual página por página (criterio de
   aceptación de la especificación, sección 10) — no automatizado hoy.
 - **Riesgo:** ninguno funcional; el riesgo es puramente de que el
   documento actual no transmite todavía la identidad visual aprobada.
 - **Bloqueo:** ninguno técnico.
-- **Siguiente acción:** con la especificación ya versionada
-  (`docs/especificacion-visual-pdfs-fases-11-13.md`), el bloque técnico de
-  fase 11 debe devolver primero los cinco puntos que la propia
-  especificación pide antes de tocar código (inventario de componentes,
-  estructura de datos por componente, wireframes, estrategia 16:9/A4,
-  criterios de prueba) — no implementar directamente.
+- **Siguiente acción:** implementar el desglose por canal/producto/funnel
+  documentado como pendiente arriba, y después la capa visual (paleta,
+  perfil A4) según `docs/fase11-12-diseno-tecnico.md`.
 
-### Fase 12 — Documento de proyección — **FUNCIONAL / VISUAL PENDIENTE**
+### Fase 12 — Documento de proyección — **FUNCIONAL, estructura de contenido ampliada (2026-08-22) / VISUAL PENDIENTE**
 
 - **Denominación del plan maestro:** "Documento de proyección".
 - **Estado real:** funcional, visual pendiente — mismo diagnóstico que
   fase 11, comparten el mismo tema y el mismo renderer.
+- **Bloque técnico 2026-08-22:** reestructurado a las once secciones del
+  plan maestro (`src/documents/templates/velocentum-v1/proyeccion-90d.ts`):
+  portada, punto de partida, restricciones, escenarios (con el detalle
+  mensual, la facturación incremental secundaria y el ahorro publicitario
+  separado ya dentro del mismo bloque `scenarios`, sin sección de página
+  aparte), supuestos, roadmap, condiciones para escalar y recalcular
+  (`scalingConditionsSection`, restricciones filtradas por
+  `bloquea.includes("escalamiento")`), próximo paso. La cifra de
+  contribución incremental se mantiene ENCABEZANDO el documento (justo
+  después de portada), antes de la línea de base y los escenarios en
+  detalle: es una interpretación documentada, no una decisión nueva — la
+  corrección aprobada 2026-08-21 (punto 2) ya estableció esa regla como
+  "siempre", más específica que el orden literal de la lista de este
+  bloque.
 - **Evidencia:**
   - Plantilla versionada con escenarios y tabla mensual:
-    `src/documents/templates/velocentum-v1/proyeccion-90d.ts:23-66`
+    `src/documents/templates/velocentum-v1/proyeccion-90d.ts`
     (`buildScenarios`, bloque `"scenarios"` con eyebrow "Escenarios").
   - Contribución como cifra dominante, facturación como contexto
     secundario: `src/documents/domain/resumen-comercial.ts`
@@ -571,7 +621,9 @@ siguiente acción.
 - **Pruebas existentes:** `src/documents/domain/escenarios-90d.test.ts`,
   `src/documents/domain/resumen-comercial.test.ts`,
   `src/documents/templates/velocentum-v1/copy-guardrails.test.ts`
-  (casos de proyección a 90 días).
+  (casos de proyección a 90 días),
+  `src/documents/templates/velocentum-v1/estructura-contenido-fase11-12.test.ts`
+  (condiciones para escalar filtradas correctamente).
 - **Pruebas faltantes:** las mismas que fase 11 (QA visual).
 - **Riesgo:** ninguno funcional nuevo.
 - **Bloqueo:** ninguno técnico.
