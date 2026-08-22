@@ -171,3 +171,42 @@ describe("PublishedNumberView: marca de supuesto (corrección aprobada 2026-08-2
     expect(html).toContain("vdoc-number__mark");
   });
 });
+
+describe("detalle mensual por escenario", () => {
+  function contextoConOportunidad() {
+    const datosConOportunidad: DatosDiagnostico = {
+      ...casoSnakeStore,
+      facturacion_mensual: 22_522_600,
+      visitas_mensuales: 5000,
+      agregados_carrito: 1000,
+      checkouts_iniciados: 300,
+      absorbe_costo_envio: true,
+    };
+    const resultado = calcularDiagnostico(datosConOportunidad, configuracionRegresionFase2);
+    return buildDocumentContext({
+      datos: datosConOportunidad,
+      resultado,
+      diagnostico: { id: "test-detalle-mensual", version: 1, fecha: "2026-08-20" },
+      tipoDocumento: "proyeccion_90d",
+    });
+  }
+
+  it("muestra los tres meses con las cuatro magnitudes, sin cruzarlas en la misma celda", () => {
+    const html = render(buildProyeccion90dDocument(contextoConOportunidad()));
+
+    expect(html).toContain("Detalle mensual");
+    expect(html).toContain("vdoc-monthly-table");
+    expect(html).toContain("Mes 1");
+    expect(html).toContain("Mes 2");
+    expect(html).toContain("Mes 3");
+    expect(html).toContain("Contribución incremental");
+    expect(html).toContain("Facturación proyectada");
+    expect(html).toContain("Facturación incremental");
+    expect(html).toContain("Ahorro publicitario");
+  });
+
+  it("el fixture armado a mano (sin motor real) no muestra la tabla: mensual queda vacío por diseño", () => {
+    const html = render(buildProyeccion90dDocument(buildTitanContext()));
+    expect(html).not.toContain("vdoc-monthly-table");
+  });
+});

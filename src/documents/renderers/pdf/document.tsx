@@ -244,6 +244,28 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
     lineHeight: 1.4,
   },
+  monthlyTable: { marginTop: 6, marginBottom: 6 },
+  monthlyTableRow: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderBottomColor: theme.colors.border,
+    paddingVertical: 4,
+  },
+  monthlyTableHeaderRow: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderBottomColor: theme.colors.border,
+    paddingVertical: 4,
+  },
+  monthlyTableHeaderCell: {
+    flex: 1,
+    fontSize: 6.5,
+    color: theme.colors.muted,
+    fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
+  },
+  monthlyTableMonthCell: { flex: 1, fontSize: 8, fontFamily: "Helvetica-Bold" },
+  monthlyTableCell: { flex: 1, fontSize: 8 },
   roadmapCard: { flexDirection: "row", gap: 13, paddingVertical: 10 },
   roadmapDays: {
     width: 84,
@@ -427,6 +449,34 @@ function renderBlock(block: DocumentBlock, dark: boolean): React.ReactNode {
                 ocurre, el efecto sería mayor al proyectado. Esta versión trata el ahorro de forma
                 conservadora y no asume esa reinversión.
               </Text>
+              {item.monthly.length > 0 ? (
+                <View style={styles.monthlyTable}>
+                  <View style={styles.monthlyTableHeaderRow}>
+                    <Text style={styles.monthlyTableHeaderCell}>Mes</Text>
+                    <Text style={styles.monthlyTableHeaderCell}>Contribución</Text>
+                    <Text style={styles.monthlyTableHeaderCell}>Fact. proyectada</Text>
+                    <Text style={styles.monthlyTableHeaderCell}>Fact. incremental</Text>
+                    <Text style={styles.monthlyTableHeaderCell}>Ahorro</Text>
+                  </View>
+                  {item.monthly.map((mes) => (
+                    <View key={mes.month} style={styles.monthlyTableRow} wrap={false}>
+                      <Text style={styles.monthlyTableMonthCell}>Mes {mes.month}</Text>
+                      <Text style={styles.monthlyTableCell}>
+                        {mes.contributionEnabled ? formatPublishedNumber(mes.contributionEnabled) : "Retenido"}
+                      </Text>
+                      <Text style={styles.monthlyTableCell}>
+                        {mes.revenueProjected ? formatPublishedNumber(mes.revenueProjected) : "Retenido"}
+                      </Text>
+                      <Text style={styles.monthlyTableCell}>
+                        {mes.revenueEnabled ? formatPublishedNumber(mes.revenueEnabled) : "Retenido"}
+                      </Text>
+                      <Text style={styles.monthlyTableCell}>
+                        {mes.adSavingsEnabled ? formatPublishedNumber(mes.adSavingsEnabled) : "Retenido"}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
               {item.levers.map((lever) => (
                 <Text key={`${lever.type}:${lever.id}`} style={bodyStyle}>
                   {lever.name}: {formatPublishedNumber(lever.amount)}

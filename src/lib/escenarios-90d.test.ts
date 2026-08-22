@@ -8,6 +8,11 @@ import {
   RAMPA_FACTURACION_CONSERVADOR_SOBRE_90000,
 } from "./fixtures-impactos-manual";
 import {
+  DISPERSION_CURVAS_APROBADAS_MANUAL,
+  DISPERSION_CURVAS_RECONFIGURADAS_MANUAL,
+  ESCENARIO_BASE_MANUAL,
+} from "./fixtures-correccion-producto";
+import {
   RAMPAS_AHORRO_PUBLICITARIO_90D_DEFECTO,
   RAMPAS_FACTURACION_CONTRIBUCION_90D_DEFECTO,
   UMBRAL_DISPERSION_90D_DEFECTO,
@@ -405,5 +410,98 @@ describe("corrección de producto aprobada 2026-08-21 (veredicto sobre 2685999)"
       expect(d.evaluable).toBe(false);
       expect(d.umbral).toBe(UMBRAL_DISPERSION_90D_DEFECTO);
     });
+
+    it("fixture manual: con las curvas hoy aprobadas, el cociente real coincide con la cuenta a mano y NO dispara", () => {
+      const c = DISPERSION_CURVAS_APROBADAS_MANUAL;
+      const resultado = resultadoConFunnel();
+      const escenarios = calcularEscenarios90d(casoConFunnel, resultado);
+      const d = evaluarDispersionContribucion(escenarios, { umbral_dispersion: c.umbral });
+      expect(d.evaluable).toBe(true);
+      if (d.evaluable) {
+        expect(d.ratio).toBeCloseTo(c.ratioEsperado, 4);
+        expect(d.alta).toBe(c.disparaEsperado);
+      }
+    });
+
+    it("fixture manual: con una configuración de rampas RECONFIGURADA, la regla SÍ dispara — cociente 5,0 sobre umbral 2,5", () => {
+      const c = DISPERSION_CURVAS_RECONFIGURADAS_MANUAL;
+      const resultado = resultadoConFunnel();
+      const escenarios = calcularEscenarios90d(casoConFunnel, resultado, {
+        rampa_escenario_conservador: c.rampaConservador,
+        rampa_escenario_potencial: c.rampaPotencial,
+      });
+      const d = evaluarDispersionContribucion(escenarios, { umbral_dispersion: c.umbral });
+      expect(d.evaluable).toBe(true);
+      if (d.evaluable) {
+        // El cociente es independiente de la base real del cliente (misma
+        // oportunidad mensual para los tres escenarios): da exactamente 5,0.
+        expect(d.ratio).toBeCloseTo(c.ratioEsperado, 4);
+        expect(d.ratio).toBeCloseTo(5, 4);
+        expect(d.alta).toBe(c.disparaEsperado);
+        expect(d.alta).toBe(true);
+      }
+    });
+
+    it("fixture manual: aplicarRampa con las curvas reconfiguradas reproduce los acumulados exactos a mano", () => {
+      const c = DISPERSION_CURVAS_RECONFIGURADAS_MANUAL;
+      const conservador = aplicarRampa(c.baseContribucionIncremental, c.rampaConservador);
+      const potencial = aplicarRampa(c.baseContribucionIncremental, c.rampaPotencial);
+      expect(conservador.acumulado90d).toBe(c.acumuladoConservadorEsperado);
+      expect(potencial.acumulado90d).toBe(c.acumuladoPotencialEsperado);
+      expect(potencial.acumulado90d / conservador.acumulado90d).toBeCloseTo(c.ratioEsperado, 4);
+    });
+  });
+});
+
+describe("fixture manual: ninguna suma cruza magnitudes a nivel de escenario completo", () => {
+  it("aplicarRampa reproduce los tres acumulados por magnitud del fixture manual, cada uno por separado", () => {
+    const e = ESCENARIO_BASE_MANUAL;
+    const facturacion = aplicarRampa(e.bases.facturacionIncremental, e.rampaFacturacionContribucion);
+    const contribucion = aplicarRampa(e.bases.contribucionIncremental, e.rampaFacturacionContribucion);
+    const ahorro = aplicarRampa(e.bases.ahorroPublicitario, e.rampaAhorro);
+
+    expect(facturacion.acumulado90d).toBe(e.acumulados90d.facturacionIncremental);
+    expect(contribucion.acumulado90d).toBe(e.acumulados90d.contribucionIncremental);
+    expect(ahorro.acumulado90d).toBe(e.acumulados90d.ahorroPublicitario);
+
+    expect(facturacion.mensual.map((m) => m.habilitado)).toEqual([80_000, 140_000, 200_000]);
+    expect(contribucion.mensual.map((m) => m.habilitado)).toEqual([36_000, 63_000, 90_000]);
+    expect(ahorro.mensual.map((m) => m.habilitado)).toEqual([22_500, 30_000, 30_000]);
+  });
+
+  it("facturación proyectada por mes es actual + facturación incremental, nunca + contribución ni + ahorro (cuenta manual)", () => {
+    const e = ESCENARIO_BASE_MANUAL;
+    const facturacion = aplicarRampa(e.bases.facturacionIncremental, e.rampaFacturacionContribucion);
+    const proyectadaMes3 = e.facturacionActual + facturacion.mensual[2]!.habilitado;
+
+    expect(proyectadaMes3).toBe(e.facturacionProyectadaPorMes.mes3);
+    expect(proyectadaMes3).not.toBe(e.facturacionProyectadaMes3IncompatibleQueNuncaDebeAparecer);
+
+    for (const [i, mes] of ([1, 2, 3] as const).entries()) {
+      const esperado = (e.facturacionProyectadaPorMes as Record<string, number>)[`mes${mes}`]!;
+      expect(e.facturacionActual + facturacion.mensual[i]!.habilitado).toBe(esperado);
+    }
+  });
+
+  it("ninguna de las tres magnitudes acumuladas suma jamás a la 'suma total incompatible' del fixture manual", () => {
+    const e = ESCENARIO_BASE_MANUAL;
+    const suma =
+      e.acumulados90d.facturacionIncremental +
+      e.acumulados90d.contribucionIncremental +
+      e.acumulados90d.ahorroPublicitario;
+    expect(suma).toBe(e.sumaTotalIncompatibleQueNuncaDebeAparecer);
+
+    // Verificación real contra el motor: ninguna de las tres líneas de un
+    // escenario calculado coincide con esa suma incompatible.
+    const resultado = resultadoConFunnel();
+    const [, base] = calcularEscenarios90d(casoConFunnel, resultado);
+    const valores = [
+      base!.facturacionIncremental.calculable ? base!.facturacionIncremental.acumulado90d : null,
+      base!.contribucionIncremental.calculable ? base!.contribucionIncremental.acumulado90d : null,
+      base!.ahorroPublicitario.calculable ? base!.ahorroPublicitario.acumulado90d : null,
+    ].filter((v): v is number => v !== null);
+    for (const valor of valores) {
+      expect(valor).not.toBe(e.sumaTotalIncompatibleQueNuncaDebeAparecer);
+    }
   });
 });

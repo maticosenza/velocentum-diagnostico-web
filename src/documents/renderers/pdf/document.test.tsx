@@ -9,6 +9,10 @@ import {
 import { buildSnakeContext, buildTitanContext } from "../../templates/velocentum-v1/test-fixtures";
 import { createPdfDocumentElement } from "./document";
 import { renderDocumentModelToBlob } from "./export-client";
+import { calcularDiagnostico } from "../../../lib/calculo-diagnostico";
+import { casoSnakeStore, configuracionRegresionFase2 } from "../../../lib/fixtures-casos";
+import { buildDocumentContext } from "../../domain";
+import type { DatosDiagnostico } from "../../../lib/diagnostico-form";
 
 describe("Velocentum PDF renderer", () => {
   it("renders a complete 16:9 document to a PDF buffer", async () => {
@@ -43,5 +47,36 @@ describe("Velocentum PDF renderer", () => {
 
     expect(blob.type).toBe("application/pdf");
     expect(header).toBe("%PDF-");
+  });
+
+  it("renders the monthly detail table with real pipeline data without crashing", async () => {
+    // El fixture armado a mano (buildTitanContext/buildSnakeContext) siempre
+    // trae `mensual: []`; hace falta el pipeline real para que la tabla
+    // mensual tenga contenido que renderizar.
+    const datosConOportunidad: DatosDiagnostico = {
+      ...casoSnakeStore,
+      facturacion_mensual: 22_522_600,
+      visitas_mensuales: 5000,
+      agregados_carrito: 1000,
+      checkouts_iniciados: 300,
+      absorbe_costo_envio: true,
+    };
+    const resultado = calcularDiagnostico(datosConOportunidad, configuracionRegresionFase2);
+    const contexto = buildDocumentContext({
+      datos: datosConOportunidad,
+      resultado,
+      diagnostico: { id: "test-pdf-mensual", version: 1, fecha: "2026-08-20" },
+      tipoDocumento: "proyeccion_90d",
+    });
+    const model = buildProyeccion90dDocument(contexto);
+    const scenariosBlock = model.sections
+      .flatMap((section) => section.blocks)
+      .find((block) => block.type === "scenarios");
+    if (scenariosBlock?.type !== "scenarios") throw new Error("Fixture debe traer un escenario calculable");
+    expect(scenariosBlock.items.some((item) => item.monthly.length > 0)).toBe(true);
+
+    const buffer = await renderToBuffer(createPdfDocumentElement(model));
+    expect(buffer.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+    expect(buffer.byteLength).toBeGreaterThan(5_000);
   });
 });

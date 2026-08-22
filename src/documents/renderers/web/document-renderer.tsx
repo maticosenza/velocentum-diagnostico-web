@@ -312,6 +312,59 @@ function ScenariosBlock({ block }: { block: Extract<DocumentBlock, { type: "scen
               el efecto sería mayor al proyectado. Esta versión trata el ahorro de forma
               conservadora y no asume esa reinversión.
             </p>
+            {item.monthly.length > 0 ? (
+              <div className="vdoc-subsection">
+                <h4>Detalle mensual</h4>
+                <div className="vdoc-table-wrap">
+                  <table className="vdoc-monthly-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Mes</th>
+                        <th scope="col">Contribución incremental</th>
+                        <th scope="col">Facturación proyectada</th>
+                        <th scope="col">Facturación incremental</th>
+                        <th scope="col">Ahorro publicitario</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {item.monthly.map((mes) => (
+                        <tr key={mes.month}>
+                          <th scope="row">Mes {mes.month}</th>
+                          <td>
+                            {mes.contributionEnabled ? (
+                              <PublishedNumberView value={mes.contributionEnabled} />
+                            ) : (
+                              <span className="vdoc-retained">Retenido</span>
+                            )}
+                          </td>
+                          <td>
+                            {mes.revenueProjected ? (
+                              <PublishedNumberView value={mes.revenueProjected} />
+                            ) : (
+                              <span className="vdoc-retained">Retenido</span>
+                            )}
+                          </td>
+                          <td>
+                            {mes.revenueEnabled ? (
+                              <PublishedNumberView value={mes.revenueEnabled} />
+                            ) : (
+                              <span className="vdoc-retained">Retenido</span>
+                            )}
+                          </td>
+                          <td>
+                            {mes.adSavingsEnabled ? (
+                              <PublishedNumberView value={mes.adSavingsEnabled} />
+                            ) : (
+                              <span className="vdoc-retained">Retenido</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
             {item.levers.length > 0 ? (
               <div className="vdoc-subsection">
                 <h4>Palancas</h4>

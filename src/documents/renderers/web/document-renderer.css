@@ -463,6 +463,38 @@
   padding-block: 0.45rem;
 }
 
+/** Detalle mensual (3 meses del trimestre) por escenario. */
+.vdoc-table-wrap {
+  overflow-x: auto;
+}
+
+.vdoc-monthly-table {
+  width: 100%;
+  min-width: 32rem;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.vdoc-monthly-table th,
+.vdoc-monthly-table td {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--vdoc-border);
+  white-space: nowrap;
+}
+
+.vdoc-monthly-table thead th {
+  color: var(--vdoc-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vdoc-monthly-table tbody th {
+  font-weight: 700;
+}
+
 .vdoc-roadmap {
   counter-reset: roadmap;
 }
