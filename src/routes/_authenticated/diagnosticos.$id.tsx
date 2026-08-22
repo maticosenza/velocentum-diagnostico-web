@@ -26,7 +26,9 @@ import {
 import { lecturaPresupuesto } from "@/lib/calculo-diagnostico";
 import { cn } from "@/lib/utils";
 import { PropuestaSeccion } from "@/components/propuesta-seccion";
-import { normalizarPropuesta } from "@/lib/propuesta";
+import { ConfirmacionPaquetes } from "@/components/confirmacion-paquetes";
+import { mapearHallazgos, normalizarPropuesta } from "@/lib/propuesta";
+import { generarEscaleraPaquetes, type EscaleraPaquetesConfirmada } from "@/lib/paquetes";
 import { DOCUMENTOS_DISPONIBLES } from "@/documents/build-document";
 import type { Derivados, EstadoBloque, EstadosBloque, Fuga } from "@/lib/calculo-diagnostico";
 
@@ -252,8 +254,58 @@ function DetalleDiagnostico() {
           propuestaGuardada={normalizarPropuesta(data.propuesta)}
           fugas={fugas}
         />
+
+        <SeccionPaquetes datos={datos} derivados={d} estados={estados} fugas={fugas} />
       </div>
     </>
+  );
+}
+
+/**
+ * Fase 13 (paquetes y precios, decisión comercial 7, 2026-08-22): genera
+ * la escalera a partir de los hallazgos ya mapeados y pide confirmación
+ * manual explícita antes de dar por generada la propuesta comercial. Sólo
+ * estado en memoria: la confirmación no se persiste todavía (requiere una
+ * columna/tabla nueva en la base, fuera de alcance de este bloque — ver
+ * docs/decisiones-pendientes.md).
+ */
+function SeccionPaquetes({
+  datos,
+  derivados,
+  estados,
+  fugas,
+}: {
+  datos: DatosDiagnostico;
+  derivados: Derivados;
+  estados: Partial<EstadosBloque>;
+  fugas: Fuga[];
+}) {
+  const [confirmada, setConfirmada] = useState<EscaleraPaquetesConfirmada | null>(null);
+  const hallazgos = mapearHallazgos(datos, derivados, estados, fugas);
+  const escalera = generarEscaleraPaquetes(hallazgos);
+
+  return (
+    <section className="rounded-lg border border-border bg-card">
+      <header className="border-b border-border px-7 py-5">
+        <h2 className="text-[17px] font-medium text-foreground">Paquetes propuestos</h2>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          Escalera de hasta tres niveles, cada servicio ligado a un hallazgo concreto. Los precios
+          quedan vacíos hasta que los cargues acá.
+        </p>
+      </header>
+
+      <div className="px-7 py-7">
+        {confirmada ? (
+          <p className="text-[14px] text-foreground">
+            Propuesta confirmada con {confirmada.niveles.length} nivel
+            {confirmada.niveles.length === 1 ? "" : "es"}. La generación del documento final con este
+            paquete queda para cuando exista dónde guardarlo de forma permanente.
+          </p>
+        ) : (
+          <ConfirmacionPaquetes escalera={escalera} onConfirmar={setConfirmada} />
+        )}
+      </div>
+    </section>
   );
 }
 

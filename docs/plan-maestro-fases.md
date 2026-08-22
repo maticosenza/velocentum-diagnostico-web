@@ -630,37 +630,74 @@ siguiente acción.
 - **Siguiente acción:** se resuelve en el mismo bloque técnico que fase 11
   (comparten tema y renderer); no es un bloque separado de trabajo visual.
 
-### Fase 13 — Propuesta comercial y rediseño visual — **PARCIAL**
+### Fase 13 — Propuesta comercial y rediseño visual — **PARCIAL, generador de paquetes implementado (2026-08-22)**
 
 - **Denominación del plan maestro:** "Propuesta comercial y rediseño
   visual".
 - **Estado real:** parcial, coincide con el plan maestro.
-- **Evidencia funcional construida:**
+- **Decisión comercial que la desbloqueó:** entrada 7 de
+  `docs/decisiones-pendientes.md` — escalera de hasta tres niveles
+  (IMPULSO/TRACCIÓN/ESCALA, configurables), acumulativa, cada servicio
+  ligado a un hallazgo concreto, precios siempre vacíos, confirmación
+  manual obligatoria.
+- **Bloque técnico 2026-08-22 ("parte funcional" de fase 13):**
+  - `src/lib/paquetes.ts` (nuevo): `generarEscaleraPaquetes()` agrupa los
+    hallazgos de capa "servicio" (`mapearHallazgos`) por servicio del
+    catálogo cerrado (`serviciosJustificados`, reconoce servicios incluso
+    dentro de strings compuestos como "Desarrollo y optimización web y
+    Meta Ads" vía `serviciosCanonicosDe`), arma hasta tres niveles
+    acumulativos (nunca más), cada línea de servicio con su unidad propia
+    (campañas activas, piezas por mes, campañas, alcance descrito) y sus
+    hallazgos justificantes, cantidades por defecto configurables
+    marcadas `propuestoPorSistema: true`, precio siempre `null`.
+  - `src/components/confirmacion-paquetes.tsx` (nuevo): pantalla de
+    confirmación manual — ver los tres niveles, ajustar cantidades,
+    agregar (sólo servicios ya justificados por algún hallazgo, nunca uno
+    sin fundamento) o sacar servicios, cargar precios. `onConfirmar` sólo
+    se dispara con la acción explícita del vendedor.
+  - Wireado en `src/routes/_authenticated/diagnosticos.$id.tsx`
+    (`SeccionPaquetes`, nueva): usa los `hallazgos`/`fugas`/`derivados` ya
+    persistidos del diagnóstico, sin recalcular nada.
+- **Interpretación documentada, no parte de la decisión cerrada** (entrada
+  8 de `docs/decisiones-pendientes.md`, nueva): el orden/reparto exacto de
+  servicios entre niveles y el factor de escalado de cantidades por nivel
+  no estaban especificados — se implementó un default razonable (orden
+  fijo del catálogo, reparto parejo, cantidad × índice de nivel),
+  completamente editable en la pantalla de confirmación.
+- **Qué NO se implementó, a propósito (entrada 9 de
+  `docs/decisiones-pendientes.md`, nueva):** la confirmación sólo vive en
+  memoria de React hoy — no hay ninguna columna/tabla en Supabase para
+  persistir la selección confirmada, y agregarla es una migración de base
+  de datos, fuera de lo que este trabajo autónomo puede decidir por sí
+  solo. `buildDocumentContext()` sigue con `comercial: null` incondicional
+  (`src/documents/domain/build-context.ts:479`); el circuito completo
+  ("confirmar y que el PDF de propuesta lo use") queda pendiente de esa
+  decisión.
+- **Evidencia funcional construida (previa a este bloque):**
   - Plantilla de propuesta: `src/documents/templates/velocentum-v1/propuesta.ts`.
   - Salida combinada proyección + propuesta: `src/documents/templates/velocentum-v1/composicion.ts`.
-- **Evidencia de lo pendiente funcional:** existe el tipo que exige
-  selección manual (`SeleccionComercial`, con `aprobadaManualmente: true`
-  literal — `src/documents/domain/types.ts:210-222`), pero no hay ningún
-  flujo ni interfaz que lo complete: `buildDocumentContext()` fija
-  `comercial: null` de forma incondicional
-  (`src/documents/domain/build-context.ts:479`). El sistema no inventa
-  precios porque **no hay forma de cargar ninguno todavía**, ni siquiera
-  manualmente.
 - **Evidencia de lo pendiente visual:** mismo diagnóstico de paleta que
   fase 11 (tema compartido). No hay perfil A4 diferenciado del de pantalla
   16:9. No se encontró rediseño de la interfaz de la herramienta (fuera de
   documentos) hacia el sistema visual aprobado.
 - **Pruebas existentes:** `src/documents/templates/velocentum-v1/templates.test.ts`,
   `src/documents/renderers/pdf/filename.test.ts`,
-  `src/documents/renderers/pdf/format.test.ts`.
-- **Pruebas faltantes:** todo lo relacionado con el selector manual de
-  servicios/paquete/precio (no existe UI que probar); QA visual de la
-  interfaz de la herramienta.
-- **Riesgo:** ninguna propuesta real puede llevar precio hoy sin editar el
-  dato a mano fuera del flujo normal — el selector manual es un vacío
-  funcional real, no sólo visual.
-- **Bloqueo:** ninguno técnico; el selector manual depende de decidir la
-  UX de carga (quién completa `SeleccionComercial` y dónde).
+  `src/documents/renderers/pdf/format.test.ts`,
+  `src/lib/paquetes.test.ts` (21 casos: reconocimiento de servicios en
+  strings compuestos, agrupación por servicio, escalera acumulativa, tope
+  de tres niveles, precios siempre vacíos, unidades correctas por
+  servicio, escalado de cantidad por nivel), `src/components/confirmacion-paquetes.test.tsx`
+  (4 casos, render estático: estado vacío sin hallazgos, datos mostrados,
+  precio nunca precargado, tres niveles sin crashear).
+- **Pruebas faltantes:** QA visual de la interfaz de la herramienta; nada
+  que probar todavía sobre la persistencia (no existe).
+- **Riesgo:** ninguna propuesta real puede llevar precio de forma
+  persistente hoy — el generador y la pantalla de confirmación están
+  listos, pero sin guardar nada, la ganancia práctica es limitada hasta
+  que se resuelva la entrada 9.
+- **Bloqueo:** ninguno técnico para el generador; la persistencia
+  depende de una decisión de base de datos (entrada 9, fuera del alcance
+  autónomo).
 - **Siguiente acción:** dos bloques separados — (a) construir el selector
   manual de servicios/paquete/precio (funcional, no visual); (b) aplicar el
   sistema visual aprobado a los tres PDF y a la interfaz (comparte alcance
