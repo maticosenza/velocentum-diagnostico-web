@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { calcularDiagnostico } from "../../lib/calculo-diagnostico";
 import {
   casoSnakeStore,
+  casoSnakeStoreCoberturaCompleta,
   casoTitanWebB1,
+  casoTitanWebB1CoberturaCompleta,
   configuracionRegresionFase2,
 } from "../../lib/fixtures-casos";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
@@ -125,8 +127,10 @@ describe("adaptador conservador a DocumentContextV1", () => {
   });
 
   it("transporta la contradicción confirmada y bloquea los márgenes", () => {
+    // Requiere margen total calculado (100% de cobertura de productos) para
+    // que haya algo contra qué contrastar el margen declarado.
     const c = contexto({
-      ...casoTitanWebB1,
+      ...casoTitanWebB1CoberturaCompleta,
       absorbe_costo_envio: false,
       margen_declarado_min: 10,
       margen_declarado_max: 12,
@@ -152,7 +156,7 @@ describe("adaptador conservador a DocumentContextV1", () => {
 describe("hallazgos: magnitud (corrección aprobada 2026-08-21, punto 3)", () => {
   it("etiqueta un hallazgo de funnel como contribución incremental y uno de publicidad como ahorro publicitario", () => {
     const datos: DatosDiagnostico = {
-      ...casoSnakeStore,
+      ...casoSnakeStoreCoberturaCompleta,
       facturacion_mensual: 22_522_600,
       visitas_mensuales: 5000,
       agregados_carrito: 1000,

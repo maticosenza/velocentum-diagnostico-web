@@ -25,7 +25,7 @@ import {
   type ConfigEscenarios90d,
 } from "./escenarios-90d";
 import type { DatosDiagnostico } from "./diagnostico-form";
-import { casoSnakeStore } from "./fixtures-casos";
+import { casoSnakeStore, casoSnakeStoreCoberturaCompleta } from "./fixtures-casos";
 
 const cfg: ConfiguracionCalculo = {
   reserva_default: 0.35,
@@ -40,9 +40,13 @@ const cfg: ConfiguracionCalculo = {
   mejora_compra_pts: 10,
 };
 
-/** Snake Store con funnel completo y coherente: genera fugas de funnel calculables. */
+/**
+ * Snake Store con funnel completo y coherente, catálogo al 100% explícito:
+ * genera fugas de funnel calculables (margen total requiere 100% de
+ * cobertura de productos, no sólo de canales).
+ */
 const casoConFunnel: DatosDiagnostico = {
-  ...casoSnakeStore,
+  ...casoSnakeStoreCoberturaCompleta,
   facturacion_mensual: 22_522_600, // 100 pedidos al ticket de Snake Store
   visitas_mensuales: 5000,
   agregados_carrito: 1000,
@@ -276,7 +280,7 @@ describe("calcularEscenarios90d: facturación, contribución y ahorro nunca se m
 
   it("con fuga calculable pero sin facturación mensual declarada, retiene sólo la facturación proyectada", () => {
     const datos: DatosDiagnostico = {
-      ...casoSnakeStore,
+      ...casoSnakeStoreCoberturaCompleta,
       facturacion_mensual: null,
       conjuntos_activos: 20,
       presupuesto_diario: 1000,

@@ -9,7 +9,12 @@
  */
 import { describe, expect, it } from "vitest";
 import { calcularDiagnostico } from "../../../lib/calculo-diagnostico";
-import { casoSnakeStore, casoTitanWebB1, configuracionRegresionFase2 } from "../../../lib/fixtures-casos";
+import {
+  casoSnakeStore,
+  casoSnakeStoreCoberturaCompleta,
+  casoTitanWebB1,
+  configuracionRegresionFase2,
+} from "../../../lib/fixtures-casos";
 import type { DatosDiagnostico } from "../../../lib/diagnostico-form";
 import { buildDocumentContext } from "../../domain";
 import { FRASES_PROHIBIDAS, fraseProhibidaEncontrada } from "../../domain/resumen-comercial";
@@ -40,7 +45,7 @@ function fraseProhibidaEnModelo(model: DocumentModel): string | null {
 }
 
 const casoConOportunidad: DatosDiagnostico = {
-  ...casoSnakeStore,
+  ...casoSnakeStoreCoberturaCompleta,
   facturacion_mensual: 22_522_600,
   visitas_mensuales: 5000,
   agregados_carrito: 1000,

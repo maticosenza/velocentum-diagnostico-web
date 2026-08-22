@@ -24,6 +24,7 @@ const base: DatosDiagnostico = {
   producto_1_nombre: "Producto",
   producto_1_costo: 70,
   producto_1_precio: 100,
+  producto_1_pct_facturacion: 100,
 };
 
 function ids(d: DatosDiagnostico) {

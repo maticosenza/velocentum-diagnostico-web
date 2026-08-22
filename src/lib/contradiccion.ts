@@ -8,6 +8,17 @@
  *    importar cuán amplio sea el rango;
  *  - la diferencia se mide contra el límite MÁS CERCANO, nunca contra el centro;
  *  - sólo un margen declarado y confirmado por el cliente puede bloquear.
+ *
+ * Contra qué margen se compara (corrección 2026-08-22): el margen TOTAL
+ * exige 100% explícito de cobertura (productos y canales) y puede no existir.
+ * Eso no significa que la contradicción deje de evaluarse: si el total está
+ * retenido, se compara contra el margen de la MUESTRA, que sigue siendo una
+ * base real aunque parcial. El caso que originó esta regla (Titan Web, 60%
+ * de cobertura de productos) debe seguir disparando la alerta cuando el
+ * cliente declara una rentabilidad que la muestra contradice. `origen_margen`
+ * y `confianza_base` dejan trazado contra qué se comparó y cuán representativa
+ * es esa base — son un eje distinto de `confirmado`/`bloquea`, que sigue
+ * dependiendo únicamente de si el cliente confirmó su margen declarado.
  */
 
 export type NivelContradiccion = "sin_alerta" | "validacion_requerida" | "critica";
@@ -18,9 +29,24 @@ export type RangoDeclarado = {
   max: number;
 };
 
+/** Contra qué margen se comparó: el total (100% de cobertura explícita) o la muestra parcial. */
+export type OrigenMargen = "total" | "muestra";
+
 export type Contradiccion = {
   nivel: NivelContradiccion;
   calculado: number;
+  /** "total" cuando había margen total disponible; "muestra" cuando estaba retenido y se usó el de la muestra. */
+  origen_margen: OrigenMargen;
+  /**
+   * Cuán representativa es la base de comparación: "alta" con margen total
+   * (100% de cobertura), "media" con margen de la muestra (cobertura
+   * parcial) — un nivel menos, nunca "baja": la contradicción sigue siendo
+   * una lectura real de la evidencia cargada, no una adivinanza.
+   */
+  confianza_base: "alta" | "media";
+  /** Cobertura de productos y de canales de la evidencia usada en la comparación (trazabilidad, no afecta el cálculo). */
+  cobertura_productos: number | null;
+  cobertura_canales: number | null;
   declarado_min: number;
   declarado_max: number;
   dentro_del_rango: boolean;
@@ -28,8 +54,9 @@ export type Contradiccion = {
   limite_cercano: number | null;
   diferencia: number;
   cambio_de_signo: boolean;
+  /** Si el cliente confirmó su margen declarado. Eje independiente de origen_margen/confianza_base. */
   confirmado: boolean;
-  /** Sólo una contradicción crítica y confirmada bloquea los montos. */
+  /** Sólo una contradicción crítica y confirmada bloquea los montos, sin importar el origen del margen. */
   bloquea: boolean;
 };
 
@@ -52,15 +79,28 @@ export function rangoDeclarado(
 }
 
 export function evaluarContradiccion(
-  calculado: number | null | undefined,
+  margenes: { total: number | null | undefined; muestra: number | null | undefined },
   rango: RangoDeclarado | null,
   opciones: {
     confirmado?: boolean;
     umbral_critico?: number | null | undefined;
     umbral_validacion?: number | null | undefined;
+    cobertura_productos?: number | null | undefined;
+    cobertura_canales?: number | null | undefined;
   } = {},
 ): Contradiccion | null {
-  if (!finito(calculado) || rango === null) return null;
+  if (rango === null) return null;
+
+  // El margen total (100% de cobertura explícita) le gana a la muestra como
+  // base de comparación cuando está disponible. Si está retenido, se usa el
+  // de la muestra: la contradicción sigue evaluándose sobre lo que sí se
+  // pudo calcular, en vez de dejar de dispararse por falta de cobertura total.
+  const usaTotal = finito(margenes.total);
+  const calculado = usaTotal ? margenes.total : margenes.muestra;
+  if (!finito(calculado)) return null;
+
+  const origen: OrigenMargen = usaTotal ? "total" : "muestra";
+  const confianzaBase: "alta" | "media" = usaTotal ? "alta" : "media";
 
   const critico = finito(opciones.umbral_critico)
     ? opciones.umbral_critico
@@ -85,6 +125,10 @@ export function evaluarContradiccion(
   return {
     nivel,
     calculado,
+    origen_margen: origen,
+    confianza_base: confianzaBase,
+    cobertura_productos: finito(opciones.cobertura_productos) ? opciones.cobertura_productos : null,
+    cobertura_canales: finito(opciones.cobertura_canales) ? opciones.cobertura_canales : null,
     declarado_min: rango.min,
     declarado_max: rango.max,
     dentro_del_rango: dentro,
@@ -92,6 +136,7 @@ export function evaluarContradiccion(
     diferencia: Math.round(diferencia * 1e6) / 1e6,
     cambio_de_signo: cambioDeSigno,
     confirmado,
+    // Sólo depende de nivel + confirmado: el origen del margen nunca decide el bloqueo.
     bloquea: nivel === "critica" && confirmado,
   };
 }

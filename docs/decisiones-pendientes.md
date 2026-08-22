@@ -5,68 +5,82 @@ trabajo autónomo del 2026-08-21 y que no estaban ya resueltas en los
 documentos existentes. No se tomaron unilateralmente: se anota el contexto y
 se sigue con lo que no depende de ellas.
 
-## 1 · ¿Debe "margen total" en el motor de cálculo exigir 100% de cobertura de productos, igual que ya exige el documento?
+## 1 · ¿Debe "margen total" en el motor de cálculo exigir 100% de cobertura de productos, igual que ya exige el documento? — **RESUELTA el 2026-08-22**
 
-**Contexto.** Durante la fase 5 (productos dinámicos y cobertura), al separar
-"margen de la muestra" de "margen total" se encontraron dos reglas distintas
-y ya aprobadas conviviendo en el repositorio, con alcances distintos:
+**Contexto original.** Durante la fase 5 (productos dinámicos y cobertura),
+al separar "margen de la muestra" de "margen total" se habían encontrado dos
+reglas distintas y ya aprobadas conviviendo en el repositorio, con alcances
+distintos: el adaptador documental exigía 100% de cobertura de canales Y de
+productos para publicar `margenTotal`; el motor de cálculo
+(`derivados.margen_contribucion`) nunca exigió cobertura de productos, sólo
+de canales.
 
-1. **En el adaptador documental** (`src/documents/domain/build-context.ts`),
-   `margenTotal` sólo se publica cuando la cobertura de canales Y de
-   productos llega al 100%; si no, queda `retenido` (sin_datos) y sólo se
-   publica `margenMuestra`. Esta regla ya estaba implementada y testeada
-   antes de esta sesión.
-2. **En el motor de cálculo** (`src/lib/calculo-diagnostico.ts`,
-   `derivados.margen_contribucion`), el margen "total" nunca estuvo
-   condicionado a la cobertura de PRODUCTOS (sólo a la cobertura de
-   CANALES). Cuando sólo se conoce un producto sin porcentaje de facturación
-   declarado, el motor lo trata como representativo del 100% del negocio y
-   calcula un margen total real. Cuando se cargan varios productos sin
-   porcentaje, los pondera por partes iguales y también calcula un total
-   real, aunque esos productos no sumen el 100% de la facturación declarada
-   como participación. Este comportamiento está confirmado por más de diez
-   pruebas preexistentes en `calculo-diagnostico.test.ts`
-   (`"con un solo producto usa su margen..."`,
-   `"sin porcentajes cargados usa el promedio simple de los márgenes"`,
-   `"un producto con costo y precio pero sin porcentaje queda fuera del
-   ponderado"`, entre otras) y es, en la práctica, el flujo más común: en
-   modo B (conversado, sin pantalla compartida) sólo se carga costo y precio
-   del producto principal.
+**Resolución (auditoría externa, 2026-08-22).** Se unificó la semántica: el
+motor de cálculo ahora exige exactamente lo mismo que ya exigía el
+documento. Implementado en `src/lib/calculo-diagnostico.ts`
+(`calcularDiagnostico`):
 
-**Por qué no se resolvió en este bloque.** El pedido de fase 5 fue "separar
-margen de la muestra de margen estimado total, y mantener la regla ya
-aprobada: si sólo se conoce una muestra, el total queda en sin_datos". Esa
-frase describe exactamente la regla (1), ya implementada y aprobada en el
-documento. Extenderla también al motor de cálculo (regla 2) — es decir, que
-`margen_contribucion` deje de calcularse cuando la cobertura de productos es
-parcial — habría roto el flujo de diagnóstico más común (un solo producto,
-modo B) para toda la base de diagnósticos ya cargados: hoy esos casos
-muestran un margen calculado en la pantalla del diagnóstico
-(`diagnosticos.$id.tsx`), y pasarían a mostrar "sin datos" salvo que el
-vendedor declare explícitamente que ese producto es el 100% de la
-facturación. Cambiar esto es una decisión de producto real (qué tan estricta
-debe ser la evidencia para mostrarle un número al equipo comercial en la
-pantalla interna de diagnóstico, más allá de lo que ya se exige para el PDF
-que llega al cliente) y no estaba resuelta en ningún documento existente.
+- `margen_contribucion` (el TOTAL) sólo se publica con 100% explícito de
+  cobertura de productos (`coberturaProductos(d) >= 100`) **y** 100% de
+  cobertura de canales aplicables (regla de canales ya existente, sin
+  cambios). Con cobertura parcial de cualquiera de los dos, queda `null`
+  (retenido).
+- `margen_muestra` no cambió: sigue publicándose sobre lo que sí se cargó,
+  sin exigir cobertura total, tal como ya funcionaba.
+- Un solo producto sin porcentaje de facturación declarado ya NO equivale a
+  un 100% implícito: `coberturaProductos` sólo suma participaciones
+  declaradas (`> 0`), nunca las asume. Si el vendedor no declara
+  explícitamente "100%" en el campo de porcentaje de ese único producto, el
+  margen total queda retenido (el de la muestra sigue disponible).
+- Cualquier cálculo aguas abajo que dependía de `margen_contribucion`
+  (`breakeven_roas`, `cpa_breakeven`, `cpa_objetivo`, `roas_objetivo`,
+  `contribucion_marginal`, el bloque completo de
+  `presupuesto_arranque` — piso teórico y presupuesto de arranque por
+  evento intermedio, fase 6 —, y las fugas que usan margen) queda retenido
+  con él mientras la cobertura sea parcial, porque todos siguen leyendo la
+  misma variable `margen` ya gateada. Esto es intencional y no un efecto
+  colateral: el pedido explícito fue "cualquier cálculo dependiente del
+  margen total debe quedar retenido mientras la cobertura sea parcial".
+- **Corrección obligatoria (auditoría externa, 2026-08-22, ronda 2):** la
+  primera versión de este bloque dejaba de evaluar la contradicción contra
+  el margen declarado por el cliente (`evaluarContradiccion`) en cuanto la
+  cobertura de productos era parcial, porque comparaba únicamente contra
+  `margen_contribucion` (el total), que en ese caso es `null`. Eso era una
+  regresión funcional real: el caso que originó la regla de contradicción
+  (Titan Web, 60% de cobertura de productos, margen de la muestra negativo)
+  dejaba de disparar la alerta si el cliente declaraba, por ejemplo, 10-12%
+  de rentabilidad. Se corrigió en `src/lib/contradiccion.ts`:
+  `evaluarContradiccion` ahora recibe `{ total, muestra }` y compara contra
+  el margen total cuando está disponible; si está retenido, compara contra
+  el margen de la MUESTRA en vez de dejar de evaluar. El resultado ahora
+  registra `origen_margen` (`"total"` | `"muestra"`), `confianza_base`
+  (`"alta"` con margen total, `"media"` — un nivel menos — con margen de la
+  muestra) y la cobertura de productos/canales usada en la comparación. Los
+  umbrales (0,05 validación, 0,10 crítica) y la regla de cambio de signo no
+  cambiaron: sólo cambió contra qué margen se comparan. `confirmado`/`bloquea`
+  siguen dependiendo únicamente de si el cliente confirmó su margen
+  declarado — es un eje independiente de `origen_margen`: una contradicción
+  puede estar confirmada y bloquear apoyándose en una muestra parcial. Ver
+  `src/lib/contradiccion.test.ts` (incluye el caso Titan Web al 60%
+  explícitamente) y la UI (`diagnosticos.$id.tsx`, `AvisoContradiccion`),
+  que ahora aclara cuando la comparación se hizo contra la muestra.
+- Los diagnósticos ya guardados NO se recalculan automáticamente: esta regla
+  sólo se aplica cuando se calcula un diagnóstico nuevo o se usa la acción
+  explícita "Editar y recalcular" (`diagnosticos.nuevo.tsx`), que crea una
+  versión nueva. Leer un diagnóstico existente (`diagnosticos.$id.tsx`) sigue
+  mostrando los `derivados` ya calculados y guardados en su momento, sin
+  volver a ejecutar el motor.
 
-**Qué se hizo en su lugar.** Se generalizó la lista de productos de tres a
-cinco sin tocar esta semántica preexistente del motor. Se agregó un nuevo
-derivado explícito, `derivados.cobertura_productos` (0 a 100), que ahora es
-la fuente única también para el adaptador documental (antes duplicaba la
-fórmula). Se lo muestra en `diagnosticos.$id.tsx` junto con "Margen de la
-muestra" y "Margen total" por separado, con una nota visible cuando hay más
-de un producto cargado y la cobertura no llega al 100%, para que quede claro
-qué tan completa es la evidencia sin bloquear el número.
-
-**Qué decidir.** Si Matías quiere unificar ambas semánticas (que
-`margen_contribucion` también quede en `null` sin 100% de cobertura de
-productos, igual que ya ocurre con `margenTotal` en el documento), hay que
-decidir además qué pasa con el caso de un solo producto sin porcentaje
-declarado: ¿se lo sigue tratando como el 100% del negocio (como hoy), o pasa
-a exigir que el vendedor declare explícitamente "100%" en el campo de
-porcentaje para que el margen deje de estar retenido? Esto afecta
-directamente la pantalla interna de diagnóstico para clientes reales que
-todavía no tengan ese campo cargado.
+**Impacto verificado.** Pantalla de diagnóstico
+(`diagnosticos.$id.tsx`): "Margen total" y "Piso teórico"/"Presupuesto de
+arranque" ya mostraban "—" (guión) para cualquier valor `null` mediante los
+helpers existentes (`pesos`/`pct` en `vista-diagnostico.ts`) — no hizo falta
+tocar la UI para eso. Cobertura de productos, la nota de cobertura parcial y
+"Margen de la muestra" siguen visibles sin cambios. El aviso de contradicción
+(`AvisoContradiccion`) sí se tocó: cuando `origen_margen` es `"muestra"`,
+ahora aclara explícitamente que la comparación se hizo contra el margen de
+la muestra y qué porcentaje del catálogo cubre, en vez de dar a entender que
+se comparó contra un margen total.
 
 ## 2 · Valor por defecto del costo por evento intermedio (fase 6, presupuesto de arranque)
 

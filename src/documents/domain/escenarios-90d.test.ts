@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { calcularDiagnostico, type ConfiguracionCalculo } from "../../lib/calculo-diagnostico";
-import { casoSnakeStore, casoTitanWebB1, configuracionRegresionFase2 } from "../../lib/fixtures-casos";
+import {
+  casoSnakeStoreCoberturaCompleta,
+  casoTitanWebB1,
+  configuracionRegresionFase2,
+} from "../../lib/fixtures-casos";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
 import { escenariosDocumento } from "./escenarios-90d";
 import { politicaEnvioDocumento } from "./build-context";
 
-/** Snake Store con funnel completo: genera fugas calculables de verdad. */
+/**
+ * Snake Store con funnel completo y catálogo al 100% explícito: genera
+ * fugas calculables de verdad (margen total requiere 100% de cobertura de
+ * productos, no sólo de canales).
+ */
 const casoConOportunidad: DatosDiagnostico = {
-  ...casoSnakeStore,
+  ...casoSnakeStoreCoberturaCompleta,
   facturacion_mensual: 22_522_600,
   visitas_mensuales: 5000,
   agregados_carrito: 1000,

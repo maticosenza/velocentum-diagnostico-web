@@ -866,11 +866,21 @@ export function calcularDiagnostico(
   let margen: number | null = null;
   let margenMuestra: number | null = null;
 
+  // El margen TOTAL sólo se publica con 100% explícito de cobertura de
+  // productos Y de canales aplicables. Un solo producto sin porcentaje de
+  // facturación declarado no equivale a un 100% implícito: coberturaProductos
+  // sólo cuenta participaciones declaradas (> 0), nunca las asume. Con
+  // cobertura parcial, `margen` queda retenido (null) y sólo se publica
+  // `margen_muestra`, que sigue representando lo que sí se pudo calcular
+  // sobre la evidencia cargada, sin exigir cobertura total.
+  const coberturaProductosPct = coberturaProductos(d);
+  const hayCoberturaProductosCompleta = coberturaProductosPct >= 100;
+
   if (!hayCanales) {
     // Diagnóstico sin mix declarado: se mantiene el cálculo de canal único
     // (tienda propia con los datos compartidos), sin asumir que factura el 100%.
-    margen = porId("tienda_propia").margen_exacto;
-    margenMuestra = margen;
+    margenMuestra = porId("tienda_propia").margen_exacto;
+    margen = hayCoberturaProductosCompleta ? margenMuestra : null;
   } else if (!canalesSuperan100(d) && cobertura > 0) {
     const contribuyentes = canalesDeclarados(d)
       .filter((c) => c.pct > 0)
@@ -882,8 +892,9 @@ export function calcularDiagnostico(
         acumulado += (c.canal.margen_exacto as number) * (c.pct / 100);
       // Margen de la muestra: sobre la cobertura conocida, sin reescalar el mix.
       margenMuestra = finito(acumulado) ? acumulado / (cobertura / 100) : null;
-      // El margen total sólo existe si el mix cubre el 100% de la facturación.
-      margen = cobertura >= 100 ? margenMuestra : null;
+      // El margen total sólo existe si el mix de canales cubre el 100% de la
+      // facturación Y el catálogo analizado también cubre el 100% declarado.
+      margen = cobertura >= 100 && hayCoberturaProductosCompleta ? margenMuestra : null;
     }
   }
 
@@ -1037,14 +1048,19 @@ export function calcularDiagnostico(
   // --- Cascada del funnel: etapas del mismo canal y del mismo período.
   const funnel = evaluarFunnel(d, cfg);
 
-  // --- Contradicción contra el margen declarado por el cliente.
+  // --- Contradicción contra el margen declarado por el cliente. Compara
+  // contra el margen total si está disponible (100% de cobertura explícita);
+  // si está retenido, usa el de la muestra para no dejar de evaluar la
+  // contradicción por falta de cobertura total (ver contradiccion.ts).
   const contradiccion = evaluarContradiccion(
-    margen,
+    { total: margen, muestra: margenMuestra },
     rangoDeclarado(d.margen_declarado_min, d.margen_declarado_max),
     {
       confirmado: d.margen_declarado_confirmado === true,
       umbral_critico: cfg.umbral_contradiccion_critico,
       umbral_validacion: cfg.umbral_contradiccion_validacion,
+      cobertura_productos: coberturaProductosPct,
+      cobertura_canales: cobertura,
     },
   );
   const margenBloqueado = contradiccion?.bloquea === true;
@@ -1061,7 +1077,7 @@ export function calcularDiagnostico(
 
     canales: canalesCalc,
     cobertura_canales: cobertura,
-    cobertura_productos: coberturaProductos(d),
+    cobertura_productos: coberturaProductosPct,
     canal_principal: principal,
     margen_muestra: red(margenMuestra, DECIMALES_TASA),
     margenes_producto: margenesProducto,

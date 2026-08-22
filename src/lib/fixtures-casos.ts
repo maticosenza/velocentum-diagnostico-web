@@ -45,6 +45,11 @@ export const casoSnakeStore: DatosDiagnostico = {
   producto_1_nombre: "Campera Puffer",
   producto_1_costo: 40000,
   producto_1_precio: 180000,
+  // Los tres productos declarados sólo cubren el 60% de la facturación
+  // (30+20+10): captura real, catálogo parcialmente relevado. Por diseño,
+  // margen_contribucion (total) queda retenido para este caso; margen_muestra
+  // sí se calcula sobre lo relevado. Ver esperadosFase2 y
+  // "casoSnakeStoreCoberturaCompleta" para el caso con 100% explícito.
   producto_1_pct_facturacion: 30,
   producto_2_nombre: "Chaleco Tiffany",
   producto_2_costo: 35000,
@@ -72,6 +77,11 @@ export const casoTitanWebB1: DatosDiagnostico = {
   producto_1_nombre: "Bolsa tostado",
   producto_1_costo: 5890,
   producto_1_precio: 11650,
+  // Los tres productos declarados sólo cubren el 60% de la facturación
+  // (20+20+20): captura real, catálogo parcialmente relevado. Por diseño,
+  // margen_contribucion (total) queda retenido para este caso; margen_muestra
+  // sí se calcula sobre lo relevado. Ver "casoTitanWebB1CoberturaCompleta"
+  // para el caso con 100% explícito.
   producto_1_pct_facturacion: 20,
   producto_2_nombre: "Molde pan lactal",
   producto_2_costo: 17330,
@@ -87,6 +97,27 @@ export const casoTitanWebB1: DatosDiagnostico = {
   ml_inversion_product_ads: 1_800_000,
 };
 
+/**
+ * Variantes con el catálogo declarado al 100% explícito de la facturación,
+ * para los casos de prueba que necesitan margen_contribucion (total)
+ * calculado en vez de retenido. Los márgenes por producto no cambian (no
+ * dependen del porcentaje); sólo cambia el ponderado, porque ahora hay 100%
+ * de cobertura declarada en vez de 60%.
+ */
+export const casoSnakeStoreCoberturaCompleta: DatosDiagnostico = {
+  ...casoSnakeStore,
+  producto_1_pct_facturacion: 50,
+  producto_2_pct_facturacion: 30,
+  producto_3_pct_facturacion: 20,
+};
+
+export const casoTitanWebB1CoberturaCompleta: DatosDiagnostico = {
+  ...casoTitanWebB1,
+  producto_1_pct_facturacion: 34,
+  producto_2_pct_facturacion: 33,
+  producto_3_pct_facturacion: 33,
+};
+
 /** Estado intermedio de B1 usado para auditar envio antes del mix de canales. */
 export const casoTitanWebB1AntesDeCanales: DatosDiagnostico = {
   ...casoTitanWebB1,
@@ -95,6 +126,13 @@ export const casoTitanWebB1AntesDeCanales: DatosDiagnostico = {
   canal_ml_facturacion: null,
   canal_tienda_no_aplica: false,
   ml_inversion_product_ads: null,
+};
+
+export const casoTitanWebB1AntesDeCanalesCoberturaCompleta: DatosDiagnostico = {
+  ...casoTitanWebB1AntesDeCanales,
+  producto_1_pct_facturacion: 34,
+  producto_2_pct_facturacion: 33,
+  producto_3_pct_facturacion: 33,
 };
 
 /**
@@ -106,22 +144,34 @@ export const casoTitanWebB2Pendiente = {
   faltantes: ["envio_neto_vendedor", "liquidacion_mercado_libre"] as const,
 };
 
+/**
+ * Con el catálogo declarado al 60% (casoSnakeStore / casoTitanWebB1), el
+ * margen TOTAL (`margen_contribucion`) queda retenido por diseño: la
+ * cobertura de productos es parcial, no 100% explícito. `margenMuestra` sí
+ * se calcula sobre lo relevado, y todo lo que depende del margen total
+ * (breakeven, CPA objetivo, presupuesto de arranque) queda retenido con él.
+ * Las variantes "CoberturaCompleta" (100% explícito) sí publican el total
+ * — sus valores esperados están inline en los tests que las usan.
+ */
 export const esperadosFase2 = {
   snakeStore: {
     componenteEnvio: 0.0488,
     margenesProducto: [0.6589, 0.6012, 0.6459, null, null],
-    margenContribucion: 0.6375,
-    breakevenRoas: 1.5686,
+    margenContribucion: null,
+    margenMuestra: 0.6375,
+    breakevenRoas: null,
   },
   titanWebB1AntesDeComisionMarketplace: {
     componenteEnvio: 0.36,
     margenesProducto: [0.0744, 0.0547, 0.0634, null, null],
-    margenContribucion: 0.0642,
-    breakevenRoas: 15.585,
+    margenContribucion: null,
+    margenMuestra: 0.0642,
+    breakevenRoas: null,
   },
   titanWebB1ConComisionMarketplace: {
     margenesProducto: [-0.035, -0.0547, -0.046, null, null],
-    margenContribucion: -0.0452,
+    margenContribucion: null,
+    margenMuestra: -0.0452,
     merMarketplace: 27.78,
   },
 } as const;

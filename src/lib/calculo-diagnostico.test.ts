@@ -15,7 +15,14 @@ import {
   type ConfiguracionCalculo,
 } from "./calculo-diagnostico";
 import { DATOS_INICIALES, type DatosDiagnostico } from "./diagnostico-form";
-import { casoSnakeStore, casoTitanWebB1, casoTitanWebB1AntesDeCanales } from "./fixtures-casos";
+import {
+  casoSnakeStore,
+  casoSnakeStoreCoberturaCompleta,
+  casoTitanWebB1,
+  casoTitanWebB1AntesDeCanales,
+  casoTitanWebB1AntesDeCanalesCoberturaCompleta,
+  casoTitanWebB1CoberturaCompleta,
+} from "./fixtures-casos";
 import { mapearHallazgos } from "./propuesta";
 
 const cfg: ConfiguracionCalculo = {
@@ -63,6 +70,10 @@ const base: DatosDiagnostico = {
   producto_1_nombre: "Producto principal",
   producto_1_costo: 20250,
   producto_1_precio: 45000,
+  // Declarado explícitamente como el 100% de la facturación: el único
+  // producto de este caso de ejemplo representa todo el negocio. Sin este
+  // 100% explícito, margen_contribucion (total) quedaría retenido.
+  producto_1_pct_facturacion: 100,
 };
 
 describe("margen ponderado por productos", () => {
@@ -97,7 +108,7 @@ describe("margen ponderado por productos", () => {
     expect(r.derivados.pesos_producto).toEqual([0.05, 0.15, 0.8, null, null]);
   });
 
-  it("la remera que factura el 80% manda sobre la campera cara", () => {
+  it("la remera que factura el 80% manda sobre la campera cara, pero la cobertura del 95% deja el total retenido", () => {
     const r = calcularDiagnostico(
       {
         ...DATOS_INICIALES,
@@ -119,15 +130,22 @@ describe("margen ponderado por productos", () => {
       cfg,
     );
     const [mRemera, mCampera] = r.derivados.margenes_producto;
-    const ponderado = r.derivados.margen_contribucion!;
+    // 80% + 15% = 95%: cobertura de productos parcial. El margen TOTAL exige
+    // 100% explícito, así que queda retenido; el de la MUESTRA sí se calcula.
+    expect(r.derivados.cobertura_productos).toBe(95);
+    expect(r.derivados.margen_contribucion).toBeNull();
+    const ponderado = r.derivados.margen_muestra!;
     expect(Math.abs(ponderado - mRemera!)).toBeLessThan(Math.abs(ponderado - mCampera!));
     expect(ponderado).toBeCloseTo((mRemera! * 80 + mCampera! * 15) / 95, 4);
   });
 
-  it("sin porcentajes cargados usa el promedio simple de los márgenes", () => {
+  it("sin porcentajes cargados usa el promedio simple de los márgenes en la muestra; el total queda retenido (0% de cobertura declarada)", () => {
     const r = calcularDiagnostico(
       {
         ...base,
+        // Este caso prueba explícitamente la ausencia de porcentaje: se
+        // pisa el 100% del fixture base.
+        producto_1_pct_facturacion: null,
         producto_2_nombre: "Campera",
         producto_2_costo: 45000,
         producto_2_precio: 100000,
@@ -135,11 +153,13 @@ describe("margen ponderado por productos", () => {
       cfg,
     );
     const [m1, m2] = r.derivados.margenes_producto;
-    expect(r.derivados.margen_contribucion).toBeCloseTo((m1! + m2!) / 2, 4);
+    expect(r.derivados.cobertura_productos).toBe(0);
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(r.derivados.margen_muestra).toBeCloseTo((m1! + m2!) / 2, 4);
     expect(r.derivados.pesos_producto).toEqual([0.5, 0.5, null, null, null]);
   });
 
-  it("un producto con costo y precio pero sin porcentaje queda fuera del ponderado", () => {
+  it("un producto con costo y precio pero sin porcentaje queda fuera del ponderado de la muestra; el total queda retenido (60% de cobertura)", () => {
     const r = calcularDiagnostico(
       {
         ...base,
@@ -150,7 +170,9 @@ describe("margen ponderado por productos", () => {
       },
       cfg,
     );
-    expect(r.derivados.margen_contribucion).toBeCloseTo(r.derivados.margenes_producto[0]!, 4);
+    expect(r.derivados.cobertura_productos).toBe(60);
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(r.derivados.margen_muestra).toBeCloseTo(r.derivados.margenes_producto[0]!, 4);
     expect(r.derivados.pesos_producto[1]).toBeNull();
   });
 
@@ -336,6 +358,7 @@ const real: DatosDiagnostico = {
   producto_1_nombre: "Producto principal",
   producto_1_costo: 96_284,
   producto_1_precio: 225_226,
+  producto_1_pct_facturacion: 100,
 };
 
 describe("caso real de ticket alto", () => {
@@ -684,23 +707,25 @@ describe("mapearHallazgos con una tienda sin cuenta publicitaria", () => {
 // El envío se paga por pedido: el componente se divide por el ticket promedio.
 
 describe("componente de envío por pedido", () => {
-  const snake = casoSnakeStore;
-  const titan = casoTitanWebB1AntesDeCanales;
+  // Catálogo al 100% explícito: este bloque prueba mecánica de envío, no
+  // cobertura de productos, así que necesita margen_contribucion calculado.
+  const snake = casoSnakeStoreCoberturaCompleta;
+  const titan = casoTitanWebB1AntesDeCanalesCoberturaCompleta;
 
   it("caso A · Snake Store: componente único de envío y márgenes por producto", () => {
     const r = calcularDiagnostico(snake, cfg);
     expect(r.derivados.componente_envio).toBe(0.0488);
     expect(r.derivados.margenes_producto).toEqual([0.6589, 0.6012, 0.6459, null, null]);
-    expect(r.derivados.margen_contribucion).toBe(0.6375);
-    expect(r.derivados.breakeven_roas).toBe(1.5686);
+    expect(r.derivados.margen_contribucion).toBe(0.639);
+    expect(r.derivados.breakeven_roas).toBe(1.565);
   });
 
   it("caso B1 · Titan Web: el envío deja de comerse el precio unitario", () => {
     const r = calcularDiagnostico(titan, cfg);
     expect(r.derivados.componente_envio).toBe(0.36);
     expect(r.derivados.margenes_producto).toEqual([0.0744, 0.0547, 0.0634, null, null]);
-    expect(r.derivados.margen_contribucion).toBe(0.0642);
-    expect(r.derivados.breakeven_roas).toBe(15.585);
+    expect(r.derivados.margen_contribucion).toBe(0.0643);
+    expect(r.derivados.breakeven_roas).toBe(15.5601);
   });
 
   it("envío mayor al ticket: margen negativo pero finito", () => {
@@ -757,7 +782,7 @@ describe("componente de envío por pedido", () => {
     const legado = { ...titan };
     delete (legado as Record<string, unknown>)["absorbe_costo_envio"];
     expect(envioNetoVendedor(legado)).toBe(9000);
-    expect(calcularDiagnostico(legado, cfg).derivados.margen_contribucion).toBe(0.0642);
+    expect(calcularDiagnostico(legado, cfg).derivados.margen_contribucion).toBe(0.0643);
   });
 
   it("envío ausente: margen en null y el campo entre los faltantes", () => {
@@ -792,6 +817,9 @@ describe("componente de envío por pedido", () => {
         producto_2_precio: null,
         producto_3_costo: null,
         producto_3_precio: null,
+        // Con un único producto cargado, tiene que declararse explícitamente
+        // como el 100% del negocio para que el margen total se publique.
+        producto_1_pct_facturacion: 100,
       },
       cfg,
     );
@@ -837,6 +865,7 @@ describe("costo de financiación y descuentos", () => {
     producto_1_nombre: "Único",
     producto_1_costo: 20000,
     producto_1_precio: 50000,
+    producto_1_pct_facturacion: 100,
   };
 
   const margenDe = (d: DatosDiagnostico) =>
@@ -1106,23 +1135,25 @@ describe("mix de canales y comisiones", () => {
     r.derivados.canales.find((c) => c.id === id)!;
 
   it("caso A · Snake Store: 100% tienda propia, comisiones de Tiendanube y Mercado Pago", () => {
-    const r = calcularDiagnostico(snake, cfgCanales);
-    expect(r.derivados.margen_muestra).toBe(0.6375);
-    expect(r.derivados.margen_contribucion).toBe(0.6375);
-    expect(r.derivados.breakeven_roas).toBe(1.5686);
+    // Catálogo al 100% explícito: este caso prueba comisiones de canal, no
+    // cobertura de productos, así que necesita margen_contribucion calculado.
+    const r = calcularDiagnostico(casoSnakeStoreCoberturaCompleta, cfgCanales);
+    expect(r.derivados.margen_muestra).toBe(0.639);
+    expect(r.derivados.margen_contribucion).toBe(0.639);
+    expect(r.derivados.breakeven_roas).toBe(1.565);
     expect(r.derivados.canal_principal).toBe("tienda_propia");
     expect(r.derivados.cobertura_canales).toBe(100);
     expect(canalDe(r, "tienda_propia").comision_efectiva).toBe(0.07);
   });
 
   it("caso B1 · Titan Web: 100% Mercado Libre, sin comisiones de tienda propia", () => {
-    const r = calcularDiagnostico(titan, cfgCanales);
+    const r = calcularDiagnostico(casoTitanWebB1CoberturaCompleta, cfgCanales);
     const ml = canalDe(r, "mercado_libre");
     expect(ml.comision_efectiva).toBe(0.1694);
     expect(ml.componente_envio).toBe(0.36);
     expect(ml.margenes_producto).toEqual([-0.035, -0.0547, -0.046, null, null]);
-    expect(r.derivados.margen_muestra).toBe(-0.0452);
-    expect(r.derivados.margen_contribucion).toBe(-0.0452);
+    expect(r.derivados.margen_muestra).toBe(-0.0451);
+    expect(r.derivados.margen_contribucion).toBe(-0.0451);
     expect(r.derivados.canal_principal).toBe("mercado_libre");
     expect(r.derivados.comision_plataforma).toBeNull();
     expect(r.derivados.comision_pasarela).toBeNull();
@@ -1292,8 +1323,11 @@ describe("mix de canales y comisiones", () => {
     expect(r.derivados.canal_principal).toBeNull();
     expect(canalDe(r, "tienda_propia").estado).toBe("ausente");
     expect(canalDe(r, "mercado_libre").estado).toBe("ausente");
-    // Se conserva el cálculo previo a la entrega 2.3: tienda propia con datos compartidos.
-    expect(r.derivados.margen_contribucion).toBe(0.0642);
+    // Se conserva el cálculo previo a la entrega 2.3: tienda propia con datos
+    // compartidos, ahora como margen de la MUESTRA. El total sigue exigiendo
+    // 100% explícito de cobertura de productos (acá 60%), así que queda retenido.
+    expect(r.derivados.margen_muestra).toBe(0.0642);
+    expect(r.derivados.margen_contribucion).toBeNull();
   });
 
   it("sin contaminación: el funnel y las comisiones de tienda no tocan al marketplace", () => {
@@ -1554,7 +1588,7 @@ describe("impactos económicos: ahorro publicitario tipado", () => {
 
   it("Meta, Google y Product Ads conservan sus perímetros: el ahorro tipado usa el total combinado, MER y ROAS de Product Ads no se tocan", () => {
     const conMixCompleto: DatosDiagnostico = {
-      ...casoTitanWebB1,
+      ...casoTitanWebB1CoberturaCompleta,
       canal_tienda_no_aplica: false,
       canal_tienda_pct: 50,
       canal_ml_pct: 50,
@@ -1604,7 +1638,7 @@ describe("impactos económicos: ahorro publicitario tipado", () => {
 
 describe("impactos económicos: retención por margen bloqueado", () => {
   const casoConFunnelYAds: DatosDiagnostico = {
-    ...casoSnakeStore,
+    ...casoSnakeStoreCoberturaCompleta,
     facturacion_mensual: 22_522_600,
     visitas_mensuales: 5_000,
     agregados_carrito: 1_000,

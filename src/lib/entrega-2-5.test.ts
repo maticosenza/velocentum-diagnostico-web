@@ -138,35 +138,40 @@ describe("regla de contradicción del margen declarado", () => {
   const rango = rangoDeclarado(10, 12);
 
   it("dentro del rango no hay contradicción", () => {
-    const c = evaluarContradiccion(0.11, rango)!;
+    const c = evaluarContradiccion({ total: 0.11, muestra: null }, rango)!;
     expect(c.dentro_del_rango).toBe(true);
     expect(c.nivel).toBe("sin_alerta");
     expect(c.diferencia).toBe(0);
+    expect(c.origen_margen).toBe("total");
+    expect(c.confianza_base).toBe("alta");
   });
 
   it("mide contra el límite más cercano, no contra el centro", () => {
-    const c = evaluarContradiccion(0.08, rango)!;
+    const c = evaluarContradiccion({ total: 0.08, muestra: null }, rango)!;
     expect(c.limite_cercano).toBe(0.1);
     expect(c.diferencia).toBe(0.02);
     expect(c.nivel).toBe("sin_alerta");
   });
 
   it("diferencia de 0,07 contra el límite: validación requerida", () => {
-    const c = evaluarContradiccion(0.03, rango)!;
+    const c = evaluarContradiccion({ total: 0.03, muestra: null }, rango)!;
     expect(c.limite_cercano).toBe(0.1);
     expect(c.diferencia).toBe(0.07);
     expect(c.nivel).toBe("validacion_requerida");
   });
 
   it("por encima del rango también mide contra el límite más cercano", () => {
-    const c = evaluarContradiccion(0.25, rango)!;
+    const c = evaluarContradiccion({ total: 0.25, muestra: null }, rango)!;
     expect(c.limite_cercano).toBe(0.12);
     expect(c.diferencia).toBe(0.13);
     expect(c.nivel).toBe("critica");
   });
 
   it("cambio de signo: crítica", () => {
-    const c = evaluarContradiccion(-0.045, rangoDeclarado(11, null))!;
+    const c = evaluarContradiccion(
+      { total: -0.045, muestra: null },
+      rangoDeclarado(11, null),
+    )!;
     expect(c.cambio_de_signo).toBe(true);
     expect(c.nivel).toBe("critica");
   });
@@ -174,15 +179,18 @@ describe("regla de contradicción del margen declarado", () => {
   it("declarado sólo con mínimo: el rango es ese valor exacto", () => {
     const r = rangoDeclarado(11, null)!;
     expect(r).toEqual({ min: 0.11, max: 0.11 });
-    expect(evaluarContradiccion(0.11, r)!.dentro_del_rango).toBe(true);
-    expect(evaluarContradiccion(0.05, r)!.nivel).toBe("validacion_requerida");
+    expect(evaluarContradiccion({ total: 0.11, muestra: null }, r)!.dentro_del_rango).toBe(true);
+    expect(evaluarContradiccion({ total: 0.05, muestra: null }, r)!.nivel).toBe(
+      "validacion_requerida",
+    );
   });
 
   it("los umbrales se pueden editar desde configuración", () => {
-    const c = evaluarContradiccion(0.03, rango, {
-      umbral_critico: 0.06,
-      umbral_validacion: 0.02,
-    })!;
+    const c = evaluarContradiccion(
+      { total: 0.03, muestra: null },
+      rango,
+      { umbral_critico: 0.06, umbral_validacion: 0.02 },
+    )!;
     expect(c.nivel).toBe("critica");
   });
 });
@@ -217,6 +225,10 @@ describe("bloqueo por contradicción crítica", () => {
     );
 
     expect(r.derivados.contradiccion_margen?.nivel).toBe("critica");
+    // Cobertura completa (100% de productos y canales): compara contra el
+    // margen total, no la muestra.
+    expect(r.derivados.contradiccion_margen?.origen_margen).toBe("total");
+    expect(r.derivados.contradiccion_margen?.confianza_base).toBe("alta");
     expect(r.margen_bloqueado).toBe(true);
     expect(r.oportunidad_total).toBe(0);
 

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { calcularDiagnostico, type ConfiguracionCalculo } from "../../lib/calculo-diagnostico";
-import { casoSnakeStore, configuracionRegresionFase2 } from "../../lib/fixtures-casos";
+import {
+  casoSnakeStore,
+  casoSnakeStoreCoberturaCompleta,
+  configuracionRegresionFase2,
+} from "../../lib/fixtures-casos";
 import { calcularEscenarios90d, umbralDispersionDe } from "../../lib/escenarios-90d";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
 import { politicaEnvioDocumento } from "./build-context";
@@ -15,9 +19,13 @@ import { formatARS } from "../../lib/format";
 
 const cfg: ConfiguracionCalculo = configuracionRegresionFase2;
 
-/** Snake Store con funnel completo y envío confirmado: genera contribución calculable en los tres escenarios. */
+/**
+ * Snake Store con funnel completo, envío confirmado y catálogo declarado al
+ * 100% explícito: genera contribución calculable en los tres escenarios
+ * (margen total requiere 100% de cobertura de productos, no sólo de canales).
+ */
 const casoConOportunidad: DatosDiagnostico = {
-  ...casoSnakeStore,
+  ...casoSnakeStoreCoberturaCompleta,
   facturacion_mensual: 22_522_600,
   visitas_mensuales: 5000,
   agregados_carrito: 1000,

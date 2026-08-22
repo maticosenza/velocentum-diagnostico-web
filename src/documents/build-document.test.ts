@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { calcularDiagnostico } from "../lib/calculo-diagnostico";
-import { casoSnakeStore, casoTitanWebB1, configuracionRegresionFase2 } from "../lib/fixtures-casos";
+import {
+  casoSnakeStore,
+  casoSnakeStoreCoberturaCompleta,
+  casoTitanWebB1,
+  configuracionRegresionFase2,
+} from "../lib/fixtures-casos";
 import type { DatosDiagnostico } from "../lib/diagnostico-form";
 import type { DiagnosticoAlmacenado } from "./domain/from-diagnostico";
 import {
@@ -83,7 +88,7 @@ describe("armado del modelo desde un diagnóstico persistido", () => {
 
   it("publica facturación proyectada y oportunidad habilitada de los tres meses cuando el escenario calcula", () => {
     const datosConOportunidad: DatosDiagnostico = {
-      ...casoSnakeStore,
+      ...casoSnakeStoreCoberturaCompleta,
       facturacion_mensual: 22_522_600,
       visitas_mensuales: 5000,
       agregados_carrito: 1000,

@@ -326,6 +326,14 @@ function AvisoContradiccion({
               ? "El dato está confirmado por el cliente: no se muestra la oportunidad estimada ni se valorizan las fugas que usan margen hasta resolver la diferencia. El resto del diagnóstico sigue siendo válido."
               : "El dato no está confirmado por el cliente: se registra como alerta informativa y no bloquea el cálculo."}
           </p>
+          {contradiccion.origen_margen === "muestra" && (
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              Esta comparación se hizo contra el margen de la muestra (
+              {numero(contradiccion.cobertura_productos, 0)}% del catálogo analizado), no contra un
+              margen total: el catálogo relevado todavía no cubre el 100% de la facturación
+              declarada como participación de producto.
+            </p>
+          )}
         </div>
       </div>
     </section>

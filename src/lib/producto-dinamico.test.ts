@@ -229,7 +229,7 @@ describe("calcularDiagnostico: margen ponderado con hasta cinco productos", () =
     expect(r.derivados.margenes_producto[3]).not.toBeNull();
   });
 
-  it("cobertura de productos parcial: la cobertura queda visible aunque el margen ya se calcule", () => {
+  it("cobertura de productos parcial: la cobertura queda visible, la muestra se calcula, pero el total queda retenido", () => {
     const d: DatosDiagnostico = {
       ...base,
       producto_1_nombre: "P1",
@@ -243,6 +243,9 @@ describe("calcularDiagnostico: margen ponderado con hasta cinco productos", () =
     };
     const r = calcularDiagnostico(d, cfg);
     expect(r.derivados.cobertura_productos).toBe(60);
-    expect(typeof r.derivados.margen_contribucion).toBe("number");
+    // El margen total exige 100% explícito de cobertura de productos: con
+    // 60% queda retenido. El de la muestra sí se calcula sobre lo cargado.
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(typeof r.derivados.margen_muestra).toBe("number");
   });
 });

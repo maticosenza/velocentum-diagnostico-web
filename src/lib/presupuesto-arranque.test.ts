@@ -33,6 +33,7 @@ const base: DatosDiagnostico = {
   producto_1_nombre: "Producto principal",
   producto_1_costo: 20250,
   producto_1_precio: 45000,
+  producto_1_pct_facturacion: 100,
 };
 
 describe("presupuesto de arranque: piso teórico vs. evento intermedio", () => {

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { calcularDiagnostico } from "../../lib/calculo-diagnostico";
-import { casoSnakeStore, configuracionRegresionFase2 } from "../../lib/fixtures-casos";
+import {
+  casoSnakeStore,
+  casoSnakeStoreCoberturaCompleta,
+  configuracionRegresionFase2,
+} from "../../lib/fixtures-casos";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
 import { calcularEscenarios90d } from "../../lib/escenarios-90d";
 import { buildDocumentContext } from "./build-context";
@@ -35,8 +39,10 @@ describe("reconstrucción del resultado persistido", () => {
   });
 
   it("deriva el bloqueo de margen desde la contradicción guardada", () => {
+    // Requiere margen total calculado (100% de cobertura de productos) para
+    // que haya algo contra qué contrastar el margen declarado.
     const datos: DatosDiagnostico = {
-      ...casoSnakeStore,
+      ...casoSnakeStoreCoberturaCompleta,
       margen_declarado_min: 0.45,
       margen_declarado_max: 0.45,
       margen_declarado_confirmado: true,
@@ -58,7 +64,7 @@ describe("reconstrucción del resultado persistido", () => {
 
   it("un diagnóstico legado (fugas sin `impactos`) no se reinterpreta: el motor de escenarios lo trata como no clasificado", () => {
     const datosConOportunidad: DatosDiagnostico = {
-      ...casoSnakeStore,
+      ...casoSnakeStoreCoberturaCompleta,
       facturacion_mensual: 22_522_600,
       visitas_mensuales: 5000,
       agregados_carrito: 1000,
