@@ -75,15 +75,6 @@ function publicarNumero(args: {
   });
 }
 
-function coberturaProductos(datos: DatosDiagnostico): number {
-  return limitarCobertura(
-    productosCargados(datos).reduce(
-      (total, producto) => total + (finito(producto.pct) && producto.pct > 0 ? producto.pct : 0),
-      0,
-    ),
-  );
-}
-
 /**
  * El adaptador documental nunca infiere la política nueva desde el monto legado.
  * El motor conserva ese monto para compatibilidad, pero el PDF debe esperar una
@@ -273,7 +264,7 @@ function resumenComercialDocumento(args: {
 export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentContextV1 {
   const { datos, resultado } = args;
   const coberturaCanales = limitarCobertura(resultado.derivados.cobertura_canales);
-  const productos = coberturaProductos(datos);
+  const productos = limitarCobertura(resultado.derivados.cobertura_productos);
   const general = Math.min(coberturaCanales, productos);
   const envio = politicaEnvioDocumento(datos, resultado);
   const restricciones = restriccionesDocumento({

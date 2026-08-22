@@ -138,6 +138,8 @@ export type Derivados = {
   pesos_producto: (number | null)[];
   canales: CanalDerivado[];
   cobertura_canales: number;
+  /** Cobertura del catálogo analizado: % de la facturación con costo y precio cargados. */
+  cobertura_productos: number;
   canal_principal: CanalId | null;
   margen_muestra: number | null;
   pedidos_mensuales: number | null;
@@ -291,6 +293,9 @@ export type ProductoCargado = {
   margen: number;
 };
 
+/** Cantidad máxima de productos que soporta la lista (fase 5: de uno a cinco). */
+export const MAX_PRODUCTOS = 5;
+
 /** Devuelve los productos que tienen costo y precio válidos cargados. */
 export function productosCargados(d: DatosDiagnostico) {
   const crudos = [
@@ -315,6 +320,20 @@ export function productosCargados(d: DatosDiagnostico) {
       precio: d.producto_3_precio,
       pct: d.producto_3_pct_facturacion,
     },
+    {
+      indice: 4,
+      nombre: d.producto_4_nombre,
+      costo: d.producto_4_costo,
+      precio: d.producto_4_precio,
+      pct: d.producto_4_pct_facturacion,
+    },
+    {
+      indice: 5,
+      nombre: d.producto_5_nombre,
+      costo: d.producto_5_costo,
+      precio: d.producto_5_precio,
+      pct: d.producto_5_pct_facturacion,
+    },
   ];
   return crudos.filter((p) => finito(p.costo) && finito(p.precio) && (p.precio as number) > 0) as {
     indice: number;
@@ -323,6 +342,19 @@ export function productosCargados(d: DatosDiagnostico) {
     precio: number;
     pct: number | null;
   }[];
+}
+
+/**
+ * Cobertura del catálogo analizado: qué porcentaje de la facturación representan
+ * los productos con costo y precio cargados. Misma fórmula que usaba el adaptador
+ * documental (fase 5: ahora vive acá, fuente única, y el adaptador la reutiliza).
+ */
+export function coberturaProductos(d: DatosDiagnostico): number {
+  const suma = productosCargados(d).reduce(
+    (total, p) => total + (finito(p.pct) && (p.pct as number) > 0 ? (p.pct as number) : 0),
+    0,
+  );
+  return Math.max(0, Math.min(100, suma));
 }
 
 /**
@@ -643,9 +675,9 @@ function margenDeCanal(
     }
   }
 
-  const margenesExactos: (number | null)[] = [null, null, null];
-  const comisionesProducto: (number | null)[] = [null, null, null];
-  const pesos: (number | null)[] = [null, null, null];
+  const margenesExactos: (number | null)[] = Array(MAX_PRODUCTOS).fill(null);
+  const comisionesProducto: (number | null)[] = Array(MAX_PRODUCTOS).fill(null);
+  const pesos: (number | null)[] = Array(MAX_PRODUCTOS).fill(null);
   const calculables: { indice: number; margen: number; pct: number | null }[] = [];
 
   if (
@@ -942,6 +974,7 @@ export function calcularDiagnostico(
 
     canales: canalesCalc,
     cobertura_canales: cobertura,
+    cobertura_productos: coberturaProductos(d),
     canal_principal: principal,
     margen_muestra: red(margenMuestra, DECIMALES_TASA),
     margenes_producto: margenesProducto,

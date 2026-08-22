@@ -94,7 +94,7 @@ describe("margen ponderado por productos", () => {
     const ponderado = r.derivados.margen_contribucion!;
     const esperado = (m1! * 5 + m2! * 15 + m3! * 80) / 100;
     expect(ponderado).toBeCloseTo(esperado, 3);
-    expect(r.derivados.pesos_producto).toEqual([0.05, 0.15, 0.8]);
+    expect(r.derivados.pesos_producto).toEqual([0.05, 0.15, 0.8, null, null]);
   });
 
   it("la remera que factura el 80% manda sobre la campera cara", () => {
@@ -136,7 +136,7 @@ describe("margen ponderado por productos", () => {
     );
     const [m1, m2] = r.derivados.margenes_producto;
     expect(r.derivados.margen_contribucion).toBeCloseTo((m1! + m2!) / 2, 4);
-    expect(r.derivados.pesos_producto).toEqual([0.5, 0.5, null]);
+    expect(r.derivados.pesos_producto).toEqual([0.5, 0.5, null, null, null]);
   });
 
   it("un producto con costo y precio pero sin porcentaje queda fuera del ponderado", () => {
@@ -690,7 +690,7 @@ describe("componente de envío por pedido", () => {
   it("caso A · Snake Store: componente único de envío y márgenes por producto", () => {
     const r = calcularDiagnostico(snake, cfg);
     expect(r.derivados.componente_envio).toBe(0.0488);
-    expect(r.derivados.margenes_producto).toEqual([0.6589, 0.6012, 0.6459]);
+    expect(r.derivados.margenes_producto).toEqual([0.6589, 0.6012, 0.6459, null, null]);
     expect(r.derivados.margen_contribucion).toBe(0.6375);
     expect(r.derivados.breakeven_roas).toBe(1.5686);
   });
@@ -698,7 +698,7 @@ describe("componente de envío por pedido", () => {
   it("caso B1 · Titan Web: el envío deja de comerse el precio unitario", () => {
     const r = calcularDiagnostico(titan, cfg);
     expect(r.derivados.componente_envio).toBe(0.36);
-    expect(r.derivados.margenes_producto).toEqual([0.0744, 0.0547, 0.0634]);
+    expect(r.derivados.margenes_producto).toEqual([0.0744, 0.0547, 0.0634, null, null]);
     expect(r.derivados.margen_contribucion).toBe(0.0642);
     expect(r.derivados.breakeven_roas).toBe(15.585);
   });
@@ -781,7 +781,7 @@ describe("componente de envío por pedido", () => {
     const r = calcularDiagnostico({ ...titan, ticket_promedio: null }, cfg);
     expect(r.derivados.componente_envio).toBeNull();
     expect(r.derivados.margen_contribucion).toBeNull();
-    expect(r.derivados.margenes_producto).toEqual([null, null, null]);
+    expect(r.derivados.margenes_producto).toEqual([null, null, null, null, null]);
   });
 
   it("un solo producto cargado usa su margen directamente", () => {
@@ -1120,7 +1120,7 @@ describe("mix de canales y comisiones", () => {
     const ml = canalDe(r, "mercado_libre");
     expect(ml.comision_efectiva).toBe(0.1694);
     expect(ml.componente_envio).toBe(0.36);
-    expect(ml.margenes_producto).toEqual([-0.035, -0.0547, -0.046]);
+    expect(ml.margenes_producto).toEqual([-0.035, -0.0547, -0.046, null, null]);
     expect(r.derivados.margen_muestra).toBe(-0.0452);
     expect(r.derivados.margen_contribucion).toBe(-0.0452);
     expect(r.derivados.canal_principal).toBe("mercado_libre");
@@ -1363,7 +1363,7 @@ describe("cargo fijo del marketplace y escala de la comisión verificada", () =>
     expect(ml(r).comision_efectiva).toBe(0.1694);
     expect(ml(r).cargo_fijo_aplicado).toBe(false);
     expect(ml(r).cargo_fijo_disponible?.valor).toBe(1095);
-    expect(ml(r).comisiones_producto).toEqual([0.1694, 0.1694, 0.1694]);
+    expect(ml(r).comisiones_producto).toEqual([0.1694, 0.1694, 0.1694, null, null]);
     expect(r.derivados.margen_muestra).toBe(-0.0452);
   });
 
@@ -1381,7 +1381,7 @@ describe("cargo fijo del marketplace y escala de la comisión verificada", () =>
     // 0,1694 + 1095/20000 = 0,22415 -> 0,2242
     expect(ml(r).comision_efectiva).toBe(0.2242);
     expect(ml(r).cargo_fijo_aplicado).toBe(true);
-    expect(ml(r).comisiones_producto).toEqual([0.2242, 0.2242, 0.2242]);
+    expect(ml(r).comisiones_producto).toEqual([0.2242, 0.2242, 0.2242, null, null]);
   });
 
   it("cargo fijo verificado con base unidad: se aplica sobre el precio de cada producto", () => {
@@ -1396,7 +1396,7 @@ describe("cargo fijo del marketplace y escala de la comisión verificada", () =>
       }),
     );
     // 0,1694 + 1095/precio, distinto en cada producto
-    expect(ml(r).comisiones_producto).toEqual([0.2634, 0.2026, 0.2054]);
+    expect(ml(r).comisiones_producto).toEqual([0.2634, 0.2026, 0.2054, null, null]);
   });
 
   it("productos a los dos lados del umbral con base precio_producto: uno con cargo y otro sin", () => {

@@ -158,6 +158,8 @@ export type DatosDiagnostico = {
   inversion_google: number | null;
 
   // Productos (compartido; en modo B sólo el principal lleva costo y precio)
+  /** Cuántos productos de la lista (1 a 5) están en juego en este diagnóstico. */
+  cantidad_productos?: number;
   producto_1_nombre: string;
   producto_1_costo: number | null;
   producto_1_precio: number | null;
@@ -170,6 +172,14 @@ export type DatosDiagnostico = {
   producto_3_costo: number | null;
   producto_3_precio: number | null;
   producto_3_pct_facturacion: number | null;
+  producto_4_nombre: string;
+  producto_4_costo: number | null;
+  producto_4_precio: number | null;
+  producto_4_pct_facturacion: number | null;
+  producto_5_nombre: string;
+  producto_5_costo: number | null;
+  producto_5_precio: number | null;
+  producto_5_pct_facturacion: number | null;
   reparto_pauta: string;
   // Cuenta · modo A
   conjuntos_activos: number | null;
@@ -283,6 +293,7 @@ export const DATOS_INICIALES: DatosDiagnostico = {
 
   inversion_meta: null,
   inversion_google: null,
+  cantidad_productos: 3,
   producto_1_nombre: "",
   producto_1_costo: null,
   producto_1_precio: null,
@@ -295,6 +306,14 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   producto_3_costo: null,
   producto_3_precio: null,
   producto_3_pct_facturacion: null,
+  producto_4_nombre: "",
+  producto_4_costo: null,
+  producto_4_precio: null,
+  producto_4_pct_facturacion: null,
+  producto_5_nombre: "",
+  producto_5_costo: null,
+  producto_5_precio: null,
+  producto_5_pct_facturacion: null,
   reparto_pauta: "",
   conjuntos_activos: null,
   presupuesto_diario: null,
@@ -419,30 +438,38 @@ const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
   ],
 };
 
-/** Campos que cuentan para el indicador de completitud de cada pestaña, según el modo. */
-export function camposPorBloque(modo: Modo, bloque: BloqueId): (keyof DatosDiagnostico)[] {
+/** Cuántos productos (1 a 5) están en juego, acotando cualquier valor fuera de rango. */
+export function cantidadProductosDe(datos: Pick<DatosDiagnostico, "cantidad_productos">): number {
+  const n = datos.cantidad_productos;
+  if (typeof n !== "number" || !Number.isFinite(n)) return 3;
+  return Math.min(5, Math.max(1, Math.round(n)));
+}
+
+/**
+ * Campos que cuentan para el indicador de completitud de cada pestaña, según el modo.
+ * `cantidadProductos` (1 a 5) determina cuántos productos de la lista son obligatorios
+ * para que el bloque "productos" llegue al 100%; el resto son opcionales.
+ */
+export function camposPorBloque(
+  modo: Modo,
+  bloque: BloqueId,
+  cantidadProductos = 3,
+): (keyof DatosDiagnostico)[] {
   const base = CAMPOS_COMUNES[bloque];
   if (bloque === "medicion") return modo === "A" ? ["facturacion_pixel", "capi_estado"] : [];
   if (bloque === "productos") {
-    const nombres: (keyof DatosDiagnostico)[] = [
-      "producto_1_nombre",
-      "producto_2_nombre",
-      "producto_3_nombre",
-      "producto_1_pct_facturacion",
-      "producto_2_pct_facturacion",
-      "producto_3_pct_facturacion",
-    ];
-    return modo === "A"
-      ? [
-          ...nombres,
-          "producto_1_costo",
-          "producto_1_precio",
-          "producto_2_costo",
-          "producto_2_precio",
-          "producto_3_costo",
-          "producto_3_precio",
-        ]
-      : [...nombres, "producto_1_costo", "producto_1_precio"];
+    const n = Math.min(5, Math.max(1, Math.round(cantidadProductos)));
+    const indices = Array.from({ length: n }, (_, i) => i + 1);
+    const nombres = indices.map((i) => `producto_${i}_nombre` as keyof DatosDiagnostico);
+    const pcts = indices.map((i) => `producto_${i}_pct_facturacion` as keyof DatosDiagnostico);
+    if (modo === "A") {
+      const montos = indices.flatMap((i) => [
+        `producto_${i}_costo` as keyof DatosDiagnostico,
+        `producto_${i}_precio` as keyof DatosDiagnostico,
+      ]);
+      return [...nombres, ...pcts, ...montos];
+    }
+    return [...nombres, ...pcts, "producto_1_costo", "producto_1_precio"];
   }
   if (bloque === "cuenta") {
     return modo === "A"
@@ -463,7 +490,11 @@ export function estaCompleto(valor: unknown) {
 }
 
 export function contarCompletos(datos: DatosDiagnostico, modo: Modo, bloque: BloqueId) {
-  const campos = camposPorBloque(modo, bloque);
+  const campos = camposPorBloque(
+    modo,
+    bloque,
+    bloque === "productos" ? cantidadProductosDe(datos) : 3,
+  );
   return {
     completos: campos.filter((c) => estaCompleto(datos[c])).length,
     total: campos.length,

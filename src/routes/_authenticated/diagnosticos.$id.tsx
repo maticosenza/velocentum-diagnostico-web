@@ -595,7 +595,15 @@ function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: Da
         </p>
       </header>
       <dl>
-        <Fila label="Margen de contribución" value={pct(derivados.margen_contribucion)} />
+        <Fila
+          label="Margen de la muestra (productos y canal analizados)"
+          value={pct(derivados.margen_muestra)}
+        />
+        <Fila label="Margen total (negocio completo)" value={pct(derivados.margen_contribucion)} />
+        <Fila
+          label="Cobertura del catálogo analizado"
+          value={`${numero(derivados.cobertura_productos, 0)}%`}
+        />
         <Fila label="Breakeven ROAS" value={numero(derivados.breakeven_roas)} />
         <Fila label="CPA breakeven" value={pesos(derivados.cpa_breakeven)} />
         <Fila label="Reserva aplicada" value={pct(derivados.reserva, 0)} />
@@ -625,6 +633,14 @@ function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: Da
         />
         <Fila label="Pedidos mensuales estimados" value={numero(derivados.pedidos_mensuales, 0)} />
       </dl>
+      {derivados.cobertura_productos < 100 &&
+        derivados.pesos_producto.filter((p) => p !== null).length > 1 && (
+          <p className="border-t border-border px-7 py-6 text-[13px] leading-6 text-muted-foreground">
+            El catálogo relevado cubre el {numero(derivados.cobertura_productos, 0)}% de la
+            facturación declarada como participación de producto: los márgenes de arriba ponderan
+            sólo esa muestra, sin reescalarla al 100% del catálogo.
+          </p>
+        )}
     </section>
   );
 }

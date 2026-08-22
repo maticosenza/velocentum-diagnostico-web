@@ -33,6 +33,7 @@ import {
   PLATAFORMAS,
   VERTICALES,
   camposPorBloque,
+  cantidadProductosDe,
   contarCompletos,
   type BloqueId,
   type DatosDiagnostico,
@@ -835,10 +836,38 @@ function NuevoDiagnostico() {
               <div className="space-y-7">
                 <p className="text-[12px] text-muted-foreground">
                   {modo === "A"
-                    ? "Los tres productos que más vende, con costo y precio de cada uno. De acá sale el margen."
-                    : "Los tres que más vende. Costo y precio sólo del principal."}
+                    ? "Los productos que más vende (de uno a cinco), con costo y precio de cada uno. De acá sale el margen."
+                    : "Los que más vende (de uno a cinco). Costo y precio sólo del principal."}
                 </p>
-                {[1, 2, 3].map((n) => {
+                {(() => {
+                  const cantidad = cantidadProductosDe(datos);
+                  return (
+                    <div className="flex items-center gap-3">
+                      <span className="text-[13px] text-muted-foreground">
+                        Productos en la lista: {cantidad}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={cantidad <= 1}
+                        onClick={() => set("cantidad_productos", Math.max(1, cantidad - 1))}
+                      >
+                        Quitar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={cantidad >= 5}
+                        onClick={() => set("cantidad_productos", Math.min(5, cantidad + 1))}
+                      >
+                        Agregar producto
+                      </Button>
+                    </div>
+                  );
+                })()}
+                {Array.from({ length: cantidadProductosDe(datos) }, (_, i) => i + 1).map((n) => {
                   const nombreKey = `producto_${n}_nombre` as keyof DatosDiagnostico;
                   const costoKey = `producto_${n}_costo` as keyof DatosDiagnostico;
                   const precioKey = `producto_${n}_precio` as keyof DatosDiagnostico;
@@ -879,13 +908,15 @@ function NuevoDiagnostico() {
                     datos.producto_1_pct_facturacion,
                     datos.producto_2_pct_facturacion,
                     datos.producto_3_pct_facturacion,
+                    datos.producto_4_pct_facturacion,
+                    datos.producto_5_pct_facturacion,
                   ].filter((v): v is number => typeof v === "number" && Number.isFinite(v));
                   if (pcts.length === 0) return null;
                   const suma = pcts.reduce((a, b) => a + b, 0);
                   const excede = suma > 100;
                   return (
                     <p className="text-[13px] tabular-nums">
-                      <span className="text-muted-foreground">Suma de los tres: </span>
+                      <span className="text-muted-foreground">Suma de la lista: </span>
                       <span className={excede ? "text-[var(--estado-rojo)]" : "text-foreground"}>
                         {Math.round(suma * 10) / 10}%
                       </span>

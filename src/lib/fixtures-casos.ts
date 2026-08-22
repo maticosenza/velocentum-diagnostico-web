@@ -109,18 +109,18 @@ export const casoTitanWebB2Pendiente = {
 export const esperadosFase2 = {
   snakeStore: {
     componenteEnvio: 0.0488,
-    margenesProducto: [0.6589, 0.6012, 0.6459],
+    margenesProducto: [0.6589, 0.6012, 0.6459, null, null],
     margenContribucion: 0.6375,
     breakevenRoas: 1.5686,
   },
   titanWebB1AntesDeComisionMarketplace: {
     componenteEnvio: 0.36,
-    margenesProducto: [0.0744, 0.0547, 0.0634],
+    margenesProducto: [0.0744, 0.0547, 0.0634, null, null],
     margenContribucion: 0.0642,
     breakevenRoas: 15.585,
   },
   titanWebB1ConComisionMarketplace: {
-    margenesProducto: [-0.035, -0.0547, -0.046],
+    margenesProducto: [-0.035, -0.0547, -0.046, null, null],
     margenContribucion: -0.0452,
     merMarketplace: 27.78,
   },
