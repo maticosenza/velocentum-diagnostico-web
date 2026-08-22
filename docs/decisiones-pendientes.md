@@ -11,98 +11,7 @@ numerada de forma permanente; los números no se reutilizan.
 
 ## Abiertas
 
-### 2 · Valor por defecto del costo por evento intermedio (fase 6, presupuesto de arranque)
-
-**Contexto.** El "presupuesto de arranque optimizando por evento intermedio"
-(`derivados.presupuesto_arranque.arranque_evento_intermedio`,
-`src/lib/calculo-diagnostico.ts`) necesita un costo estimado por evento
-intermedio (agregar al carrito o iniciar checkout). Por instrucción explícita
-del usuario, ese costo "sale de configuración marcado como benchmark" — se
-implementó como una proporción del CPA objetivo
-(`factor_costo_evento_intermedio`, config), con un default de código
-(`FACTOR_COSTO_EVENTO_INTERMEDIO_DEFECTO = 0,2`, es decir 20% del CPA
-objetivo) documentado en `src/lib/calculo-diagnostico.ts`.
-
-**Por qué se anota igual, sin bloquear el bloque.** El patrón en sí (config
-primero, default de código marcado como benchmark, nunca cifra única, nunca
-confianza "alta") es exactamente lo que pidió el usuario y no requería
-autorización adicional. Pero el número concreto, 20%, no tiene respaldo de
-datos reales de ningún cliente — es una estimación razonable de que un
-evento intermedio (más frecuente, más barato) cuesta una fracción del costo
-de una compra, no una cifra derivada de benchmarks de la industria ni de
-datos propios. Hoy el radio de impacto es acotado: este valor sólo alimenta
-la pantalla interna de diagnóstico (`diagnosticos.$id.tsx`), no ningún
-documento cliente-facing (`src/documents/`). Auditoría independiente de fase
-6 (commit `0b803af`) recomendó dejarlo trazable acá antes de que, en el
-futuro, se conecte a un documento que llegue a un cliente.
-
-**Qué decidir.** Si Matías tiene una referencia mejor (data de campañas
-propias con optimización por agregar-al-carrito o iniciar-checkout vs.
-compra), reemplazar el 20% por ese número en la fila `configuracion` de la
-base (clave `factor_costo_evento_intermedio`) — no requiere tocar código. Si
-no hay objeción, el valor por defecto queda como está.
-
-### 8 · Algoritmo de reparto de servicios en la escalera de paquetes
-
-**Contexto.** Al implementar el generador de paquetes (bloque técnico,
-2026-08-22, `src/lib/paquetes.ts`) que cierra la entrada 7, la decisión
-comercial 7 deja sin especificar dos cosas:
-
-1. Con varios servicios justificados por hallazgos, **en qué orden y en
-   qué nivel entra cada uno** (¿todos los servicios ligados a Meta Ads van
-   primero? ¿se reparte parejo entre los niveles habilitados?).
-2. **Cómo escala la cantidad** de un servicio numérico (campañas activas,
-   piezas por mes) ya incluido en un nivel al subir al siguiente — la
-   decisión dice "más servicios o alcance adicional" pero no da una
-   fórmula.
-
-**Qué se implementó mientras tanto (default razonable, no una decisión
-de negocio).** `generarEscaleraPaquetes()` reparte los servicios
-justificados en el orden fijo del catálogo `SERVICIOS`, lo más parejo
-posible entre los niveles habilitados (nunca más de tres), y escala la
-cantidad de cada servicio numérico linealmente con el índice del nivel
-(nivel 1 = base configurable, nivel 2 = base × 2, nivel 3 = base × 3).
-Está documentado en el comentario de cabecera de `src/lib/paquetes.ts` y
-es completamente editable en la pantalla de confirmación
-(`src/components/confirmacion-paquetes.tsx`): el vendedor puede mover
-servicios entre niveles y cambiar cualquier cantidad antes de confirmar.
-
-**Por qué no bloqueó el bloque.** El generador y la pantalla de
-confirmación no dependen de que este reparto sea "el correcto": son
-válidos con cualquier distribución, y la confirmación manual obligatoria
-existe precisamente para que el vendedor corrija el default del sistema
-antes de que se convierta en una propuesta real.
-
-**Qué decidir.** Si Matías define un criterio distinto (por ejemplo,
-Meta/Google Ads siempre en el nivel 1, contenido recién en el nivel 2),
-es un cambio acotado a la función de reparto en `src/lib/paquetes.ts`, sin
-tocar el resto del generador ni la UI de confirmación.
-
-### 9 · Persistencia de la selección comercial confirmada (requiere cambio de base)
-
-**Contexto.** La pantalla de confirmación de paquetes
-(`src/components/confirmacion-paquetes.tsx`) sólo guarda la escalera
-editada y confirmada en estado de React, en memoria: se pierde si se
-recarga la página. `SeleccionComercial`
-(`src/documents/domain/types.ts:210-222`) es el tipo que el PDF de
-propuesta necesita para mostrar paquete/alcance/precio, pero
-`buildDocumentContext()` sigue fijando `comercial: null` de forma
-incondicional (`src/documents/domain/build-context.ts:479`): no hay
-ninguna columna ni tabla en Supabase para guardar una selección
-confirmada por diagnóstico.
-
-**Por qué no se implementó.** Agregar esa persistencia requiere una
-migración de base de datos (columna o tabla nueva). Está expresamente
-fuera de lo que este trabajo autónomo puede hacer por sí solo
-("restricciones permanentes: no tocar... la base... ni migraciones").
-
-**Qué decidir.** El generador de paquetes y la pantalla de confirmación
-quedan listos y probados (`src/lib/paquetes.ts`,
-`src/lib/paquetes.test.ts`, `src/components/confirmacion-paquetes.tsx`),
-pero el circuito completo ("confirmar y que el PDF de propuesta lo use")
-necesita, como paso siguiente y con aprobación explícita de Matías: una
-migración que agregue dónde guardar la selección confirmada, y wireado de
-esa selección hacia `SeleccionComercial`/`buildDocumentContext()`.
+Ninguna por ahora.
 
 ## Cerradas
 
@@ -182,6 +91,35 @@ tocar la UI para eso. Cobertura de productos, la nota de cobertura parcial y
 ahora aclara explícitamente que la comparación se hizo contra el margen de
 la muestra y qué porcentaje del catálogo cubre, en vez de dar a entender que
 se comparó contra un margen total.
+
+### 2 · Valor por defecto del costo por evento intermedio (fase 6, presupuesto de arranque) — **RESUELTA el 2026-08-22**
+
+**Contexto original.** El "presupuesto de arranque optimizando por evento
+intermedio" (`derivados.presupuesto_arranque.arranque_evento_intermedio`,
+`src/lib/calculo-diagnostico.ts`) necesita un costo estimado por evento
+intermedio (agregar al carrito o iniciar checkout). Por instrucción
+explícita del usuario, ese costo "sale de configuración marcado como
+benchmark" — se implementó como una proporción del CPA objetivo
+(`factor_costo_evento_intermedio`, config), con un default de código
+(`FACTOR_COSTO_EVENTO_INTERMEDIO_DEFECTO = 0,2`, es decir 20% del CPA
+objetivo) documentado en `src/lib/calculo-diagnostico.ts`. Se había dejado
+anotada porque el número concreto (20%) no tiene respaldo de datos reales
+de ningún cliente.
+
+**Resolución.** El patrón implementado es exactamente el pedido: el 20%
+queda como benchmark configurable, marcado explícitamente como supuesto
+(nunca como dato observado), sobrescribible sin tocar código cargando
+`factor_costo_evento_intermedio` en la fila `configuracion` de la base, y
+con confianza que nunca llega a "alta" mientras el presupuesto de arranque
+dependa de este benchmark sin verificar (`presupuesto_arranque.confianza`,
+`src/lib/calculo-diagnostico.ts`). No hace falta ningún cambio de código:
+es la decisión comercial ya tomada, verificada contra la implementación
+existente.
+
+**Consecuencia.** Si en el futuro aparece una referencia mejor (datos de
+campañas propias con optimización por agregar-al-carrito o
+iniciar-checkout vs. compra), se reemplaza el 20% cargando ese número en
+`configuracion`, sin tocar código.
 
 ### 3 · Nueve de las catorce fases del plan maestro no tienen definición verificable en este repositorio — **RESUELTA el 2026-08-22**
 
@@ -338,6 +276,59 @@ obligatoria:
 implementado en el bloque que registra esta decisión) debe respetar estas
 ocho reglas exactamente; ninguna se puede relajar sin una nueva decisión
 explícita.
+
+### 8 · Algoritmo de reparto de servicios en la escalera de paquetes — **RESUELTA el 2026-08-22**
+
+**Contexto original.** Al implementar el generador de paquetes
+(`src/lib/paquetes.ts`), la decisión comercial 7 no especificaba en qué
+orden ni con qué factor de escala se reparten los servicios justificados
+entre los tres niveles. Se implementó un default razonable (orden fijo
+del catálogo `SERVICIOS`, reparto parejo entre los niveles habilitados,
+cantidad × índice de nivel), completamente editable en la pantalla de
+confirmación.
+
+**Resolución.** El reparto por defecto que propone el sistema es
+exactamente la decisión comercial ya tomada: el sistema propone un
+reparto y el vendedor lo ajusta en la pantalla de confirmación
+(`src/components/confirmacion-paquetes.tsx`) antes de que se convierta en
+una propuesta real. No hace falta ninguna regla de negocio adicional ni
+ningún cambio de código.
+
+### 9 · Persistencia de la selección comercial confirmada — **RESUELTA el 2026-08-22**
+
+**Contexto original.** La pantalla de confirmación de paquetes sólo
+guardaba la escalera confirmada en estado de React, en memoria: se perdía
+al recargar la página. Se había anotado que agregar persistencia
+requeriría una migración de base de datos (columna o tabla nueva).
+
+**Resolución.** No había ninguna razón técnica real que exigiera una
+migración — ni volumen, ni consultas cruzadas, ni integridad referencial,
+ni una concurrencia que no pueda resolverse leyendo el valor actual antes
+de escribir. La selección de paquetes (nivel, servicios, cantidades,
+precios) es un objeto del mismo tipo que ya vivía en columnas JSON
+existentes sin ningún cambio de esquema durante las fases 3 a 13
+(`datos`, `derivados`, `configuracion.valor`). Se implementó sobre
+`diagnostico.propuesta` (JSONB, ya existente): esa columna pasó de guardar
+la propuesta redactada por el modelo directamente a guardar un sobre con
+dos claves independientes, `propuesta` y `paquetes`
+(`src/lib/contenido-propuesta.ts`), con compatibilidad hacia atrás para
+los diagnósticos guardados antes de este cambio (forma vieja: el objeto
+guardado ES la propuesta, sin sobre). El nuevo server function
+`confirmarPaquetes` (`src/lib/paquetes.functions.ts`) lee el valor actual
+de la columna antes de escribir, para no pisar la propuesta ya generada;
+`generarPropuesta` (`src/lib/propuesta.functions.ts`) se ajustó con el
+mismo criterio, para no pisar una selección de paquetes ya confirmada. No
+se aplicó ninguna migración.
+
+**Consecuencia.** El circuito de confirmación y persistencia queda
+completo y probado (`src/lib/contenido-propuesta.ts`,
+`src/lib/contenido-propuesta.test.ts`, `src/lib/paquetes.functions.ts`,
+wireado en `diagnosticos.$id.tsx`). Sigue pendiente, como trabajo aparte
+(no bloqueado por ninguna decisión de base de datos): conectar la
+selección persistida hacia `SeleccionComercial`/`buildDocumentContext()`
+para que el PDF de propuesta la use — hoy `comercial: null` sigue
+hardcodeado en `src/documents/domain/build-context.ts:479`, sin relación
+con esta decisión.
 
 ---
 

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,13 @@ import { cn } from "@/lib/utils";
 import { PropuestaSeccion } from "@/components/propuesta-seccion";
 import { ConfirmacionPaquetes } from "@/components/confirmacion-paquetes";
 import { mapearHallazgos, normalizarPropuesta } from "@/lib/propuesta";
-import { generarEscaleraPaquetes, type EscaleraPaquetesConfirmada } from "@/lib/paquetes";
+import { separarContenidoGuardado } from "@/lib/contenido-propuesta";
+import {
+  generarEscaleraPaquetes,
+  normalizarEscaleraConfirmada,
+  type EscaleraPaquetesConfirmada,
+} from "@/lib/paquetes";
+import { confirmarPaquetes } from "@/lib/paquetes.functions";
 import { DOCUMENTOS_DISPONIBLES } from "@/documents/build-document";
 import type { Derivados, EstadoBloque, EstadosBloque, Fuga } from "@/lib/calculo-diagnostico";
 
@@ -249,13 +256,27 @@ function DetalleDiagnostico() {
           <Presupuesto derivados={d} datos={datos} />
         </div>
 
-        <PropuestaSeccion
-          diagnosticoId={data.id}
-          propuestaGuardada={normalizarPropuesta(data.propuesta)}
-          fugas={fugas}
-        />
+        {(() => {
+          const { propuestaCruda, paquetesCrudo } = separarContenidoGuardado(data.propuesta);
+          return (
+            <>
+              <PropuestaSeccion
+                diagnosticoId={data.id}
+                propuestaGuardada={normalizarPropuesta(propuestaCruda)}
+                fugas={fugas}
+              />
 
-        <SeccionPaquetes datos={datos} derivados={d} estados={estados} fugas={fugas} />
+              <SeccionPaquetes
+                diagnosticoId={data.id}
+                datos={datos}
+                derivados={d}
+                estados={estados}
+                fugas={fugas}
+                paquetesGuardados={normalizarEscaleraConfirmada(paquetesCrudo)}
+              />
+            </>
+          );
+        })()}
       </div>
     </>
   );
@@ -264,25 +285,42 @@ function DetalleDiagnostico() {
 /**
  * Fase 13 (paquetes y precios, decisión comercial 7, 2026-08-22): genera
  * la escalera a partir de los hallazgos ya mapeados y pide confirmación
- * manual explícita antes de dar por generada la propuesta comercial. Sólo
- * estado en memoria: la confirmación no se persiste todavía (requiere una
- * columna/tabla nueva en la base, fuera de alcance de este bloque — ver
- * docs/decisiones-pendientes.md).
+ * manual explícita antes de dar por generada la propuesta comercial. La
+ * confirmación se persiste en la misma columna JSON que ya guardaba la
+ * propuesta redactada por el modelo (decisión 9, cerrada 2026-08-22: no
+ * hizo falta ninguna migración — ver `src/lib/contenido-propuesta.ts`).
  */
 function SeccionPaquetes({
+  diagnosticoId,
   datos,
   derivados,
   estados,
   fugas,
+  paquetesGuardados,
 }: {
+  diagnosticoId: string;
   datos: DatosDiagnostico;
   derivados: Derivados;
   estados: Partial<EstadosBloque>;
   fugas: Fuga[];
+  paquetesGuardados: EscaleraPaquetesConfirmada | null;
 }) {
-  const [confirmada, setConfirmada] = useState<EscaleraPaquetesConfirmada | null>(null);
+  const [confirmada, setConfirmada] = useState<EscaleraPaquetesConfirmada | null>(paquetesGuardados);
+  const [editando, setEditando] = useState(!paquetesGuardados);
+  const confirmar = useServerFn(confirmarPaquetes);
+  const mutacion = useMutation({
+    mutationFn: async (escalera: EscaleraPaquetesConfirmada) =>
+      confirmar({ data: { diagnosticoId, escalera } }),
+    onSuccess: (r) => {
+      setConfirmada(r.paquetes);
+      setEditando(false);
+    },
+  });
+
   const hallazgos = mapearHallazgos(datos, derivados, estados, fugas);
-  const escalera = generarEscaleraPaquetes(hallazgos);
+  const escaleraGenerada = generarEscaleraPaquetes(hallazgos);
+  const escaleraParaEditar: typeof escaleraGenerada =
+    editando && confirmada ? { niveles: confirmada.niveles, confirmado: false } : escaleraGenerada;
 
   return (
     <section className="rounded-lg border border-border bg-card">
@@ -295,14 +333,27 @@ function SeccionPaquetes({
       </header>
 
       <div className="px-7 py-7">
-        {confirmada ? (
-          <p className="text-[14px] text-foreground">
-            Propuesta confirmada con {confirmada.niveles.length} nivel
-            {confirmada.niveles.length === 1 ? "" : "es"}. La generación del documento final con este
-            paquete queda para cuando exista dónde guardarlo de forma permanente.
+        {mutacion.isError && (
+          <p className="mb-4 text-[13px] text-destructive">
+            {(mutacion.error as Error).message}
           </p>
+        )}
+        {!editando && confirmada ? (
+          <div className="space-y-3">
+            <p className="text-[14px] text-foreground">
+              Propuesta confirmada con {confirmada.niveles.length} nivel
+              {confirmada.niveles.length === 1 ? "" : "es"}.
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditando(true)}>
+              Editar de nuevo
+            </Button>
+          </div>
         ) : (
-          <ConfirmacionPaquetes escalera={escalera} onConfirmar={setConfirmada} />
+          <ConfirmacionPaquetes
+            key={editando && confirmada ? "editar-confirmada" : "generada"}
+            escalera={escaleraParaEditar}
+            onConfirmar={(e) => mutacion.mutate(e)}
+          />
         )}
       </div>
     </section>

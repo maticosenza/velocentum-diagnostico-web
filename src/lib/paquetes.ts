@@ -233,3 +233,16 @@ export function generarEscaleraPaquetes(
   }
   return { niveles, confirmado: false };
 }
+
+/**
+ * Valida (superficialmente, mismo criterio que `derivados`/`datos` al leer
+ * de la base: JSON de origen interno, no adversarial) el valor guardado en
+ * la columna `diagnostico.propuesta` como escalera confirmada. `null` si
+ * no tiene la forma mínima esperada.
+ */
+export function normalizarEscaleraConfirmada(valor: unknown): EscaleraPaquetesConfirmada | null {
+  if (!valor || typeof valor !== "object") return null;
+  const v = valor as Record<string, unknown>;
+  if (v["confirmado"] !== true || !Array.isArray(v["niveles"])) return null;
+  return { niveles: v["niveles"] as NivelPaquete[], confirmado: true };
+}

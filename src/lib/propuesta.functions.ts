@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { DatosDiagnostico, NotasDiagnostico } from "./diagnostico-form";
 import type { Derivados, EstadosBloque, Fuga } from "./calculo-diagnostico";
+import { combinarContenidoGuardado, separarContenidoGuardado } from "./contenido-propuesta";
 import {
   armarInsumoPropuesta,
   parsearRespuestaModelo,
@@ -33,9 +34,11 @@ export const generarPropuesta = createServerFn({ method: "POST" })
     if (error) throw new Error("No pudimos leer el diagnóstico.");
     if (!fila) throw new Error("No encontramos el diagnóstico.");
 
-    const guardada = (fila as { propuesta?: unknown }).propuesta;
-    if (!data.regenerar && guardada) {
-      const previa = parsearRespuestaModelo(JSON.stringify(guardada));
+    const { propuestaCruda, paquetesCrudo } = separarContenidoGuardado(
+      (fila as { propuesta?: unknown }).propuesta,
+    );
+    if (!data.regenerar && propuestaCruda) {
+      const previa = parsearRespuestaModelo(JSON.stringify(propuestaCruda));
       if (previa) return { propuesta: previa };
     }
 
@@ -112,10 +115,14 @@ export const generarPropuesta = createServerFn({ method: "POST" })
       throw new Error("La propuesta llegó incompleta. Probá generarla de nuevo.");
     }
 
+    // Se conserva la selección de paquetes ya confirmada (si la hay): esta
+    // escritura sólo reemplaza la propuesta redactada por el modelo, nunca
+    // la columna entera (misma columna JSON, dos claves independientes).
+    const aGuardar = combinarContenidoGuardado({ propuestaCruda: propuesta, paquetesCrudo });
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error: errorGuardar } = await supabaseAdmin
       .from("diagnostico")
-      .update({ propuesta: propuesta as unknown as never })
+      .update({ propuesta: aGuardar as unknown as never })
       .eq("id", data.diagnosticoId);
     if (errorGuardar) console.error("[propuesta] no se pudo guardar", errorGuardar.message);
 

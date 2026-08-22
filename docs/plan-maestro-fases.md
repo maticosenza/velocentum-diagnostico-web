@@ -659,20 +659,36 @@ siguiente acción.
     (`SeccionPaquetes`, nueva): usa los `hallazgos`/`fugas`/`derivados` ya
     persistidos del diagnóstico, sin recalcular nada.
 - **Interpretación documentada, no parte de la decisión cerrada** (entrada
-  8 de `docs/decisiones-pendientes.md`, nueva): el orden/reparto exacto de
-  servicios entre niveles y el factor de escalado de cantidades por nivel
-  no estaban especificados — se implementó un default razonable (orden
-  fijo del catálogo, reparto parejo, cantidad × índice de nivel),
-  completamente editable en la pantalla de confirmación.
-- **Qué NO se implementó, a propósito (entrada 9 de
-  `docs/decisiones-pendientes.md`, nueva):** la confirmación sólo vive en
-  memoria de React hoy — no hay ninguna columna/tabla en Supabase para
-  persistir la selección confirmada, y agregarla es una migración de base
-  de datos, fuera de lo que este trabajo autónomo puede decidir por sí
-  solo. `buildDocumentContext()` sigue con `comercial: null` incondicional
-  (`src/documents/domain/build-context.ts:479`); el circuito completo
-  ("confirmar y que el PDF de propuesta lo use") queda pendiente de esa
-  decisión.
+  8 de `docs/decisiones-pendientes.md`, **RESUELTA**): el orden/reparto
+  exacto de servicios entre niveles y el factor de escalado de cantidades
+  por nivel no estaban especificados — se implementó un default razonable
+  (orden fijo del catálogo, reparto parejo, cantidad × índice de nivel),
+  completamente editable en la pantalla de confirmación; Matías confirmó
+  que ese default ES la decisión comercial (el sistema propone, el
+  vendedor ajusta), sin pedir ningún cambio.
+- **Persistencia de la confirmación (entrada 9 de
+  `docs/decisiones-pendientes.md`, RESUELTA el 2026-08-22, sin
+  migración):** implementada sobre `diagnostico.propuesta` (JSONB, ya
+  existente) — la columna pasó de guardar la propuesta redactada por el
+  modelo directamente a guardar un sobre `{ propuesta, paquetes }`
+  (`src/lib/contenido-propuesta.ts`), con compatibilidad hacia atrás para
+  los diagnósticos guardados antes de este cambio. Nuevo server function
+  `confirmarPaquetes` (`src/lib/paquetes.functions.ts`) persiste la
+  selección confirmada leyendo el valor actual antes de escribir, para no
+  pisar la propuesta ya generada; `generarPropuesta` se ajustó con el
+  mismo criterio, para no pisar una selección de paquetes ya confirmada.
+  Matías confirmó, al revisar la justificación técnica, que no había
+  ninguna razón real (volumen, consultas cruzadas, integridad
+  referencial, concurrencia) que exigiera una columna/tabla nueva — mismo
+  patrón que todos los campos de las fases 3 a 13. Wireado en
+  `diagnosticos.$id.tsx`: la pantalla ahora muestra la selección
+  persistida al recargar, con una opción de "Editar de nuevo".
+- **Lo que SIGUE pendiente, sin relación con la decisión 9:**
+  `buildDocumentContext()` sigue con `comercial: null` incondicional
+  (`src/documents/domain/build-context.ts:479`) — conectar la selección
+  ya persistida hacia `SeleccionComercial` para que el PDF de propuesta la
+  use es trabajo aparte, no bloqueado por ninguna decisión de base de
+  datos.
 - **Evidencia funcional construida (previa a este bloque):**
   - Plantilla de propuesta: `src/documents/templates/velocentum-v1/propuesta.ts`.
   - Salida combinada proyección + propuesta: `src/documents/templates/velocentum-v1/composicion.ts`.
@@ -683,25 +699,24 @@ siguiente acción.
 - **Pruebas existentes:** `src/documents/templates/velocentum-v1/templates.test.ts`,
   `src/documents/renderers/pdf/filename.test.ts`,
   `src/documents/renderers/pdf/format.test.ts`,
-  `src/lib/paquetes.test.ts` (21 casos: reconocimiento de servicios en
+  `src/lib/paquetes.test.ts` (25 casos: reconocimiento de servicios en
   strings compuestos, agrupación por servicio, escalera acumulativa, tope
   de tres niveles, precios siempre vacíos, unidades correctas por
-  servicio, escalado de cantidad por nivel), `src/components/confirmacion-paquetes.test.tsx`
-  (4 casos, render estático: estado vacío sin hallazgos, datos mostrados,
-  precio nunca precargado, tres niveles sin crashear).
-- **Pruebas faltantes:** QA visual de la interfaz de la herramienta; nada
-  que probar todavía sobre la persistencia (no existe).
-- **Riesgo:** ninguna propuesta real puede llevar precio de forma
-  persistente hoy — el generador y la pantalla de confirmación están
-  listos, pero sin guardar nada, la ganancia práctica es limitada hasta
-  que se resuelva la entrada 9.
-- **Bloqueo:** ninguno técnico para el generador; la persistencia
-  depende de una decisión de base de datos (entrada 9, fuera del alcance
-  autónomo).
-- **Siguiente acción:** dos bloques separados — (a) construir el selector
-  manual de servicios/paquete/precio (funcional, no visual); (b) aplicar el
-  sistema visual aprobado a los tres PDF y a la interfaz (comparte alcance
-  con fases 11/12 para la parte de documentos).
+  servicio, escalado de cantidad por nivel, validación de la escalera
+  persistida), `src/components/confirmacion-paquetes.test.tsx` (4 casos,
+  render estático), `src/lib/contenido-propuesta.test.ts` (10 casos:
+  compatibilidad con la forma vieja de la columna, separar/combinar sin
+  pisarse entre sí, ida y vuelta). No hay test dedicado para los server
+  functions (`paquetes.functions.ts`/`propuesta.functions.ts`): mismo
+  criterio que el resto del repo, son envoltorios finos de I/O sobre
+  lógica pura ya probada.
+- **Pruebas faltantes:** QA visual de la interfaz de la herramienta.
+- **Riesgo:** ninguno nuevo; la selección confirmada ya se persiste.
+- **Bloqueo:** ninguno técnico ni de base de datos.
+- **Siguiente acción:** conectar la selección persistida hacia
+  `SeleccionComercial`/`buildDocumentContext()` para que el PDF de
+  propuesta la use; después, aplicar el sistema visual aprobado a los tres
+  PDF y a la interfaz (comparte alcance con fases 11/12).
 
 ### Fase 14 — QA final, integración y publicación — **PENDIENTE**
 

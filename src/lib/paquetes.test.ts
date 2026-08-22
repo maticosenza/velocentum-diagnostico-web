@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   generarEscaleraPaquetes,
+  normalizarEscaleraConfirmada,
   serviciosCanonicosDe,
   serviciosJustificados,
   type ConfigPaquetes,
@@ -186,5 +187,29 @@ describe("generarEscaleraPaquetes: escalera acumulativa, precios vacíos, nunca 
     const servicios = new Set(e.niveles.flatMap((n) => n.servicios.map((s) => s.servicio)));
     expect(servicios.has("Diseño de marca")).toBe(false);
     expect(servicios.has("Google Ads")).toBe(false);
+  });
+});
+
+describe("normalizarEscaleraConfirmada (lectura de la escalera persistida, decisión 9)", () => {
+  it("acepta una escalera confirmada con la forma mínima esperada", () => {
+    const guardado = { confirmado: true, niveles: [{ id: "impulso", nombre: "IMPULSO", servicios: [], precio: null }] };
+    const r = normalizarEscaleraConfirmada(guardado);
+    expect(r).toEqual(guardado);
+  });
+
+  it("rechaza un valor sin confirmado:true", () => {
+    expect(normalizarEscaleraConfirmada({ confirmado: false, niveles: [] })).toBeNull();
+    expect(normalizarEscaleraConfirmada({ niveles: [] })).toBeNull();
+  });
+
+  it("rechaza un valor sin niveles como array", () => {
+    expect(normalizarEscaleraConfirmada({ confirmado: true })).toBeNull();
+    expect(normalizarEscaleraConfirmada({ confirmado: true, niveles: "no es un array" })).toBeNull();
+  });
+
+  it("rechaza null, undefined y valores no-objeto", () => {
+    expect(normalizarEscaleraConfirmada(null)).toBeNull();
+    expect(normalizarEscaleraConfirmada(undefined)).toBeNull();
+    expect(normalizarEscaleraConfirmada("texto")).toBeNull();
   });
 });
