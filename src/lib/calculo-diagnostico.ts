@@ -87,7 +87,21 @@ export type ConfiguracionCalculo = {
   /** Umbrales de la regla de contradicción del margen declarado, en tasa. */
   umbral_contradiccion_critico?: number;
   umbral_contradiccion_validacion?: number;
+  /**
+   * Costo de un evento intermedio (agregar al carrito o iniciar checkout),
+   * como proporción del CPA objetivo (que es costo por COMPRA). Benchmark:
+   * nunca se mide directamente para este cliente, por eso el presupuesto de
+   * arranque que lo usa siempre se muestra como rango, nunca como cifra única.
+   */
+  factor_costo_evento_intermedio?: number;
+  /** Ancho del rango de incertidumbre del presupuesto de arranque (fase 6). */
+  margen_incertidumbre_presupuesto?: number;
 } & ConfigEscenarios90d;
+
+/** Fase 6: sin dato de configuración, el costo de un evento intermedio se estima en un 20% del CPA objetivo. */
+export const FACTOR_COSTO_EVENTO_INTERMEDIO_DEFECTO = 0.2;
+/** Fase 6: sin dato de configuración, el rango de incertidumbre del presupuesto de arranque es de ±20%. */
+export const MARGEN_INCERTIDUMBRE_PRESUPUESTO_DEFECTO = 0.2;
 
 /** Arma el objeto de configuración a partir de las filas crudas de la tabla. */
 export function armarConfiguracion(
@@ -169,8 +183,33 @@ export type Derivados = {
   inversion_actual_mensual: number | null;
   pedidos_semanales: number | null;
   volumen_suficiente: boolean | null;
+  /**
+   * Fase 6: separa el piso teórico (optimizando por compra, ya existía como
+   * `piso_mensual_un_conjunto`) del presupuesto de arranque optimizando por un
+   * evento intermedio, junto con los supuestos usados y el nivel de confianza.
+   */
+  presupuesto_arranque: PresupuestoArranque;
   /** Cascada del funnel web del canal de tienda propia. */
   funnel: FunnelDerivado;
+};
+
+/** Rango estimado: nunca una cifra única cuando no hay historial que la respalde. */
+export type RangoEstimado = { bajo: number; alto: number };
+
+export type PresupuestoArranque = {
+  /** Piso teórico optimizando por compra. Mismo valor que `piso_mensual_un_conjunto`. */
+  piso_teorico_compra: number | null;
+  /**
+   * Presupuesto de arranque optimizando por un evento intermedio (agregar al
+   * carrito o iniciar checkout). Siempre un rango: el costo por evento sale
+   * de un benchmark de configuración, nunca de un dato verificado de este
+   * cliente, así que una cifra única daría una falsa precisión.
+   */
+  arranque_evento_intermedio: RangoEstimado | null;
+  /** Supuestos usados para llegar a estos números, en lenguaje llano. */
+  supuestos: string[];
+  /** Nivel de confianza: nunca "alta" mientras dependa de un benchmark sin verificar. */
+  confianza: "alta" | "media" | "baja";
 };
 
 export type Fuga = {
@@ -944,6 +983,54 @@ export function calcularDiagnostico(
   const pedidosSemanales = pedidos !== null ? pedidos / 4.3 : null;
   const volumenSuficiente = pedidosSemanales !== null ? pedidosSemanales >= 50 : null;
 
+  // --- Presupuesto de arranque optimizando por evento intermedio (fase 6).
+  // El costo por evento intermedio (agregar al carrito o iniciar checkout) es
+  // un benchmark configurable, expresado como proporción del CPA objetivo
+  // (que es costo por COMPRA): nunca se verifica con datos reales de este
+  // cliente, así que el resultado nunca se muestra como cifra única.
+  const factorEventoIntermedio = finito(cfg.factor_costo_evento_intermedio)
+    ? (cfg.factor_costo_evento_intermedio as number)
+    : FACTOR_COSTO_EVENTO_INTERMEDIO_DEFECTO;
+  const margenIncertidumbre = finito(cfg.margen_incertidumbre_presupuesto)
+    ? (cfg.margen_incertidumbre_presupuesto as number)
+    : MARGEN_INCERTIDUMBRE_PRESUPUESTO_DEFECTO;
+  const costoEventoIntermedio =
+    cpaObjetivo !== null ? cpaObjetivo * factorEventoIntermedio : null;
+  const pisoMensualEventoIntermedio =
+    costoEventoIntermedio !== null ? 50 * costoEventoIntermedio * 4.3 : null;
+  const arranqueEventoIntermedio: RangoEstimado | null =
+    pisoMensualEventoIntermedio !== null
+      ? {
+          bajo: red(pisoMensualEventoIntermedio * (1 - margenIncertidumbre), 0) ?? 0,
+          alto: red(pisoMensualEventoIntermedio * (1 + margenIncertidumbre), 0) ?? 0,
+        }
+      : null;
+
+  const supuestosPresupuesto: string[] = [];
+  if (cpaObjetivo !== null) {
+    supuestosPresupuesto.push(
+      `CPA objetivo calculado con una reserva de ${Math.round((reserva ?? 0) * 100)}% sobre el breakeven.`,
+    );
+    supuestosPresupuesto.push(
+      "50 conversiones por semana para que un conjunto salga de aprendizaje (heurística de Meta).",
+    );
+    supuestosPresupuesto.push(
+      `Costo por evento intermedio estimado en ${Math.round(factorEventoIntermedio * 100)}% del CPA objetivo (benchmark de configuración, sin verificar con datos reales de este cliente).`,
+    );
+    supuestosPresupuesto.push(
+      `Rango de incertidumbre de ±${Math.round(margenIncertidumbre * 100)}% al no contar con historial propio de costo por evento intermedio.`,
+    );
+  }
+
+  const presupuestoArranque: PresupuestoArranque = {
+    piso_teorico_compra: red(pisoMensualUnConjunto, 0),
+    arranque_evento_intermedio: arranqueEventoIntermedio,
+    supuestos: supuestosPresupuesto,
+    // Nunca "alta": la mitad de este bloque (el evento intermedio) depende de
+    // un benchmark de configuración, no de un dato verificado de este cliente.
+    confianza: cpaObjetivo === null ? "baja" : "media",
+  };
+
   // --- Umbral de conversión escalado por tramo de ticket promedio
   const uCr = umbralCr(cfg, d.ticket_promedio);
 
@@ -1002,6 +1089,7 @@ export function calcularDiagnostico(
     inversion_actual_mensual: red(inversionActualMensual, 0),
     pedidos_semanales: red(pedidosSemanales, 1),
     volumen_suficiente: volumenSuficiente,
+    presupuesto_arranque: presupuestoArranque,
     funnel,
   };
 

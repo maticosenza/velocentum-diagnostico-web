@@ -649,6 +649,7 @@ function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: Da
 
 function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosDiagnostico }) {
   const lectura = lecturaPresupuesto(derivados);
+  const pa = derivados.presupuesto_arranque;
   return (
     <section className="rounded-lg border border-border bg-card">
       <header className="border-b border-border px-7 py-5">
@@ -656,8 +657,16 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
       </header>
       <dl>
         <Fila
-          label="Piso mensual con un conjunto"
+          label="Piso teórico mensual (optimizando por compra, un conjunto)"
           value={pesos(derivados.piso_mensual_un_conjunto)}
+        />
+        <Fila
+          label="Presupuesto de arranque (optimizando por evento intermedio)"
+          value={
+            pa.arranque_evento_intermedio
+              ? `${pesos(pa.arranque_evento_intermedio.bajo)} – ${pesos(pa.arranque_evento_intermedio.alto)}`
+              : "Sin datos"
+          }
         />
         <Fila label="Inversión actual mensual" value={pesos(derivados.inversion_actual_mensual)} />
         <Fila
@@ -666,6 +675,18 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
         />
         <Fila label="Compras semanales estimadas" value={numero(derivados.pedidos_semanales, 1)} />
       </dl>
+      {pa.supuestos.length > 0 && (
+        <div className="border-t border-border px-7 py-6">
+          <p className="text-[13px] font-medium text-foreground">
+            Supuestos usados (confianza: {pa.confianza})
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-5 text-muted-foreground">
+            {pa.supuestos.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <p className="border-t border-border px-7 py-6 text-[15px] leading-6 text-foreground">
         {lectura ?? "Faltan datos de presupuesto para dar una lectura."}
       </p>
