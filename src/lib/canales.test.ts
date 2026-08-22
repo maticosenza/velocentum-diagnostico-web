@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { DATOS_INICIALES, type DatosDiagnostico } from "./diagnostico-form";
 import {
+  CAPACIDADES_PLATAFORMA_DEFECTO,
   COMISIONES_MARKETPLACE_DEFECTO,
   COMISIONES_PLATAFORMA_DEFECTO,
   claveComisionPlataforma,
@@ -61,6 +62,77 @@ describe("COMISIONES_PLATAFORMA_DEFECTO: metadatos completos", () => {
     expect(tn["shopify_basic"]!.comision).toBeGreaterThan(tn["shopify_grow"]!.comision);
     expect(tn["shopify_grow"]!.comision).toBeGreaterThan(tn["shopify_advanced"]!.comision);
     expect(tn["shopify_advanced"]!.comision).toBeGreaterThan(tn["shopify_plus"]!.comision);
+  });
+});
+
+describe("CAPACIDADES_PLATAFORMA_DEFECTO: relevamiento de carrito nativo y mayorista (2026-08-22, sólo estructura de datos)", () => {
+  it("cubre Tiendanube (5 planes, incluidos Escala/Evolución aunque el formulario todavía no los ofrezca), Shopify (4 planes), WooCommerce, Empretienda y Mercado Libre", () => {
+    expect(Object.keys(CAPACIDADES_PLATAFORMA_DEFECTO).sort()).toEqual(
+      [
+        "tiendanube_inicial",
+        "tiendanube_esencial",
+        "tiendanube_impulso",
+        "tiendanube_escala",
+        "tiendanube_evolucion",
+        "shopify_basic",
+        "shopify_grow",
+        "shopify_advanced",
+        "shopify_plus",
+        "woocommerce",
+        "empretienda",
+        "mercado_libre",
+      ].sort(),
+    );
+  });
+
+  it("todas las entradas están marcadas verificado:false (relevamiento de documentación, no confirmación de un cliente)", () => {
+    for (const [clave, entrada] of Object.entries(CAPACIDADES_PLATAFORMA_DEFECTO)) {
+      expect(entrada.verificado, `${clave}.verificado`).toBe(false);
+      expect(entrada.fuente, `${clave}.fuente`).toBeTruthy();
+      expect(entrada.vigencia_desde, `${clave}.vigencia_desde`).toBeTruthy();
+    }
+  });
+
+  it("recuperación de carrito nativa: Tiendanube desde Esencial, Shopify en todos los planes, WooCommerce nunca (nativo)", () => {
+    const c = CAPACIDADES_PLATAFORMA_DEFECTO;
+    expect(c["tiendanube_inicial"]!.recuperacion_carrito_nativa).toBe(false);
+    expect(c["tiendanube_esencial"]!.recuperacion_carrito_nativa).toBe(true);
+    expect(c["tiendanube_impulso"]!.recuperacion_carrito_nativa).toBe(true);
+    expect(c["tiendanube_escala"]!.recuperacion_carrito_nativa).toBe(true);
+    expect(c["tiendanube_evolucion"]!.recuperacion_carrito_nativa).toBe(true);
+    for (const plan of ["shopify_basic", "shopify_grow", "shopify_advanced", "shopify_plus"]) {
+      expect(c[plan]!.recuperacion_carrito_nativa, plan).toBe(true);
+    }
+    expect(c["woocommerce"]!.recuperacion_carrito_nativa).toBe(false);
+  });
+
+  it("sin fuente oficial confiable, el atributo queda null explícito: nunca se completa con una suposición", () => {
+    expect(CAPACIDADES_PLATAFORMA_DEFECTO["empretienda"]!.recuperacion_carrito_nativa).toBeNull();
+    // Mercado Libre es un marketplace, no una plataforma de tienda propia: el atributo no aplica.
+    expect(CAPACIDADES_PLATAFORMA_DEFECTO["mercado_libre"]!.recuperacion_carrito_nativa).toBeNull();
+  });
+
+  it("canal mayorista: Mercado Libre, Shopify (todos los planes) y Empretienda sí; WooCommerce no (nativo); Tiendanube depende del plan", () => {
+    const c = CAPACIDADES_PLATAFORMA_DEFECTO;
+    expect(c["mercado_libre"]!.canal_mayorista).toBe(true);
+    expect(c["empretienda"]!.canal_mayorista).toBe(true);
+    expect(c["woocommerce"]!.canal_mayorista).toBe(false);
+    expect(c["tiendanube_inicial"]!.canal_mayorista).toBe(false);
+    expect(c["tiendanube_esencial"]!.canal_mayorista).toBe(false);
+    expect(c["tiendanube_impulso"]!.canal_mayorista).toBe(true);
+    expect(c["tiendanube_escala"]!.canal_mayorista).toBe(true);
+    expect(c["tiendanube_evolucion"]!.canal_mayorista).toBe(true);
+    for (const plan of ["shopify_basic", "shopify_grow", "shopify_advanced", "shopify_plus"]) {
+      expect(c[plan]!.canal_mayorista, plan).toBe(true);
+    }
+  });
+
+  it("todo canal_mayorista:true trae un detalle textual del nombre/alcance de la función", () => {
+    for (const [clave, entrada] of Object.entries(CAPACIDADES_PLATAFORMA_DEFECTO)) {
+      if (entrada.canal_mayorista === true) {
+        expect(entrada.canal_mayorista_detalle, `${clave}.canal_mayorista_detalle`).toBeTruthy();
+      }
+    }
   });
 });
 

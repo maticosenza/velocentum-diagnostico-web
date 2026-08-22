@@ -5,7 +5,46 @@ trabajo autónomo del 2026-08-21 y que no estaban ya resueltas en los
 documentos existentes. No se tomaron unilateralmente: se anota el contexto y
 se sigue con lo que no depende de ellas.
 
-## 1 · ¿Debe "margen total" en el motor de cálculo exigir 100% de cobertura de productos, igual que ya exige el documento? — **RESUELTA el 2026-08-22**
+Estructura: **Abiertas** (siguen sin resolver) y **Cerradas** (resueltas,
+con el contexto original conservado, no borrado). Cada entrada queda
+numerada de forma permanente; los números no se reutilizan.
+
+## Abiertas
+
+### 2 · Valor por defecto del costo por evento intermedio (fase 6, presupuesto de arranque)
+
+**Contexto.** El "presupuesto de arranque optimizando por evento intermedio"
+(`derivados.presupuesto_arranque.arranque_evento_intermedio`,
+`src/lib/calculo-diagnostico.ts`) necesita un costo estimado por evento
+intermedio (agregar al carrito o iniciar checkout). Por instrucción explícita
+del usuario, ese costo "sale de configuración marcado como benchmark" — se
+implementó como una proporción del CPA objetivo
+(`factor_costo_evento_intermedio`, config), con un default de código
+(`FACTOR_COSTO_EVENTO_INTERMEDIO_DEFECTO = 0,2`, es decir 20% del CPA
+objetivo) documentado en `src/lib/calculo-diagnostico.ts`.
+
+**Por qué se anota igual, sin bloquear el bloque.** El patrón en sí (config
+primero, default de código marcado como benchmark, nunca cifra única, nunca
+confianza "alta") es exactamente lo que pidió el usuario y no requería
+autorización adicional. Pero el número concreto, 20%, no tiene respaldo de
+datos reales de ningún cliente — es una estimación razonable de que un
+evento intermedio (más frecuente, más barato) cuesta una fracción del costo
+de una compra, no una cifra derivada de benchmarks de la industria ni de
+datos propios. Hoy el radio de impacto es acotado: este valor sólo alimenta
+la pantalla interna de diagnóstico (`diagnosticos.$id.tsx`), no ningún
+documento cliente-facing (`src/documents/`). Auditoría independiente de fase
+6 (commit `0b803af`) recomendó dejarlo trazable acá antes de que, en el
+futuro, se conecte a un documento que llegue a un cliente.
+
+**Qué decidir.** Si Matías tiene una referencia mejor (data de campañas
+propias con optimización por agregar-al-carrito o iniciar-checkout vs.
+compra), reemplazar el 20% por ese número en la fila `configuracion` de la
+base (clave `factor_costo_evento_intermedio`) — no requiere tocar código. Si
+no hay objeción, el valor por defecto queda como está.
+
+## Cerradas
+
+### 1 · ¿Debe "margen total" en el motor de cálculo exigir 100% de cobertura de productos, igual que ya exige el documento? — **RESUELTA el 2026-08-22**
 
 **Contexto original.** Durante la fase 5 (productos dinámicos y cobertura),
 al separar "margen de la muestra" de "margen total" se habían encontrado dos
@@ -82,38 +121,7 @@ ahora aclara explícitamente que la comparación se hizo contra el margen de
 la muestra y qué porcentaje del catálogo cubre, en vez de dar a entender que
 se comparó contra un margen total.
 
-## 2 · Valor por defecto del costo por evento intermedio (fase 6, presupuesto de arranque)
-
-**Contexto.** El "presupuesto de arranque optimizando por evento intermedio"
-(`derivados.presupuesto_arranque.arranque_evento_intermedio`,
-`src/lib/calculo-diagnostico.ts`) necesita un costo estimado por evento
-intermedio (agregar al carrito o iniciar checkout). Por instrucción explícita
-del usuario, ese costo "sale de configuración marcado como benchmark" — se
-implementó como una proporción del CPA objetivo
-(`factor_costo_evento_intermedio`, config), con un default de código
-(`FACTOR_COSTO_EVENTO_INTERMEDIO_DEFECTO = 0,2`, es decir 20% del CPA
-objetivo) documentado en `src/lib/calculo-diagnostico.ts`.
-
-**Por qué se anota igual, sin bloquear el bloque.** El patrón en sí (config
-primero, default de código marcado como benchmark, nunca cifra única, nunca
-confianza "alta") es exactamente lo que pidió el usuario y no requería
-autorización adicional. Pero el número concreto, 20%, no tiene respaldo de
-datos reales de ningún cliente — es una estimación razonable de que un
-evento intermedio (más frecuente, más barato) cuesta una fracción del costo
-de una compra, no una cifra derivada de benchmarks de la industria ni de
-datos propios. Hoy el radio de impacto es acotado: este valor sólo alimenta
-la pantalla interna de diagnóstico (`diagnosticos.$id.tsx`), no ningún
-documento cliente-facing (`src/documents/`). Auditoría independiente de fase
-6 (commit `0b803af`) recomendó dejarlo trazable acá antes de que, en el
-futuro, se conecte a un documento que llegue a un cliente.
-
-**Qué decidir.** Si Matías tiene una referencia mejor (data de campañas
-propias con optimización por agregar-al-carrito o iniciar-checkout vs.
-compra), reemplazar el 20% por ese número en la fila `configuracion` de la
-base (clave `factor_costo_evento_intermedio`) — no requiere tocar código. Si
-no hay objeción, el valor por defecto queda como está.
-
-## 3 · Nueve de las catorce fases del plan maestro no tienen definición verificable en este repositorio — **RESUELTA el 2026-08-22**
+### 3 · Nueve de las catorce fases del plan maestro no tienen definición verificable en este repositorio — **RESUELTA el 2026-08-22**
 
 **Resolución.** Matías compartió el plan maestro consolidado completo
 (`docs/plan-maestro-consolidado-2026-08-21.md`, incorporado al repositorio
@@ -152,9 +160,132 @@ señaló, sin asumirla, una posible relación entre esas fases y el trabajo
 mencionado sin numeración ni alcance en `docs/cola-nocturna.md`
 ("mayorista/mixto, retención y rediseño integral").
 
-**Qué decidir.** Si Matías comparte el nombre y alcance real de las fases
-1, 2, 4 y 9 a 14 (o el documento completo del plan maestro), se puede
-completar `docs/plan-maestro-fases.md` sin tocar código.
+### 4 · ¿Vende Velocentum retención (recuperación de carrito y recompra)? — **RESUELTA el 2026-08-22**
+
+**Contexto original.** El plan maestro consolidado
+(`docs/plan-maestro-consolidado-2026-08-21.md`, sección 8) listaba
+"Retención" como decisión comercial pendiente: "si Velocentum vende
+email/WhatsApp/automatización". La fase 8 del plan maestro (retención,
+carrito y recompra) señalaba que el bloque de recompra no podía completarse
+sin esta definición, y el inventario de fase 8 en `docs/plan-maestro-fases.md`
+confirmó que hoy no existe ningún campo, cálculo ni hallazgo de recompra en
+el código — sólo carrito abandonado dentro del funnel y el hallazgo booleano
+`sin_retargeting`.
+
+**Resolución.** Sí, con alcance acotado:
+
+- **Vende:** estrategia e implementación de recuperación de carrito y flujos
+  de recompra por email y WhatsApp, usando las integraciones **nativas** de
+  la plataforma de e-commerce del cliente.
+- **No vende:** automatizaciones complejas ni desarrollo de herramientas
+  propias de automatización.
+
+**Consecuencia para el mapeo de hallazgos (bloque técnico posterior, NO
+implementado en el bloque que registra esta decisión).** Recuperación de
+carrito y recompra no son un servicio independiente: son un agregado
+condicionado a que la plataforma del cliente soporte la capacidad nativa
+(ver el relevamiento del Atributo A, más abajo). El hallazgo se encadena en
+dos capas:
+
+- si el plan del cliente **no** incluye la capacidad nativa: capa
+  `"recomendacion"` (subir de plan) seguida de capa `"servicio"`
+  (implementación de los flujos);
+- si el plan **sí** la incluye: capa `"servicio"` directamente.
+
+### 5 · ¿Vende Velocentum producción de contenido? — **RESUELTA el 2026-08-22**
+
+**Contexto original.** No había un catálogo de servicios comerciales
+confirmado más allá de los medios pagos (Meta/Google/Product Ads)
+mencionados de forma dispersa en el plan maestro y en el código
+(`src/lib/propuesta.ts`, hallazgo `product_ads`).
+
+**Resolución.** Sí. Catálogo de servicios confirmado, **seis, cerrado** (no
+hay servicios fuera de esta lista):
+
+1. Meta Ads.
+2. Google Ads.
+3. Product Ads (Mercado Libre).
+4. Desarrollo y optimización web.
+5. Planificación y creación de contenido.
+6. Diseño de marca (branding).
+
+**Consecuencia para el mapeo de hallazgos.** Cualquier hallazgo que no
+mapee a uno de estos seis servicios queda en capa `"recomendacion"`, nunca
+en capa `"servicio"`.
+
+### 6 · ¿Qué vende Velocentum en mayorista? — **RESUELTA el 2026-08-22**
+
+**Contexto original.** El plan maestro consolidado (sección 8) listaba
+"Mayorista" como decisión comercial pendiente: "servicios B2B ofrecidos y
+alcance". La fase 9 del plan maestro (Mayorista y Mixto) estaba bloqueada
+explícitamente por esta definición — confirmado en `docs/plan-maestro-fases.md`:
+hoy sólo existe un *placeholder* de tipo (`modalidad: {minorista, mayorista}`,
+`src/documents/domain/types.ts:257-258`) sin ninguna lógica de negocio
+detrás.
+
+**Resolución.** El mismo catálogo de seis servicios (entrada 5), aplicado a
+otro objetivo. No hay servicios B2B nuevos: cambia el tipo de campaña (más
+B2B, más captación de base de datos) y el objetivo, pero Meta Ads sigue
+siendo Meta Ads.
+
+**Consecuencia para la fase 9 (bloque técnico posterior, NO implementado en
+el bloque que registra esta decisión).** No hay que crear un catálogo
+mayorista nuevo. Hay que detectar si el canal mayorista existe en la
+plataforma del cliente (ver el relevamiento del Atributo B, más abajo) y
+mapear los hallazgos mayoristas a los seis servicios ya existentes.
+
+### 7 · Paquetes y precios — **RESUELTA el 2026-08-22**
+
+**Contexto original.** El plan maestro consolidado (sección 8) listaba
+"Paquetes/precios" como decisión comercial pendiente: "catálogo manual de
+ofertas". `docs/plan-maestro-fases.md` (fase 13) confirmó que hoy existe el
+tipo `SeleccionComercial` (con `aprobadaManualmente: true` literal,
+`src/documents/domain/types.ts:210-222`) pero `comercial: null` está
+hardcodeado en `buildDocumentContext()`
+(`src/documents/domain/build-context.ts:479`) — no hay ningún flujo que lo
+complete.
+
+**Resolución.** Escalera de hasta tres niveles con confirmación manual
+obligatoria:
+
+- Nombres de los niveles, configurables: **IMPULSO, TRACCIÓN, ESCALA**.
+- Escalera acumulativa: cada nivel incluye todo el anterior más servicios o
+  alcance adicional.
+- Nunca más de tres niveles. Menos de tres si no hay hallazgos suficientes
+  que justifiquen el escalón.
+- Cada servicio de cada nivel debe estar ligado a un hallazgo concreto. Si
+  ningún hallazgo lo justifica, no entra.
+- Cada servicio lleva **alcance explícito** con sus unidades propias: Meta
+  Ads y Google Ads en campañas activas; contenido en piezas por mes;
+  Product Ads en campañas; web y branding en entregables o alcance
+  descrito.
+- Las cantidades por nivel salen de valores por defecto **configurables**,
+  marcados como propuesta del sistema, nunca como decisión tomada.
+- Los precios quedan **vacíos**. El sistema nunca inventa un precio.
+- **Confirmación manual obligatoria** antes de generar la propuesta:
+  pantalla donde se ven los tres niveles con sus servicios, alcances y
+  precios, y donde se puede ajustar cantidades, agregar o sacar servicios,
+  y cargar precios. Sin esa confirmación explícita, no se genera el
+  documento.
+
+**Consecuencia.** El generador de paquetes (bloque técnico posterior, NO
+implementado en el bloque que registra esta decisión) debe respetar estas
+ocho reglas exactamente; ninguna se puede relajar sin una nueva decisión
+explícita.
+
+---
+
+## Relevamiento de plataformas (atributos A y B, entradas 4 y 6)
+
+Como parte del cierre de las entradas 4 y 6, se relevaron dos atributos
+nuevos por plataforma y plan, contra documentación oficial, con fuente y
+fecha registradas y `verificado: false` mientras no haya confirmación
+directa de cada cliente. El detalle completo (fuente, cita, fecha de
+consulta, y qué combinaciones quedaron como desconocidas por falta de
+fuente oficial confiable) vive en
+`docs/relevamiento-carrito-mayorista-plataformas.md`. La estructura de datos
+que representa ambos atributos vive junto a `ComisionPlataforma` en
+`src/lib/canales.ts`.
 
 ---
 

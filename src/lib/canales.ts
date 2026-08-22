@@ -213,6 +213,199 @@ export const COMISIONES_PLATAFORMA_DEFECTO: Record<string, ComisionPlataforma> =
   },
 };
 
+/**
+ * Capacidades de plataforma/plan, ajenas a la comisión (fase de retención y
+ * mayorista, 2026-08-22): estructura de datos únicamente. El mapeo de
+ * hallazgos que las consume (encadenamiento de retención, detección de
+ * mayorista) es un bloque técnico posterior, no implementado acá — ver
+ * docs/decisiones-pendientes.md, entradas 4 y 6.
+ *
+ * Relevada contra documentación oficial de cada plataforma, nunca
+ * inventada: ver docs/relevamiento-carrito-mayorista-plataformas.md para la
+ * fuente y la cita completa de cada valor. `verificado` queda en `false`
+ * hasta que un cliente real lo confirme; un relevamiento de documentación
+ * pública nunca cuenta como verificación directa.
+ */
+export type CapacidadesPlataforma = {
+  plataforma?: string;
+  plan?: string;
+  pais?: string;
+  /**
+   * Atributo A (decisión 4, retención): si el plan incluye recuperación de
+   * carrito nativa. `null` = no se encontró una fuente oficial confiable;
+   * nunca se completa con una suposición.
+   */
+  recuperacion_carrito_nativa: boolean | null;
+  /**
+   * Atributo B (decisión 6, mayorista): si la plataforma/plan ofrece un
+   * canal o función de venta mayorista propia. `null` = no se encontró una
+   * fuente oficial confiable.
+   */
+  canal_mayorista: boolean | null;
+  /** Nombre o detalle del canal/función mayorista, si existe (p. ej. "Mercado Libre Negocios"). */
+  canal_mayorista_detalle?: string;
+  /** Fecha de la regla (vigencia desde), en formato ISO. */
+  vigencia_desde?: string;
+  vigencia_hasta?: string;
+  /** URL(s) de la fuente oficial relevada, separadas por "; " si hay más de una. */
+  fuente?: string;
+  /** true sólo con confirmación directa de un cliente; false mientras sea sólo relevamiento de documentación pública. */
+  verificado?: boolean;
+};
+
+/**
+ * Relevado el 2026-08-22 contra documentación oficial de cada plataforma
+ * (fuentes y citas completas en
+ * docs/relevamiento-carrito-mayorista-plataformas.md). Ningún valor es
+ * inventado: donde no hubo fuente oficial confiable, queda `null`
+ * explícito, no una suposición.
+ *
+ * Nota: Tiendanube tiene hoy cinco planes activos (Inicial, Esencial,
+ * Impulso, Escala, Evolución) según su página oficial de precios — dos más
+ * de los tres que modela `PLANES_POR_PLATAFORMA`
+ * (`src/lib/diagnostico-form.ts`). Se incluyen igual acá (`tiendanube_escala`,
+ * `tiendanube_evolucion`) porque describen la plataforma real, aunque el
+ * formulario todavía no los ofrezca como opción seleccionable — esa
+ * discrepancia queda documentada en
+ * docs/relevamiento-carrito-mayorista-plataformas.md, no corregida en este
+ * bloque (es un cambio de formulario, fuera del alcance de "sólo estructura
+ * de datos para los dos atributos nuevos").
+ */
+export const CAPACIDADES_PLATAFORMA_DEFECTO: Record<string, CapacidadesPlataforma> = {
+  tiendanube_inicial: {
+    plataforma: "tiendanube",
+    plan: "inicial",
+    pais: "AR",
+    recuperacion_carrito_nativa: false,
+    canal_mayorista: false,
+    vigencia_desde: "2026-08-22",
+    fuente: "https://www.tiendanube.com/planes-y-precios",
+    verificado: false,
+  },
+  tiendanube_esencial: {
+    plataforma: "tiendanube",
+    plan: "esencial",
+    pais: "AR",
+    recuperacion_carrito_nativa: true,
+    canal_mayorista: false,
+    vigencia_desde: "2026-08-22",
+    fuente: "https://www.tiendanube.com/planes-y-precios",
+    verificado: false,
+  },
+  tiendanube_impulso: {
+    plataforma: "tiendanube",
+    plan: "impulso",
+    pais: "AR",
+    recuperacion_carrito_nativa: true,
+    canal_mayorista: true,
+    canal_mayorista_detalle: "Ventas mayoristas: 1 tabla de precios",
+    vigencia_desde: "2026-08-22",
+    fuente:
+      "https://www.tiendanube.com/planes-y-precios; https://ayuda.tiendanube.com/es_ES/ventas-mayoristas/que-es-y-como-configurar-la-funcion-de-ventas-mayoristas-y-minoristas-de-tiendanube",
+    verificado: false,
+  },
+  /** No modelado todavía en `PLANES_POR_PLATAFORMA` — ver nota arriba. */
+  tiendanube_escala: {
+    plataforma: "tiendanube",
+    plan: "escala",
+    pais: "AR",
+    recuperacion_carrito_nativa: true,
+    canal_mayorista: true,
+    canal_mayorista_detalle: "Ventas mayoristas: hasta 3 tablas de precios",
+    vigencia_desde: "2026-08-22",
+    fuente:
+      "https://www.tiendanube.com/planes-y-precios; https://ayuda.tiendanube.com/es_ES/ventas-mayoristas/que-es-y-como-configurar-la-funcion-de-ventas-mayoristas-y-minoristas-de-tiendanube",
+    verificado: false,
+  },
+  /** No modelado todavía en `PLANES_POR_PLATAFORMA` — ver nota arriba. */
+  tiendanube_evolucion: {
+    plataforma: "tiendanube",
+    plan: "evolucion",
+    pais: "AR",
+    recuperacion_carrito_nativa: true,
+    canal_mayorista: true,
+    canal_mayorista_detalle: "Ventas mayoristas: tablas de precios ilimitadas",
+    vigencia_desde: "2026-08-22",
+    fuente:
+      "https://www.tiendanube.com/planes-y-precios; https://ayuda.tiendanube.com/es_ES/ventas-mayoristas/que-es-y-como-configurar-la-funcion-de-ventas-mayoristas-y-minoristas-de-tiendanube",
+    verificado: false,
+  },
+  shopify_basic: {
+    plataforma: "shopify",
+    plan: "basic",
+    recuperacion_carrito_nativa: true,
+    canal_mayorista: true,
+    canal_mayorista_detalle: "Shopify B2B: hasta 3 catálogos activos (vía Shopify Markets)",
+    vigencia_desde: "2026-08-22",
+    fuente: "https://www.shopify.com/pricing; https://help.shopify.com/en/manual/b2b/getting-started/plan-features",
+    verificado: false,
+  },
+  shopify_grow: {
+    plataforma: "shopify",
+    plan: "grow",
+    recuperacion_carrito_nativa: true,
+    canal_mayorista: true,
+    canal_mayorista_detalle: "Shopify B2B: hasta 3 catálogos activos (vía Shopify Markets)",
+    vigencia_desde: "2026-08-22",
+    fuente: "https://www.shopify.com/pricing; https://help.shopify.com/en/manual/b2b/getting-started/plan-features",
+    verificado: false,
+  },
+  shopify_advanced: {
+    plataforma: "shopify",
+    plan: "advanced",
+    recuperacion_carrito_nativa: true,
+    canal_mayorista: true,
+    canal_mayorista_detalle:
+      "Shopify B2B: hasta 3 catálogos activos, checkout/storefront contextual",
+    vigencia_desde: "2026-08-22",
+    fuente: "https://www.shopify.com/pricing; https://help.shopify.com/en/manual/b2b/getting-started/plan-features",
+    verificado: false,
+  },
+  shopify_plus: {
+    plataforma: "shopify",
+    plan: "plus",
+    recuperacion_carrito_nativa: true,
+    canal_mayorista: true,
+    canal_mayorista_detalle:
+      "Shopify B2B: catálogos ilimitados, asignación directa a compañías, depósito/pago parcial",
+    vigencia_desde: "2026-08-22",
+    fuente: "https://www.shopify.com/pricing; https://help.shopify.com/en/manual/b2b/getting-started/plan-features",
+    verificado: false,
+  },
+  woocommerce: {
+    plataforma: "woocommerce",
+    recuperacion_carrito_nativa: false,
+    canal_mayorista: false,
+    canal_mayorista_detalle:
+      "Sin función nativa en el núcleo: sólo extensiones pagas de terceros vendidas en el marketplace oficial (p. ej. B2B for WooCommerce, Wholesale for WooCommerce, B2B & Wholesale Suite; recuperación de carrito: Abandoned Cart Recovery de Addify)",
+    vigencia_desde: "2026-08-22",
+    fuente:
+      "https://woocommerce.com/products/abandoned-cart-recovery/; https://woocommerce.com/products/b2b-for-woocommerce/; https://woocommerce.com/products/wholesale-for-woocommerce/; https://woocommerce.com/products/b2b-wholesale-suite/",
+    verificado: false,
+  },
+  empretienda: {
+    plataforma: "empretienda",
+    pais: "AR",
+    /** Sin mención en la página oficial ni en el centro de ayuda: desconocido, no se asume "no". */
+    recuperacion_carrito_nativa: null,
+    canal_mayorista: true,
+    canal_mayorista_detalle: "Vender por mayor (Productos → Configuraciones avanzadas)",
+    vigencia_desde: "2026-08-22",
+    fuente: "https://www.empretienda.com/; https://empretienda.helpjuice.com/es_AR/venta-mayorista",
+    verificado: false,
+  },
+  /** Marketplace, no plataforma de tienda propia: el atributo A no aplica (queda `null`), sólo el B. */
+  mercado_libre: {
+    plataforma: "mercado_libre",
+    recuperacion_carrito_nativa: null,
+    canal_mayorista: true,
+    canal_mayorista_detalle: "Mercado Libre Negocios (requiere CUIT válido)",
+    vigencia_desde: "2026-08-22",
+    fuente: "https://news.mercadolibre.com/mercado-libre-b2b-en-argentina",
+    verificado: false,
+  },
+};
+
 export type ConfigComisiones = {
   /**
    * Acepta el formato legado (número plano) o el nuevo con metadatos
