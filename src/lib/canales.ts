@@ -8,7 +8,7 @@
  *  - el canal principal se deriva del porcentaje mayor, jamás se declara.
  */
 
-import type { DatosDiagnostico } from "./diagnostico-form";
+import { PLANES_POR_PLATAFORMA, type DatosDiagnostico } from "./diagnostico-form";
 import { redondear } from "./dinero";
 
 export type CanalId = "tienda_propia" | "mercado_libre";
@@ -90,7 +90,19 @@ export const COMISIONES_MARKETPLACE_DEFECTO: Record<string, ComisionMarketplace>
  * que parsear la clave de vuelta.
  */
 export type ComisionPlataforma = {
-  comision: number;
+  /**
+   * `null` cuando la regla existe (se conoce el plan) pero no tiene un
+   * porcentaje público — ver `comision_negociada`. Es un caso DISTINTO de
+   * "no hay ninguna entrada para este plan" (ese caso ni siquiera llega a
+   * `ComisionPlataforma`: `entradaPlataforma()` devuelve `null` directo).
+   */
+  comision: number | null;
+  /**
+   * true cuando el plan es conocido pero la plataforma no publica un
+   * porcentaje fijo (lo negocia con cada comercio). `comision` queda en
+   * `null` a propósito: nunca se inventa un número para rellenarlo.
+   */
+  comision_negociada?: boolean;
   plataforma?: string;
   plan?: string;
   vigencia_desde?: string;
@@ -119,12 +131,17 @@ export type ComisionPlataforma = {
  * las demás plataformas.
  *
  * Tiendanube Escala y Evolución (relevado 2026-08-22,
- * `docs/relevamiento-planes-tiendanube.md`) NO tienen entrada acá a
- * propósito: la página oficial de precios muestra su comisión por venta
- * como "a convenir" por comercio, sin un porcentaje público fijo. Agregar
- * un número acá sería inventarlo. Sin entrada, `comisionPlataformaDe()`
- * resuelve `null` para esos dos planes — mismo comportamiento que
- * cualquier plataforma sin benchmark (p. ej. VTEX), no un error.
+ * `docs/relevamiento-planes-tiendanube.md`): la página oficial de precios
+ * muestra su comisión por venta como "a convenir" por comercio, sin un
+ * porcentaje público fijo — agregar un número sería inventarlo. Por eso
+ * tienen entrada acá con `comision: null, comision_negociada: true`, en vez
+ * de no tener entrada: son un plan CONOCIDO con una comisión SIN VALOR
+ * PÚBLICO, no un plan desconocido. `comisionPlataformaDe()` sigue
+ * resolviendo `null` para los dos (no cambia el número), pero
+ * `entradaPlataforma()` devuelve la entrada completa (no `null`), así que
+ * quien la consuma puede distinguir "sabemos el plan, la comisión se
+ * negocia" de "no sabemos qué plan tiene" (corrección 2026-08-22,
+ * `comisionEfectivaCanal` en este archivo).
  */
 export const COMISIONES_PLATAFORMA_DEFECTO: Record<string, ComisionPlataforma> = {
   tiendanube_inicial: {
@@ -216,6 +233,30 @@ export const COMISIONES_PLATAFORMA_DEFECTO: Record<string, ComisionPlataforma> =
     vigencia_desde: "2026-08-21",
     origen: "benchmark_provisional",
     fuente: "suscripcion_fija_sin_take_rate",
+    verificado: false,
+    provisional: true,
+  },
+  tiendanube_escala: {
+    comision: null,
+    comision_negociada: true,
+    plataforma: "tiendanube",
+    plan: "escala",
+    pais: "AR",
+    vigencia_desde: "2026-08-22",
+    origen: "comision_negociada_sin_valor_publico",
+    fuente: "https://www.tiendanube.com/planes-y-precios",
+    verificado: false,
+    provisional: true,
+  },
+  tiendanube_evolucion: {
+    comision: null,
+    comision_negociada: true,
+    plataforma: "tiendanube",
+    plan: "evolucion",
+    pais: "AR",
+    vigencia_desde: "2026-08-22",
+    origen: "comision_negociada_sin_valor_publico",
+    fuente: "https://www.tiendanube.com/planes-y-precios",
     verificado: false,
     provisional: true,
   },
@@ -425,6 +466,26 @@ export function entradaCapacidadesPlataforma(d: DatosDiagnostico): CapacidadesPl
   return CAPACIDADES_PLATAFORMA_DEFECTO[simple] ?? null;
 }
 
+/**
+ * Primer plan (en el orden en que los ofrece el formulario) de una
+ * plataforma que sí incluye recuperación de carrito nativa — para poder
+ * recomendar concretamente a qué plan subir (fase 8, retención,
+ * 2026-08-22, decisión comercial 4). `null` si la plataforma no tiene
+ * planes modelados (autohosteada o de plan único) o si ninguno de sus
+ * planes conocidos la incluye.
+ */
+export function planConCarritoNativoDe(plataforma: string): string | null {
+  const planes = PLANES_POR_PLATAFORMA[plataforma];
+  if (!planes) return null;
+  for (const p of planes) {
+    const clave = claveComisionPlataforma(plataforma, p.value);
+    if (CAPACIDADES_PLATAFORMA_DEFECTO[clave]?.recuperacion_carrito_nativa === true) {
+      return p.label;
+    }
+  }
+  return null;
+}
+
 export type ConfigComisiones = {
   /**
    * Acepta el formato legado (número plano) o el nuevo con metadatos
@@ -576,12 +637,18 @@ export function claveComisionPlataforma(plataforma: string, plan: string): strin
   return pl ? `${p}_${pl}` : p;
 }
 
-/** Un número plano legado se trata como `{ comision: valor }`, sin metadatos. */
+/**
+ * Un número plano legado se trata como `{ comision: valor }`, sin metadatos.
+ * `comision: null` explícito (plan conocido, comisión negociada sin valor
+ * público — ver `ComisionPlataforma.comision_negociada`) se conserva tal
+ * cual: es una entrada real, distinta de "no hay ninguna entrada" (`undefined`).
+ */
 function normalizarEntradaPlataforma(
   v: number | ComisionPlataforma | undefined,
 ): ComisionPlataforma | null {
   if (v === undefined) return null;
   if (typeof v === "number") return finito(v) ? { comision: v } : null;
+  if (v.comision === null) return v;
   return finito(v.comision) ? v : null;
 }
 
@@ -608,6 +675,19 @@ export function entradaPlataforma(
 
 export function comisionPlataformaDe(cfg: ConfigComisiones, d: DatosDiagnostico): number | null {
   return entradaPlataforma(cfg, d)?.comision ?? null;
+}
+
+/**
+ * true cuando el plan de plataforma es conocido pero su comisión se
+ * negocia por comercio, sin porcentaje público (corrección 2026-08-22).
+ * Sirve para que el formulario muestre un aviso pidiendo la comisión real
+ * del cliente, en vez de un "falta un dato" genérico. Se resuelve sólo
+ * contra el benchmark del código: el formulario no tiene la configuración
+ * de la base cargada en vivo, y esta bandera es una propiedad del plan, no
+ * de una liquidación particular.
+ */
+export function comisionPlataformaNegociada(d: DatosDiagnostico): boolean {
+  return entradaPlataforma({}, d)?.comision_negociada === true;
 }
 
 /**
@@ -725,13 +805,31 @@ export function comisionEfectivaCanal(
     const pasarela = finito(cfg.comision_pasarela?.[d.pasarela])
       ? (cfg.comision_pasarela![d.pasarela] as number)
       : null;
+    // Dos motivos distintos por los que puede faltar la comisión de
+    // plataforma: no reconocemos el plan (`comision_plataforma`) o SÍ lo
+    // reconocemos pero su comisión se negocia por comercio, sin porcentaje
+    // público (`comision_plataforma_negociada`) — corrección 2026-08-22. El
+    // segundo caso no es "plan desconocido": el aviso que debe mostrar el
+    // formulario es distinto (pedirle la comisión al cliente y cargarla en
+    // el campo verificado), no un genérico "falta un dato".
+    //
+    // El gate de seguridad es `plataforma.comision === null` en sí mismo,
+    // no la bandera `comision_negociada`: así, si algún día una fila de
+    // `configuracion` trajera `comision: null` sin marcar
+    // `comision_negociada` (un dato mal cargado, no el caso previsto), la
+    // comisión igual queda retenida en vez de sumarse como si fuera cero
+    // (`null + pasarela` en JS da `pasarela`, un cero disfrazado). La
+    // bandera sólo decide QUÉ aviso mostrar, nunca si se calcula o no.
+    const comisionAusente = plataforma !== null && plataforma.comision === null;
+    const comisionNegociada = comisionAusente && plataforma?.comision_negociada === true;
     const faltan: string[] = [];
     if (plataforma === null) faltan.push("comision_plataforma");
+    else if (comisionAusente) faltan.push(comisionNegociada ? "comision_plataforma_negociada" : "comision_plataforma");
     if (pasarela === null) faltan.push("comision_pasarela");
-    if (faltan.length > 0) {
+    if (plataforma === null || comisionAusente || pasarela === null) {
       return {
         valor: null,
-        origen: "benchmark_configuracion",
+        origen: comisionNegociada ? "comision_negociada_sin_valor_publico" : "benchmark_configuracion",
         provisional: false,
         cargo_fijo_aplicado: false,
         cargo_fijo_disponible: null,
@@ -743,7 +841,10 @@ export function comisionEfectivaCanal(
         faltantes: faltan,
       };
     }
-    const r = conCargo((plataforma as ComisionPlataforma).comision + (pasarela as number), {
+    // A esta altura `plataforma !== null` y `!comisionAusente`: el runtime
+    // ya garantizó que `comision` es un número (el guard de arriba), aunque
+    // el tipo siga siendo `number | null`.
+    const r = conCargo((plataforma as ComisionPlataforma).comision as number + (pasarela as number), {
       cargo: cargoDeclarado,
     });
     // Una regla de plataforma marcada `verificado: true` es una liquidación

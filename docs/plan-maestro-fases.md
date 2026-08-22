@@ -318,47 +318,63 @@ siguiente acción.
   real de "fase 7" del plan maestro antes de programar nada — no se
   implementó nada en este bloque.
 
-### Fase 8 — Retención, carrito y recompra — **PARCIAL** (inventario, sin programar)
+### Fase 8 — Retención, carrito y recompra — **PARCIAL, mapeo de hallazgos implementado (2026-08-23)**
 
 - No hay numeración histórica equivalente confirmada.
-- **Campos existentes (`src/lib/diagnostico-form.ts`):**
-  `carritos_abandonados`, `recuperacion_carrito`, `retargeting_abandono`
-  (líneas 203-205); `ml_tiene_clips` (línea 223, triestado, Mercado Libre).
-- **Cálculos existentes:** cascada de funnel con tramo de carrito
-  (`src/lib/funnel.ts`: `agregados_carrito`, `p_carrito_dado_visita`,
-  `p_checkout_dado_carrito`); fuga `funnel_carrito`
-  (`src/lib/propuesta.ts:167`).
-- **Hallazgos existentes:** `sin_retargeting`
-  (`src/lib/propuesta.ts:192`, sólo con `recuperacion_carrito: false` Y
-  `retargeting_abandono: false` explícitos, nunca por ausencia de dato);
-  `clips_ml` (línea 203, triestado, resuelto según
-  `docs/fase3-evidencia-pendiente.md`).
-- **Pruebas existentes:** `src/lib/fase3-bugfixes.test.ts`, partes de
-  `src/lib/calculo-diagnostico.test.ts` (describe "hallazgos que dependen
-  de booleanos sin responder").
-- **Qué falta concretamente (no implementado, sólo inventariado):**
-  - **Recompra: no existe ningún campo, cálculo ni hallazgo.** No hay
-    frecuencia de compra, tasa de clientes recurrentes, LTV, cohortes ni
-    nada que mida si un cliente vuelve a comprar. Es la brecha más grande
-    de esta fase.
-  - **Retención más allá del carrito abandonado:** no hay campos de
-    email marketing, programas de fidelización, ni segmentación de
-    clientes recurrentes vs. nuevos.
-  - El carrito abandonado sólo se mide como parte del funnel de conversión
-    (agregar al carrito → checkout → compra) y como un hallazgo booleano de
-    retargeting; no hay valorización económica separada de "recuperación de
-    carrito" como palanca propia (el tramo `funnel_carrito` valoriza la
-    conversión completa del tramo, no específicamente la recuperación de
-    carritos abandonados vía email/retargeting).
-- **Riesgo:** si el plan maestro asume que "retención" ya tiene alguna
-  cobertura de recompra/LTV, ese supuesto es incorrecto — no existe nada en
-  el código.
-- **Bloqueo:** ninguno técnico; es simplemente alcance no implementado
-  todavía.
-- **Siguiente acción:** con este inventario, decidir con Matías el alcance
-  real de "fase 8" del plan maestro (en particular si recompra/LTV entra en
-  esta fase o es una fase separada) antes de programar nada — no se
-  implementó nada en este bloque.
+- **Decisión comercial que la desbloqueó:** entrada 4 de
+  `docs/decisiones-pendientes.md` (retención acotada a integraciones
+  nativas de recuperación de carrito/recompra por email y WhatsApp).
+- **Campos nuevos (`src/lib/diagnostico-form.ts`):** `retencion_canal_email`,
+  `retencion_canal_whatsapp`, `retencion_canal_retargeting`,
+  `retencion_secuencia_contactos`, `retencion_usa_cupon`,
+  `retencion_cupon_pct`, `retencion_recuperacion_pct_actual`;
+  `recompra_compradores_unicos`, `recompra_tasa_actual_pct`,
+  `recompra_ventana_dias`, `recompra_ticket_segunda_compra`,
+  `recompra_tiene_secuencia_postventa`. Todos opcionales, sólo cargados si
+  aportan a un cálculo.
+- **Fugas nuevas (`src/lib/calculo-diagnostico.ts`):** `recuperacion_carrito`
+  y `recompra`, con impactos tipados `contribucion_incremental`. Base =
+  total de carritos abandonados/compradores únicos (sin restar los ya
+  recuperados); mejora = tasa objetivo (config, sin default de código:
+  `recuperacion_carrito_esperada`/`recompra_esperada`) menos tasa actual.
+  Regla del cupón: se descarta si la contribución post-descuento no sigue
+  siendo positiva. Ninguna de las dos fugas existe (ni como no calculable)
+  si no hay ningún dato del tema cargado — mismo criterio que
+  `gasto_no_rentable` sin inversión publicitaria.
+- **Mapeo de hallazgos (`src/lib/propuesta.ts`):** reemplaza al viejo
+  `sin_retargeting` (un solo booleano) por el encadenamiento aprobado —
+  `retencion_subir_plan` (recomendación) + `retencion_recuperacion_carrito`
+  (servicio) cuando el plan no tiene carrito nativo;
+  `retencion_recuperacion_carrito` (servicio) directo cuando sí lo tiene;
+  `retencion_capacidad_desconocida` (contexto, sin recomendación de plan)
+  cuando no se sabe; `retencion_carrito_fuera_de_alcance` (contexto, sin
+  servicio) para WooCommerce. `recompra` como hallazgo separado, capa
+  servicio sólo si los cinco datos mínimos permiten valorizarla.
+- **Catálogo de servicios (`SERVICIOS`, `src/lib/propuesta.ts`):**
+  reconciliado a los seis de la decisión comercial 5 (se agregó "Diseño de
+  marca", que faltaba por completo, y se renombró "Web e-commerce" a
+  "Desarrollo y optimización web").
+- **Pruebas existentes:** `src/lib/retencion-fase8.test.ts` (22 casos:
+  fugas, regla del cupón, encadenamiento de hallazgos, casos límite de
+  Mercado Libre/WooCommerce/capacidad desconocida).
+- **Qué falta todavía:**
+  - **Recompra sigue sin frecuencia de compra histórica, LTV ni cohortes**
+    — este bloque agregó la valorización de UNA mejora de tasa de recompra
+    puntual, no un motor de LTV/cohortes completo.
+  - "Costo de campañas" (mencionado en la fórmula del pedido, junto al
+    cupón) no tiene un campo propio: se interpretó que el cupón es el único
+    costo de incentivo modelado explícitamente, documentado en el commit;
+    si Matías quiere un costo de campaña separado, es un campo nuevo.
+  - No hay UI para email marketing/fidelización más allá de los campos
+    cargados; sigue siendo relevamiento de datos, no una integración real
+    con ninguna plataforma de email/WhatsApp.
+- **Riesgo:** ninguno nuevo más allá de lo ya documentado en las entradas
+  4-7 de `docs/decisiones-pendientes.md`.
+- **Bloqueo:** ninguno técnico.
+- **Siguiente acción:** fase 9 (mayorista) sigue bloqueada comercialmente
+  hasta detectar el canal mayorista por plataforma (ya relevado,
+  `CAPACIDADES_PLATAFORMA_DEFECTO.canal_mayorista`) y mapear sus hallazgos
+  a los seis servicios — no implementado en este bloque.
 
 ### Fase 9 — Mayorista y Mixto — **PENDIENTE**
 

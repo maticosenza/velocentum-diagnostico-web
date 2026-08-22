@@ -13,6 +13,7 @@ import {
   canalPrincipal,
   coberturaCanales,
   comisionEnEscalaSospechosa,
+  comisionPlataformaNegociada,
   estadoCanal,
   type CanalId,
 } from "@/lib/canales";
@@ -55,6 +56,14 @@ export function BloqueCanales({ datos, set }: { datos: DatosDiagnostico; set: Se
         const noAplica = datos[c.no_aplica] === true;
         const comision = datos[c.comision] as number | null | undefined;
         const escala = comisionEnEscalaSospechosa(comision ?? null);
+        // Corrección 2026-08-22: el plan es conocido pero la plataforma
+        // negocia la comisión por comercio (p. ej. Tiendanube Escala o
+        // Evolución) — sin esto, el margen queda retenido hasta que se
+        // cargue la comisión real acá.
+        const negociada =
+          canal.id === "tienda_propia" &&
+          comisionPlataformaNegociada(datos) &&
+          (comision === null || comision === undefined);
         return (
           <section
             key={canal.id}
@@ -100,7 +109,11 @@ export function BloqueCanales({ datos, set }: { datos: DatosDiagnostico; set: Se
                   onChange={(v) => set(c.ticket, v)}
                   ayuda="Si queda vacío, se usa el ticket general del diagnóstico."
                 />
-                <div>
+                <div
+                  className={cn(
+                    negociada && "rounded-md border border-[var(--estado-amarillo)] p-3",
+                  )}
+                >
                   <CampoPorcentaje
                     label="Comisión verificada"
                     value={comision ?? null}
@@ -108,6 +121,13 @@ export function BloqueCanales({ datos, set }: { datos: DatosDiagnostico; set: Se
                     maximo={100}
                     ayuda="En porcentaje, como figura en la liquidación: 16,94 y no 0,1694."
                   />
+                  {negociada && (
+                    <p className="mt-1 text-[12px] text-[var(--estado-amarillo)]">
+                      Este plan tiene la comisión a convenir con la plataforma: no hay un porcentaje
+                      público. Preguntale al cliente cuál es la suya y cargala acá para que el margen
+                      se calcule.
+                    </p>
+                  )}
                   {escala && (
                     <p className="mt-1 text-[12px] text-[var(--estado-rojo)]">
                       El valor parece estar en tasa y no en porcentaje. Una comisión menor al 1% es

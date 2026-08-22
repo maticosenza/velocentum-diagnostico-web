@@ -217,6 +217,35 @@ export type DatosDiagnostico = {
   carritos_abandonados: number | null;
   recuperacion_carrito: boolean | null;
   retargeting_abandono: boolean | null;
+  /**
+   * Retención (fase 8, 2026-08-22): sólo se cargan si aportan a un cálculo
+   * (decisión comercial 4, docs/decisiones-pendientes.md). Canales activos
+   * de recuperación de carrito: cada uno es triestado independiente, "ninguno"
+   * es el estado en el que los tres son `false`, no un cuarto campo.
+   */
+  retencion_canal_email: boolean | null;
+  retencion_canal_whatsapp: boolean | null;
+  retencion_canal_retargeting: boolean | null;
+  /** Cantidad de contactos programados en la secuencia de recuperación. */
+  retencion_secuencia_contactos: number | null;
+  /** Si la recuperación usa un cupón de descuento como incentivo. */
+  retencion_usa_cupon: boolean | null;
+  /** Porcentaje de descuento del cupón, si se usa uno. */
+  retencion_cupon_pct: number | null;
+  /** Porcentaje de carritos abandonados que hoy se recuperan (tasa actual). */
+  retencion_recuperacion_pct_actual: number | null;
+
+  /**
+   * Recompra / segunda compra (fase 8). Los cinco campos son el mínimo para
+   * valorizar la oportunidad; sin los cinco queda como recomendación
+   * cualitativa, nunca con una cifra estimada a medias.
+   */
+  recompra_compradores_unicos: number | null;
+  recompra_tasa_actual_pct: number | null;
+  /** Ventana de tiempo (en días) en la que se mide la recompra. */
+  recompra_ventana_dias: number | null;
+  recompra_ticket_segunda_compra: number | null;
+  recompra_tiene_secuencia_postventa: boolean | null;
   // Contenido (compartido, cualitativo)
   frecuencia_creativos: string;
   formato_creativos: string;
@@ -345,6 +374,18 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   carritos_abandonados: null,
   recuperacion_carrito: null,
   retargeting_abandono: null,
+  retencion_canal_email: null,
+  retencion_canal_whatsapp: null,
+  retencion_canal_retargeting: null,
+  retencion_secuencia_contactos: null,
+  retencion_usa_cupon: null,
+  retencion_cupon_pct: null,
+  retencion_recuperacion_pct_actual: null,
+  recompra_compradores_unicos: null,
+  recompra_tasa_actual_pct: null,
+  recompra_ventana_dias: null,
+  recompra_ticket_segunda_compra: null,
+  recompra_tiene_secuencia_postventa: null,
   frecuencia_creativos: "",
   formato_creativos: "",
   angulo_que_funciona: "",

@@ -6,13 +6,26 @@
 import type { DatosDiagnostico, NotasDiagnostico } from "./diagnostico-form";
 import type { Derivados, EstadosBloque, Fuga } from "./calculo-diagnostico";
 import { productosCargados } from "./calculo-diagnostico";
+import { entradaCapacidadesPlataforma, planConCarritoNativoDe } from "./canales";
 
+/**
+ * Catálogo cerrado de seis servicios, sin excepciones (decisión comercial 5,
+ * `docs/decisiones-pendientes.md`, 2026-08-22). Cualquier hallazgo que no
+ * mapee a uno de estos seis queda en capa "recomendacion", nunca en
+ * "servicio". Nombres reconciliados con la decisión: "Product Ads en
+ * Mercado Libre" y "Planificación de contenido" son los mismos nombres que
+ * ya usaba este archivo antes de la decisión, sólo se agregó "Diseño de
+ * marca" (faltaba por completo) y se renombró "Web e-commerce" a
+ * "Desarrollo y optimización web" para que coincida textualmente con el
+ * catálogo cerrado.
+ */
 export const SERVICIOS = [
   "Meta Ads",
   "Google Ads",
   "Product Ads en Mercado Libre",
+  "Desarrollo y optimización web",
   "Planificación de contenido",
-  "Web e-commerce",
+  "Diseño de marca",
 ] as const;
 
 export type Capa = "servicio" | "recomendacion" | "contexto";
@@ -160,25 +173,25 @@ export function mapearHallazgos(
       fuga: "funnel_navegacion",
       id: "funnel_navegacion",
       titulo: "Pocas visitas llegan a agregar al carrito",
-      servicio: "Web e-commerce",
+      servicio: "Desarrollo y optimización web",
     },
     {
       fuga: "funnel_carrito",
       id: "funnel_carrito",
       titulo: "Carritos que no llegan al checkout",
-      servicio: "Web e-commerce y Meta Ads",
+      servicio: "Desarrollo y optimización web y Meta Ads",
     },
     {
       fuga: "funnel_checkout",
       id: "funnel_checkout",
       titulo: "Checkouts iniciados que no terminan en compra",
-      servicio: "Web e-commerce",
+      servicio: "Desarrollo y optimización web",
     },
     {
       fuga: "funnel_combinado",
       id: "funnel_combinado",
       titulo: "Conversión del sitio por debajo del umbral",
-      servicio: "Web e-commerce",
+      servicio: "Desarrollo y optimización web",
     },
   ];
   for (const t of tramos) {
@@ -187,13 +200,104 @@ export function mapearHallazgos(
     }
   }
 
-  if (datos.retargeting_abandono === false) {
-    h.push({
-      id: "sin_retargeting",
-      titulo: "Sin retargeting a abandonos",
-      capa: "servicio",
-      servicio: "Meta Ads",
-    });
+  // Retención: recuperación de carrito (decisión comercial 4, fase 8,
+  // 2026-08-22). Reemplaza al viejo hallazgo "sin_retargeting" (dependía de
+  // un solo booleano declarado): ahora depende de si la plataforma/plan del
+  // cliente incluye la capacidad nativa, relevada en
+  // `CAPACIDADES_PLATAFORMA_DEFECTO`. La regla comercial cerrada: no es un
+  // servicio independiente, es un agregado condicionado a esa capacidad.
+  {
+    const plataforma = (datos.plataforma || "").trim();
+    if (plataforma !== "") {
+      const capacidad = entradaCapacidadesPlataforma(datos);
+      const nativa = capacidad?.recuperacion_carrito_nativa ?? null;
+      const esWoocommerce = plataforma === "woocommerce";
+      const sinNingunCanalDeclarado =
+        datos.retencion_canal_email === false &&
+        datos.retencion_canal_whatsapp === false &&
+        datos.retencion_canal_retargeting === false;
+      // "Planificación de contenido y Meta Ads según corresponda": se suma
+      // Meta Ads cuando el retargeting es parte de la implementación.
+      const servicioFlujos =
+        datos.retencion_canal_retargeting === true
+          ? "Planificación de contenido y Meta Ads"
+          : "Planificación de contenido";
+
+      if (esWoocommerce && nativa === false) {
+        // WooCommerce no tiene carrito nativo y no está plan-gateado (es
+        // autohosteado): no hay "plan al que subir". El servicio de
+        // retención definido (decisión 4) es sólo con integraciones
+        // nativas, así que esto queda fuera de alcance, no como una venta.
+        h.push({
+          id: "retencion_carrito_fuera_de_alcance",
+          titulo: "Recuperación de carrito sin integración nativa (WooCommerce)",
+          capa: "contexto",
+          servicio: null,
+          nota: "WooCommerce no tiene recuperación de carrito nativa: requiere desarrollo a medida o un plugin de terceros, fuera del alcance del servicio de retención definido (integraciones nativas de la plataforma del cliente).",
+        });
+      } else if (nativa === false) {
+        const planSugerido = planConCarritoNativoDe(plataforma);
+        h.push({
+          id: "retencion_subir_plan",
+          titulo: "El plan actual no incluye recuperación de carrito nativa",
+          capa: "recomendacion",
+          servicio: null,
+          nota: planSugerido
+            ? `Subir al plan ${planSugerido} para habilitar la recuperación de carrito nativa.`
+            : "Subir a un plan que incluya recuperación de carrito nativa.",
+        });
+        h.push({
+          id: "retencion_recuperacion_carrito",
+          titulo: "Implementación de flujos de recuperación de carrito y recompra",
+          capa: "servicio",
+          servicio: servicioFlujos,
+        });
+      } else if (nativa === true) {
+        // Sólo si hay evidencia de una brecha real: una oportunidad
+        // calculada, o el cliente declaró explícitamente que no usa
+        // ningún canal de recuperación todavía.
+        if (conMonto("recuperacion_carrito") || sinNingunCanalDeclarado) {
+          h.push({
+            id: "retencion_recuperacion_carrito",
+            titulo: "Recuperación de carrito y recompra",
+            capa: "servicio",
+            servicio: servicioFlujos,
+          });
+        }
+      } else {
+        // Capacidad desconocida: no se afirma nada, no se recomienda plan.
+        h.push({
+          id: "retencion_capacidad_desconocida",
+          titulo: "No se pudo confirmar si el plan incluye recuperación de carrito nativa",
+          capa: "contexto",
+          servicio: null,
+          nota: "Sin esa confirmación no se recomienda un cambio de plan ni se afirma la capacidad.",
+        });
+      }
+    }
+  }
+
+  // Recompra (segunda compra): hallazgo separado del de carrito (no son la
+  // misma oportunidad). Capa "servicio" sólo si se pudo valorizar con los
+  // cinco datos mínimos; si no, queda cualitativo, nunca con una cifra a
+  // medias.
+  if (fuga("recompra")) {
+    if (conMonto("recompra")) {
+      h.push({
+        id: "recompra",
+        titulo: "Oportunidad de segunda compra (recompra)",
+        capa: "servicio",
+        servicio: "Planificación de contenido",
+      });
+    } else {
+      h.push({
+        id: "recompra",
+        titulo: "Segunda compra sin datos suficientes para valorizar",
+        capa: "recomendacion",
+        servicio: null,
+        nota: "Faltan datos para calcular la oportunidad de recompra: queda como recomendación cualitativa, sin una cifra estimada.",
+      });
+    }
   }
 
   // Vender en Mercado Libre no prueba que falten clips: sólo el triestado

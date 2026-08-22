@@ -542,14 +542,22 @@ describe("hallazgos que dependen de booleanos sin responder", () => {
     return mapearHallazgos(d, r.derivados, r.estados_bloque, r.fugas).map((x) => x.id);
   };
 
-  it("no afirma que no hay retargeting cuando el campo quedó en null", () => {
-    expect(hallazgosDe(conDatos)).not.toContain("sin_retargeting");
+  it("no afirma que falta retención cuando los canales quedaron en null (fase 8, reemplaza a 'sin_retargeting')", () => {
+    expect(hallazgosDe(conDatos)).not.toContain("retencion_recuperacion_carrito");
   });
 
-  it("genera el hallazgo solo cuando el retargeting es un no explícito", () => {
+  it("genera el hallazgo de retención solo cuando los tres canales están en un no explícito (fase 8)", () => {
+    // base usa Tiendanube Esencial: SÍ tiene carrito nativo, así que el
+    // hallazgo depende de que el cliente haya declarado que no usa ningún
+    // canal — no de los viejos booleanos genéricos.
     expect(
-      hallazgosDe({ ...conDatos, recuperacion_carrito: false, retargeting_abandono: false }),
-    ).toContain("sin_retargeting");
+      hallazgosDe({
+        ...conDatos,
+        retencion_canal_email: false,
+        retencion_canal_whatsapp: false,
+        retencion_canal_retargeting: false,
+      }),
+    ).toContain("retencion_recuperacion_carrito");
   });
 
   it("no afirma que faltan clips de Mercado Libre sin el campo triestado en false", () => {

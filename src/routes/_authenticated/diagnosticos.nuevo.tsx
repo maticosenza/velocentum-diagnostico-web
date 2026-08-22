@@ -1045,6 +1045,91 @@ function NuevoDiagnostico() {
                     {funnelForm.error}
                   </p>
                 )}
+
+                <div className="border-t border-border pt-5">
+                  <h3 className="text-[13px] font-medium text-muted-foreground">
+                    Retención — recuperación de carrito (opcional, sólo si hay datos)
+                  </h3>
+                  <div className="mt-4 grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                    <CampoSiNo
+                      label="¿Envía email de recuperación?"
+                      value={datos.retencion_canal_email}
+                      onChange={(v) => set("retencion_canal_email", v)}
+                    />
+                    <CampoSiNo
+                      label="¿Envía WhatsApp de recuperación?"
+                      value={datos.retencion_canal_whatsapp}
+                      onChange={(v) => set("retencion_canal_whatsapp", v)}
+                    />
+                    <CampoSiNo
+                      label="¿Hace retargeting específico a carritos?"
+                      value={datos.retencion_canal_retargeting}
+                      onChange={(v) => set("retencion_canal_retargeting", v)}
+                    />
+                    <CampoNumero
+                      label="Contactos en la secuencia"
+                      value={datos.retencion_secuencia_contactos}
+                      onChange={(v) => set("retencion_secuencia_contactos", v)}
+                      ayuda="Cuántos mensajes/emails manda la secuencia de recuperación."
+                    />
+                    <CampoSiNo
+                      label="¿Usa un cupón como incentivo?"
+                      value={datos.retencion_usa_cupon}
+                      onChange={(v) => set("retencion_usa_cupon", v)}
+                    />
+                    {datos.retencion_usa_cupon === true && (
+                      <CampoPorcentaje
+                        label="Porcentaje del cupón"
+                        value={datos.retencion_cupon_pct}
+                        onChange={(v) => set("retencion_cupon_pct", v)}
+                        maximo={100}
+                      />
+                    )}
+                    <CampoPorcentaje
+                      label="Porcentaje de recuperación actual"
+                      value={datos.retencion_recuperacion_pct_actual}
+                      onChange={(v) => set("retencion_recuperacion_pct_actual", v)}
+                      maximo={100}
+                      ayuda="De los carritos abandonados de arriba, cuántos se recuperan hoy."
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-5">
+                  <h3 className="text-[13px] font-medium text-muted-foreground">
+                    Retención — segunda compra (opcional, sólo si hay datos)
+                  </h3>
+                  <div className="mt-4 grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                    <CampoNumero
+                      label="Compradores únicos"
+                      value={datos.recompra_compradores_unicos}
+                      onChange={(v) => set("recompra_compradores_unicos", v)}
+                      ayuda="Base de clientes distintos que compraron al menos una vez, en la ventana elegida."
+                    />
+                    <CampoPorcentaje
+                      label="Tasa de recompra actual"
+                      value={datos.recompra_tasa_actual_pct}
+                      onChange={(v) => set("recompra_tasa_actual_pct", v)}
+                      maximo={100}
+                    />
+                    <CampoNumero
+                      label="Ventana temporal (días)"
+                      value={datos.recompra_ventana_dias}
+                      onChange={(v) => set("recompra_ventana_dias", v)}
+                      ayuda="Período sobre el que se mide si un comprador vuelve a comprar."
+                    />
+                    <CampoPesos
+                      label="Ticket de la segunda compra"
+                      value={datos.recompra_ticket_segunda_compra}
+                      onChange={(v) => set("recompra_ticket_segunda_compra", v)}
+                    />
+                    <CampoSiNo
+                      label="¿Tiene secuencia postventa?"
+                      value={datos.recompra_tiene_secuencia_postventa}
+                      onChange={(v) => set("recompra_tiene_secuencia_postventa", v)}
+                    />
+                  </div>
+                </div>
               </div>
             )}
 

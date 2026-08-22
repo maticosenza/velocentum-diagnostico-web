@@ -77,7 +77,16 @@ export type ConfiguracionCalculo = {
   umbrales_creativos?: Record<string, Umbral>;
   factor_fatiga?: TramoFatiga[];
   delta_medicion?: Umbral;
+  /**
+   * Tasa objetivo de recuperación de carritos abandonados (fase 8,
+   * retención, 2026-08-22), en tasa (0,15 = 15%). Sin este valor en
+   * configuración, la oportunidad de recuperación de carrito no se
+   * valoriza: no hay un benchmark de código para esto, a propósito — no hay
+   * ninguna referencia pública confiable con la que respaldar un número.
+   */
   recuperacion_carrito_esperada?: number;
+  /** Tasa objetivo de recompra (segunda compra), mismo criterio que recuperacion_carrito_esperada: sin config, sin valorizar. */
+  recompra_esperada?: number;
   tope_fuga_individual?: number;
   tope_fuga_total?: number;
   /** Mejoras objetivo del funnel, en PUNTOS PORCENTUALES. */
@@ -1285,7 +1294,225 @@ export function calcularDiagnostico(
 
   // La vieja fuga por carritos abandonados quedó absorbida por el tramo de
   // carrito de la cascada: no pueden coexistir sin contar dos veces a la misma
-  // gente.
+  // gente. Las dos fugas nuevas de acá abajo (fase 8, retención,
+  // 2026-08-22) son un mecanismo DISTINTO: el tramo de carrito de la
+  // cascada valoriza mejorar la conversión DENTRO del embudo (más gente que
+  // no abandona); estas valorizan RECUPERAR, por fuera del embudo, a
+  // quienes YA abandonaron o ya compraron una vez. No se solapan.
+
+  // Recuperación de carritos abandonados. Base: el total de carritos
+  // abandonados, sin restarle los ya recuperados (la tasa actual ya los
+  // representa). Mejora: tasa objetivo (config, sin default de código — no
+  // hay un benchmark público confiable para inventar uno) menos tasa
+  // actual declarada. Sin datos de retención ni de por medio, la fuga ni
+  // siquiera existe (igual que "gasto_no_rentable" sin inversión
+  // publicitaria): no tiene sentido mostrar una fuga "sin datos" sobre un
+  // tema que el vendedor nunca tocó.
+  if (finito(d.carritos_abandonados) && (d.carritos_abandonados as number) > 0) {
+    const carritosBase = d.carritos_abandonados as number;
+    const tasaActual = finito(d.retencion_recuperacion_pct_actual)
+      ? (d.retencion_recuperacion_pct_actual as number) / 100
+      : null;
+    const tasaObjetivo = finito(cfg.recuperacion_carrito_esperada)
+      ? (cfg.recuperacion_carrito_esperada as number)
+      : null;
+
+    const faltan: string[] = [];
+    if (tasaActual === null) faltan.push("retencion_recuperacion_pct_actual");
+    if (tasaObjetivo === null) faltan.push("recuperacion_carrito_esperada");
+    if (!finito(d.ticket_promedio) || (d.ticket_promedio as number) <= 0) {
+      faltan.push("ticket_promedio");
+    }
+    if (margen === null && !faltan.includes("margen_contribucion")) {
+      faltan.push("margen_contribucion");
+    }
+
+    if (faltan.length > 0) {
+      fugas.push({
+        id: "recuperacion_carrito",
+        etiqueta: "Recuperación de carritos abandonados",
+        tipo: "monto",
+        monto: null,
+        calculable: false,
+        faltantes: faltan,
+        usa_margen: true,
+        impactos: [
+          impactoRetenido({
+            tipo: "contribucion_incremental",
+            motivo: "No se pudo calcular la recuperación de carrito con los datos actuales.",
+            dependencias: faltan,
+          }),
+        ],
+      });
+    } else {
+      const mejora = (tasaObjetivo as number) - (tasaActual as number);
+      // Ya está en el objetivo o por encima: no hay oportunidad que valorizar.
+      if (mejora > 0) {
+        const carritosAdicionales = carritosBase * mejora;
+        const ticket = d.ticket_promedio as number;
+        // Regla del cupón: si el descuento deja la contribución por
+        // carrito recuperado en cero o negativa, se descarta del cálculo
+        // (nunca se resta un monto que no sería rentable) y se marca en el
+        // detalle para sugerir otra palanca.
+        const cuponPct =
+          d.retencion_usa_cupon === true && finito(d.retencion_cupon_pct)
+            ? (d.retencion_cupon_pct as number) / 100
+            : null;
+        let contribucionPorCarrito = ticket * (margen as number);
+        let cuponDescartado = false;
+        if (cuponPct !== null) {
+          const conCupon = ticket * (margen as number) - ticket * cuponPct;
+          if (conCupon > 0) contribucionPorCarrito = conCupon;
+          else cuponDescartado = true;
+        }
+        const montoExacto = carritosAdicionales * contribucionPorCarrito;
+        const monto = Math.max(0, red(montoExacto, 0) ?? 0);
+        fugas.push({
+          id: "recuperacion_carrito",
+          etiqueta: "Recuperación de carritos abandonados",
+          tipo: "monto",
+          monto,
+          calculable: true,
+          faltantes: [],
+          usa_margen: true,
+          ...(cuponDescartado
+            ? {
+                detalle:
+                  "El cupón declarado dejaría la contribución por carrito recuperado en cero o negativa: se descartó del cálculo. Conviene evaluar otra palanca (secuencia sin descuento, WhatsApp, retargeting).",
+              }
+            : {}),
+          impactos: [
+            impactoCalculado({
+              tipo: "contribucion_incremental",
+              montoMensual: monto,
+              confianza: "media",
+              dependencias: [
+                "carritos_abandonados",
+                "retencion_recuperacion_pct_actual",
+                "recuperacion_carrito_esperada",
+                "ticket_promedio",
+                "margen_contribucion",
+              ],
+            }),
+          ],
+        });
+      }
+    }
+  }
+
+  // Recompra (segunda compra). Los cinco campos declarados son el mínimo:
+  // sin los cinco, la oportunidad queda como recomendación cualitativa
+  // (no calculable), nunca con una cifra a medias. Sin ningún dato de
+  // recompra cargado, la fuga ni siquiera existe (mismo criterio que
+  // recuperación de carrito, arriba).
+  {
+    const compradores = finito(d.recompra_compradores_unicos)
+      ? (d.recompra_compradores_unicos as number)
+      : null;
+    const tasaActualRecompra = finito(d.recompra_tasa_actual_pct)
+      ? (d.recompra_tasa_actual_pct as number) / 100
+      : null;
+    const ventana = finito(d.recompra_ventana_dias) ? (d.recompra_ventana_dias as number) : null;
+    const ticketSegunda = finito(d.recompra_ticket_segunda_compra)
+      ? (d.recompra_ticket_segunda_compra as number)
+      : null;
+    const tieneSecuencia =
+      typeof d.recompra_tiene_secuencia_postventa === "boolean"
+        ? d.recompra_tiene_secuencia_postventa
+        : null;
+    const algunDatoDeRecompra =
+      compradores !== null ||
+      tasaActualRecompra !== null ||
+      ventana !== null ||
+      ticketSegunda !== null ||
+      tieneSecuencia !== null;
+
+    if (algunDatoDeRecompra) {
+      const tasaObjetivoRecompra = finito(cfg.recompra_esperada)
+        ? (cfg.recompra_esperada as number)
+        : null;
+      const faltan: string[] = [];
+      if (compradores === null) faltan.push("recompra_compradores_unicos");
+      if (tasaActualRecompra === null) faltan.push("recompra_tasa_actual_pct");
+      if (ventana === null) faltan.push("recompra_ventana_dias");
+      if (ticketSegunda === null) faltan.push("recompra_ticket_segunda_compra");
+      if (tieneSecuencia === null) faltan.push("recompra_tiene_secuencia_postventa");
+      if (tasaObjetivoRecompra === null) faltan.push("recompra_esperada");
+      if (margen === null && !faltan.includes("margen_contribucion")) {
+        faltan.push("margen_contribucion");
+      }
+
+      if (faltan.length > 0) {
+        fugas.push({
+          id: "recompra",
+          etiqueta: "Segunda compra (recompra)",
+          tipo: "monto",
+          monto: null,
+          calculable: false,
+          faltantes: faltan,
+          usa_margen: true,
+          impactos: [
+            impactoRetenido({
+              tipo: "contribucion_incremental",
+              motivo:
+                "Sin los cinco datos mínimos de recompra, la oportunidad queda como recomendación cualitativa.",
+              dependencias: faltan,
+            }),
+          ],
+        });
+      } else {
+        const mejora = (tasaObjetivoRecompra as number) - (tasaActualRecompra as number);
+        if (mejora > 0) {
+          const compradoresAdicionales = (compradores as number) * mejora;
+          // Mismo criterio del cupón que recuperación de carrito: un solo
+          // incentivo declarado por el vendedor, reutilizado acá si aplica.
+          const cuponPct =
+            d.retencion_usa_cupon === true && finito(d.retencion_cupon_pct)
+              ? (d.retencion_cupon_pct as number) / 100
+              : null;
+          let contribucionPorComprador = (ticketSegunda as number) * (margen as number);
+          let cuponDescartado = false;
+          if (cuponPct !== null) {
+            const conCupon =
+              (ticketSegunda as number) * (margen as number) - (ticketSegunda as number) * cuponPct;
+            if (conCupon > 0) contribucionPorComprador = conCupon;
+            else cuponDescartado = true;
+          }
+          const montoExacto = compradoresAdicionales * contribucionPorComprador;
+          const monto = Math.max(0, red(montoExacto, 0) ?? 0);
+          fugas.push({
+            id: "recompra",
+            etiqueta: "Segunda compra (recompra)",
+            tipo: "monto",
+            monto,
+            calculable: true,
+            faltantes: [],
+            usa_margen: true,
+            ...(cuponDescartado
+              ? {
+                  detalle:
+                    "El cupón declarado dejaría la contribución por comprador recuperado en cero o negativa: se descartó del cálculo. Conviene evaluar otra palanca.",
+                }
+              : {}),
+            impactos: [
+              impactoCalculado({
+                tipo: "contribucion_incremental",
+                montoMensual: monto,
+                confianza: "media",
+                dependencias: [
+                  "recompra_compradores_unicos",
+                  "recompra_tasa_actual_pct",
+                  "recompra_ticket_segunda_compra",
+                  "recompra_esperada",
+                  "margen_contribucion",
+                ],
+              }),
+            ],
+          });
+        }
+      }
+    }
+  }
 
   // Medición: hallazgo de riesgo, nunca valorizado en pesos
   if (estadoMedicion === "rojo") {

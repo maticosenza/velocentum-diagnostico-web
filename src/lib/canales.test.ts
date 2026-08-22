@@ -24,12 +24,14 @@ function datosCon(overrides: Partial<DatosDiagnostico>): DatosDiagnostico {
 }
 
 describe("COMISIONES_PLATAFORMA_DEFECTO: metadatos completos", () => {
-  it("cubre Tiendanube (3 planes), Shopify (4 planes), WooCommerce y Empretienda", () => {
+  it("cubre Tiendanube (5 planes, 2 con comisión negociada sin valor público), Shopify (4 planes), WooCommerce y Empretienda", () => {
     expect(Object.keys(COMISIONES_PLATAFORMA_DEFECTO).sort()).toEqual(
       [
         "tiendanube_inicial",
         "tiendanube_esencial",
         "tiendanube_impulso",
+        "tiendanube_escala",
+        "tiendanube_evolucion",
         "shopify_basic",
         "shopify_grow",
         "shopify_advanced",
@@ -56,13 +58,14 @@ describe("COMISIONES_PLATAFORMA_DEFECTO: metadatos completos", () => {
     expect(COMISIONES_PLATAFORMA_DEFECTO["shopify_basic"]!.comision).toBeGreaterThan(0);
   });
 
-  it("las comisiones de Tiendanube y Shopify bajan a medida que sube el plan", () => {
+  it("las comisiones de Tiendanube y Shopify bajan a medida que sube el plan (planes con comisión pública)", () => {
     const tn = COMISIONES_PLATAFORMA_DEFECTO;
-    expect(tn["tiendanube_inicial"]!.comision).toBeGreaterThan(tn["tiendanube_esencial"]!.comision);
-    expect(tn["tiendanube_esencial"]!.comision).toBeGreaterThan(tn["tiendanube_impulso"]!.comision);
-    expect(tn["shopify_basic"]!.comision).toBeGreaterThan(tn["shopify_grow"]!.comision);
-    expect(tn["shopify_grow"]!.comision).toBeGreaterThan(tn["shopify_advanced"]!.comision);
-    expect(tn["shopify_advanced"]!.comision).toBeGreaterThan(tn["shopify_plus"]!.comision);
+    const c = (clave: string) => tn[clave]!.comision as number;
+    expect(c("tiendanube_inicial")).toBeGreaterThan(c("tiendanube_esencial"));
+    expect(c("tiendanube_esencial")).toBeGreaterThan(c("tiendanube_impulso"));
+    expect(c("shopify_basic")).toBeGreaterThan(c("shopify_grow"));
+    expect(c("shopify_grow")).toBeGreaterThan(c("shopify_advanced"));
+    expect(c("shopify_advanced")).toBeGreaterThan(c("shopify_plus"));
   });
 });
 
@@ -162,12 +165,33 @@ describe("planes reales de Tiendanube (Escala/Evolución, relevado 2026-08-22)",
     }
   });
 
-  it("Escala y Evolución no tienen comisión pública fija (Tiendanube la muestra como 'a convenir'): resuelven null, no un número inventado", () => {
+  it("Escala y Evolución no tienen comisión pública fija (Tiendanube la muestra como 'a convenir'): comisionPlataformaDe() resuelve null, no un número inventado", () => {
     const d = (plan: string) => datosCon({ plataforma: "tiendanube", plan_plataforma: plan });
-    expect(COMISIONES_PLATAFORMA_DEFECTO["tiendanube_escala"]).toBeUndefined();
-    expect(COMISIONES_PLATAFORMA_DEFECTO["tiendanube_evolucion"]).toBeUndefined();
+    expect(COMISIONES_PLATAFORMA_DEFECTO["tiendanube_escala"]!.comision).toBeNull();
+    expect(COMISIONES_PLATAFORMA_DEFECTO["tiendanube_evolucion"]!.comision).toBeNull();
     expect(comisionPlataformaDe({}, d("escala"))).toBeNull();
     expect(comisionPlataformaDe({}, d("evolucion"))).toBeNull();
+  });
+
+  it("corrección 2026-08-22: 'comisión negociada' (plan conocido, sin valor público) es DISTINTO de 'plan desconocido' — entradaPlataforma() lo distingue", () => {
+    const d = (plan: string) => datosCon({ plataforma: "tiendanube", plan_plataforma: plan });
+
+    // Plan conocido con comisión negociada: entradaPlataforma() devuelve la
+    // entrada completa (no null), marcada comision_negociada:true.
+    const escala = entradaPlataforma({}, d("escala"));
+    expect(escala).not.toBeNull();
+    expect(escala?.comision).toBeNull();
+    expect(escala?.comision_negociada).toBe(true);
+    expect(escala?.plan).toBe("escala");
+
+    // Plan realmente desconocido: entradaPlataforma() devuelve null directo,
+    // sin comision_negociada (no hay nada que distinguir).
+    const desconocido = entradaPlataforma({}, d("plan_inexistente"));
+    expect(desconocido).toBeNull();
+
+    // Un plan con comisión pública normal nunca tiene comision_negociada.
+    const esencial = entradaPlataforma({}, d("esencial"));
+    expect(esencial?.comision_negociada).toBeUndefined();
   });
 
   it("un plan de Tiendanube que no existe en ningún lado sigue devolviendo null, sin inventar número", () => {
@@ -271,6 +295,71 @@ describe("comisionEfectivaCanal: metadatos de plataforma (plan, país, vigencia,
     expect(r.provisional).toBe(true);
     expect(r.plan).toBe("esencial");
     expect(r.vigencia).toMatch(/desde 2026-08-21/);
+  });
+
+  it("corrección 2026-08-22: plan con comisión negociada (Escala) sin comisión verificada cargada — margen retenido, aviso distinto de 'plan desconocido'", () => {
+    const d = datosCon({
+      plataforma: "tiendanube",
+      plan_plataforma: "escala",
+      pasarela: "mercado_pago",
+    });
+    const cfg: ConfigComisiones = { comision_pasarela: { mercado_pago: 0.05 } };
+    const r = comisionEfectivaCanal(d, cfg, "tienda_propia", 45000);
+    expect(r.valor).toBeNull();
+    expect(r.faltantes).toContain("comision_plataforma_negociada");
+    expect(r.faltantes).not.toContain("comision_plataforma");
+    expect(r.plan).toBe("escala");
+  });
+
+  it("corrección 2026-08-22: mismo plan (Escala), con comisión verificada cargada por el vendedor — margen se calcula normal, evidencia liquidacion_cliente", () => {
+    const d = datosCon({
+      plataforma: "tiendanube",
+      plan_plataforma: "escala",
+      pasarela: "mercado_pago",
+      canal_tienda_comision_pct: 1.5,
+    });
+    const cfg: ConfigComisiones = { comision_pasarela: { mercado_pago: 0.05 } };
+    const r = comisionEfectivaCanal(d, cfg, "tienda_propia", 45000);
+    // La comisión verificada por el cliente ya es el costo total observado:
+    // no se le vuelve a sumar la pasarela por separado (comportamiento
+    // preexistente, no algo que cambie esta corrección).
+    expect(r.valor).toBeCloseTo(0.015, 4);
+    expect(r.evidencia).toBe("liquidacion_cliente");
+    expect(r.faltantes).toEqual([]);
+  });
+
+  it("corrección 2026-08-22: plan realmente desconocido sigue devolviendo null sin el aviso de comisión negociada", () => {
+    const d = datosCon({
+      plataforma: "tiendanube",
+      plan_plataforma: "plan_inexistente",
+      pasarela: "mercado_pago",
+    });
+    const cfg: ConfigComisiones = { comision_pasarela: { mercado_pago: 0.05 } };
+    const r = comisionEfectivaCanal(d, cfg, "tienda_propia", 45000);
+    expect(r.valor).toBeNull();
+    expect(r.faltantes).toContain("comision_plataforma");
+    expect(r.faltantes).not.toContain("comision_plataforma_negociada");
+  });
+
+  it("endurecimiento: una entrada de configuración con comision:null pero SIN comision_negociada:true igual queda retenida, nunca se suma como cero", () => {
+    // Simula una fila de `configuracion` mal cargada (comision: null sin la
+    // bandera): el gate de seguridad es el valor de comision en sí, no la
+    // bandera — la bandera sólo decide qué aviso mostrar.
+    const d = datosCon({
+      plataforma: "tiendanube",
+      plan_plataforma: "esencial",
+      pasarela: "mercado_pago",
+    });
+    const cfg: ConfigComisiones = {
+      comision_plataforma: {
+        tiendanube_esencial: { comision: null, plan: "esencial" },
+      },
+      comision_pasarela: { mercado_pago: 0.05 },
+    };
+    const r = comisionEfectivaCanal(d, cfg, "tienda_propia", 45000);
+    expect(r.valor).toBeNull();
+    expect(r.faltantes).toContain("comision_plataforma");
+    expect(r.faltantes).not.toContain("comision_plataforma_negociada");
   });
 
   it("una entrada de plataforma marcada verificado:true resuelve como liquidacion_verificada, no benchmark", () => {
