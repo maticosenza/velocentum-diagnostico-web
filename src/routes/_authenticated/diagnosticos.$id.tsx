@@ -658,7 +658,7 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
       <dl>
         <Fila
           label="Piso teórico mensual (optimizando por compra, un conjunto)"
-          value={pesos(derivados.piso_mensual_un_conjunto)}
+          value={pesos(pa.piso_teorico_compra)}
         />
         <Fila
           label="Presupuesto de arranque (optimizando por evento intermedio)"

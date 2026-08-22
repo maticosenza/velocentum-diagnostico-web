@@ -68,6 +68,37 @@ porcentaje para que el margen deje de estar retenido? Esto afecta
 directamente la pantalla interna de diagnóstico para clientes reales que
 todavía no tengan ese campo cargado.
 
+## 2 · Valor por defecto del costo por evento intermedio (fase 6, presupuesto de arranque)
+
+**Contexto.** El "presupuesto de arranque optimizando por evento intermedio"
+(`derivados.presupuesto_arranque.arranque_evento_intermedio`,
+`src/lib/calculo-diagnostico.ts`) necesita un costo estimado por evento
+intermedio (agregar al carrito o iniciar checkout). Por instrucción explícita
+del usuario, ese costo "sale de configuración marcado como benchmark" — se
+implementó como una proporción del CPA objetivo
+(`factor_costo_evento_intermedio`, config), con un default de código
+(`FACTOR_COSTO_EVENTO_INTERMEDIO_DEFECTO = 0,2`, es decir 20% del CPA
+objetivo) documentado en `src/lib/calculo-diagnostico.ts`.
+
+**Por qué se anota igual, sin bloquear el bloque.** El patrón en sí (config
+primero, default de código marcado como benchmark, nunca cifra única, nunca
+confianza "alta") es exactamente lo que pidió el usuario y no requería
+autorización adicional. Pero el número concreto, 20%, no tiene respaldo de
+datos reales de ningún cliente — es una estimación razonable de que un
+evento intermedio (más frecuente, más barato) cuesta una fracción del costo
+de una compra, no una cifra derivada de benchmarks de la industria ni de
+datos propios. Hoy el radio de impacto es acotado: este valor sólo alimenta
+la pantalla interna de diagnóstico (`diagnosticos.$id.tsx`), no ningún
+documento cliente-facing (`src/documents/`). Auditoría independiente de fase
+6 (commit `0b803af`) recomendó dejarlo trazable acá antes de que, en el
+futuro, se conecte a un documento que llegue a un cliente.
+
+**Qué decidir.** Si Matías tiene una referencia mejor (data de campañas
+propias con optimización por agregar-al-carrito o iniciar-checkout vs.
+compra), reemplazar el 20% por ese número en la fila `configuracion` de la
+base (clave `factor_costo_evento_intermedio`) — no requiere tocar código. Si
+no hay objeción, el valor por defecto queda como está.
+
 ---
 
 *(Este archivo se actualiza a medida que aparecen nuevas decisiones
