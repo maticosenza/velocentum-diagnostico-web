@@ -201,6 +201,47 @@ describe("recompra / segunda compra (fase 8)", () => {
     cercaDe(f.monto, esperado);
     expect(f.detalle).toMatch(/se descartó del cálculo/);
   });
+
+  it("costo de campaña: se resta como monto agregado, distinto del cupón (corrección de deuda de fase 8)", () => {
+    const d: DatosDiagnostico = {
+      ...base,
+      ...cincoDatos,
+      recompra_costo_campana_mensual: 100_000,
+    } as DatosDiagnostico;
+    const r = calcularDiagnostico(d, cfg);
+    const f = r.fugas.find((x) => x.id === "recompra")!;
+    expect(f.calculable).toBe(true);
+    const margen = r.derivados.margen_contribucion!;
+    const esperado = 1000 * 0.15 * 40000 * margen - 100_000;
+    cercaDe(f.monto, esperado);
+  });
+
+  it("costo de campaña y cupón se descuentan juntos, cada uno con su propio mecanismo", () => {
+    const d: DatosDiagnostico = {
+      ...base,
+      ...cincoDatos,
+      retencion_usa_cupon: true,
+      retencion_cupon_pct: 10,
+      recompra_costo_campana_mensual: 50_000,
+    } as DatosDiagnostico;
+    const r = calcularDiagnostico(d, cfg);
+    const f = r.fugas.find((x) => x.id === "recompra")!;
+    const margen = r.derivados.margen_contribucion!;
+    const ticket = cincoDatos.recompra_ticket_segunda_compra as number;
+    const contribucionPorComprador = ticket * margen - ticket * 0.1;
+    const esperado = 1000 * 0.15 * contribucionPorComprador - 50_000;
+    cercaDe(f.monto, esperado);
+  });
+
+  it("sin costo de campaña cargado, no se resta nada (nunca se inventa un costo)", () => {
+    const d: DatosDiagnostico = { ...base, ...cincoDatos } as DatosDiagnostico;
+    const r = calcularDiagnostico(d, cfg);
+    const f = r.fugas.find((x) => x.id === "recompra")!;
+    expect(f.faltantes).not.toContain("recompra_costo_campana_mensual");
+    const margen = r.derivados.margen_contribucion!;
+    const esperado = 1000 * 0.15 * 40000 * margen;
+    cercaDe(f.monto, esperado);
+  });
 });
 
 function hallazgosDe(d: DatosDiagnostico, c: ConfiguracionCalculo = cfg) {
@@ -221,7 +262,7 @@ describe("mapeo de hallazgos de retención (fase 8, decisión comercial 4)", () 
 
     const servicio = hallazgosDe(d).find((h) => h.id === "retencion_recuperacion_carrito")!;
     expect(servicio.capa).toBe("servicio");
-    expect(servicio.servicio).toBe("Planificación de contenido");
+    expect(servicio.servicio).toBe("Planificación y creación de contenido");
   });
 
   it("plan con carrito nativo (Tiendanube Esencial) y sin ningún canal declarado: capa servicio directamente, sin recomendación de plan", () => {
@@ -251,7 +292,7 @@ describe("mapeo de hallazgos de retención (fase 8, decisión comercial 4)", () 
       retencion_canal_retargeting: true,
     };
     const servicio = hallazgosDe(d).find((h) => h.id === "retencion_recuperacion_carrito")!;
-    expect(servicio.servicio).toBe("Planificación de contenido y Meta Ads");
+    expect(servicio.servicio).toBe("Planificación y creación de contenido y Meta Ads");
   });
 
   it("capacidad desconocida (Empretienda): no se afirma nada ni se recomienda un plan", () => {

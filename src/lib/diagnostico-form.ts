@@ -246,6 +246,15 @@ export type DatosDiagnostico = {
   recompra_ventana_dias: number | null;
   recompra_ticket_segunda_compra: number | null;
   recompra_tiene_secuencia_postventa: boolean | null;
+  /**
+   * Costo de campaña de recompra (inversión en comunicación: herramienta de
+   * WhatsApp/email, pauta de reactivación, contenido de la secuencia
+   * postventa), corrección de deuda de fase 8, 2026-08-23. Distinto del
+   * cupón (`retencion_usa_cupon`/`retencion_cupon_pct`, descuento sobre el
+   * precio): éste es un monto mensual, no un porcentaje por comprador. Sin
+   * dato cargado no se resta ningún costo (nunca se inventa uno).
+   */
+  recompra_costo_campana_mensual: number | null;
   // Contenido (compartido, cualitativo)
   frecuencia_creativos: string;
   formato_creativos: string;
@@ -386,6 +395,7 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   recompra_ventana_dias: null,
   recompra_ticket_segunda_compra: null,
   recompra_tiene_secuencia_postventa: null,
+  recompra_costo_campana_mensual: null,
   frecuencia_creativos: "",
   formato_creativos: "",
   angulo_que_funciona: "",

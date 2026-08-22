@@ -1464,8 +1464,12 @@ export function calcularDiagnostico(
         const mejora = (tasaObjetivoRecompra as number) - (tasaActualRecompra as number);
         if (mejora > 0) {
           const compradoresAdicionales = (compradores as number) * mejora;
-          // Mismo criterio del cupón que recuperación de carrito: un solo
-          // incentivo declarado por el vendedor, reutilizado acá si aplica.
+          // Cupón: descuento sobre el precio, aplicado por comprador. Costo
+          // de campaña: inversión en comunicación (herramienta de WhatsApp o
+          // email, pauta de reactivación), un monto mensual agregado. Son dos
+          // costos distintos y se restan por separado (corrección de deuda
+          // de fase 8, 2026-08-23): antes esta fuga reutilizaba el cupón como
+          // si fuera también el costo de campaña.
           const cuponPct =
             d.retencion_usa_cupon === true && finito(d.retencion_cupon_pct)
               ? (d.retencion_cupon_pct as number) / 100
@@ -1478,7 +1482,10 @@ export function calcularDiagnostico(
             if (conCupon > 0) contribucionPorComprador = conCupon;
             else cuponDescartado = true;
           }
-          const montoExacto = compradoresAdicionales * contribucionPorComprador;
+          const costoCampana = finito(d.recompra_costo_campana_mensual)
+            ? (d.recompra_costo_campana_mensual as number)
+            : 0;
+          const montoExacto = compradoresAdicionales * contribucionPorComprador - costoCampana;
           const monto = Math.max(0, red(montoExacto, 0) ?? 0);
           fugas.push({
             id: "recompra",
@@ -1505,6 +1512,7 @@ export function calcularDiagnostico(
                   "recompra_ticket_segunda_compra",
                   "recompra_esperada",
                   "margen_contribucion",
+                  "recompra_costo_campana_mensual",
                 ],
               }),
             ],

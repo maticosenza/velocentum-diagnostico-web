@@ -330,7 +330,11 @@ siguiente acción.
   `retencion_cupon_pct`, `retencion_recuperacion_pct_actual`;
   `recompra_compradores_unicos`, `recompra_tasa_actual_pct`,
   `recompra_ventana_dias`, `recompra_ticket_segunda_compra`,
-  `recompra_tiene_secuencia_postventa`. Todos opcionales, sólo cargados si
+  `recompra_tiene_secuencia_postventa`, `recompra_costo_campana_mensual`
+  (agregado 2026-08-23, corrección de deuda: antes recompra reutilizaba el
+  cupón también como costo de campaña; son dos costos distintos — el cupón
+  es descuento sobre el precio, la campaña es inversión en comunicación —
+  y ahora se restan por separado). Todos opcionales, sólo cargados si
   aportan a un cálculo.
 - **Fugas nuevas (`src/lib/calculo-diagnostico.ts`):** `recuperacion_carrito`
   y `recompra`, con impactos tipados `contribucion_incremental`. Base =
@@ -351,23 +355,30 @@ siguiente acción.
   servicio) para WooCommerce. `recompra` como hallazgo separado, capa
   servicio sólo si los cinco datos mínimos permiten valorizarla.
 - **Catálogo de servicios (`SERVICIOS`, `src/lib/propuesta.ts`):**
-  reconciliado a los seis de la decisión comercial 5 (se agregó "Diseño de
-  marca", que faltaba por completo, y se renombró "Web e-commerce" a
-  "Desarrollo y optimización web").
-- **Pruebas existentes:** `src/lib/retencion-fase8.test.ts` (22 casos:
-  fugas, regla del cupón, encadenamiento de hallazgos, casos límite de
-  Mercado Libre/WooCommerce/capacidad desconocida).
+  reconciliado EXACTAMENTE al texto de la decisión comercial 5 (2026-08-23):
+  "Meta Ads", "Google Ads", "Product Ads", "Desarrollo y optimización web",
+  "Planificación y creación de contenido", "Diseño de marca". Las dos
+  últimas correcciones de nombre ("Product Ads en Mercado Libre" → "Product
+  Ads"; "Planificación de contenido" → "Planificación y creación de
+  contenido") cerraron la deuda cosmética que había quedado documentada en
+  la entrada 5 de `docs/decisiones-pendientes.md`.
+- **Pruebas existentes:** `src/lib/retencion-fase8.test.ts` (25 casos:
+  fugas, regla del cupón, costo de campaña separado del cupón,
+  encadenamiento de hallazgos, casos límite de Mercado
+  Libre/WooCommerce/capacidad desconocida).
 - **Qué falta todavía:**
   - **Recompra sigue sin frecuencia de compra histórica, LTV ni cohortes**
     — este bloque agregó la valorización de UNA mejora de tasa de recompra
     puntual, no un motor de LTV/cohortes completo.
-  - "Costo de campañas" (mencionado en la fórmula del pedido, junto al
-    cupón) no tiene un campo propio: se interpretó que el cupón es el único
-    costo de incentivo modelado explícitamente, documentado en el commit;
-    si Matías quiere un costo de campaña separado, es un campo nuevo.
   - No hay UI para email marketing/fidelización más allá de los campos
     cargados; sigue siendo relevamiento de datos, no una integración real
     con ninguna plataforma de email/WhatsApp.
+  - La fórmula de recuperación de carrito sigue sin un campo propio de
+    costo de campaña (sólo tiene cupón): el texto original de fase 8
+    mencionaba "incentivo y costos de campaña" para las dos fugas, pero la
+    corrección de deuda de 2026-08-23 sólo pidió separarlo para recompra.
+    Si en algún momento se necesita lo mismo para recuperación de carrito,
+    es un campo nuevo análogo.
 - **Riesgo:** ninguno nuevo más allá de lo ya documentado en las entradas
   4-7 de `docs/decisiones-pendientes.md`.
 - **Bloqueo:** ninguno técnico.

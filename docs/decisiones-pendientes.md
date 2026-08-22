@@ -209,6 +209,10 @@ hay servicios fuera de esta lista):
 5. Planificación y creación de contenido.
 6. Diseño de marca (branding).
 
+*(Los paréntesis de 3 y 6 son aclaración, no parte del string: el código
+usa exactamente "Product Ads" y "Diseño de marca", sin el paréntesis —
+mismo criterio para los dos, reconciliado 2026-08-23.)*
+
 **Consecuencia para el mapeo de hallazgos.** Cualquier hallazgo que no
 mapee a uno de estos seis servicios queda en capa `"recomendacion"`, nunca
 en capa `"servicio"`.

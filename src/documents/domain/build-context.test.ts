@@ -107,8 +107,8 @@ describe("adaptador conservador a DocumentContextV1", () => {
     expect(c.actual.roasProductAds).toMatchObject({ estado: "calculado", valor: 5 });
     expect(c.actual.merMarketplace).not.toEqual(c.actual.roasProductAds);
     expect(c.servicios).toContainEqual({
-      id: "product_ads_en_mercado_libre",
-      nombre: "Product Ads en Mercado Libre",
+      id: "product_ads",
+      nombre: "Product Ads",
       alcance: [],
     });
   });

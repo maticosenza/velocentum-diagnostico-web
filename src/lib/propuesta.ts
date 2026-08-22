@@ -12,19 +12,17 @@ import { entradaCapacidadesPlataforma, planConCarritoNativoDe } from "./canales"
  * Catálogo cerrado de seis servicios, sin excepciones (decisión comercial 5,
  * `docs/decisiones-pendientes.md`, 2026-08-22). Cualquier hallazgo que no
  * mapee a uno de estos seis queda en capa "recomendacion", nunca en
- * "servicio". Nombres reconciliados con la decisión: "Product Ads en
- * Mercado Libre" y "Planificación de contenido" son los mismos nombres que
- * ya usaba este archivo antes de la decisión, sólo se agregó "Diseño de
- * marca" (faltaba por completo) y se renombró "Web e-commerce" a
- * "Desarrollo y optimización web" para que coincida textualmente con el
- * catálogo cerrado.
+ * "servicio". Nombres reconciliados EXACTAMENTE con la redacción de la
+ * decisión (corrección de deuda de fase 8, 2026-08-23: antes el código
+ * usaba "Product Ads en Mercado Libre" y "Planificación de contenido",
+ * variantes cercanas pero no idénticas al texto cerrado).
  */
 export const SERVICIOS = [
   "Meta Ads",
   "Google Ads",
-  "Product Ads en Mercado Libre",
+  "Product Ads",
   "Desarrollo y optimización web",
-  "Planificación de contenido",
+  "Planificación y creación de contenido",
   "Diseño de marca",
 ] as const;
 
@@ -216,12 +214,12 @@ export function mapearHallazgos(
         datos.retencion_canal_email === false &&
         datos.retencion_canal_whatsapp === false &&
         datos.retencion_canal_retargeting === false;
-      // "Planificación de contenido y Meta Ads según corresponda": se suma
+      // "Planificación y creación de contenido y Meta Ads según corresponda": se suma
       // Meta Ads cuando el retargeting es parte de la implementación.
       const servicioFlujos =
         datos.retencion_canal_retargeting === true
-          ? "Planificación de contenido y Meta Ads"
-          : "Planificación de contenido";
+          ? "Planificación y creación de contenido y Meta Ads"
+          : "Planificación y creación de contenido";
 
       if (esWoocommerce && nativa === false) {
         // WooCommerce no tiene carrito nativo y no está plan-gateado (es
@@ -287,7 +285,7 @@ export function mapearHallazgos(
         id: "recompra",
         titulo: "Oportunidad de segunda compra (recompra)",
         capa: "servicio",
-        servicio: "Planificación de contenido",
+        servicio: "Planificación y creación de contenido",
       });
     } else {
       h.push({
@@ -307,7 +305,7 @@ export function mapearHallazgos(
       id: "clips_ml",
       titulo: "Publicaciones de Mercado Libre sin clips",
       capa: "servicio",
-      servicio: "Product Ads en Mercado Libre",
+      servicio: "Product Ads",
     });
   }
 
@@ -316,7 +314,7 @@ export function mapearHallazgos(
       id: "creativos",
       titulo: "Ritmo de creativos nuevos por mes",
       capa: "servicio",
-      servicio: "Planificación de contenido",
+      servicio: "Planificación y creación de contenido",
     });
   }
 
@@ -332,7 +330,7 @@ export function mapearHallazgos(
         id: "angulo",
         titulo: "Sin ángulo identificado o sin dolor del cliente definido",
         capa: "servicio",
-        servicio: "Planificación de contenido",
+        servicio: "Planificación y creación de contenido",
       });
     }
   }
@@ -343,7 +341,7 @@ export function mapearHallazgos(
         id: "product_ads",
         titulo: "Product Ads sin ROAS objetivo por familia",
         capa: "servicio",
-        servicio: "Product Ads en Mercado Libre",
+        servicio: "Product Ads",
       });
     }
   }

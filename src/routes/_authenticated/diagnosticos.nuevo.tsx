@@ -1128,6 +1128,12 @@ function NuevoDiagnostico() {
                       value={datos.recompra_tiene_secuencia_postventa}
                       onChange={(v) => set("recompra_tiene_secuencia_postventa", v)}
                     />
+                    <CampoPesos
+                      label="Costo mensual de la campaña de recompra"
+                      value={datos.recompra_costo_campana_mensual}
+                      onChange={(v) => set("recompra_costo_campana_mensual", v)}
+                      ayuda="Inversión en comunicación (herramienta, pauta de reactivación, contenido), distinta del cupón: es un monto mensual, no un descuento sobre el precio."
+                    />
                   </div>
                 </div>
               </div>
