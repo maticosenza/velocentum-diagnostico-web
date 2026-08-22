@@ -113,6 +113,36 @@ compra), reemplazar el 20% por ese número en la fila `configuracion` de la
 base (clave `factor_costo_evento_intermedio`) — no requiere tocar código. Si
 no hay objeción, el valor por defecto queda como está.
 
+## 3 · Nueve de las catorce fases del plan maestro no tienen definición verificable en este repositorio
+
+**Contexto.** La reconciliación del plan maestro (2026-08-22,
+`docs/plan-maestro-fases.md`) pidió un único documento con las catorce
+fases normalizadas. La instrucción dio nombre y estado real para cinco:
+fase 3 (productos dinámicos y cobertura), fase 5 (plataformas y
+comisiones), fase 6 (presupuesto de arranque), fase 7 (medición y
+publicidad por plataforma) y fase 8 (retención, carrito y recompra). Para
+las fases 1, 2, 4, 9, 10, 11, 12, 13 y 14, este repositorio no tiene ningún
+nombre, alcance ni evidencia — ni en el código, ni en los tests, ni en
+ningún documento de `docs/`, ni en los handoffs de sesiones anteriores.
+
+**Por qué no se completó igual.** Completar esas nueve filas habría exigido
+inventar nombres y alcances de fase sin ninguna fuente que los respalde —
+exactamente el tipo de dato no resuelto en los documentos existentes que la
+regla de parada de este trabajo pide no asumir unilateralmente. El plan
+maestro consolidado que las define vive fuera de este repositorio (en el
+controlador o en la documentación de producto de Matías), no acá.
+
+**Qué se hizo en su lugar.** Se dejaron las nueve filas explícitamente
+marcadas "SIN DEFINICIÓN VERIFICABLE ACÁ" en `docs/plan-maestro-fases.md`,
+en vez de completarlas con contenido plausible pero no verificado. Se
+señaló, sin asumirla, una posible relación entre esas fases y el trabajo
+mencionado sin numeración ni alcance en `docs/cola-nocturna.md`
+("mayorista/mixto, retención y rediseño integral").
+
+**Qué decidir.** Si Matías comparte el nombre y alcance real de las fases
+1, 2, 4 y 9 a 14 (o el documento completo del plan maestro), se puede
+completar `docs/plan-maestro-fases.md` sin tocar código.
+
 ---
 
 *(Este archivo se actualiza a medida que aparecen nuevas decisiones
