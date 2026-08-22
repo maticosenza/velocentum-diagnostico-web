@@ -169,13 +169,17 @@ function NuevoDiagnostico() {
   }, []);
 
   const bloquesVisibles = useMemo(
-    () => BLOQUES.filter((b) => b.id !== "mercado_libre" || datos.vende_mercado_libre),
-    [datos.vende_mercado_libre],
+    () =>
+      BLOQUES.filter((b) => b.id !== "mercado_libre" || datos.vende_mercado_libre).filter(
+        (b) => b.id !== "mayorista" || datos.venta_mayorista_activa === true,
+      ),
+    [datos.vende_mercado_libre, datos.venta_mayorista_activa],
   );
 
   useEffect(() => {
     if (bloque === "mercado_libre" && !datos.vende_mercado_libre) setBloque("identificacion");
-  }, [bloque, datos.vende_mercado_libre]);
+    if (bloque === "mayorista" && datos.venta_mayorista_activa !== true) setBloque("identificacion");
+  }, [bloque, datos.vende_mercado_libre, datos.venta_mayorista_activa]);
 
   // Atajos: Alt+1..8 salta a una pestaña, Alt+←/→ se mueve de a una
   useEffect(() => {
@@ -531,6 +535,18 @@ function NuevoDiagnostico() {
                   value={datos.vende_mercado_libre}
                   onChange={(v) => set("vende_mercado_libre", v === true)}
                   ayuda="Si es que sí, se habilita la pestaña de Mercado Libre."
+                />
+                <CampoSiNo
+                  label="¿Tiene canal minorista activo?"
+                  value={datos.venta_minorista_activa}
+                  onChange={(v) => set("venta_minorista_activa", v)}
+                  ayuda="Sin responder se asume que sí (compatibilidad con diagnósticos existentes). Marcá que no sólo si el negocio es 100% mayorista, sin venta al público."
+                />
+                <CampoSiNo
+                  label="¿Tiene canal mayorista activo?"
+                  value={datos.venta_mayorista_activa}
+                  onChange={(v) => set("venta_mayorista_activa", v)}
+                  ayuda="Si es que sí, se habilita la pestaña de Mayorista. Minorista, Mayorista y Mixto son la misma combinación de estos dos canales."
                 />
               </div>
             )}
@@ -1204,6 +1220,212 @@ function NuevoDiagnostico() {
                   onChange={(v) => set("ml_tiene_clips", v)}
                   ayuda="Vacío significa que no se preguntó: no se asume que faltan."
                 />
+              </div>
+            )}
+
+            {bloque === "mayorista" && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-[13px] font-medium text-muted-foreground">
+                    Aptitud y precio de lista
+                  </h3>
+                  <div className="mt-4 grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                    <CampoPorcentaje
+                      label="Catálogo apto para mayorista"
+                      value={datos.mayorista_pct_catalogo_apto}
+                      onChange={(v) => set("mayorista_pct_catalogo_apto", v)}
+                      maximo={100}
+                    />
+                    <CampoPesos
+                      label="Precio mayorista de lista"
+                      value={datos.mayorista_precio_lista}
+                      onChange={(v) => set("mayorista_precio_lista", v)}
+                    />
+                    <CampoSiNo
+                      label="¿Tiene escalas por volumen?"
+                      value={datos.mayorista_tiene_escalas_volumen}
+                      onChange={(v) => set("mayorista_tiene_escalas_volumen", v)}
+                      ayuda="Contextual: hoy no alimenta ningún cálculo, sólo informa."
+                    />
+                    <CampoTexto
+                      label="Tipo de comprador"
+                      value={datos.mayorista_tipo_comprador}
+                      onChange={(v) => set("mayorista_tipo_comprador", v)}
+                      placeholder="Distribuidor, revendedor, otro rubro..."
+                    />
+                    <CampoTexto
+                      label="Condiciones de pago"
+                      value={datos.mayorista_condiciones_pago}
+                      onChange={(v) => set("mayorista_condiciones_pago", v)}
+                      placeholder="Contado, cuenta corriente, cheque a 30 días..."
+                    />
+                    <CampoTexto
+                      label="Canal mayorista usado"
+                      value={datos.mayorista_canal_usado}
+                      onChange={(v) => set("mayorista_canal_usado", v)}
+                      placeholder="Catálogo con login, WhatsApp/email, planilla..."
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-5">
+                  <h3 className="text-[13px] font-medium text-muted-foreground">
+                    Piso de precio (costos variables mayoristas)
+                  </h3>
+                  <div className="mt-4 grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                    <CampoPesos
+                      label="Costo del producto"
+                      value={datos.mayorista_costo_producto}
+                      onChange={(v) => set("mayorista_costo_producto", v)}
+                    />
+                    <CampoPesos
+                      label="Preparación y logística B2B"
+                      value={datos.mayorista_costo_logistica_b2b}
+                      onChange={(v) => set("mayorista_costo_logistica_b2b", v)}
+                    />
+                    <CampoPesos
+                      label="Comisión comercial"
+                      value={datos.mayorista_comision_comercial}
+                      onChange={(v) => set("mayorista_comision_comercial", v)}
+                    />
+                    <CampoPesos
+                      label="Costo de financiación"
+                      value={datos.mayorista_costo_financiacion}
+                      onChange={(v) => set("mayorista_costo_financiacion", v)}
+                    />
+                    <CampoPesos
+                      label="Impuestos y cobranza"
+                      value={datos.mayorista_impuestos_cobranza}
+                      onChange={(v) => set("mayorista_impuestos_cobranza", v)}
+                    />
+                    <CampoPorcentaje
+                      label="Margen de contribución objetivo"
+                      value={datos.mayorista_margen_objetivo_pct}
+                      onChange={(v) => set("mayorista_margen_objetivo_pct", v)}
+                      maximo={99}
+                      ayuda="Decisión comercial del cliente, no un benchmark: sin este dato no hay piso de precio."
+                    />
+                    <CampoPesos
+                      label="Precio mayorista efectivamente cobrado hoy"
+                      value={datos.mayorista_precio_venta_real}
+                      onChange={(v) => set("mayorista_precio_venta_real", v)}
+                    />
+                    <CampoPesos
+                      label="Precio minorista de referencia (mismo producto)"
+                      value={datos.mayorista_precio_minorista_referencia}
+                      onChange={(v) => set("mayorista_precio_minorista_referencia", v)}
+                      ayuda="Para calcular el descuento máximo viable frente al minorista."
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-5">
+                  <h3 className="text-[13px] font-medium text-muted-foreground">
+                    Pedido mínimo y capacidad
+                  </h3>
+                  <div className="mt-4 grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                    <CampoPesos
+                      label="Pedido mínimo (monto)"
+                      value={datos.mayorista_pedido_minimo_monto}
+                      onChange={(v) => set("mayorista_pedido_minimo_monto", v)}
+                    />
+                    <CampoNumero
+                      label="Pedido mínimo (unidades)"
+                      value={datos.mayorista_pedido_minimo_unidades}
+                      onChange={(v) => set("mayorista_pedido_minimo_unidades", v)}
+                    />
+                    <CampoNumero
+                      label="Capacidad máxima (unidades/mes)"
+                      value={datos.mayorista_capacidad_maxima_unidades_mes}
+                      onChange={(v) => set("mayorista_capacidad_maxima_unidades_mes", v)}
+                      ayuda="Techo antes de romper stock o capacidad de servicio."
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-5">
+                  <h3 className="text-[13px] font-medium text-muted-foreground">
+                    Cartera actual y recompra
+                  </h3>
+                  <div className="mt-4 grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                    <CampoNumero
+                      label="Cuentas activas"
+                      value={datos.mayorista_cuentas_activas}
+                      onChange={(v) => set("mayorista_cuentas_activas", v)}
+                      ayuda="Cartera ya activa, un hecho: no se proyecta."
+                    />
+                    <CampoPesos
+                      label="Ticket inicial"
+                      value={datos.mayorista_ticket_inicial}
+                      onChange={(v) => set("mayorista_ticket_inicial", v)}
+                    />
+                    <CampoPesos
+                      label="Ticket de recompra"
+                      value={datos.mayorista_ticket_recompra}
+                      onChange={(v) => set("mayorista_ticket_recompra", v)}
+                    />
+                    <CampoNumero
+                      label="Frecuencia de recompra (días)"
+                      value={datos.mayorista_frecuencia_recompra_dias}
+                      onChange={(v) => set("mayorista_frecuencia_recompra_dias", v)}
+                    />
+                    <CampoPesos
+                      label="Objetivo de facturación mensual mayorista"
+                      value={datos.mayorista_objetivo_facturacion_mensual}
+                      onChange={(v) => set("mayorista_objetivo_facturacion_mensual", v)}
+                      ayuda="Para calcular cuántas cuentas hacen falta para llegar a ese objetivo."
+                    />
+                    <CampoPorcentaje
+                      label="Concentración en el cliente más grande"
+                      value={datos.mayorista_concentracion_pct_top_cliente}
+                      onChange={(v) => set("mayorista_concentracion_pct_top_cliente", v)}
+                      maximo={100}
+                      ayuda="Se informa el dato, sin umbral de riesgo inventado."
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-5">
+                  <h3 className="text-[13px] font-medium text-muted-foreground">
+                    Adquisición de cuentas nuevas (escenario de activación)
+                  </h3>
+                  <div className="mt-4 grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                    <CampoNumero
+                      label="Leads mensuales"
+                      value={datos.mayorista_leads_mensuales}
+                      onChange={(v) => set("mayorista_leads_mensuales", v)}
+                    />
+                    <CampoNumero
+                      label="Cotizaciones mensuales"
+                      value={datos.mayorista_cotizaciones_mensuales}
+                      onChange={(v) => set("mayorista_cotizaciones_mensuales", v)}
+                    />
+                    <CampoNumero
+                      label="Tiempo de cierre (días)"
+                      value={datos.mayorista_tiempo_cierre_dias}
+                      onChange={(v) => set("mayorista_tiempo_cierre_dias", v)}
+                    />
+                    <CampoPesos
+                      label="Costo de adquisición por cuenta"
+                      value={datos.mayorista_cac_por_cuenta}
+                      onChange={(v) => set("mayorista_cac_por_cuenta", v)}
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-5">
+                  <h3 className="text-[13px] font-medium text-muted-foreground">
+                    Anti-canibalización
+                  </h3>
+                  <div className="mt-4 grid gap-x-7 gap-y-6 sm:grid-cols-2">
+                    <CampoSiNo
+                      label="¿El precio mayorista queda visible para el cliente minorista?"
+                      value={datos.mayorista_precio_visible_en_plataforma_minorista}
+                      onChange={(v) => set("mayorista_precio_visible_en_plataforma_minorista", v)}
+                      ayuda="Mismo dominio o catálogo, sin acceso restringido."
+                    />
+                  </div>
+                </div>
               </div>
             )}
 

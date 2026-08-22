@@ -382,37 +382,99 @@ siguiente acción.
 - **Riesgo:** ninguno nuevo más allá de lo ya documentado en las entradas
   4-7 de `docs/decisiones-pendientes.md`.
 - **Bloqueo:** ninguno técnico.
-- **Siguiente acción:** fase 9 (mayorista) sigue bloqueada comercialmente
-  hasta detectar el canal mayorista por plataforma (ya relevado,
-  `CAPACIDADES_PLATAFORMA_DEFECTO.canal_mayorista`) y mapear sus hallazgos
-  a los seis servicios — no implementado en este bloque.
+- **Siguiente acción:** fase 9 (mayorista) implementada en un bloque
+  posterior (ver esa sección más abajo) — detección del canal mayorista
+  por plataforma y mapeo de hallazgos, mismo criterio que acá.
 
-### Fase 9 — Mayorista y Mixto — **PENDIENTE**
+### Fase 9 — Mayorista y Mixto — **PARCIAL, motor de cálculo y mapeo de hallazgos implementados (2026-08-22)**
 
 - **Denominación del plan maestro:** "Mayorista y Mixto".
-- **Estado real:** pendiente, sin cambios desde el 21/08. Corresponde al
-  trabajo que `docs/cola-nocturna.md` menciona sin numeración ni alcance
-  como "mayorista-mixto" — confirmado ahora que es la fase 9.
-- **Evidencia de lo poco que existe:** sólo un *placeholder* de tipo y un
-  valor hardcodeado, sin ninguna lógica de negocio detrás:
-  `modalidad: { minorista: boolean; mayorista: boolean }`
-  (`src/documents/domain/types.ts:257-258`),
-  consumido como `modalidad: { minorista: true, mayorista: false }` fijo
-  (`src/documents/domain/build-context.ts:417`) — no depende de ningún
-  dato del formulario, es un valor constante.
-- **Qué falta concretamente:** todo lo que el plan maestro pide — precios y
-  escalas mayoristas, pedido mínimo, costos B2B, condiciones de pago,
-  funnel de cuentas, recompra, capacidad, concentración, adquisición
-  (Mayorista); canales activables, variables compartidas una sola vez,
-  comparabilidad, anti-canibalización (Mixto). No existe ningún campo en
-  `src/lib/diagnostico-form.ts` para pedido mínimo, precio por escala,
-  condiciones de pago B2B ni concentración de cartera.
-- **Pruebas existentes:** ninguna (no hay lógica que probar).
-- **Pruebas faltantes:** todas — dependen del alcance que se defina.
-- **Riesgo:** ninguno técnico nuevo; el riesgo es puramente de alcance.
-- **Bloqueo:** comercial — el plan maestro es explícito: hace falta
-  definir qué servicios B2B vende Velocentum antes de programar esta fase.
-- **Siguiente acción:** no programar nada hasta esa definición comercial.
+- **Decisión comercial que la desbloqueó:** entrada 6 de
+  `docs/decisiones-pendientes.md` — el mismo catálogo de seis servicios,
+  aplicado a otro objetivo; no hay servicios B2B nuevos.
+- **Arquitectura:** mayorista es un CANAL COMBINABLE (`venta_mayorista_activa`),
+  no un tipo de diagnóstico separado. `venta_minorista_activa` es `true`
+  por defecto (compatibilidad total con diagnósticos existentes);
+  Minorista/Mayorista/Mixto (`modalidadComercial()`, `src/lib/mayorista.ts`)
+  se derivan de la combinación de ambos, nunca se cargan directamente.
+- **Módulo nuevo (`src/lib/mayorista.ts`):** motor de cálculo paralelo e
+  independiente del engine minorista (`calculo-diagnostico.ts`) — usa su
+  propia fórmula de piso de precio (cost-plus con componentes nombrados),
+  distinta de `margenDeCanal()`. Nunca suma con `oportunidad_total` ni con
+  las tres magnitudes de `impacto-economico.ts`: sus salidas son economía
+  unitaria y estado de cartera, no fugas mensuales de la misma naturaleza.
+  Expuesto en `derivados.mayorista` (`null` si el canal no está activo,
+  mismo criterio que una fuga sin datos).
+- **Fórmula del piso de precio (literal, tal como se definió):**
+  costos variables = costo del producto + logística B2B + comisión
+  comercial + costo de financiación + impuestos y cobranza (los cinco son
+  necesarios: uno faltante retiene todo el cálculo, nunca se asume cero);
+  precio mínimo = costos variables / (1 - margen objetivo); descuento
+  máximo viable = 1 - (precio mínimo / precio minorista de referencia).
+- **Otras salidas:** margen de contribución real (con el precio
+  efectivamente cobrado), pedido mínimo rentable, contribución por pedido
+  (con el ticket de recompra), facturación recurrente de la cartera actual,
+  cuentas necesarias para un objetivo, capacidad máxima de facturación
+  (antes de romper stock/servicio), recupero del CAC en meses.
+- **Regla dura respetada:** cartera actual (hecho) y escenario de
+  activación (leads → cuentas nuevas, proyección) son campos
+  completamente separados en `MayoristaDerivado`, nunca combinados en una
+  cifra. El escenario de activación sólo proyecta una cantidad si hay una
+  tasa de cierre en configuración (`mayorista_tasa_cierre_esperada`, sin
+  default de código — mismo criterio que `recuperacion_carrito_esperada`);
+  sin esa config, documenta el funnel declarado (leads, cotizaciones,
+  tiempo de cierre) sin afirmar una cifra.
+- **Detección de canal por plataforma:** usa
+  `CAPACIDADES_PLATAFORMA_DEFECTO.canal_mayorista` (ya relevado, fase 6);
+  `planConCanalMayoristaDe()` (nuevo, `src/lib/canales.ts`) sugiere el
+  primer plan de la plataforma que sí lo ofrece, mismo criterio que
+  `planConCarritoNativoDe()` de fase 8.
+- **Mapeo de hallazgos (`src/lib/propuesta.ts`):** canal no disponible
+  (recomendación de plan + servicio "Desarrollo y optimización web");
+  capacidad desconocida (contexto, sin recomendar plan); riesgo de
+  canibalización si el precio mayorista es visible al cliente minorista
+  (contexto, no un servicio); precio de venta por debajo del piso
+  (recomendación); pedido mínimo declarado por debajo del piso rentable
+  (recomendación); cartera activa sin funnel de captación declarado
+  (servicio "Meta Ads y Google Ads" — mismo catálogo, objetivo B2B);
+  concentración de cartera (contexto, se informa el dato sin clasificarlo
+  en riesgo con un umbral inventado).
+- **Campos nuevos (`src/lib/diagnostico-form.ts`):** ~30 campos, todos
+  opcionales (`venta_minorista_activa`, `venta_mayorista_activa`, y el
+  resto con prefijo `mayorista_`: catálogo apto, precio de lista, escalas,
+  pedido mínimo, capacidad, tipo de comprador, condiciones de pago,
+  cuentas activas, tickets, frecuencia, leads/cotizaciones/tiempo de
+  cierre, CAC, concentración, canal usado, los cinco costos del piso,
+  margen objetivo, precio de venta real, precio minorista de referencia,
+  objetivo de facturación, visibilidad anti-canibalización). Nueva pestaña
+  "Mayorista" en el formulario, visible sólo con `venta_mayorista_activa`.
+- **Pruebas:** `src/lib/mayorista-fase9.test.ts` (41 casos): modalidad
+  derivada, activación del bloque, las cinco fórmulas del piso de precio,
+  pedido mínimo/contribución por pedido, cartera actual vs. objetivo
+  (nunca combinados), capacidad máxima, recupero de CAC, escenario de
+  activación (sin leads / con leads sin config / con leads y config),
+  detección de canal por plataforma con datos reales de
+  `CAPACIDADES_PLATAFORMA_DEFECTO`, anti-canibalización, y el mapeo
+  completo de hallazgos.
+- **Qué falta todavía:**
+  - `src/documents/domain/build-context.ts:417` sigue con
+    `modalidad: { minorista: true, mayorista: false }` hardcodeado: el
+    canal mayorista todavía no llega a la capa de generación de
+    documentos/PDF. Fuera de alcance de este bloque (que fue
+    específicamente el motor de cálculo + mapeo de hallazgos, no la capa
+    documental); queda para cuando se trabaje la integración de fase 9 con
+    fases 11-13.
+  - No hay soporte estructurado para escalas de precio por volumen (tablas
+    de tramos): `mayorista_tiene_escalas_volumen` es puramente contextual,
+    ninguna fórmula la usa — no había una fórmula definida para tramos.
+  - Sin umbral de riesgo para concentración de cartera (a propósito: no
+    hay un benchmark autorizado, se informa el dato crudo).
+- **Riesgo:** ninguno nuevo más allá de lo ya documentado en la entrada 6
+  de `docs/decisiones-pendientes.md`.
+- **Bloqueo:** ninguno técnico.
+- **Siguiente acción:** integrar `modalidad`/`mayorista` a la capa
+  documental cuando se trabajen las fases 11-13 (no programado en este
+  bloque).
 
 ### Fase 10 — Motor de escenarios a 90 días — **TÉCNICAMENTE COMPLETA**
 

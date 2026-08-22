@@ -7,6 +7,7 @@ import type { DatosDiagnostico, NotasDiagnostico } from "./diagnostico-form";
 import type { Derivados, EstadosBloque, Fuga } from "./calculo-diagnostico";
 import { productosCargados } from "./calculo-diagnostico";
 import { entradaCapacidadesPlataforma, planConCarritoNativoDe } from "./canales";
+import { ventaPorDebajoDelPiso, pedidoMinimoDeclaradoInsuficiente } from "./mayorista";
 
 /**
  * Catálogo cerrado de seis servicios, sin excepciones (decisión comercial 5,
@@ -294,6 +295,105 @@ export function mapearHallazgos(
         capa: "recomendacion",
         servicio: null,
         nota: "Faltan datos para calcular la oportunidad de recompra: queda como recomendación cualitativa, sin una cifra estimada.",
+      });
+    }
+  }
+
+  // Mayorista (fase 9, decisión comercial 6, 2026-08-22): canal
+  // combinable, mismo catálogo de seis servicios aplicado a otro objetivo.
+  // `derivados.mayorista` es null cuando el canal no está activo (mismo
+  // criterio que una fuga sin datos: el bloque entero no existe).
+  if (derivados.mayorista) {
+    const m = derivados.mayorista;
+
+    if (m.canal_disponible === false) {
+      h.push({
+        id: "mayorista_canal_no_disponible",
+        titulo: "El plan actual no incluye canal mayorista nativo",
+        capa: "recomendacion",
+        servicio: null,
+        nota: m.plan_sugerido
+          ? `Subir al plan ${m.plan_sugerido} para habilitar el canal mayorista.`
+          : "Subir a un plan que incluya canal mayorista, o evaluar desarrollo a medida.",
+      });
+      h.push({
+        id: "mayorista_implementacion",
+        titulo: "Implementación del canal mayorista",
+        capa: "servicio",
+        servicio: "Desarrollo y optimización web",
+      });
+    } else if (m.canal_disponible === null) {
+      h.push({
+        id: "mayorista_capacidad_desconocida",
+        titulo: "No se pudo confirmar si el plan incluye canal mayorista nativo",
+        capa: "contexto",
+        servicio: null,
+        nota: "Sin esa confirmación no se recomienda un cambio de plan ni se afirma la capacidad.",
+      });
+    }
+
+    // Riesgo de canibalización: advertencia, no un servicio — la corrección
+    // (separar catálogos, restringir acceso) puede ser operativa, no
+    // necesariamente algo que vendemos.
+    if (m.riesgo_canibalizacion) {
+      h.push({
+        id: "mayorista_canibalizacion",
+        titulo: "El precio mayorista queda visible para el cliente minorista",
+        capa: "contexto",
+        servicio: null,
+        nota: "Riesgo de canibalización: conviene separar el catálogo mayorista del minorista (acceso restringido, dominio o canal distinto).",
+      });
+    }
+
+    if (ventaPorDebajoDelPiso(datos, m)) {
+      h.push({
+        id: "mayorista_precio_bajo_el_piso",
+        titulo: "El precio mayorista actual está por debajo del piso rentable",
+        capa: "recomendacion",
+        servicio: null,
+        nota: "Con los costos y el margen objetivo declarados, el precio hoy no cubre el piso calculado.",
+      });
+    }
+
+    if (pedidoMinimoDeclaradoInsuficiente(datos, m)) {
+      h.push({
+        id: "mayorista_pedido_minimo_insuficiente",
+        titulo: "El pedido mínimo declarado no alcanza el piso rentable",
+        capa: "recomendacion",
+        servicio: null,
+        nota: "El pedido mínimo en pesos que hoy exige la política comercial queda por debajo del que haría rentable cada pedido.",
+      });
+    }
+
+    // Cartera activa sin funnel de captación declarado: oportunidad de
+    // generación de demanda B2B, mismo catálogo (Meta/Google Ads), otro objetivo.
+    const cuentasActivas =
+      typeof datos.mayorista_cuentas_activas === "number" &&
+      Number.isFinite(datos.mayorista_cuentas_activas) &&
+      datos.mayorista_cuentas_activas > 0;
+    const sinLeads =
+      typeof datos.mayorista_leads_mensuales !== "number" ||
+      !Number.isFinite(datos.mayorista_leads_mensuales) ||
+      datos.mayorista_leads_mensuales <= 0;
+    if (cuentasActivas && sinLeads) {
+      h.push({
+        id: "mayorista_sin_funnel_activo",
+        titulo: "Sin generación activa de leads mayoristas",
+        capa: "servicio",
+        servicio: "Meta Ads y Google Ads",
+        nota: "Hay cartera mayorista activa pero no hay un funnel de captación de cuentas nuevas declarado.",
+      });
+    }
+
+    // Sin umbral de código: se informa el dato para que el redactor lo
+    // use si es relevante, nunca se clasifica en riesgo por una cifra inventada.
+    if (typeof m.concentracion_pct_top_cliente === "number") {
+      h.push({
+        id: "mayorista_concentracion_cartera",
+        titulo: "Concentración de la cartera mayorista",
+        capa: "contexto",
+        servicio: null,
+        nota: `El cliente más grande representa el ${m.concentracion_pct_top_cliente}% de la facturación mayorista declarada.`,
       });
     }
   }

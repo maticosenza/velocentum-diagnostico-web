@@ -255,6 +255,71 @@ export type DatosDiagnostico = {
    * dato cargado no se resta ningún costo (nunca se inventa uno).
    */
   recompra_costo_campana_mensual: number | null;
+
+  /**
+   * Mayorista / mixto (fase 9, decisión comercial 6, 2026-08-22): un canal
+   * COMBINABLE, no un tipo de diagnóstico separado. `venta_minorista_activa`
+   * es `true` por defecto (compatibilidad: todo diagnóstico existente ya
+   * era minorista sin este campo); `venta_mayorista_activa` sólo se activa
+   * de forma explícita. Los tres nombres para el usuario (Minorista,
+   * Mayorista, Mixto) se derivan de esta combinación, nunca se cargan
+   * directamente.
+   */
+  venta_minorista_activa: boolean | null;
+  venta_mayorista_activa: boolean | null;
+  /** % del catálogo apto para venta mayorista. */
+  mayorista_pct_catalogo_apto: number | null;
+  /** Precio de lista mayorista, antes de descuentos por volumen. */
+  mayorista_precio_lista: number | null;
+  /** Contextual: no alimenta ninguna fórmula, no hay una definida para escalas por volumen. */
+  mayorista_tiene_escalas_volumen: boolean | null;
+  mayorista_pedido_minimo_monto: number | null;
+  mayorista_pedido_minimo_unidades: number | null;
+  /** Techo de unidades/mes antes de romper stock o capacidad de servicio. */
+  mayorista_capacidad_maxima_unidades_mes: number | null;
+  /** Cualitativo: distribuidor, minorista de otro rubro, revendedor, etc. */
+  mayorista_tipo_comprador: string;
+  /** Cualitativo: contado, cuenta corriente, cheque a X días, etc. */
+  mayorista_condiciones_pago: string;
+  /** Cuentas mayoristas activas hoy (cartera actual, no proyectada). */
+  mayorista_cuentas_activas: number | null;
+  mayorista_ticket_inicial: number | null;
+  mayorista_ticket_recompra: number | null;
+  /** Días entre pedidos recurrentes de una cuenta activa. */
+  mayorista_frecuencia_recompra_dias: number | null;
+  /** Leads mensuales del funnel B2B (para el escenario de activación, nunca para la cartera actual). */
+  mayorista_leads_mensuales: number | null;
+  mayorista_cotizaciones_mensuales: number | null;
+  mayorista_tiempo_cierre_dias: number | null;
+  /** Costo de adquisición por cuenta nueva (para el recupero). */
+  mayorista_cac_por_cuenta: number | null;
+  /** % de la facturación mayorista que representa el cliente más grande. Sin umbral de código: sólo se informa. */
+  mayorista_concentracion_pct_top_cliente: number | null;
+  /** Cualitativo: catálogo propio con login, WhatsApp/email, planilla, etc. */
+  mayorista_canal_usado: string;
+  /**
+   * Costos variables mayoristas (piso de precio, fase 9). Los cinco
+   * componentes de la fórmula: costo del producto + preparación y
+   * logística B2B + comisión comercial + costo de financiación + impuestos
+   * y cobranza, todos en pesos por unidad. Los cinco son necesarios para
+   * calcular el piso: uno faltante retiene el cálculo entero (no se asume
+   * cero en un costo que puede no serlo).
+   */
+  mayorista_costo_producto: number | null;
+  mayorista_costo_logistica_b2b: number | null;
+  mayorista_comision_comercial: number | null;
+  mayorista_costo_financiacion: number | null;
+  mayorista_impuestos_cobranza: number | null;
+  /** Margen de contribución objetivo mayorista, en tasa (0-100). Decisión comercial del cliente, no un benchmark: sin este dato no hay piso de precio. */
+  mayorista_margen_objetivo_pct: number | null;
+  /** Precio mayorista efectivamente cobrado hoy, para el margen real y la comparación contra el piso. */
+  mayorista_precio_venta_real: number | null;
+  /** Precio minorista de referencia del mismo producto, para el descuento máximo viable. */
+  mayorista_precio_minorista_referencia: number | null;
+  /** Objetivo de facturación mensual mayorista que el vendedor quiere alcanzar (para "cuentas necesarias"). */
+  mayorista_objetivo_facturacion_mensual: number | null;
+  /** Regla anti-canibalización: si el precio mayorista queda visible para el cliente minorista en la misma plataforma. */
+  mayorista_precio_visible_en_plataforma_minorista: boolean | null;
   // Contenido (compartido, cualitativo)
   frecuencia_creativos: string;
   formato_creativos: string;
@@ -396,6 +461,36 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   recompra_ticket_segunda_compra: null,
   recompra_tiene_secuencia_postventa: null,
   recompra_costo_campana_mensual: null,
+  venta_minorista_activa: null,
+  venta_mayorista_activa: null,
+  mayorista_pct_catalogo_apto: null,
+  mayorista_precio_lista: null,
+  mayorista_tiene_escalas_volumen: null,
+  mayorista_pedido_minimo_monto: null,
+  mayorista_pedido_minimo_unidades: null,
+  mayorista_capacidad_maxima_unidades_mes: null,
+  mayorista_tipo_comprador: "",
+  mayorista_condiciones_pago: "",
+  mayorista_cuentas_activas: null,
+  mayorista_ticket_inicial: null,
+  mayorista_ticket_recompra: null,
+  mayorista_frecuencia_recompra_dias: null,
+  mayorista_leads_mensuales: null,
+  mayorista_cotizaciones_mensuales: null,
+  mayorista_tiempo_cierre_dias: null,
+  mayorista_cac_por_cuenta: null,
+  mayorista_concentracion_pct_top_cliente: null,
+  mayorista_canal_usado: "",
+  mayorista_costo_producto: null,
+  mayorista_costo_logistica_b2b: null,
+  mayorista_comision_comercial: null,
+  mayorista_costo_financiacion: null,
+  mayorista_impuestos_cobranza: null,
+  mayorista_margen_objetivo_pct: null,
+  mayorista_precio_venta_real: null,
+  mayorista_precio_minorista_referencia: null,
+  mayorista_objetivo_facturacion_mensual: null,
+  mayorista_precio_visible_en_plataforma_minorista: null,
   frecuencia_creativos: "",
   formato_creativos: "",
   angulo_que_funciona: "",
@@ -450,6 +545,7 @@ export const BLOQUES = [
   { id: "web", label: "Web" },
   { id: "contenido", label: "Contenido" },
   { id: "mercado_libre", label: "Mercado Libre" },
+  { id: "mayorista", label: "Mayorista" },
 ] as const;
 
 export type BloqueId = (typeof BLOQUES)[number]["id"];
@@ -501,6 +597,8 @@ const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
     "ml_ventas_product_ads",
     "ml_tiene_clips",
   ],
+  // Todos opcionales (fase 9): igual que retención, sólo se cargan si aportan a un cálculo.
+  mayorista: [],
 };
 
 /** Cuántos productos (1 a 5) están en juego, acotando cualquier valor fuera de rango. */
@@ -605,4 +703,5 @@ export const ORIGEN_DATOS: Record<BloqueId, string> = {
   web: "Las visitas salen de Tiendanube, Estadísticas, Visión general. Los carritos abandonados, de Tiendanube, sección Carritos abandonados.",
   contenido: "Todo conversado.",
   mercado_libre: "Conversado, más el panel de Product Ads si lo tiene.",
+  mayorista: "Conversado con quien lleva la cuenta comercial mayorista del cliente.",
 };

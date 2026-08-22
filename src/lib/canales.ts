@@ -486,6 +486,23 @@ export function planConCarritoNativoDe(plataforma: string): string | null {
   return null;
 }
 
+/**
+ * Mismo criterio que `planConCarritoNativoDe`, para el canal mayorista
+ * (fase 9, decisión comercial 6, 2026-08-22): primer plan de la plataforma
+ * que sí ofrece un canal o función de venta mayorista propia.
+ */
+export function planConCanalMayoristaDe(plataforma: string): string | null {
+  const planes = PLANES_POR_PLATAFORMA[plataforma];
+  if (!planes) return null;
+  for (const p of planes) {
+    const clave = claveComisionPlataforma(plataforma, p.value);
+    if (CAPACIDADES_PLATAFORMA_DEFECTO[clave]?.canal_mayorista === true) {
+      return p.label;
+    }
+  }
+  return null;
+}
+
 export type ConfigComisiones = {
   /**
    * Acepta el formato legado (número plano) o el nuevo con metadatos

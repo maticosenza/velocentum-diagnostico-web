@@ -37,8 +37,11 @@ import {
   type ConfigEscenarios90d,
 } from "./escenarios-90d";
 import { impactoCalculado, impactoRetenido, type ImpactoEconomico } from "./impacto-economico";
+import { evaluarMayorista, type ConfigMayorista, type MayoristaDerivado } from "./mayorista";
 
 export { RAMPAS_FACTURACION_CONTRIBUCION_90D_DEFECTO, RAMPAS_AHORRO_PUBLICITARIO_90D_DEFECTO };
+export { modalidadComercial, mayoristaActivo, ventaPorDebajoDelPiso, pedidoMinimoDeclaradoInsuficiente } from "./mayorista";
+export type { ModalidadComercial, MayoristaDerivado, ConfigMayorista } from "./mayorista";
 export type { ConfigEscenarios90d, RampaAdopcion, IdEscenario } from "./escenarios-90d";
 
 export {
@@ -105,7 +108,8 @@ export type ConfiguracionCalculo = {
   factor_costo_evento_intermedio?: number;
   /** Ancho del rango de incertidumbre del presupuesto de arranque (fase 6). */
   margen_incertidumbre_presupuesto?: number;
-} & ConfigEscenarios90d;
+} & ConfigEscenarios90d &
+  ConfigMayorista;
 
 /** Fase 6: sin dato de configuración, el costo de un evento intermedio se estima en un 20% del CPA objetivo. */
 export const FACTOR_COSTO_EVENTO_INTERMEDIO_DEFECTO = 0.2;
@@ -200,6 +204,14 @@ export type Derivados = {
   presupuesto_arranque: PresupuestoArranque;
   /** Cascada del funnel web del canal de tienda propia. */
   funnel: FunnelDerivado;
+  /**
+   * Canal mayorista (fase 9, decisión comercial 6, 2026-08-22). `null`
+   * cuando no está activo: mismo criterio que una fuga sin datos, el bloque
+   * entero no existe. Ver `src/lib/mayorista.ts` para las reglas duras
+   * (nunca se suma con los totales minoristas, nunca se combina cartera
+   * actual con escenario de activación).
+   */
+  mayorista: MayoristaDerivado | null;
 };
 
 /** Rango estimado: nunca una cifra única cuando no hay historial que la respalde. */
@@ -1057,6 +1069,11 @@ export function calcularDiagnostico(
   // --- Cascada del funnel: etapas del mismo canal y del mismo período.
   const funnel = evaluarFunnel(d, cfg);
 
+  // --- Canal mayorista (fase 9). Evaluación paralela e independiente: no
+  // toca ni un solo campo de `derivados` minorista de arriba, no entra en
+  // `oportunidad_total` ni en `fugas`. Ver src/lib/mayorista.ts.
+  const mayorista = evaluarMayorista(d, cfg);
+
   // --- Contradicción contra el margen declarado por el cliente. Compara
   // contra el margen total si está disponible (100% de cobertura explícita);
   // si está retenido, usa el de la muestra para no dejar de evaluar la
@@ -1116,6 +1133,7 @@ export function calcularDiagnostico(
     volumen_suficiente: volumenSuficiente,
     presupuesto_arranque: presupuestoArranque,
     funnel,
+    mayorista,
   };
 
   // --- Estados por bloque
