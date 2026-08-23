@@ -1,17 +1,106 @@
+/**
+ * Fuentes propias (bloque visual, 2026-08-22): Satoshi (títulos/cifras) e
+ * Inter (cuerpo/tablas/formularios), auto-hosteadas desde
+ * src/assets/fuentes/ — self-hosting explícitamente permitido por las dos
+ * licencias (ITF Free Font License 2.0 para Satoshi, SIL OFL 1.1 para
+ * Inter; ver los LICENSE.txt junto a cada familia). Este renderer sólo
+ * corre en el navegador (`ssr: false` en la ruta que lo monta), así que
+ * Vite resuelve estas rutas relativas como assets estáticos normales.
+ */
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../../assets/fuentes/satoshi/woff2/Satoshi-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../../assets/fuentes/satoshi/woff2/Satoshi-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../../assets/fuentes/satoshi/woff2/Satoshi-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("../../../assets/fuentes/satoshi/woff2/Satoshi-Black.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("../../../assets/fuentes/inter/Inter_18pt-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("../../../assets/fuentes/inter/Inter_18pt-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("../../../assets/fuentes/inter/Inter_18pt-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("../../../assets/fuentes/inter/Inter_18pt-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("../../../assets/fuentes/inter/Inter_18pt-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 .vdoc {
-  --vdoc-primary: #2a1ec9;
-  --vdoc-accent: #7b5cff;
-  --vdoc-ink: #0f0a2e;
-  --vdoc-muted: #6b6880;
+  /* Los 14 tokens de docs/especificacion-visual-pdfs-fases-11-13.md, sección 3. */
+  --vdoc-primary: #3b2ef5;
+  --vdoc-primary-bright: #4b39ff;
+  --vdoc-accent: #7a6bff;
+  --vdoc-ink: #0d0b2d;
+  --vdoc-text: #171437;
+  --vdoc-muted: #55546b;
   --vdoc-bg: #faf9ff;
   --vdoc-surface: #ffffff;
   --vdoc-soft: #f2efff;
-  --vdoc-border: #e8e7f2;
-  --vdoc-success: #168653;
-  --vdoc-warning: #a86600;
-  --vdoc-risk: #b43232;
+  --vdoc-border: #d9d3ff;
+  --vdoc-border-soft: #e9e5ff;
+  --vdoc-success: #20a464;
+  --vdoc-warning: #fbbf24;
+  --vdoc-risk: #d64a4a;
+  /**
+   * Variantes "-ink": mismo color de marca, oscurecido lo necesario para
+   * texto legible (criterio de aceptación: "contraste suficiente en
+   * pantalla e impresión"). Los tres tokens de arriba, usados directo
+   * como color de texto pequeño sobre blanco, no llegan a 4.5:1 (verificado:
+   * éxito 3.2:1, riesgo 4.25:1, advertencia 1.67:1) — no son parte de la
+   * paleta de 14 tokens, son una necesidad de accesibilidad derivada de
+   * ellos, nunca un cambio al color de marca en sí.
+   */
+  --vdoc-success-ink: #157a4c;
+  --vdoc-warning-ink: #92400e;
+  --vdoc-risk-ink: #b23636;
   overflow: hidden;
-  color: var(--vdoc-ink);
+  color: var(--vdoc-text);
   background: var(--vdoc-bg);
   font-family:
     Inter,
@@ -130,7 +219,10 @@
 }
 
 .vdoc-cover__brand {
+  display: flex;
   width: fit-content;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.55rem 0.85rem;
   border: 1px solid rgb(255 255 255 / 24%);
   border-radius: 999px;
@@ -138,6 +230,10 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.vdoc-cover__brand img {
+  display: block;
 }
 
 .vdoc-cover__content {
@@ -296,20 +392,20 @@
 
 .vdoc-badge--alta {
   background: #e5f7ee;
-  color: var(--vdoc-success);
+  color: var(--vdoc-success-ink);
 }
 
 .vdoc-badge--baja,
 .vdoc-badge--bloqueada,
 .vdoc-tag--alta {
   background: #ffeded;
-  color: var(--vdoc-risk);
+  color: var(--vdoc-risk-ink);
 }
 
 .vdoc-badge--media,
 .vdoc-tag--media {
   background: #fff4d6;
-  color: var(--vdoc-warning);
+  color: var(--vdoc-warning-ink);
 }
 
 .vdoc-findings,
@@ -425,7 +521,7 @@
 }
 
 .vdoc-retained {
-  color: var(--vdoc-warning);
+  color: var(--vdoc-warning-ink);
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -578,7 +674,7 @@
   place-items: center;
   border-radius: 50%;
   background: #fff4d6;
-  color: var(--vdoc-warning);
+  color: var(--vdoc-warning-ink);
   font-weight: 800;
 }
 

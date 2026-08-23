@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40" role="img" aria-labelledby="title desc">
+  <title id="title">Velocentum logo — blue</title>
+  <desc id="desc">Editable vector reconstruction of the blue Velocentum symbol.</desc>
+  <g id="velocentum-symbol" fill="#3B2EF5">
+    <path id="outer-v" d="M0 1.5h6.5L20 24.5 33.5 1.5H40L20 37Z"/>
+    <path id="inner-v" d="M6.5 1.5H27L18 17.5 16 6.5H9.2Z"/>
+  </g>
+</svg>

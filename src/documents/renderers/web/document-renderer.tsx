@@ -6,6 +6,7 @@ import type {
   PublishedNumber,
 } from "../../templates/velocentum-v1";
 import { formatDocumentDate, formatPublishedNumber } from "./format";
+import simboloBlanco from "@/assets/marca/simbolo-blanco.svg";
 import "./document-renderer.css";
 
 export type DocumentWebRendererProps = {
@@ -110,7 +111,10 @@ function BlockFrame({ type, children }: { type: DocumentBlock["type"]; children:
 function CoverBlock({ block }: { block: Extract<DocumentBlock, { type: "cover" }> }) {
   return (
     <BlockFrame type="cover">
-      <div className="vdoc-cover__brand">Velocentum</div>
+      <div className="vdoc-cover__brand">
+        <img src={simboloBlanco} alt="" width={16} height={16} aria-hidden="true" />
+        Velocentum
+      </div>
       <div className="vdoc-cover__content">
         <p className="vdoc-cover__client">{block.clientName}</p>
         <h1>{block.title}</h1>

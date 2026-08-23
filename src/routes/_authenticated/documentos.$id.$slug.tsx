@@ -1,9 +1,16 @@
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
@@ -14,6 +21,12 @@ import {
 } from "@/documents/build-document";
 import type { DiagnosticoAlmacenado } from "@/documents/domain/from-diagnostico";
 import { DocumentWebRenderer } from "@/documents/renderers/web";
+import type { PdfProfile } from "@/documents/renderers/pdf/document";
+
+const ETIQUETA_PERFIL: Record<PdfProfile, string> = {
+  pantalla: "Pantalla (16:9)",
+  impresion: "Impresión (A4)",
+};
 
 export const Route = createFileRoute("/_authenticated/documentos/$id/$slug")({
   ssr: false,
@@ -110,12 +123,12 @@ function VistaPreviaDocumento() {
     );
   }
 
-  const descargarPdf = async () => {
+  const descargarPdf = async (profile: PdfProfile) => {
     setErrorDescarga(null);
     setDescargando(true);
     try {
       const { downloadDocumentModelPdf } = await import("@/documents/renderers/pdf/export-client");
-      await downloadDocumentModelPdf(model);
+      await downloadDocumentModelPdf(model, profile);
     } catch (downloadError) {
       setErrorDescarga(
         downloadError instanceof Error
@@ -129,9 +142,21 @@ function VistaPreviaDocumento() {
 
   const acciones = (
     <div className="flex items-center gap-3">
-      <Button size="sm" onClick={descargarPdf} disabled={descargando} aria-busy={descargando}>
-        {descargando ? "Generando PDF…" : "Descargar PDF"}
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" disabled={descargando} aria-busy={descargando}>
+            {descargando ? "Generando PDF…" : "Descargar PDF"}
+            <ChevronDown className="ml-1.5 size-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {(Object.keys(ETIQUETA_PERFIL) as PdfProfile[]).map((profile) => (
+            <DropdownMenuItem key={profile} onSelect={() => void descargarPdf(profile)}>
+              {ETIQUETA_PERFIL[profile]}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
       {volver}
     </div>
   );

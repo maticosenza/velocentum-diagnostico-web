@@ -509,11 +509,14 @@ siguiente acción.
   de validación con 2-3 casos reales antes de apoyarse en el lenguaje de
   escenarios frente a un cliente.
 
-### Fase 11 — Documento de diagnóstico — **FUNCIONAL, estructura de contenido ampliada (2026-08-22) / VISUAL PENDIENTE**
+### Fase 11 — Documento de diagnóstico — **FUNCIONAL, estructura de contenido ampliada Y capa visual aplicada (2026-08-22)**
 
 - **Denominación del plan maestro:** "Documento de diagnóstico".
 - **Estado real:** funcional (motor → plantilla → render → PDF completo),
-  visual pendiente — coincide con el plan maestro.
+  con la paleta, la tipografía de marca (Satoshi/Inter) y el logo ya
+  aplicados. Pendiente: sólo el desglose por canal/producto/funnel
+  documentado más abajo, y el rediseño de la interfaz de la herramienta
+  (fuera de los documentos en sí).
 - **Bloque técnico 2026-08-22 (fase 11/12, "parte funcional"):** primero se
   entregaron los cinco puntos que pide
   `docs/especificacion-visual-pdfs-fases-11-13.md` sección 12 — ver
@@ -558,45 +561,83 @@ siguiente acción.
   - Regla "no debe mostrar escenarios/paquete/precio" ya respetada
     estructuralmente: `diagnostico.ts` no referencia `scenarios` ni
     `comercial` en ningún bloque (verificado por grep).
-- **Evidencia de lo visual pendiente:** el render PDF ya usa formato
-  horizontal 16:9 (`PAGE_SIZE: [number, number] = [960, 540]`,
-  `src/documents/renderers/pdf/document.tsx:22`), pero el tema
-  (`VELOCENTUM_LIGHT_V1`, `src/documents/theme/velocentum-light-v1.ts:5-16`)
-  no usa todavía la paleta de la especificación visual
-  (`docs/especificacion-visual-pdfs-fases-11-13.md`): `primary: "#2A1EC9"`
-  y `accent: "#7B5CFF"` en el tema actual vs. `#3B2EF5` (primario) y
-  `#7A6BFF` (primario suave) en la especificación aprobada; `ink: "#0F0A2E"`
-  vs. `#0D0B2D` (navy); `border: "#E8E7F2"` vs. `#D9D3FF`/`#E9E5FF`. En
-  cambio, `background: "#FAF9FF"`, `surfaceSoft: "#F2EFFF"`,
-  `success: "#20A464"`, `warning: "#FBBF24"`, `risk: "#D64A4A"` y la
-  tipografía (Satoshi/Inter) **ya coinciden exactamente** con la
-  especificación — no es un rediseño desde cero, es un ajuste de paleta.
-  No existe un perfil A4 separado (sólo el de pantalla 16:9).
+- **Bloque visual (2026-08-22), assets de marca aplicados:**
+  - **Paleta:** los 14 tokens de
+    `docs/especificacion-visual-pdfs-fases-11-13.md` sección 3, exactos, en
+    `VELOCENTUM_LIGHT_V1` (`src/documents/theme/velocentum-light-v1.ts`):
+    `primary: "#3B2EF5"`, `primaryBright: "#4B39FF"` (nuevo), `accent:
+    "#7A6BFF"`, `ink: "#0D0B2D"`, `text: "#171437"` (nuevo), `muted:
+    "#55546B"`, `border: "#D9D3FF"`, `borderSoft: "#E9E5FF"` (nuevo);
+    `background`/`surface`/`surfaceSoft`/`success`/`warning`/`risk` ya
+    coincidían. En el renderer web se agregaron variantes "-ink" NO parte
+    de los 14 tokens (`--vdoc-success-ink`, `--vdoc-warning-ink`,
+    `--vdoc-risk-ink`) para texto legible: los tokens de éxito/advertencia/
+    riesgo usados directo como color de texto pequeño sobre blanco no
+    llegan a 4.5:1 de contraste (advertencia: 1.67:1, verificado) — las
+    variantes oscurecidas sí (6.5-7.1:1), sin cambiar el color de marca en
+    sí, sólo dónde se usa como texto vs. como acento/borde/ícono.
+  - **Tipografías:** Satoshi (Light/Regular/Medium/Bold/Black + itálicas,
+    licencia ITF Free Font License 2.0 de Fontshare) e Inter (18pt
+    Regular/Medium/SemiBold/Bold/ExtraBold, SIL OFL 1.1), copiadas a
+    `src/assets/fuentes/` con sus LICENSE.txt. Registradas en
+    @react-pdf/renderer como data URI en base64
+    (`src/documents/theme/fuentes/registrar-fuentes.ts` +
+    `*-datos.generated.ts`): el pipeline de fontkit que lee un archivo por
+    ruta no está disponible en el entorno de despliegue serverless/edge de
+    este proyecto (advertencia `IMPORT_IS_UNDEFINED` en cada build), así
+    que un data URI en memoria es la única vía confiable. En el renderer
+    web, `@font-face` auto-hosteado (ambas licencias permiten self-hosting).
+  - **Logo:** símbolo y wordmark de Velocentum, en violeta y blanco
+    (`src/assets/marca/*.svg`, generados desde el zip de logos originales
+    cambiando sólo el `fill`, path por path idéntico — verificado por
+    prueba). Reconstruidos como primitivas `<Svg>/<Path>` para PDF
+    (`src/documents/renderers/pdf/marca.tsx`, con una prueba que compara
+    cada `d`/`transform` contra el SVG fuente) y como `<img>` para web.
+  - **Dos perfiles, un layout propio cada uno (no uno escalado del otro):**
+    `createPdfDocumentElement(model, "pantalla" | "impresion")`. Pantalla:
+    960×540 (16:9), como antes. Impresión: A4 (595.28×841.89), grilla de
+    dos columnas en vez de tres, tarjetas anchas a página completa,
+    cuerpo tipográfico mayor, franjas de acento de portada reescaladas
+    con una prueba geométrica dedicada (evitó una regresión real: el
+    subtítulo de portada quedaba detrás de la franja de color en A4 con
+    los primeros valores).
+  - **Descarga:** selector de perfil (pantalla/impresión) en
+    `documentos.$id.$slug.tsx`.
 - **Pruebas existentes:** `src/documents/build-document.test.ts`,
   `src/documents/domain/build-context.test.ts`,
-  `src/documents/renderers/pdf/document.test.tsx`,
-  `src/documents/renderers/web/document-renderer.test.tsx`,
-  `src/documents/theme/velocentum-light-v1.test.ts`.
-- **Pruebas existentes (agregadas 2026-08-22):**
+  `src/documents/renderers/pdf/document.test.tsx` (incluye la prueba
+  geométrica de portada, la de A4 real, y la de nombre largo/monto
+  grande), `src/documents/renderers/pdf/marca.test.ts` (4 casos: paths
+  idénticos a los SVG fuente), `src/documents/renderers/web/document-renderer.test.tsx`,
+  `src/documents/theme/velocentum-light-v1.test.ts` (14 tokens exactos),
   `src/documents/templates/velocentum-v1/estructura-contenido-fase11-12.test.ts`
-  (7 casos): el diagnóstico nunca trae `scenarios`/`commercial-summary`/
-  `commercial-offer` en tres datasets distintos; riesgos y datos faltantes
-  son particiones disjuntas del mismo array; prioridades inmediatas es un
-  subconjunto verificado de hallazgos priorizados.
-- **Pruebas faltantes:** QA visual página por página (criterio de
-  aceptación de la especificación, sección 10) — no automatizado hoy.
-- **Riesgo:** ninguno funcional; el riesgo es puramente de que el
-  documento actual no transmite todavía la identidad visual aprobada.
+  (7 casos: diagnóstico nunca trae `scenarios`/`commercial-summary`/
+  `commercial-offer`; riesgos y datos faltantes son particiones disjuntas;
+  prioridades inmediatas es un subconjunto verificado).
+- **Pruebas faltantes:** QA visual completa página por página con revisión
+  humana (criterio de aceptación, sección 10) — se generaron y se
+  entregaron 8 PDFs de revisión (Snake Store/Titan Web B1 × diagnóstico/
+  proyección × pantalla/impresión) para esa revisión manual, pero no
+  reemplaza una inspección exhaustiva de cada página de cada documento
+  real.
+- **Riesgo:** ninguno funcional. Limitación conocida, no bloqueante: el
+  texto copiable de los PDF pierde la ligadura "fi" en algunos casos
+  (ej. "Confianza" se copia como "Confanza") — se ve correctamente en
+  pantalla/impresión, es un problema de mapeo Unicode del subset de
+  fuente embebido, no de renderizado visual.
 - **Bloqueo:** ninguno técnico.
 - **Siguiente acción:** implementar el desglose por canal/producto/funnel
-  documentado como pendiente arriba, y después la capa visual (paleta,
-  perfil A4) según `docs/fase11-12-diseno-tecnico.md`.
+  documentado como pendiente arriba (único punto real que sigue faltando
+  de fase 11/12); después, el rediseño de la interfaz de la herramienta
+  (fuera de los documentos).
 
-### Fase 12 — Documento de proyección — **FUNCIONAL, estructura de contenido ampliada (2026-08-22) / VISUAL PENDIENTE**
+### Fase 12 — Documento de proyección — **FUNCIONAL, estructura de contenido ampliada Y capa visual aplicada (2026-08-22)**
 
 - **Denominación del plan maestro:** "Documento de proyección".
-- **Estado real:** funcional, visual pendiente — mismo diagnóstico que
-  fase 11, comparten el mismo tema y el mismo renderer.
+- **Estado real:** funcional, con la paleta/tipografía/logo/perfiles
+  pantalla-impresión ya aplicados — mismo diagnóstico que fase 11,
+  comparten el mismo tema y el mismo renderer (ver el detalle completo del
+  bloque visual en la sección de fase 11, no repetido acá).
 - **Bloque técnico 2026-08-22:** reestructurado a las once secciones del
   plan maestro (`src/documents/templates/velocentum-v1/proyeccion-90d.ts`):
   portada, punto de partida, restricciones, escenarios (con el detalle
@@ -624,11 +665,11 @@ siguiente acción.
   (casos de proyección a 90 días),
   `src/documents/templates/velocentum-v1/estructura-contenido-fase11-12.test.ts`
   (condiciones para escalar filtradas correctamente).
-- **Pruebas faltantes:** las mismas que fase 11 (QA visual).
+- **Pruebas faltantes:** las mismas que fase 11 (QA visual humana completa).
 - **Riesgo:** ninguno funcional nuevo.
 - **Bloqueo:** ninguno técnico.
-- **Siguiente acción:** se resuelve en el mismo bloque técnico que fase 11
-  (comparten tema y renderer); no es un bloque separado de trabajo visual.
+- **Siguiente acción:** el desglose por canal/producto/funnel pendiente de
+  fase 11 también habilitaría más detalle acá (proyección por canal).
 
 ### Fase 13 — Propuesta comercial y rediseño visual — **PARCIAL, generador de paquetes implementado (2026-08-22)**
 
@@ -692,10 +733,12 @@ siguiente acción.
 - **Evidencia funcional construida (previa a este bloque):**
   - Plantilla de propuesta: `src/documents/templates/velocentum-v1/propuesta.ts`.
   - Salida combinada proyección + propuesta: `src/documents/templates/velocentum-v1/composicion.ts`.
-- **Evidencia de lo pendiente visual:** mismo diagnóstico de paleta que
-  fase 11 (tema compartido). No hay perfil A4 diferenciado del de pantalla
-  16:9. No se encontró rediseño de la interfaz de la herramienta (fuera de
-  documentos) hacia el sistema visual aprobado.
+- **Evidencia de lo visual, actualizada (bloque 2026-08-22):** el PDF de
+  propuesta comparte el mismo tema/renderer que diagnóstico y proyección
+  (fase 11), ya con la paleta de 14 tokens, Satoshi/Inter y el logo real,
+  y ya con los dos perfiles (pantalla 16:9 / impresión A4) — ver el
+  detalle completo en la sección de fase 11. Lo que sigue sin existir:
+  rediseño de la interfaz de la herramienta en sí (fuera de los tres PDF).
 - **Pruebas existentes:** `src/documents/templates/velocentum-v1/templates.test.ts`,
   `src/documents/renderers/pdf/filename.test.ts`,
   `src/documents/renderers/pdf/format.test.ts`,
