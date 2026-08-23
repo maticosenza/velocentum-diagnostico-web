@@ -254,12 +254,18 @@ publicitaria $ 0 / Confianza media". Dónde: s6 p3/8.
 
 ### Inconsistencias de contrato
 
-**C-01 · NORMATIVO** · El perfil A4 no existe como maquetación propia.
+**C-01 · NORMATIVO · ⚠ HISTÓRICO / SUPERADO — no es la versión vigente.
+La versión vigente es la reformulación en la sección "d) Correcciones del
+cierre" más abajo, marcada VERSIÓN VIGENTE. Se conserva este texto tal
+cual llegó únicamente por trazabilidad; no lo uses para tomar decisiones.**
+· El perfil A4 no existe como maquetación propia.
 Según la auditoría externa, el tamaño de página del renderer PDF es una
 constante única [960,540] y el CSS de impresión del renderer web declara
 `@page 13.333in × 7.5in` con secciones de `min-height 7.5in` y salto de
 página. Es decir: el "perfil impresión" sería la composición 16:9 paginada
 a papel. CONFIRMAR O REFUTAR (V3). Decisión aplicable: D6.
+**Resultado real (ver versión vigente): refutada para el renderer PDF,
+confirmada para el renderer web — no quedó "confirmar o refutar" abierto.**
 
 **C-02 · NORMATIVO** · Un solo eje de estados donde se exigen dos.
 "Confianza: ALTA / Cobertura 100%" convive con una proyección
@@ -420,10 +426,12 @@ una decisión de producto previa (¿se completa el roadmap con datos reales,
 o se elimina la sección/el bloque de las plantillas que hoy prometen algo
 que nunca entregan?) — ver decisión pendiente 6.
 
-### C-01 · reescrita y reasignada de Bloque 1 a Bloque 2
+### C-01 · ✅ VERSIÓN VIGENTE — reescrita y reasignada de Bloque 1 a Bloque 2
 
-**Texto original de C-01 (sección c más arriba) queda tal cual, para
-trazabilidad.** La afirmación central de C-01 — "el perfil A4 no existe
+**Esta es la versión vigente de C-01.** El texto original de C-01
+(sección c más arriba, ahora marcado HISTÓRICO / SUPERADO) queda tal cual,
+para trazabilidad, pero no debe usarse para tomar decisiones. La
+afirmación central de C-01 — "el perfil A4 no existe
 como maquetación propia" / "el tamaño de página del renderer PDF es una
 constante única [960,540]" — **queda REFUTADA**, verificada contra
 `src/documents/renderers/pdf/document.tsx:99-142` (`PROFILES`): hay dos
