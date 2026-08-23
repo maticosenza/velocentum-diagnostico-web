@@ -1,5 +1,12 @@
 import type { DocumentContextV1 } from "../../domain";
-import { buildChannelComparisonV2, buildCoverageBlockV2, buildFindingsV2, buildMetricGridV2, buildShippingV2 } from "./blocks";
+import {
+  buildChannelComparisonV2,
+  buildCoverageBlockV2,
+  buildFindingsV2,
+  buildMetricGridV2,
+  buildShippingV2,
+  dedupeMetricGridV2,
+} from "./blocks";
 import {
   contentSectionV2,
   coverSectionV2,
@@ -10,17 +17,21 @@ import {
   transitionSectionV2,
 } from "./shared";
 
+const TEMPLATE_ID = "velocentum-diagnostico/v2";
+
 /** Espejo de `templates/velocentum-v1/diagnostico.ts`, con los bloques v2. */
 export function buildDiagnosticoDocumentV2(context: DocumentContextV1) {
   const coverage = buildCoverageBlockV2(context);
-  const metrics = buildMetricGridV2(context);
   const channelComparison = buildChannelComparisonV2(context);
+  // C6, ronda 2.1: cuando la comparación entre canales está presente, MER
+  // tienda/marketplace no se repiten en la grilla de métricas.
+  const metrics = dedupeMetricGridV2(buildMetricGridV2(context), channelComparison);
   const shipping = buildShippingV2(context);
   const findings = buildFindingsV2(context, "diagnostico");
 
   return createModelV2({
     context,
-    templateId: "velocentum-diagnostico/v2",
+    templateId: TEMPLATE_ID,
     kind: "diagnostico",
     title: "Diagnóstico e-commerce",
     sections: [
@@ -28,6 +39,8 @@ export function buildDiagnosticoDocumentV2(context: DocumentContextV1) {
         context,
         "Diagnóstico e-commerce",
         "Una lectura ejecutiva basada en la evidencia disponible.",
+        "diagnostico",
+        TEMPLATE_ID,
       ),
       // Cobertura + foto actual en una sola sección (corrección de auditoría,
       // ronda 1): la cobertura sola (3 barras) dejaba la página muy por

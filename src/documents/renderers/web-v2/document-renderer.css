@@ -89,13 +89,20 @@
   color: var(--v2-primary);
   background: var(--v2-surface-soft);
 }
+/* C4, ronda 2.1: var(--v2-accent) sobre superficie clara da 3.91:1
+   (calculado), por debajo de 4.5:1 — var(--v2-primary) da 7.25:1. Sobre
+   fondo oscuro (`--v2-section--dark`, directo sobre `--v2-ink`) se usa
+   #c8c2ff (11.44:1). */
 .vdoc2-kicker {
   font-family: var(--v2-heading-font);
   font-weight: 700;
   font-size: 12px;
   text-transform: uppercase;
-  color: var(--v2-accent);
+  color: var(--v2-primary);
   margin: 0 0 8px;
+}
+.vdoc2-section--dark .vdoc2-kicker {
+  color: #c8c2ff;
 }
 .vdoc2-muted {
   color: var(--v2-muted);
@@ -144,9 +151,16 @@
   font-size: 16px;
   color: #dedcea;
 }
-.vdoc2-cover__date {
+/* C10, ronda 2.1: cliente, tipo de documento, fecha y versión — los
+   cuatro campos, en columna para no romper con un nombre de cliente
+   largo (ver test de estrés P10). */
+.vdoc2-cover__meta {
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   color: #cbc7d8;
+  font-size: 13px;
 }
 
 /* Metric grid */
@@ -155,6 +169,11 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin: 0;
+  /* C8, ronda 2.1: sin esto, CSS Grid estira todas las tarjetas de una
+     fila a la altura de la más alta por defecto (align-items: stretch),
+     dejando espacio en blanco reservado en las tarjetas con menos
+     contenido. */
+  align-items: start;
 }
 .vdoc2-metric {
   border: 1px solid var(--v2-border);
@@ -171,6 +190,12 @@
   color: var(--v2-muted);
   margin-bottom: 8px;
 }
+/* C4, ronda 2.1: var(--v2-muted) sobre "#1c173e" da 2.31:1 (calculado) —
+   el mismo defecto que C4(a), latente acá aunque metric-grid no aparece
+   hoy dentro de una sección oscura en los 2 escenarios en alcance. */
+.vdoc2-section--dark .vdoc2-metric dt {
+  color: #d5d1e0;
+}
 .vdoc2-metric dd {
   margin: 0;
   font-family: var(--v2-heading-font);
@@ -178,11 +203,20 @@
   font-size: 24px;
 }
 
-/* Estado (retenido / no_aplica) */
+/* Estado (retenido / no_aplica). C4(b), ronda 2.1: var(--v2-warning)
+   sobre superficie clara da 1.67:1 (calculado) — muy por debajo de
+   4.5:1. El texto pasa a var(--v2-text) (17.62:1); el ámbar queda sólo
+   como acento de borde, nunca como color de párrafo completo. */
 .vdoc2-estado {
   font-weight: 600;
-  color: var(--v2-warning);
+  color: var(--v2-text);
   font-size: 13px;
+  border-left: 3px solid var(--v2-warning);
+  padding-left: 8px;
+  display: inline-block;
+}
+.vdoc2-section--dark .vdoc2-estado {
+  color: #dedcea;
 }
 .vdoc2-number--supuesto {
   border-bottom: 1px dashed var(--v2-accent);
@@ -221,6 +255,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+  align-items: start; /* C8, ronda 2.1 — ver nota en .vdoc2-metric-grid. */
 }
 .vdoc2-finding {
   display: flex;
@@ -235,10 +270,13 @@
   border-width: 2px;
   background: #fbeaea;
 }
+/* C4, ronda 2.1: var(--v2-accent) sobre superficie clara da 3.91:1 —
+   ver nota en .vdoc2-kicker. Los índices de findings/servicios siempre
+   están sobre tarjeta clara, así que basta un único valor compliant. */
 .vdoc2-finding__index {
   font-family: var(--v2-heading-font);
   font-weight: 700;
-  color: var(--v2-accent);
+  color: var(--v2-primary);
 }
 .vdoc2-tags {
   display: flex;
@@ -254,8 +292,10 @@
   background: var(--v2-surface-soft);
   color: var(--v2-text);
 }
+/* C4, ronda 2.1: var(--v2-risk) sobre "#fbeaea" da 3.66:1 (calculado),
+   por debajo de 4.5:1 en un tag de 11px. "#992d2d" da 6.52:1. */
 .vdoc2-tag--alta {
-  color: var(--v2-risk);
+  color: #992d2d;
   background: #fbeaea;
 }
 .vdoc2-tag--media {
@@ -290,6 +330,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
+  align-items: start; /* C8, ronda 2.1 — ver nota en .vdoc2-metric-grid. */
 }
 .vdoc2-scenario--larga {
   grid-column: 1 / -1;
@@ -382,6 +423,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+  align-items: start; /* C8, ronda 2.1 — ver nota en .vdoc2-metric-grid. */
 }
 .vdoc2-card {
   border: 1px solid var(--v2-border);

@@ -105,6 +105,21 @@ export function buildChannelComparisonV2(context: DocumentContextV1): DocumentBl
   };
 }
 
+/**
+ * C6, ronda 2.1: cuando el bloque "Comparación entre canales" está
+ * presente, MER tienda propia y MER marketplace no se repiten en la
+ * grilla de métricas — evita mostrar el mismo valor dos veces en la
+ * misma sección de un documento.
+ */
+export function dedupeMetricGridV2(
+  metrics: DocumentBlockV2 | null,
+  channelComparison: DocumentBlockV2 | null,
+): DocumentBlockV2 | null {
+  if (!metrics || metrics.type !== "metric-grid" || !channelComparison) return metrics;
+  const items = metrics.items.filter((item) => item.id !== "merTienda" && item.id !== "merMarketplace");
+  return items.length > 0 ? { type: "metric-grid", items } : null;
+}
+
 export function buildShippingV2(context: DocumentContextV1): DocumentBlockV2 | null {
   if (context.envio.estado !== "si") return null;
   if (!debeMostrarEnvio(context.envio)) return null;

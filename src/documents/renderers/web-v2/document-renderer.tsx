@@ -9,6 +9,7 @@ import {
   LABELS_ORIGEN_SUPUESTO,
   LABELS_PERIODO,
   LABELS_PRIORIDAD,
+  LABELS_TIPO_DOCUMENTO,
   LABELS_UNIDAD_COMERCIAL,
 } from "../../semantica-v2/etiquetas";
 import type {
@@ -84,9 +85,17 @@ function CoverBlock({ block }: { block: Extract<DocumentBlockV2, { type: "cover"
         <h1>{block.title}</h1>
         <p className="vdoc2-cover__subtitle">{block.subtitle}</p>
       </div>
-      <time className="vdoc2-cover__date" dateTime={block.diagnosticDate}>
-        {formatDocumentDate(block.diagnosticDate)}
-      </time>
+      {/* C10, ronda 2.1: cliente, tipo de documento, fecha y versión — los
+          cuatro campos. El cliente ya se muestra arriba
+          (`.vdoc2-cover__client`, elemento preexistente) — acá sólo se
+          agregan los tres campos que faltaban, para no repetirlo dos
+          veces en la misma portada (corrección de auditoría interna,
+          ronda 1: el cliente aparecía duplicado). */}
+      <div className="vdoc2-cover__meta">
+        <span>{LABELS_TIPO_DOCUMENTO[block.documentKind]}</span>
+        <time dateTime={block.diagnosticDate}>{formatDocumentDate(block.diagnosticDate)}</time>
+        <span>{block.version}</span>
+      </div>
     </BlockFrame>
   );
 }

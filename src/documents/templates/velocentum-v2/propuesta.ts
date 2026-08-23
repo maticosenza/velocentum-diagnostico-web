@@ -16,6 +16,8 @@ import {
  * `variante: "propuesta"`, así que sólo muestra los hallazgos de capa
  * "servicio" en vez de duplicar exactamente el diagnóstico completo.
  */
+const TEMPLATE_ID = "velocentum-propuesta/v2";
+
 export function buildPropuestaDocumentV2(context: DocumentContextV1) {
   const findings = buildFindingsV2(context, "propuesta");
   const commercial = buildCommercialOfferV2(context);
@@ -24,7 +26,7 @@ export function buildPropuestaDocumentV2(context: DocumentContextV1) {
 
   return createModelV2({
     context,
-    templateId: "velocentum-propuesta/v2",
+    templateId: TEMPLATE_ID,
     kind: "propuesta",
     title: "Propuesta de trabajo",
     sections: [
@@ -32,6 +34,8 @@ export function buildPropuestaDocumentV2(context: DocumentContextV1) {
         context,
         "Propuesta de trabajo",
         "Una intervención alineada con las prioridades validadas.",
+        "propuesta",
+        TEMPLATE_ID,
       ),
       contentSectionV2({
         id: "commercial-summary",

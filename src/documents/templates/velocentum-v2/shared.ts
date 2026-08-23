@@ -33,7 +33,14 @@ export function coverSectionV2(
   context: DocumentContextV1,
   title: string,
   subtitle: string,
+  kind: DocumentModelV2["kind"],
+  templateId: string,
 ): DocumentSectionV2 {
+  // Versión tomada del identificador de plantilla ya existente (C10, ronda
+  // 2.1): "velocentum-diagnostico/v2" -> "v2". Si el identificador no trae
+  // el separador esperado, se documenta el caso y no se muestra un valor
+  // inventado (se usa el identificador completo, nunca un placeholder).
+  const version = templateId.includes("/") ? (templateId.split("/").pop() ?? templateId) : templateId;
   return {
     id: "cover",
     tone: "dark",
@@ -46,6 +53,8 @@ export function coverSectionV2(
         subtitle,
         clientName: context.cliente.nombre,
         diagnosticDate: context.diagnostico.fecha,
+        documentKind: kind,
+        version,
       },
     ],
   };

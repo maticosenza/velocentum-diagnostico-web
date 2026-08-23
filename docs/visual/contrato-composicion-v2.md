@@ -405,3 +405,202 @@ violación de este contrato encontrada en esa inspección se corrige en el
 código y se vuelve a generar/inspeccionar. Lo que quede pendiente por
 límite de tiempo o criterio razonable se documenta con motivo concreto en
 el handoff final — nunca se fuerza un veredicto positivo falso.
+## 5 · Correcciones de la ronda 2.1 (2026-08-23)
+
+La auditoría visual humana del prototipo entregado en el Bloque Visual 2 dio
+**APROBADO CON CORRECCIONES** (7 aprobados, 8 aprobados con reserva, 5 no
+aprobados de los 20 criterios). Esta sección documenta, para cada
+corrección C1-C10 exigida por esa auditoría, el umbral o la regla que
+pasa a formar parte del contrato — no reemplaza las secciones 1-4
+anteriores, las extiende donde corresponde.
+
+### 5.1 Umbral de ocupación por perfil (sustituye el "≥70%" único de la sección 2.2)
+
+**≥70% del alto útil en pantalla, ≥65% en A4** (antes un solo umbral de
+70% sin distinguir perfil). Donde una sección no llegue sin inventar
+contenido, se documenta el caso puntual con motivo (ver 5.7) y se deja
+así — nunca se rellena con contenido inventado.
+
+### 5.2 C1 — Tabla mensual apilada en impresión (ataca E-01/R-12 residual)
+
+La tabla horizontal de 5 columnas (Mes + 4 magnitudes) no entra en el
+ancho de tarjeta de A4 incluso con el mínimo de columna de la sección
+2.4 (110pt × 5 = 550pt > ~475pt de ancho de tarjeta disponible). En
+impresión (`PROFILES_V2.impresion.monthlyStacked = true`) la tabla se
+apila en formato etiqueta/valor por mes: un bloque por mes, con las 4
+magnitudes como filas "etiqueta — valor", sin bajar la tipografía del
+mínimo del contrato ni eliminar ninguna magnitud (D2 se mantiene: las 4
+etiquetas siguen literalmente iguales). Pantalla no cambia (sigue con la
+tabla horizontal de 5 columnas, que sí entra en su ancho de tarjeta).
+
+### 5.3 C2 — Una tarjeta de escenario por fila en impresión (ataca E-01/E-06 residual)
+
+`PROFILES_V2.impresion.colsScenarios` pasa de 2 a **1**. Causa real
+encontrada: con `colsNominal=2` y `n=3` (las tres tarjetas de escenario),
+`filasBalanceadas` producía huérfano con el nominal (`[2,1]`) y
+"resolvía" saltando a `colsNominal+1=3` (`[3]`, una sola fila con las
+tres) — sin ningún límite de ancho de tarjeta en ese salto, lo que
+colisiona directamente en A4. Con `colsScenarios=1`, `filasBalanceadas`
+devuelve `[1,1,1]` (una tarjeta por fila) sin tocar `balanceo.ts` (R-02,
+ya verificado, no se reabre). Pantalla no cambia (`colsScenarios=3`
+sigue sin colisión, confirmado en Bloque Visual 2 y de nuevo en esta
+ronda).
+
+### 5.4 C3 — Ningún elemento de tono oscuro va a sangre completa en A4 (ataca C-01 residual (a))
+
+Antes: portada, transición y toda sección de tono "dark" (resumen
+comercial, cierres) llenaban el 98-99% de la página A4 en tinta oscura.
+Ahora, sólo en el perfil impresión:
+
+- **Portada**: fondo claro; el degradado (R-05) queda contenido en un
+  bloque de 200×160pt anclado arriba a la derecha (`coverAccentBounded`)
+  en vez de cubrir el 45% de la altura de página.
+- **Transición**: fondo claro; el mensaje va dentro de una tarjeta
+  redondeada de ancho `transitionTitleWidth + 48` (no a ancho completo)
+  en vez de llenar la página entera.
+- **Contenido de tono oscuro** (resumen comercial, cierres): se aplana a
+  fondo claro (`pageSoft`) con una franja de acento de 8pt de alto en la
+  parte superior de la página (`impresionAccentBand`), y todo el
+  contenido interno se renderiza como si fuera claro (texto oscuro sobre
+  tarjetas claras).
+
+Área de cada acento contenido, verificada contra la superficie de A4
+(595,28 × 841,89pt = 501.158,7pt², redondeado): portada ~6,4%
+(200×160pt), transición ~20,5% (ancho real de la banda, `transitionTitleWidth
++ 48`), contenido ~0,95% (franja de 8pt de alto) — los tres muy por
+debajo del 25% exigido (test P3, corregido tras auditoría interna ronda
+1: la cifra de portada decía "~5,0%" por error de redacción, el cálculo
+real con `IMPRESION_ACCENT_GEOMETRY` da 6,4%). Pantalla no cambia:
+conserva el tratamiento a sangre completa ya aprobado.
+
+**Nota de implementación real**: un primer intento marcó la franja de
+contenido (`impresionAccentBand`) con la prop `fixed` de
+`@react-pdf/renderer`; combinado con tarjetas `wrap={false}` en el
+mismo flujo, causó que el primer bloque de contenido de la página se
+renderizara vacío (mismo patrón de bug ya reportado al cierre del
+Bloque Visual 2 para `fixed` dentro de contenido con wrap). Se revirtió
+a una `View` absoluta sin `fixed` — la franja sólo se repite en la
+primera página de una sección que se parte entre páginas, trade-off
+aceptado y documentado acá.
+
+### 5.5 C4 — Contraste calculado, nunca color fijo sin verificar (ataca C4(a) y C4(b))
+
+Regla dura nueva: **ningún color de texto es fijo independientemente del
+fondo real sobre el que se renderiza.** Todo color de texto que puede
+aparecer sobre más de un fondo (tarjeta clara vs. tarjeta oscura, página
+clara vs. página oscura) tiene una variante explícita por modo,
+verificada por cálculo de contraste WCAG (test P4), no a ojo:
+
+- **estado retenido/no_aplica** (antes: todo el párrafo en
+  `theme.colors.warning`, 1,67:1 sobre superficie clara — el defecto
+  C4(b) exacto): el texto pasa a un color de cuerpo compliant por modo
+  (`theme.colors.text` claro / `#DEDCEA` oscuro); el ámbar queda
+  exclusivamente como acento de borde izquierdo (`estadoBox`), nunca
+  como color de párrafo.
+- **badge ALTA** (antes: `theme.colors.risk` sobre `#FBEAEA`, 3,66:1):
+  pasa a `#992D2D` sobre el mismo fondo, 6,52:1.
+- **índice de hallazgo/servicio** (antes: `theme.colors.accent` fijo
+  sobre tarjeta clara, 3,91:1): pasa a `theme.colors.primary` en modo
+  claro (7,25:1) / `#C8C2FF` en modo oscuro (10,16:1 sobre la tarjeta
+  oscura real, no sobre el fondo de página).
+- **kicker y statement del resumen comercial** (antes: color fijo
+  pensado sólo para la tarjeta oscura de siempre — `theme.colors.muted`
+  sobre `#1C173E` daba 2,31:1, el defecto C4(a) exacto, "gris apagado
+  sobre fondo navy"): ambos pasan a variantes por modo, verificadas
+  contra el fondo real de la tarjeta en cada caso.
+
+Los valores exactos usados están centralizados en
+`V2_CONTRAST_TOKENS` (`renderers/pdf-v2/document.tsx`) para que el test
+P4 verifique los mismos literales que usan los estilos reales, sin
+duplicar números que puedan divergir.
+
+### 5.6 C5 — Identidad del escenario repetida ante una posible continuación (ataca C-01 residual (b))
+
+Causa real: `@react-pdf/renderer` no tiene un mecanismo nativo para
+"repetir el nombre del escenario sólo en la página donde continúa" —
+la reserva de repetición de encabezados de Bloque Visual 2 se cumplía
+para el header de sección pero no para la identidad de la tarjeta. Como
+no hay forma de saber en tiempo de composición dónde va a caer el corte
+de página, la solución adoptada es la única que garantiza corrección
+por construcción: el nombre del escenario (`scenarioKicker`) se antepone
+a CADA subsección que podría empezar una página nueva si la tarjeta se
+parte (tabla mensual, bloque de palancas, bloque de supuestos) — no sólo
+al header inicial. Esto es una pequeña redundancia visual cuando no hay
+corte real (el nombre aparece 3-4 veces en una tarjeta que cabe entera
+en una página), pero garantiza que cualquier página que empiece a mitad
+de tarjeta muestre la identidad del escenario, sin excepción. Toda tabla
+mensual partida también repite su encabezado de columnas por fila
+(`MonthlyTableHeader`, sin cambios de esta ronda) o, en el modo apilado
+de impresión (5.2), cada mes ya lleva su propio rótulo — no hay
+encabezado compartido que perder.
+
+### 5.7 C6 — MER tienda/marketplace no se repiten cuando hay comparación entre canales (ataca R-10 defecto introducido)
+
+`dedupeMetricGridV2(metrics, channelComparison)` (`blocks.ts`): cuando
+`channel-comparison` está presente, filtra `merTienda`/`merMarketplace`
+de los ítems de `metric-grid` antes de construir el bloque — se aplica
+en `diagnostico.ts` y `proyeccion-90d.ts` (las dos plantillas que usan
+ambos bloques), a nivel de plantilla, sin tocar el dominio. El
+componente de comparación en sí no se modifica.
+
+### 5.8 C7 — Excepciones documentadas de ocupación
+
+Ver sección 2.2 para el residuo ya documentado en Bloque Visual 2 (fila
+de continuación de `metric-grid` en pantalla, ahora medido contra el
+umbral dual de 5.1). Lista cerrada de páginas de baja ocupación
+verificadas en esta ronda, con motivo puntual — ninguna se rellena con
+contenido inventado:
+
+- **`diagnostico`/`proyeccion-90d`, sección "línea de base", perfil
+  pantalla, caso multicanal (s1)**: la fila de continuación de
+  `metric-grid` (3-6 tarjetas según el documento) queda con ~15-25% de
+  ocupación — residuo ya documentado en Bloque Visual 2, sección 2.2,
+  ahora con la cantidad de tarjetas actualizada tras C6 (dedup de MER:
+  7 métricas en vez de 9, balanceadas 4+3 por `filasBalanceadas`).
+- **`propuesta`, sección "Alcance" (`services`)**: cuando los servicios
+  no tienen `alcance` cargado (título de una línea, sin bullets), la
+  página queda con baja ocupación incluso después de C8 (que ya evita
+  el espacio reservado vacío) — no hay más contenido disponible en el
+  contexto sin inventarlo.
+- **`propuesta`, sección "Propuesta comercial" sin selección confirmada
+  (D1, `commercial-offer.pendiente === true`)**: el aviso "Selección
+  comercial pendiente" es una sola oración por diseño — expandirlo
+  requeriría inventar contenido, que D1 prohíbe explícitamente.
+
+### 5.9 C8 — Ninguna tarjeta reserva espacio vacío
+
+`cardRow` (PDF) y `.vdoc2-card-grid`/`.vdoc2-findings`/
+`.vdoc2-scenario-grid`/`.vdoc2-metric-grid` (web) pasan de `alignItems:
+stretch` (default de Yoga/CSS Grid en el eje cruzado de una fila) a
+`alignItems: flex-start` / `align-items: start`. Causa real: sin esto,
+todas las tarjetas de una fila se estiraban a la altura de la más alta,
+dejando espacio en blanco reservado en las tarjetas con menos contenido
+(el caso reportado: tarjetas de servicio sin `alcance`). Con el cambio,
+cada tarjeta se compacta a su altura real.
+
+### 5.10 C9 — Wordmark único (texto, nunca el logotipo SVG en minúscula)
+
+La portada usaba el componente `WordmarkVelocentum` de `renderers/pdf/marca.tsx`
+(v1, compartido, con letras en minúscula bakeadas en el path SVG) mientras
+el pie de página usaba texto plano "Velocentum" en caja mixta — dos
+tratamientos del mismo wordmark. Sin tocar `marca.tsx` (v1, fuera de
+alcance), v2 deja de usar `WordmarkVelocentum` en la portada y usa el
+mismo texto plano "Velocentum" (caja mixta, mismo `fontFamily`/peso que
+el pie) en portada y pie, en ambos perfiles. El símbolo (`SimboloVelocentum`,
+el isotipo, no el wordmark) se sigue reutilizando sin cambios — no es
+texto, no está sujeto a "un solo tratamiento". Web ya usaba texto plano
+en ambos lugares, sin cambios.
+
+### 5.11 C10 — Portada con los cuatro campos
+
+El bloque `cover` gana dos campos nuevos: `documentKind` (tipo de
+documento, vía `LABELS_TIPO_DOCUMENTO`) y `version` (tomada del
+identificador de plantilla ya existente: `templateId.split("/").pop()`,
+ej. `"velocentum-diagnostico/v2"` → `"v2"` — nunca un valor inventado).
+Los cuatro campos (cliente, tipo de documento, fecha, versión) se
+muestran en columna (antes: cliente y fecha en fila con
+`justify-content: space-between`) — con 4 campos en vez de 2, una fila
+con un nombre de cliente largo rompía el espaciado; en columna cada
+campo tiene su ancho disponible completo, verificado con el test de
+estrés P10 (nombre de 106 caracteres).
+

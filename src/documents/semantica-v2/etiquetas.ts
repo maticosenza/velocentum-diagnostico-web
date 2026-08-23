@@ -63,3 +63,10 @@ export const LABELS_PERIODO = {
   ritmo_mensual_dia_90: "ritmo mensual al día 90",
   acumulado_90d: "acumulado a 90 días",
 } as const;
+
+/** Tipo de documento explícito en la portada (C10, ronda 2.1). */
+export const LABELS_TIPO_DOCUMENTO = {
+  diagnostico: "Diagnóstico",
+  proyeccion_90d: "Proyección a 90 días",
+  propuesta: "Propuesta comercial",
+} as const;

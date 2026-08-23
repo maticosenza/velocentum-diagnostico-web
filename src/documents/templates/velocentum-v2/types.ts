@@ -114,7 +114,17 @@ export type NivelComercialV2 = {
 };
 
 export type DocumentBlockV2 =
-  | { type: "cover"; title: string; subtitle: string; clientName: string; diagnosticDate: string }
+  | {
+      type: "cover";
+      title: string;
+      subtitle: string;
+      clientName: string;
+      diagnosticDate: string;
+      /** Tipo de documento explícito (C10, ronda 2.1) — distinto del título de marketing. */
+      documentKind: DocumentKindV2;
+      /** Versión, tomada del identificador de plantilla ya existente (C10, ronda 2.1). */
+      version: string;
+    }
   | {
       type: "coverage";
       confidence: ConfianzaDocumento;

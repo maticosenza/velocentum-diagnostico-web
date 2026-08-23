@@ -17,7 +17,7 @@ import {
 import type { Style } from "@react-pdf/types";
 import { VELOCENTUM_LIGHT_V1 } from "../../theme";
 import { registrarFuentesVelocentum } from "../../theme/fuentes/registrar-fuentes";
-import { SimboloVelocentum, WordmarkVelocentum } from "../pdf/marca";
+import { SimboloVelocentum } from "../pdf/marca";
 import { filasBalanceadas } from "../../semantica-v2/balanceo";
 import { textoEstadoV2 } from "../../semantica-v2/estado";
 import {
@@ -27,6 +27,7 @@ import {
   LABELS_MAGNITUD,
   LABELS_PERIODO,
   LABELS_PRIORIDAD,
+  LABELS_TIPO_DOCUMENTO,
   LABELS_UNIDAD_COMERCIAL,
 } from "../../semantica-v2/etiquetas";
 import type {
@@ -38,6 +39,24 @@ import type {
 } from "../../templates/velocentum-v2/types";
 
 const theme = VELOCENTUM_LIGHT_V1;
+
+/**
+ * Colores introducidos en la ronda de correcciones 2.1 para resolver C4
+ * (contraste calculado, no a ojo) — centralizados acá para que el test
+ * P4 verifique EXACTAMENTE los valores que usan los estilos reales, sin
+ * duplicar literales que puedan divergir con el tiempo.
+ */
+export const V2_CONTRAST_TOKENS = {
+  darkCardBackground: "#1C173E",
+  altaBadgeBackground: "#FBEAEA",
+  altaBadgeText: "#992D2D",
+  onDarkCard: "#C8C2FF",
+  onDarkCardBody: "#D5D1E0",
+  onDarkCardBodyAlt: "#DEDCEA",
+  onLightPrimary: theme.colors.primary,
+  onLightBody: theme.colors.text,
+  onLightMuted: theme.colors.muted,
+} as const;
 
 registrarFuentesVelocentum();
 Font.registerHyphenationCallback((word) => [word]);
@@ -84,6 +103,13 @@ type ProfileTokensV2 = {
   colsServices: number;
   /** Ancho mínimo de columna de la tabla mensual (contrato sección 2.4). */
   monthlyColMinWidth: number;
+  /**
+   * C1, ronda 2.1: la tabla mensual horizontal de 5 columnas se sale del
+   * borde de la tarjeta en A4 (ancho de card insuficiente incluso con el
+   * mínimo de columna de la sección 2.4). En impresión se apila en
+   * formato etiqueta/valor por mes en vez de columnas; pantalla no cambia.
+   */
+  monthlyStacked: boolean;
 };
 
 export const PROFILES_V2: Record<PdfProfileV2, ProfileTokensV2> = {
@@ -103,6 +129,7 @@ export const PROFILES_V2: Record<PdfProfileV2, ProfileTokensV2> = {
     colsScenarios: 3,
     colsServices: 2,
     monthlyColMinWidth: 95,
+    monthlyStacked: false,
   },
   impresion: {
     pageSize: "A4",
@@ -112,16 +139,41 @@ export const PROFILES_V2: Record<PdfProfileV2, ProfileTokensV2> = {
     escala: { titulo: 18, subtitulo: 9.5, label: 9.5, valor: 15, valorGrande: 24, badge: 8, nota: 9, pie: 8 },
     coverPadding: 48,
     coverTitleFontSize: 30,
-    coverTitleWidth: 300,
+    // 260 (antes 300): con el acento contenido de C3
+    // (`coverAccentBounded`, 200pt de ancho anclado a la derecha), 300
+    // dejaba el título prácticamente tocando el borde del bloque —
+    // verificado en inspección a 150dpi tras la primera generación.
+    coverTitleWidth: 260,
     transitionTitleFontSize: 26,
     transitionTitleWidth: 420,
     colsMetricGrid: 2,
     colsFindings: 1,
-    colsScenarios: 2,
+    // C2, ronda 2.1: 3 tarjetas "cortas" a colsNominal=2 dejaban un
+    // huérfano de 1 que `filasBalanceadas` resolvía saltando a una sola
+    // fila de 3 (colsNominal+1 = n), y 3 tarjetas de escenario en una
+    // fila de A4 no entran sin colisionar. 1 columna = 1 tarjeta por fila
+    // en impresión, tal como el prompt lista como opción aceptable.
+    colsScenarios: 1,
     colsServices: 1,
     monthlyColMinWidth: 110,
+    monthlyStacked: true,
   },
 };
+
+/**
+ * Geometría de los acentos contenidos en impresión (C3, ronda 2.1): áreas
+ * fijas, conocidas en tiempo de compilación, usadas por el test P3 para
+ * calcular el porcentaje de superficie de página que ocupan — nunca a
+ * sangre completa, siempre muy por debajo del 25% exigido.
+ */
+export const IMPRESION_ACCENT_GEOMETRY = {
+  pageWidthPt: 595.28,
+  pageHeightPt: 841.89,
+  coverAccentWidthPt: 200,
+  coverAccentHeightPt: 160,
+  transitionBandHeightPt: 220,
+  contentAccentBandHeightPt: 8,
+} as const;
 
 function makeStylesV2(profile: PdfProfileV2) {
   const p = PROFILES_V2[profile];
@@ -194,17 +246,29 @@ function makeStylesV2(profile: PdfProfileV2) {
       marginBottom: 18,
     },
     coverSubtitle: { width: p.coverTitleWidth - 10, fontSize: 15, lineHeight: 1.45, color: "#DEDCEA" },
+    // C10, ronda 2.1: columna en vez de fila con `justify-content:
+    // space-between` — con 4 campos (antes 2) un nombre de cliente largo
+    // rompería el espaciado de una fila; en columna cada campo tiene su
+    // propio ancho disponible y el texto simplemente pasa a una segunda
+    // línea si hace falta, sin desbordar la página (verificado con un
+    // nombre de 100+ caracteres en el test de estrés P10).
     coverMeta: {
       position: "absolute",
       left: p.coverPadding,
       right: p.coverPadding,
-      bottom: 42,
-      flexDirection: "row",
-      justifyContent: "space-between",
+      bottom: 30,
+      flexDirection: "column",
+      gap: 3,
       fontSize: 10,
       color: "#CBC7D8",
     },
-    coverWordmark: { position: "absolute", left: p.coverPadding, bottom: 78 },
+    // bottom:100 (antes 78) para no solapar con `coverMeta`, que ahora
+    // apila 4 campos en columna en vez de 2 en fila (C10).
+    coverWordmark: { position: "absolute", left: p.coverPadding, bottom: 100 },
+    // C9, ronda 2.1: un solo tratamiento del wordmark ("Velocentum", caja
+    // mixta) en portada y pie, en vez del logotipo SVG en minúscula que
+    // sólo usaba la portada.
+    coverWordmarkText: { fontFamily: HEADING, fontWeight: W.bold, fontSize: 22, letterSpacing: 0.4 },
     transitionPage: {
       padding: p.coverPadding,
       justifyContent: "center",
@@ -229,7 +293,13 @@ function makeStylesV2(profile: PdfProfileV2) {
       lineHeight: 1.08,
     },
     cardGrid: { flexDirection: "column", gap: 10 },
-    cardRow: { flexDirection: "row", gap: 10 },
+    // `alignItems: "flex-start"` (C8, ronda 2.1): sin esto, Yoga estira
+    // todas las tarjetas de una fila a la altura de la más alta (stretch
+    // por defecto en el eje cruzado de un `flexDirection: row`), dejando
+    // espacio en blanco reservado en las tarjetas con menos contenido
+    // (ej. tarjetas de servicio sin alcance). Con flex-start cada tarjeta
+    // se compacta a su altura real.
+    cardRow: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
     // `flex: 1` es correcto SOLO para tarjetas dentro de una fila de grilla
     // (`cardRow`, ver `CardGrid`): reparte el ancho de la fila entre las
     // tarjetas. Aplicarlo a una tarjeta de ancho completo, hija directa de
@@ -266,13 +336,22 @@ function makeStylesV2(profile: PdfProfileV2) {
     cardLabelDark: { color: "#C8C4D5" },
     cardValue: { fontFamily: HEADING, fontWeight: W.bold, fontSize: e.valor, color: theme.colors.ink },
     cardValueDark: { color: theme.colors.surface },
+    // C4(b), ronda 2.1: el texto de estado (retenido/no_aplica) es una
+    // oración completa — el ámbar (`warning`) no cumple 4,5:1 sobre fondo
+    // claro como color de párrafo (1,67:1, calculado) y sólo debe usarse
+    // como acento de borde/badge. El acento queda en `estadoBox`
+    // (borde izquierdo), el texto pasa a un color de cuerpo con contraste
+    // suficiente en ambos perfiles.
+    estadoBox: { borderLeftWidth: 3, borderLeftColor: theme.colors.warning, paddingLeft: 6 },
     estadoTexto: {
       fontFamily: BODY,
       fontWeight: W.semiBold,
       fontSize: e.nota,
-      color: theme.colors.warning,
+      color: theme.colors.text,
     },
+    estadoTextoDark: { color: V2_CONTRAST_TOKENS.onDarkCardBodyAlt },
     estadoDetalle: { fontSize: e.nota - 1, color: theme.colors.muted, marginTop: 2 },
+    estadoDetalleDark: { color: V2_CONTRAST_TOKENS.onDarkCardBody },
     badge: {
       alignSelf: "flex-start",
       flexDirection: "row",
@@ -289,16 +368,26 @@ function makeStylesV2(profile: PdfProfileV2) {
       marginBottom: 7,
     },
     badgeDark: { color: theme.colors.surface, backgroundColor: theme.colors.accent },
-    badgeAlta: { color: theme.colors.risk, backgroundColor: "#FBEAEA" },
+    // C4, ronda 2.1: `theme.colors.risk` (#D64A4A) sobre "#FBEAEA" da
+    // 3,66:1 (calculado), por debajo del 4,5:1 exigido para texto de
+    // badge (8pt, no califica como texto grande). "#992D2D" sobre el
+    // mismo fondo da 6,52:1. El borde/fondo de `cardAlerta` no cambia
+    // (no son texto, no están sujetos al mismo umbral).
+    badgeAlta: { color: V2_CONTRAST_TOKENS.altaBadgeText, backgroundColor: V2_CONTRAST_TOKENS.altaBadgeBackground },
     badgeMedia: { color: "#8A6417", backgroundColor: "#FEF3D6" },
     badgeBaja: { color: theme.colors.muted, backgroundColor: theme.colors.surfaceSoft },
+    // C4, ronda 2.1: `theme.colors.accent` (#7A6BFF) sobre tarjeta clara
+    // (`surface`, blanco) da 3,91:1, por debajo de 4,5:1 — `primary`
+    // sobre blanco da 7,25:1. Sobre tarjeta oscura (`cardDark`,
+    // "#1C173E") se usa `findingIndexDark` ("#C8C2FF", 10,16:1).
     findingIndex: {
       fontFamily: HEADING,
       fontWeight: W.bold,
       fontSize: e.label,
-      color: theme.colors.accent,
+      color: theme.colors.primary,
       marginBottom: 4,
     },
+    findingIndexDark: { color: V2_CONTRAST_TOKENS.onDarkCard },
     itemTitle: {
       fontFamily: HEADING,
       fontWeight: W.bold,
@@ -334,18 +423,126 @@ function makeStylesV2(profile: PdfProfileV2) {
     scenarioMetricValue: { fontSize: e.valor - 3, fontFamily: HEADING, fontWeight: W.bold },
     scenarioMetricValuePrimary: { fontSize: e.valorGrande - 12, fontFamily: HEADING, fontWeight: W.black, color: theme.colors.primary },
     scenarioNote: { fontSize: e.nota, color: theme.colors.muted, marginTop: 4, lineHeight: 1.3 },
+    // C3/C4, ronda 2.1: antes fijo en `accent` (pensado sólo para la
+    // tarjeta oscura de siempre). Ahora que en impresión las secciones
+    // "dark" pueden renderizar en modo claro (sección 2.3 del contrato,
+    // corrección C3), el kicker necesita su propio color por modo:
+    // `primary` sobre superficie clara (7,25:1), `commercialSummaryKickerDark`
+    // ("#C8C2FF", 10,16:1 sobre `cardDark`) en modo oscuro.
     commercialSummaryKicker: {
       fontSize: e.subtitulo,
-      color: theme.colors.accent,
+      color: theme.colors.primary,
       fontFamily: HEADING,
       fontWeight: W.bold,
       marginBottom: 6,
       textTransform: "uppercase",
     },
+    commercialSummaryKickerDark: { color: V2_CONTRAST_TOKENS.onDarkCard },
     commercialSummaryNumber: { fontSize: e.valorGrande, fontFamily: HEADING, fontWeight: W.black },
     commercialSummaryRange: { fontSize: e.valorGrande - 6, fontFamily: HEADING, fontWeight: W.black },
+    // C4(a), ronda 2.1: `theme.colors.muted` sobre `cardDark`
+    // ("#1C173E") da 2,31:1 (calculado) — exactamente el defecto
+    // reportado ("gris apagado sobre fondo navy"). Ahora depende del
+    // modo: `muted` sobre superficie clara (7,33:1),
+    // `commercialSummaryStatementDark` ("#D5D1E0", 11,30:1) en oscuro.
     commercialSummaryStatement: { maxWidth: 480, marginTop: 10, fontSize: e.nota, color: theme.colors.muted, lineHeight: 1.4 },
-    bridgeNote: { fontSize: e.nota, color: "#DEDCEA", lineHeight: 1.4, marginTop: 10, maxWidth: 480 },
+    commercialSummaryStatementDark: { color: V2_CONTRAST_TOKENS.onDarkCardBody },
+    bridgeNote: { fontSize: e.nota, color: theme.colors.muted, lineHeight: 1.4, marginTop: 10, maxWidth: 480 },
+    bridgeNoteDark: { color: V2_CONTRAST_TOKENS.onDarkCardBodyAlt },
+    // C1, ronda 2.1: tabla mensual apilada etiqueta/valor por mes, sólo
+    // en impresión (`monthlyStacked`) — evita el desborde de la tabla
+    // horizontal de 5 columnas en el ancho de tarjeta A4, sin bajar la
+    // tipografía ni eliminar ninguna magnitud (D2).
+    monthlyStackedMonth: {
+      marginBottom: 8,
+      paddingBottom: 6,
+      borderBottomWidth: 0.5,
+      borderBottomColor: theme.colors.border,
+    },
+    monthlyStackedMonthLabel: {
+      fontFamily: HEADING,
+      fontWeight: W.bold,
+      fontSize: e.label,
+      marginBottom: 4,
+      color: theme.colors.ink,
+    },
+    monthlyStackedMonthLabelDark: { color: theme.colors.surface },
+    monthlyStackedRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 8,
+      paddingVertical: 2,
+    },
+    monthlyStackedLabel: { flex: 1, fontSize: e.nota, color: theme.colors.muted },
+    monthlyStackedLabelDark: { color: V2_CONTRAST_TOKENS.onDarkCardBody },
+    monthlyStackedValue: { fontSize: e.nota, fontFamily: HEADING, fontWeight: W.bold, color: theme.colors.ink },
+    monthlyStackedValueDark: { color: theme.colors.surface },
+    // C5, ronda 2.1: identidad del escenario repetida antes de cada
+    // subsección que podría quedar sola al inicio de una página nueva si
+    // la tarjeta se parte entre páginas (el header de arriba puede
+    // quedar en la página anterior).
+    scenarioKicker: {
+      fontSize: e.badge,
+      fontFamily: HEADING,
+      fontWeight: W.bold,
+      color: theme.colors.accent,
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+      marginBottom: 4,
+    },
+    scenarioKickerDark: { color: V2_CONTRAST_TOKENS.onDarkCard },
+    // C3, ronda 2.1: acento contenido (no a sangre completa) para
+    // secciones de tono oscuro en impresión — franja delgada en vez de
+    // fondo íntegro. Área << 25% de la página (verificado en
+    // `IMPRESION_ACCENT_GEOMETRY`).
+    impresionAccentBand: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: IMPRESION_ACCENT_GEOMETRY.contentAccentBandHeightPt,
+      backgroundColor: theme.colors.primary,
+    },
+    coverPageLight: {
+      padding: p.coverPadding,
+      fontFamily: BODY,
+      fontWeight: W.regular,
+      color: theme.colors.text,
+      backgroundColor: theme.colors.background,
+    },
+    coverAccentBounded: {
+      position: "absolute",
+      top: p.coverPadding,
+      right: p.coverPadding,
+      width: IMPRESION_ACCENT_GEOMETRY.coverAccentWidthPt,
+      height: IMPRESION_ACCENT_GEOMETRY.coverAccentHeightPt,
+      borderRadius: 16,
+      overflow: "hidden",
+    },
+    coverTitleLight: { color: theme.colors.ink },
+    coverSubtitleLight: { color: theme.colors.muted },
+    coverMetaLight: { color: theme.colors.muted },
+    transitionPageLight: {
+      padding: p.coverPadding,
+      justifyContent: "center",
+      fontFamily: BODY,
+      fontWeight: W.regular,
+      color: theme.colors.text,
+      backgroundColor: theme.colors.background,
+    },
+    // Ancho explícito (no `alignSelf: flex-start`, que en la primera
+    // versión combinado con `maxHeight` cortaba el título a mitad de
+    // frase — Yoga recorta contenido que excede una altura fija). El
+    // alto queda libre para crecer con el texto; el área "worst-case"
+    // que usa el test P3 asume un ancho igual a `transitionTitleWidth`
+    // y una altura generosa (`transitionBandHeightPt`), sin forzar un
+    // límite real que pueda truncar contenido.
+    transitionBandLight: {
+      width: p.transitionTitleWidth + 48,
+      backgroundColor: theme.colors.primary,
+      borderRadius: 16,
+      padding: 24,
+    },
     monthlyTable: { marginTop: 6, marginBottom: 6 },
     monthlyTableHeaderRow: {
       flexDirection: "row",
@@ -388,9 +585,11 @@ function ValorTexto({ value, dark, styles }: { value: ValorV2; dark: boolean; st
     return <Text style={[styles.cardValue, dark ? styles.cardValueDark : {}]}>{resultado.texto}</Text>;
   }
   return (
-    <View>
-      <Text style={styles.estadoTexto}>{resultado.texto}</Text>
-      {resultado.detalle ? <Text style={styles.estadoDetalle}>{resultado.detalle}</Text> : null}
+    <View style={styles.estadoBox}>
+      <Text style={[styles.estadoTexto, dark ? styles.estadoTextoDark : {}]}>{resultado.texto}</Text>
+      {resultado.detalle ? (
+        <Text style={[styles.estadoDetalle, dark ? styles.estadoDetalleDark : {}]}>{resultado.detalle}</Text>
+      ) : null}
     </View>
   );
 }
@@ -459,6 +658,49 @@ const MonthlyTableHeader = ({ styles }: { styles: Styles }) => (
   </View>
 );
 
+const MONTHLY_STACKED_ROWS: Array<{
+  key: "contribucionIncrementalHabilitada" | "facturacionProyectada" | "facturacionIncrementalHabilitada" | "ahorroPublicitarioHabilitado";
+  label: string;
+}> = [
+  { key: "contribucionIncrementalHabilitada", label: "Contribución incremental" },
+  { key: "facturacionProyectada", label: "Facturación proyectada" },
+  { key: "facturacionIncrementalHabilitada", label: "Facturación incremental" },
+  { key: "ahorroPublicitarioHabilitado", label: "Ahorro publicitario" },
+];
+
+/** C1, ronda 2.1: tabla mensual apilada etiqueta/valor por mes (perfil impresión). */
+function MonthlyTableStacked({
+  mensual,
+  dark,
+  styles,
+}: {
+  mensual: EscenarioV2["mensual"];
+  dark: boolean;
+  styles: Styles;
+}) {
+  return (
+    <View>
+      {mensual.map((mes) => (
+        <View key={mes.mes} style={styles.monthlyStackedMonth} wrap={false}>
+          <Text style={[styles.monthlyStackedMonthLabel, dark ? styles.monthlyStackedMonthLabelDark : {}]}>
+            Mes {mes.mes}
+          </Text>
+          {MONTHLY_STACKED_ROWS.map((row) => (
+            <View key={row.key} style={styles.monthlyStackedRow}>
+              <Text style={[styles.monthlyStackedLabel, dark ? styles.monthlyStackedLabelDark : {}]}>
+                {row.label}
+              </Text>
+              <Text style={[styles.monthlyStackedValue, dark ? styles.monthlyStackedValueDark : {}]}>
+                {textoEstadoV2(mes[row.key]).texto}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function ScenarioCard({
   item,
   dark,
@@ -466,6 +708,7 @@ function ScenarioCard({
   bodyStyle,
   styles,
   full,
+  profile,
 }: {
   item: EscenarioV2;
   dark: boolean;
@@ -473,15 +716,25 @@ function ScenarioCard({
   bodyStyle: Style[];
   styles: Styles;
   full: boolean;
+  profile: PdfProfileV2;
 }) {
   const grupos = ["facturacion_incremental", "contribucion_incremental", "ahorro_publicitario"] as const;
+  const stacked = PROFILES_V2[profile].monthlyStacked;
+  // C5, ronda 2.1: identidad del escenario repetida junto a cada
+  // subsección que podría iniciar una página nueva si la tarjeta se
+  // parte (el header con el nombre puede quedar en la página anterior).
+  const Kicker = () => (
+    <Text style={[styles.scenarioKicker, dark ? styles.scenarioKickerDark : {}]}>
+      {LABELS_ESCENARIO[item.id]}
+    </Text>
+  );
   return (
     <View style={[...cardStyle, full ? styles.cardFull : {}]} wrap={full}>
-      <View style={styles.scenarioHeader}>
+      <View style={styles.scenarioHeader} wrap={false}>
         <Text style={styles.itemTitle}>{LABELS_ESCENARIO[item.id].toUpperCase()}</Text>
         <Text style={styles.badge}>{item.confianza.toUpperCase()}</Text>
       </View>
-      <View style={styles.scenarioMetrics}>
+      <View style={styles.scenarioMetrics} wrap={false}>
         <View style={styles.scenarioMetric}>
           <Text style={styles.scenarioMetricLabel}>Contribución incremental 90 días</Text>
           <ValorTexto value={item.contribucion90d} dark={dark} styles={styles} />
@@ -502,16 +755,28 @@ function ScenarioCard({
       </Text>
       {item.mensual.length > 0 ? (
         <View style={styles.monthlyTable}>
-          <MonthlyTableHeader styles={styles} />
-          {item.mensual.map((mes) => (
-            <View key={mes.mes} style={styles.monthlyTableRow} wrap={false}>
-              <Text style={styles.monthlyTableMonthCell}>Mes {mes.mes}</Text>
-              <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.contribucionIncrementalHabilitada).texto}</Text>
-              <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.facturacionProyectada).texto}</Text>
-              <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.facturacionIncrementalHabilitada).texto}</Text>
-              <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.ahorroPublicitarioHabilitado).texto}</Text>
-            </View>
-          ))}
+          <Kicker />
+          {stacked ? (
+            <MonthlyTableStacked mensual={item.mensual} dark={dark} styles={styles} />
+          ) : (
+            <>
+              <MonthlyTableHeader styles={styles} />
+              {item.mensual.map((mes) => (
+                <View key={mes.mes} style={styles.monthlyTableRow} wrap={false}>
+                  <Text style={styles.monthlyTableMonthCell}>Mes {mes.mes}</Text>
+                  <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.contribucionIncrementalHabilitada).texto}</Text>
+                  <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.facturacionProyectada).texto}</Text>
+                  <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.facturacionIncrementalHabilitada).texto}</Text>
+                  <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.ahorroPublicitarioHabilitado).texto}</Text>
+                </View>
+              ))}
+            </>
+          )}
+        </View>
+      ) : null}
+      {item.palancas.length > 0 ? (
+        <View wrap={false}>
+          <Kicker />
         </View>
       ) : null}
       {grupos.map((tipo) => {
@@ -530,6 +795,7 @@ function ScenarioCard({
       })}
       {item.supuestos.length > 0 ? (
         <View style={styles.palancaGroup} wrap={false}>
+          <Kicker />
           <Text style={styles.palancaGroupTitle}>Supuestos</Text>
           <BulletList items={item.supuestos.map((s) => s.valor)} styles={styles} />
         </View>
@@ -647,7 +913,9 @@ function renderBlock(
                 style={[...cardStyle, alerta ? styles.cardAlerta : {}]}
                 wrap={false}
               >
-                <Text style={styles.findingIndex}>{String(index + 1).padStart(2, "0")}</Text>
+                <Text style={[styles.findingIndex, dark ? styles.findingIndexDark : {}]}>
+                  {String(index + 1).padStart(2, "0")}
+                </Text>
                 {alerta ? (
                   <Text style={[styles.badge, styles.badgeAlta]}>▲ ALERTA CRÍTICA · MARGEN NEGATIVO</Text>
                 ) : (
@@ -669,18 +937,23 @@ function renderBlock(
         />
       );
     case "commercial-summary": {
+      const kickerStyle = [styles.commercialSummaryKicker, dark ? styles.commercialSummaryKickerDark : {}];
+      const statementStyle = [
+        styles.commercialSummaryStatement,
+        dark ? styles.commercialSummaryStatementDark : {},
+      ];
       if (block.headline) {
         const t = textoEstadoV2(block.headline);
         return (
           <View key="commercial-summary" style={standaloneCardStyle} wrap={false}>
-            <Text style={styles.commercialSummaryKicker}>
-              Contribución incremental a 90 días · Escenario conservador
-            </Text>
+            <Text style={kickerStyle}>Contribución incremental a 90 días · Escenario conservador</Text>
             <Text style={styles.commercialSummaryNumber}>{t.texto}</Text>
-            {block.statement ? <Text style={styles.commercialSummaryStatement}>{block.statement}</Text> : null}
+            {block.statement ? <Text style={statementStyle}>{block.statement}</Text> : null}
             {block.assumptionsDetail.length > 0 ? (
               <View style={styles.palancaGroup} wrap={false}>
-                <Text style={[styles.palancaGroupTitle, { color: theme.colors.surface }]}>Supuestos</Text>
+                <Text style={[styles.palancaGroupTitle, dark ? { color: theme.colors.surface } : {}]}>
+                  Supuestos
+                </Text>
                 <BulletList items={block.assumptionsDetail.map((s) => s.valor)} styles={styles} />
               </View>
             ) : null}
@@ -691,20 +964,20 @@ function renderBlock(
       const upper = block.range.upper ? textoEstadoV2(block.range.upper).texto : "";
       return (
         <View key="commercial-summary" style={standaloneCardStyle} wrap={false}>
-          <Text style={styles.commercialSummaryKicker}>Rango de contribución incremental a 90 días</Text>
+          <Text style={kickerStyle}>Rango de contribución incremental a 90 días</Text>
           <Text style={styles.commercialSummaryRange}>
             {lower} – {upper}
           </Text>
           {block.dispersion.dataToCloseIt.length > 0 ? (
             <BulletList items={block.dispersion.dataToCloseIt} styles={styles} />
           ) : null}
-          {block.statement ? <Text style={styles.commercialSummaryStatement}>{block.statement}</Text> : null}
+          {block.statement ? <Text style={statementStyle}>{block.statement}</Text> : null}
         </View>
       );
     }
     case "bridge-note":
       return (
-        <Text key="bridge-note" style={styles.bridgeNote}>
+        <Text key="bridge-note" style={[styles.bridgeNote, dark ? styles.bridgeNoteDark : {}]}>
           {block.text}
         </Text>
       );
@@ -729,6 +1002,7 @@ function renderBlock(
                     bodyStyle={bodyStyle}
                     styles={styles}
                     full={false}
+                    profile={profile}
                   />
                 );
               }}
@@ -743,6 +1017,7 @@ function renderBlock(
               bodyStyle={bodyStyle}
               styles={styles}
               full
+              profile={profile}
             />
           ))}
         </View>
@@ -776,7 +1051,9 @@ function renderBlock(
             const item = raw as (typeof block.items)[number];
             return (
               <View key={item.id} style={cardStyle} wrap={false}>
-                <Text style={styles.findingIndex}>{String(index + 1).padStart(2, "0")}</Text>
+                <Text style={[styles.findingIndex, dark ? styles.findingIndexDark : {}]}>
+                  {String(index + 1).padStart(2, "0")}
+                </Text>
                 <Text style={styles.itemTitle}>{item.nombre}</Text>
                 <BulletList items={item.alcance} styles={styles} />
               </View>
@@ -872,6 +1149,13 @@ function Footer({ dark, styles }: { dark: boolean; styles: Styles }) {
   );
 }
 
+/**
+ * C3, ronda 2.1: en impresión (A4), ningún elemento decorativo de tono
+ * oscuro va a sangre completa — el fondo es claro y el acento queda
+ * contenido en un bloque delimitado (nunca > 25% de la superficie de la
+ * página, ver `IMPRESION_ACCENT_GEOMETRY`). El perfil pantalla no cambia:
+ * conserva el tratamiento a sangre completa ya aprobado.
+ */
 function CoverPage({
   block,
   profile,
@@ -881,6 +1165,43 @@ function CoverPage({
   profile: PdfProfileV2;
   styles: Styles;
 }) {
+  const impresion = profile === "impresion";
+  if (impresion) {
+    return (
+      <Page size={PROFILES_V2[profile].pageSize} style={styles.coverPageLight}>
+        <View style={styles.coverAccentBounded}>
+          <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <Defs>
+              <LinearGradient id="coverGradientA4" x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0" stopColor={theme.colors.primary} stopOpacity={1} />
+                <Stop offset="1" stopColor={theme.colors.primaryBright} stopOpacity={0.85} />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100" height="100" fill="url(#coverGradientA4)" />
+          </Svg>
+        </View>
+        <View style={styles.coverMark}>
+          <SimboloVelocentum color={theme.colors.primary} width={40} height={40} />
+        </View>
+        <Text style={[styles.coverTitle, styles.coverTitleLight]}>{block.title}</Text>
+        <Text style={[styles.coverSubtitle, styles.coverSubtitleLight]}>{block.subtitle}</Text>
+        {/* C9: un solo tratamiento de wordmark ("Velocentum", caja mixta,
+            texto) — reemplaza el logotipo SVG en minúscula por el mismo
+            texto que ya usa el pie de página, sin tocar `marca.tsx` (v1,
+            compartido). */}
+        <View style={styles.coverWordmark}>
+          <Text style={[styles.coverWordmarkText, { color: theme.colors.primary }]}>Velocentum</Text>
+        </View>
+        {/* C10: cliente, tipo de documento, fecha y versión — los cuatro campos. */}
+        <View style={[styles.coverMeta, styles.coverMetaLight]}>
+          <Text>{block.clientName}</Text>
+          <Text>{LABELS_TIPO_DOCUMENTO[block.documentKind]}</Text>
+          <Text>{block.diagnosticDate}</Text>
+          <Text>{block.version}</Text>
+        </View>
+      </Page>
+    );
+  }
   return (
     <Page size={PROFILES_V2[profile].pageSize} style={styles.coverPage}>
       {/* Gradiente lineal primary -> primaryBright en vez de dos bloques sólidos (R-05). */}
@@ -898,12 +1219,16 @@ function CoverPage({
       </View>
       <Text style={styles.coverTitle}>{block.title}</Text>
       <Text style={styles.coverSubtitle}>{block.subtitle}</Text>
+      {/* C9: mismo tratamiento textual que el pie de página (ver nota arriba). */}
       <View style={styles.coverWordmark}>
-        <WordmarkVelocentum color={theme.colors.surface} width={130} height={87} />
+        <Text style={[styles.coverWordmarkText, { color: theme.colors.surface }]}>Velocentum</Text>
       </View>
+      {/* C10: cliente, tipo de documento, fecha y versión — los cuatro campos. */}
       <View style={styles.coverMeta}>
         <Text>{block.clientName}</Text>
+        <Text>{LABELS_TIPO_DOCUMENTO[block.documentKind]}</Text>
         <Text>{block.diagnosticDate}</Text>
+        <Text>{block.version}</Text>
       </View>
     </Page>
   );
@@ -922,6 +1247,20 @@ function TransitionPage({
     (candidate): candidate is Extract<DocumentBlockV2, { type: "transition" | "next-step" }> =>
       candidate.type === "transition" || candidate.type === "next-step",
   );
+  const impresion = profile === "impresion";
+  if (impresion) {
+    return (
+      <Page size={PROFILES_V2[profile].pageSize} style={styles.transitionPageLight}>
+        <View style={styles.transitionBandLight}>
+          <Text style={styles.transitionMark}>VELOCENTUM / {section.eyebrow ?? "SIGUIENTE"}</Text>
+          <Text style={[styles.transitionTitle, { color: theme.colors.surface }]}>
+            {block?.label ?? section.title ?? "Próximo paso"}
+          </Text>
+        </View>
+        <Footer dark={false} styles={styles} />
+      </Page>
+    );
+  }
   return (
     <Page size={PROFILES_V2[profile].pageSize} style={styles.transitionPage}>
       <Text style={styles.transitionMark}>VELOCENTUM / {section.eyebrow ?? "SIGUIENTE"}</Text>
@@ -940,13 +1279,32 @@ function ContentPage({
   profile: PdfProfileV2;
   styles: Styles;
 }) {
-  const dark = section.tone === "dark";
+  const wantsDark = section.tone === "dark";
+  // C3, ronda 2.1: una sección "dark" en impresión no va a sangre
+  // completa — se aplana a fondo claro con un acento contenido (franja
+  // delgada), y todo el contenido interno se renderiza como si fuera
+  // claro (evita el defecto de contraste C4(a): texto claro fijo sobre
+  // una tarjeta que ya no es oscura).
+  const impresionSoftened = wantsDark && profile === "impresion";
+  const dark = wantsDark && !impresionSoftened;
   return (
     <Page
       size={PROFILES_V2[profile].pageSize}
-      style={[styles.page, dark ? styles.pageDark : {}, section.tone === "soft" ? styles.pageSoft : {}]}
+      style={[
+        styles.page,
+        dark ? styles.pageDark : {},
+        section.tone === "soft" || impresionSoftened ? styles.pageSoft : {},
+      ]}
       wrap
     >
+      {/* Sin `fixed`: combinado con `wrap={false}` en las tarjetas del
+          contenido, `fixed` hacía que Yoga calculara mal la altura del
+          primer bloque de la página y lo dejaba invisible (mismo patrón
+          de bug ya reportado en el cierre del Bloque Visual 2 para
+          `fixed` dentro de contenido con wrap). Sin `fixed`, la franja
+          sólo se repite en la primera página de la sección si se parte
+          entre páginas — trade-off aceptado, documentado acá. */}
+      {impresionSoftened ? <View style={styles.impresionAccentBand} /> : null}
       <View style={styles.header} fixed>
         {section.eyebrow ? <Text style={[styles.eyebrow, dark ? styles.eyebrowDark : {}]}>{section.eyebrow}</Text> : null}
         {section.title ? <Text style={styles.title}>{section.title}</Text> : null}

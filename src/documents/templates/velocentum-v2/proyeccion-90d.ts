@@ -6,6 +6,7 @@ import {
   buildMetricGridV2,
   buildScenariosV2,
   buildShippingV2,
+  dedupeMetricGridV2,
 } from "./blocks";
 import {
   contentSectionV2,
@@ -18,18 +19,22 @@ import {
   transitionSectionV2,
 } from "./shared";
 
+const TEMPLATE_ID = "velocentum-proyeccion-90d/v2";
+
 /** Espejo de `templates/velocentum-v1/proyeccion-90d.ts`, con los bloques v2. */
 export function buildProyeccion90dDocumentV2(context: DocumentContextV1) {
   const coverage = buildCoverageBlockV2(context);
-  const metrics = buildMetricGridV2(context);
   const channelComparison = buildChannelComparisonV2(context);
+  // C6, ronda 2.1: cuando la comparación entre canales está presente, MER
+  // tienda/marketplace no se repiten en la grilla de métricas.
+  const metrics = dedupeMetricGridV2(buildMetricGridV2(context), channelComparison);
   const shipping = buildShippingV2(context);
   const scenarios = buildScenariosV2(context);
   const summary = buildCommercialSummaryV2(context);
 
   return createModelV2({
     context,
-    templateId: "velocentum-proyeccion-90d/v2",
+    templateId: TEMPLATE_ID,
     kind: "proyeccion_90d",
     title: "Plan de crecimiento a 90 días",
     sections: [
@@ -37,6 +42,8 @@ export function buildProyeccion90dDocumentV2(context: DocumentContextV1) {
         context,
         "Plan de crecimiento a 90 días",
         "Escenarios condicionados por evidencia, capacidad y rentabilidad.",
+        "proyeccion_90d",
+        TEMPLATE_ID,
       ),
       // Cifra destacada + cobertura de evidencia en una sola sección
       // (corrección de auditoría, ronda 1): cada una por separado (un
