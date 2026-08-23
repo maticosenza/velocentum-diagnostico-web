@@ -90,6 +90,18 @@ supuesto comercial", ya marcada aparte con el símbolo † y `assumptions:
 string[]`, ver `src/documents/renderers/pdf/format.ts:22-31`). Colapsar
 esto en una sola escala es la causa estructural de C-02.
 
+**C-02, ampliada al cierre de este bloque, con las tres brechas de
+tipado exactas** (ver `docs/visual/matriz-hallazgos.md`, fila C-02):
+
+1. `ValorPublicable<T>` no contempla `evidencia_faltante` (sólo tiene
+   `"calculado"`/`"retenido"`/`"no_aplica"`, líneas 28-46 arriba).
+2. `Evidencia<T>` no contempla `estimado_configuracion` (sólo tiene
+   `"verificado"`/`"declarado"`/`"no_disponible"`/`"no_aplica"`, líneas
+   13-24 arriba).
+3. `Evidencia<T>` no llega a ningún renderer (`context.evidencia` se
+   construye pero nunca se lee fuera de `build-context.ts`, verificado por
+   búsqueda exhaustiva — ver más arriba en esta misma sección).
+
 ## 3 · Localización de los cuatro focos pedidos, sin corregir nada
 
 ### "Sin datos — Sin datos" (E-04)
@@ -230,7 +242,7 @@ Cotejado contra las cuatro exigencias de D5:
 
 | Exigencia de D5 | Estado hoy |
 |---|---|
-| Alerta crítica visible en el diagnóstico | Sí — hallazgo `margen_negativo`, primero, prioridad alta. Pero usa el mismo componente visual (`findings`) y el mismo badge sin color propio que cualquier otro hallazgo "alta" (ver E-11): no hay una alerta VISUALMENTE distinta de las demás, sólo distinta en posición y en el campo `prioridad`. |
+| Alerta crítica visible en el diagnóstico | Sí — hallazgo `margen_negativo`, primero, prioridad alta. Pero usa el mismo componente visual (`findings`) y el mismo badge sin color propio que cualquier otro hallazgo "alta" (ver E-11/E-17): no hay una alerta VISUALMENTE distinta de las demás, sólo distinta en posición y en el campo `prioridad`. **Por esto, E-10 se ajustó a "parcialmente resuelto" al cierre de este bloque** (ver `docs/visual/auditoria-visual-2026-08-23.md` sección d): el dato está bien, la diferenciación visual queda para el Bloque Visual 2. |
 | Retención de toda proyección que dependa del margen | Sí — a nivel de `Fuga` (motor) y, en cascada, a nivel de `Escenario90d` (las líneas de contribución/ahorro dependen de las mismas fugas). No verificado en este bloque a nivel de PIXEL sobre un PDF real de un escenario con margen negativo Y datos de funnel simultáneamente (s4, el único escenario de margen negativo en la evidencia, no tiene datos de funnel cargados — ver `docs/visual/matriz-hallazgos.md`, fila E-10). |
 | Conservación de hallazgos/recomendaciones que NO dependan del margen | Sí, estructuralmente: `mapearHallazgos` no filtra nada más que lo relacionado al margen; hallazgos como `medicion`, `creativos`, `angulo`, `comisiones` no leen `margen_contribucion`. |
 | Posibilidad de preparar una propuesta cualitativa, sin promesas económicas | **DECISIÓN PENDIENTE.** Hoy `buildPropuestaDocument` no distingue "propuesta con proyecciones retenidas por margen negativo" de "propuesta con proyecciones retenidas por cualquier otro motivo" — no existe ningún tratamiento cualitativo especial. `commercial-summary` en la propuesta simplemente muestra el estado retenido genérico (ver E-04 arriba). Ningún wireframe de este bloque puede fijar cómo se ve "propuesta cualitativa sin promesas" porque no hay una decisión de copy/estructura tomada — se marca DECISIÓN PENDIENTE en `docs/visual/wireframes.md`. |
@@ -251,7 +263,11 @@ numeración "01/02/03" SÍ existe, pero sólo en el renderer WEB de
 `findings`, una extensión de un patrón que ya existe ahí; en todo lo
 demás (incluido el PDF completo), es una adición nueva.
 
-## 6 · Resumen de DECISIÓN PENDIENTE de este documento
+## 6 · Resumen de DECISIÓN PENDIENTE (consolidado al cierre del bloque)
+
+Lista completa de decisiones pendientes de todo el Bloque Visual 1 —
+ninguna se resuelve acá, todas quedan abiertas para el Bloque Visual 2 (o
+antes, si Matías decide resolverlas por separado):
 
 1. Redacción/estructura exacta para separar `retenido` de
    `evidencia_faltante` dentro de `ValorPublicable` (hoy un solo estado).
@@ -263,3 +279,19 @@ demás (incluido el PDF completo), es una adición nueva.
 4. Si el Eje 1 (`Evidencia<T>`/`context.evidencia`) debe empezar a
    renderizarse en algún bloque, y en cuál — hoy no se muestra en
    ninguno.
+5. Unificar la capa de presentación entre el renderer PDF y el renderer
+   web (ver E-17), o aceptar formalmente que son dos productos separados
+   con reglas de presentación propias — hoy divergen sin que nadie lo haya
+   decidido explícitamente, simplemente porque no existe ninguna capa
+   compartida.
+6. Completar el roadmap 30/60/90 con datos reales del motor, o eliminar
+   las secciones/bloques de roadmap de las plantillas que hoy prometen
+   una hoja de ruta que nunca se muestra (ver E-18) — mantener el estado
+   actual (bloque completo, dato siempre vacío) no es una decisión, es una
+   omisión sin resolver.
+7. Si `s4-roas-bueno-margen-negativo` se mantiene como el escenario oficial
+   de "estados extremos" (margen negativo, sin funnel) o si hace falta un
+   escenario adicional que combine margen negativo CON datos de funnel
+   cargados, para poder verificar visualmente la retención en cascada de
+   proyecciones que D5 exige (ver `docs/visual/wireframes.md` sección 4 y
+   `docs/visual/matriz-hallazgos.md`, nota de E-10).

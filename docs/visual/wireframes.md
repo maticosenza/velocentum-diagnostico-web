@@ -185,6 +185,15 @@ Secciones reales, en orden: `cover` → `commercial-summary` → `coverage` →
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+**Nota agregada al cierre (E-01/E-02):** el wireframe de arriba muestra el
+contenido pretendido de una tarjeta de escenario con su tabla mensual y
+palancas — en la evidencia auditada, ese contenido se solapaba (E-01) y en
+algún caso dejaba una página con encabezado sin cuerpo (E-02). Antes de
+tocar el renderer para corregir esto en el Bloque Visual 2, hay que
+regenerar el PDF y confirmar que el defecto sigue existiendo con el código
+actual — ver la condición de entrada obligatoria en
+`docs/visual/auditoria-visual-2026-08-23.md`, sección d.
+
 ### Estado explícito: proyección íntegramente retenida
 
 Cuando NINGUNA de las tres magnitudes de NINGÚN escenario es calculable
@@ -360,7 +369,16 @@ datos de funnel cargados, así que sus únicos dos hallazgos son
 `margen_negativo` y `comisiones` — no hay en la evidencia auditada un caso
 que combine margen negativo CON fugas de funnel simultáneamente para
 verificar visualmente la retención en cascada de proyecciones (ver
-`docs/visual/matriz-hallazgos.md`, nota sobre E-10).
+`docs/visual/matriz-hallazgos.md`, nota sobre E-10). **Decisión pendiente 7
+(`docs/visual/contrato-estados.md` sección 6):** si `s4` se mantiene como
+el único escenario de "estados extremos" o si hace falta uno adicional que
+combine ambas condiciones para poder verificar esto.
+
+**E-10, ajustado a "parcialmente resuelto" al cierre de este bloque**
+(`docs/visual/auditoria-visual-2026-08-23.md` sección d): el wireframe de
+arriba ya refleja esto — el hallazgo `margen_negativo` está primero y con
+prioridad alta (correcto), pero la tarjeta es visualmente idéntica a
+cualquier otra de prioridad alta (pendiente, Bloque Visual 2).
 
 ---
 

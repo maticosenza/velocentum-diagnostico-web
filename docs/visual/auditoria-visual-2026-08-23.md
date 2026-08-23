@@ -45,10 +45,21 @@ composición "proyección + propuesta" (`velocentum-proyeccion-propuesta/v1`)
 tampoco aparece en la evidencia. Ver `docs/visual/perfiles-pantalla-a4.md`
 para el estado real del perfil A4 verificado contra el código en esta rama.
 
-Resumen de hallazgos: **16 errores comprobados** (E-01 a E-16), **5
-inconsistencias de contrato vigentes** — 4 normativas (C-01 a C-04) y 1
-inferida (C-07); C-05 fue reclasificada como R-12 y C-06 fue retirada — y
-**12 recomendaciones** (R-01 a R-12).
+Resumen de hallazgos, tal como llegó originalmente: **16 errores
+comprobados** (E-01 a E-16), **5 inconsistencias de contrato vigentes** —
+4 normativas (C-01 a C-04) y 1 inferida (C-07); C-05 fue reclasificada
+como R-12 y C-06 fue retirada — y **12 recomendaciones** (R-01 a R-12).
+
+**Reconciliado al cierre de este bloque (2026-08-23, corrección
+documental post-handoff — ver sección d más abajo):** el inventario final
+tiene **38 identificadores** — **E-01 a E-18** (18, se agregaron E-17 y
+E-18), **C-01 a C-08** (8, se agregó C-08; C-01 se reescribió y pasó de
+"Bloque 1" a "Bloque 2"), **R-01 a R-12** (12, sin cambios). Antes de esta
+corrección había 35 identificadores; después, 38. **La cantidad de
+identificadores no equivale a la cantidad de problemas activos únicos**:
+C-05 no cuenta aparte porque referencia a R-12 (mismo problema, un solo
+lugar donde se resuelve), y C-06 está retirado (no es un problema). El
+detalle completo de las ocho correcciones está en la sección d.
 
 ---
 
@@ -327,20 +338,225 @@ implementarse.
 
 ---
 
-## Notas de reconciliación de este bloque (2026-08-23)
+## d) Correcciones del cierre (2026-08-23, corrección documental post-handoff)
 
-Durante la verificación de código de este bloque se encontraron, además,
-hechos relevantes que no tienen ID propio en el apéndice original pero que
-afectan directamente a varios de los hallazgos de arriba. Se documentan
-en `docs/visual/matriz-hallazgos.md` y en `docs/visual/contrato-estados.md`,
-citados desde ahí, para no alterar la numeración original de este apéndice:
+Ocho correcciones aplicadas al cierre del Bloque Visual 1, antes de pasar
+al Bloque Visual 2. El apéndice original (sección c) **no se reescribe ni
+se borra** — sigue siendo la transcripción literal de la auditoría
+externa, tal como llegó. Esta sección es la capa de corrección que se le
+suma encima, con la misma regla que ya regía para C-05/C-06: un hallazgo
+corregido se marca corregido acá, nunca se elimina del registro.
 
-- El renderer PDF (`src/documents/renderers/pdf/document.tsx`) nunca
-  renderiza la lista de "Supuestos" (`item.assumptions`) dentro del bloque
-  `scenarios` — el renderer web sí lo hace. Esto localiza con certeza la
-  causa raíz de E-13 (ver matriz).
-- Varias divergencias de formato/copy entre el renderer PDF y el renderer
-  web para el MISMO estado semántico (percent con decimales variables vs.
-  fijos; "Sin datos" vs. "Retenido"; `item.capa` crudo vs. etiqueta
-  traducida; badge de prioridad sin color propio en PDF pero sí en web).
-  Ver matriz de hallazgos, fila de cada E correspondiente.
+### E-17 · NORMATIVO (nuevo) · Divergencia sistemática entre PDF y web
+
+Durante la verificación de código de este bloque aparecieron, repetidas
+veces, distintos tratamientos entre el renderer PDF y el renderer web para
+el MISMO estado semántico — no un hallazgo aislado, sino un patrón que
+atraviesa el documento entero:
+
+- **`ValorPublicable` retenido:** PDF muestra `"Sin datos"`
+  (`src/documents/renderers/pdf/document.tsx:567-571`); web muestra
+  `"Retenido"` (`src/documents/renderers/web/document-renderer.tsx:247-253`,
+  clase `vdoc-retained`). Mismo estado, dos palabras distintas.
+- **Tratamiento visual de la prioridad de un hallazgo:** PDF usa un
+  `badgeStyle` único para "alta"/"media"/"baja"
+  (`src/documents/renderers/pdf/document.tsx:535`, sin variante por
+  `prioridad`); web sí diferencia por color
+  (`src/documents/renderers/web/document-renderer.tsx:197-199` +
+  `src/documents/renderers/web/document-renderer.css:388-404`,
+  `.vdoc-tag--alta`/`.vdoc-tag--media`).
+- **Configuración de `Intl.NumberFormat` para porcentajes:** PDF fuerza
+  `minimumFractionDigits: 1` (`src/documents/renderers/pdf/format.ts:4-7`);
+  web no fija ningún mínimo (`src/documents/renderers/web/format.ts:12-15`,
+  `style: "percent", maximumFractionDigits: 2` sin `minimumFractionDigits`)
+  — pueden mostrar cantidades de decimales distintas para el mismo valor.
+- **`item.capa`:** PDF muestra el valor crudo del enum
+  (`src/documents/renderers/pdf/document.tsx:537-540`, `{item.capa}` tal
+  cual — "servicio"); web lo traduce
+  (`src/documents/renderers/web/document-renderer.tsx:200`,
+  `{LABELS_CAPA[item.capa]}` — "Servicio").
+- **Supuestos:** visibles en web dentro de cada tarjeta de escenario
+  (`src/documents/renderers/web/document-renderer.tsx:385-390`,
+  `item.assumptions`), completamente omitidos en PDF (el caso `"scenarios"`
+  de `src/documents/renderers/pdf/document.tsx:582-663` nunca los lee) —
+  esta es, además, la causa raíz de E-13, ya localizada en la matriz.
+- **Numeración 01/02/03 de hallazgos:** presente en web
+  (`src/documents/renderers/web/document-renderer.tsx:192-194`,
+  `vdoc-finding__index`), ausente en PDF (`document.tsx:530-549`, el caso
+  `"findings"` no numera nada).
+
+**Causa raíz:** no hay ninguna capa de presentación compartida entre los
+dos renderers. Cada uno (`document.tsx` para PDF, `document-renderer.tsx`
+para web) implementa su propio mapeo de estado → texto/color/estructura,
+de forma completamente independiente, a partir del mismo `DocumentModel`.
+No existe ningún módulo intermedio de "reglas de presentación" que ambos
+consuman — cada divergencia de arriba es un lugar donde alguien implementó
+la regla dos veces, con resultados distintos.
+
+**Capa:** renderer/presentación. **Bloque de corrección:** Bloque Visual 2.
+
+### E-18 · NORMATIVO (nuevo) · Roadmap siempre vacío
+
+`src/documents/domain/build-context.ts` fija `roadmap: []` de forma
+incondicional en el `DocumentContextV1` que arma `buildDocumentContext` —
+no hay ninguna rama del código que lo pueble con datos reales del motor.
+El bloque `roadmap` en sí SÍ existe, completo, en las tres capas: tiene un
+constructor (`src/documents/templates/velocentum-v1/shared.ts:169-177`,
+`roadmapSection`), un caso en el renderer PDF
+(`src/documents/renderers/pdf/document.tsx:664-680`) y un componente en
+el renderer web (`src/documents/renderers/web/document-renderer.tsx:404-423`,
+`RoadmapBlock`) — los tres saben perfectamente cómo dibujar una hoja de
+ruta si les llega alguna. Lo que falta es exclusivamente el dato de
+origen: con `context.roadmap` siempre `[]`,
+`roadmapSection` siempre produce `blocks: []`, y `createModel`
+(`shared.ts:4-30`) filtra esa sección vacía antes de que llegue a
+ningún renderer — así que en la práctica, ningún documento generado desde
+el motor real muestra jamás una hoja de ruta, aunque las plantillas de
+proyección y propuesta la incluyan en su lista de secciones
+(`proyeccion-90d.ts`, `propuesta.ts`).
+
+**Capa:** dominio/contrato. **Bloque de corrección:** Bloque Visual 3, o
+una decisión de producto previa (¿se completa el roadmap con datos reales,
+o se elimina la sección/el bloque de las plantillas que hoy prometen algo
+que nunca entregan?) — ver decisión pendiente 6.
+
+### C-01 · reescrita y reasignada de Bloque 1 a Bloque 2
+
+**Texto original de C-01 (sección c más arriba) queda tal cual, para
+trazabilidad.** La afirmación central de C-01 — "el perfil A4 no existe
+como maquetación propia" / "el tamaño de página del renderer PDF es una
+constante única [960,540]" — **queda REFUTADA**, verificada contra
+`src/documents/renderers/pdf/document.tsx:99-142` (`PROFILES`): hay dos
+valores de `pageSize` distintos (`[960,540]` para pantalla, `"A4"` para
+impresión), con tokens de composición propios cada uno (grilla de 3 vs. 2
+columnas, tipografía distinta). Detalle completo, con la parte de la
+afirmación que SÍ se confirma (el CSS de impresión del renderer web, que
+no tiene perfil A4), en `docs/visual/perfiles-pantalla-a4.md`.
+
+**C-01, reescrita, conserva únicamente los problemas residuales
+verificables** (los que sí siguen siendo ciertos hoy):
+
+- Portada y transiciones son a sangre completa (bleed) en AMBOS perfiles,
+  incluido A4 (`document.tsx:213-229`, `coverAccent`/`coverAccentSoft` sin
+  margen) — si "sin páginas a sangre completa" se adopta como regla para
+  A4, hoy no se cumple.
+- Los encabezados de la tabla mensual de escenarios no se repiten al
+  continuar de página (`document.tsx:623-648`): se imprimen una sola vez
+  por escenario, sin ningún mecanismo de repetición configurado para
+  cuando `@react-pdf/renderer` corta la tabla entre páginas.
+- El escalado tipográfico entre perfiles se limita a `baseFontSize`/
+  `titleFontSize` a nivel global (`PROFILES.*`) — no hay una escala
+  completa por rol de texto (label, valor, nota, badge) pensada para
+  papel.
+- **Aclaración, no un defecto nuevo:** que los dos perfiles compartan el
+  mismo árbol de componentes (`makeStyles(profile)`, `renderBlock`,
+  `ContentPage`, parametrizados por `PROFILES[profile]`) es una decisión
+  ARQUITECTÓNICA, no un defecto por sí mismo — es perfectamente válido que
+  "perfiles de composición independientes" (D6) se implemente como
+  parámetros propios sobre un solo árbol de componentes, en vez de dos
+  jerarquías de componentes separadas. Sólo sería un defecto si esa
+  arquitectura impidiera lograr las diferencias que D6 exige, y no es el
+  caso: las diferencias de columnas, tamaño de página y tipografía ya se
+  logran así.
+
+**Capa:** renderer. **Bloque de corrección:** Bloque Visual 2 (reasignado
+desde Bloque 1 — ya no es un déficit de contrato/arquitectura a resolver
+antes de diseñar, es trabajo de implementación visual directo sobre los
+tres puntos residuales de arriba).
+
+### C-08 · NORMATIVO (nuevo) · No existe previsualización A4
+
+Aunque el renderer PDF sí tiene un perfil `impresion` real (ver C-01
+reescrita arriba), **no hay ninguna forma de previsualizar ese perfil A4
+sin descargar el PDF.** `DocumentWebRendererProps`
+(`src/documents/renderers/web/document-renderer.tsx:12-15`) no tiene
+ningún campo `profile` — el renderer web siempre produce la misma
+composición HTML, la que corresponde a `pantalla`. La pantalla de vista
+previa (`src/routes/_authenticated/documentos.$id.$slug.tsx:198-202`)
+monta `<DocumentWebRenderer model={model} />` sin ningún selector de
+perfil; el único lugar donde `profile` existe en la UI es el dropdown de
+"Descargar PDF" (`ETIQUETA_PERFIL`, líneas 26-29 de esa misma ruta), que
+no afecta a la vista previa en pantalla en absoluto. El `@page` del CSS de
+impresión del renderer web (`document-renderer.css:751-775`) permanece
+fijo en las dimensiones de 16:9 (`13.333in × 7.5in`), nunca A4 — así que
+ni siquiera "Imprimir" desde el navegador sobre la vista previa produce
+A4. La única manera de comprobar cómo se ve el perfil `impresion` hoy es
+descargar el PDF y abrirlo.
+
+**Capa:** renderer/UI. **Bloque de corrección:** Bloque Visual 2.
+
+### E-10 · ajustado a "parcialmente resuelto"
+
+El hallazgo original ("margen negativo sin alerta") ya no aplica tal cual
+— desde el commit `e5080e2` (previo a este bloque, ya en HEAD), el
+hallazgo `margen_negativo` existe, aparece primero en el array y lleva
+prioridad "alta" forzada (`src/lib/propuesta.ts`,
+`src/documents/domain/build-context.ts`, `prioridadDeHallazgo`). **Pero
+sigue usando exactamente el mismo componente visual (`findings`) y el
+mismo tratamiento (mismo badge, sin color propio — ver E-17) que cualquier
+otro hallazgo de prioridad alta.** No hay ninguna diferenciación visual
+específica para "esto es más grave que una alta cualquiera" — la única
+diferencia hoy es de posición (siempre primero) y de metadato
+(`prioridad: "alta"`), no de presentación. Por eso queda **parcialmente
+resuelto**, no resuelto: el dato y la prioridad ya están bien; la
+diferenciación visual queda pendiente para el Bloque Visual 2.
+
+### C-02 · ampliada con las brechas de tipado
+
+Además de la descripción original (un solo eje de estados donde D4 exige
+dos), la verificación de este bloque encontró tres brechas de tipado
+concretas, verificadas contra `src/documents/domain/types.ts`:
+
+1. **`ValorPublicable<T>` no contempla `evidencia_faltante`** — sólo tiene
+   `"calculado"` / `"retenido"` / `"no_aplica"` (líneas 28-46); D4 exige
+   distinguir `retenido` de `evidencia_faltante` como dos causas de
+   ausencia distintas, y hoy ambas caen en el mismo `"retenido"` genérico.
+2. **`Evidencia<T>` no contempla `estimado_configuracion`** — sólo tiene
+   `"verificado"` / `"declarado"` / `"no_disponible"` / `"no_aplica"`
+   (líneas 13-24); D4 exige un quinto estado que hoy no existe en el tipo.
+3. **`Evidencia<T>` no llega a ningún renderer** — `context.evidencia`
+   se construye en `build-context.ts` pero ningún constructor de bloque ni
+   ningún renderer (PDF o web) lo lee jamás (verificado por búsqueda
+   exhaustiva, cero coincidencias fuera de donde se construye): el Eje 1
+   completo de D4 es invisible en el documento final, sin importar qué
+   estados tenga el tipo.
+
+Detalle completo de las tres, con cita exacta, en
+`docs/visual/contrato-estados.md`, secciones 2 y 6.
+
+### E-01 y E-02 · condición de entrada obligatoria para el Bloque Visual 2
+
+Ambos hallazgos (solapamiento de texto en la tabla de escenarios;
+página con encabezado y cuerpo vacío) se verificaron en este bloque **sólo
+contra el código fuente** (ancho de tarjeta, estructura de la tabla,
+paginación automática de `@react-pdf/renderer`) — no se regeneró ningún
+PDF real en este bloque documental, así que la causa estructural está
+localizada pero el defecto en sí no se reprodujo visualmente de nuevo.
+
+**Condición de entrada obligatoria antes de tocar el renderer en el
+Bloque Visual 2:** regenerar los PDFs de los escenarios afectados (como
+mínimo s1, que es donde se documentó la evidencia original) y comprobar
+que el defecto TODAVÍA existe con el código actual. Si no se reproduce,
+no implementar ninguna corrección basada únicamente en la evidencia
+histórica de la auditoría externa — la causa estructural señalada acá
+(ancho de card + tabla de 5 columnas, `document.tsx:97,623-648`) puede
+haber cambiado de comportamiento por otras razones desde que se generó
+esa evidencia (por ejemplo, cambios de contenido en los escenarios que
+alteren cuánto texto entra en cada celda).
+
+### Reconciliación de identificadores (resumen)
+
+- **Antes de esta corrección:** 35 identificadores (E-01 a E-16 = 16;
+  C-01 a C-07 = 7; R-01 a R-12 = 12).
+- **Después de esta corrección:** 38 identificadores (E-01 a E-18 = 18;
+  C-01 a C-08 = 8; R-01 a R-12 = 12, sin cambios).
+- **La cantidad de identificadores no es la cantidad de problemas activos
+  únicos:** C-05 no suma un problema aparte porque ya está reclasificada
+  hacia R-12 (mismo problema, un solo lugar de resolución); C-06 está
+  retirado (dejó de ser un problema real desde que D3 superó al handoff
+  que lo originó). De los 38 IDs, 2 (C-05, C-06) no representan trabajo
+  pendiente por sí mismos — son registro histórico de una reclasificación
+  y un retiro, respectivamente.
+
+Ver `docs/visual/matriz-hallazgos.md` para las 38 filas completas, con
+estado de verificación y bloque de corrección asignado a cada una.

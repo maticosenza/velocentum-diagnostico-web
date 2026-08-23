@@ -2,6 +2,18 @@
 
 Verificado contra `feat/noche-continuacion`, HEAD `e5080e20b2be491c3f45ad9846fc07441e68c103`.
 
+**Actualización al cierre del bloque (2026-08-23):** este documento ya
+reflejaba, desde la primera versión, que C-01 estaba parcialmente refutada
+(ver sección 2 más abajo). Al cierre del bloque, C-01 se reescribió
+formalmente en `docs/visual/auditoria-visual-2026-08-23.md` (sección d)
+para conservar sólo los tres problemas residuales verificables (bleed en
+A4, tabla sin repetir encabezado, escala tipográfica incompleta) y se
+reasignó del Bloque Visual 1 al Bloque Visual 2. Además se agregó **C-08
+(no existe previsualización A4)** — ver sección 1.1 nueva, más abajo —
+como hallazgo separado de C-01: son dos problemas distintos (C-01 es sobre
+si el perfil A4 existe; C-08 es sobre si se puede VER sin descargar el
+PDF).
+
 ## 1 · Estado real, archivo y línea
 
 ### Renderer PDF (`@react-pdf/renderer`) — SÍ tiene dos perfiles distintos
@@ -123,6 +135,18 @@ usa el objeto `StyleSheet` de `document.tsx`). Imprimir la vista previa web
 hoy produce páginas con forma 16:9, nunca A4 — sin importar qué perfil
 elija el usuario en el dropdown de descarga (que ni siquiera afecta a esta
 vista).
+
+### C-08 · No existe previsualización A4 (nuevo, agregado al cierre)
+
+Con todo lo de arriba: el renderer PDF sí tiene un perfil `impresion` A4
+real (ver sección 1). Pero **no hay ninguna manera de verlo sin descargar
+el PDF.** La vista previa en pantalla (`DocumentWebRenderer`, sin campo
+`profile`) siempre muestra la composición de `pantalla`; su impresión de
+navegador reproduce las dimensiones de 16:9, nunca A4 (`@page: 13.333in
+7.5in`, arriba). El único selector de perfil de toda la interfaz es el
+dropdown de "Descargar PDF" — no hay ningún modo "vista previa A4" en
+pantalla. Para comprobar cómo se ve el perfil `impresion` hoy, la única vía
+es descargarlo y abrirlo con un lector de PDF.
 
 ## 2 · V3 — veredicto
 
