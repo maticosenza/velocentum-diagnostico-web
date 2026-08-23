@@ -207,18 +207,39 @@ export type ResumenComercial90d = {
   redaccion: string | null;
 };
 
-export type SeleccionComercial = {
-  aprobadaManualmente: true;
-  paqueteId: string;
+/** Mismas cuatro unidades que `UnidadServicio` en `src/lib/paquetes.ts`. */
+export type UnidadServicioComercial = "campañas_activas" | "piezas_por_mes" | "campañas" | "alcance_descrito";
+
+export type ServicioNivelComercial = {
+  servicio: string;
+  unidad: UnidadServicioComercial;
+  /** null sólo cuando la unidad es "alcance_descrito": ese alcance no se cuantifica. */
+  cantidad: number | null;
+  /** Sólo para "alcance_descrito". */
+  descripcion: string | null;
+  /** Hallazgos concretos que justifican este servicio en este nivel. */
+  hallazgoIds: string[];
+};
+
+export type NivelComercial = {
+  id: string;
   nombre: string;
-  alcance: string[];
-  exclusiones: string[];
-  entregables: string[];
-  duracionDias: number;
-  precio: Evidencia<number>;
-  formaPago: string;
-  inicio: string | null;
-  incluirPrecioEnPdf: boolean;
+  servicios: ServicioNivelComercial[];
+  /** Retenido hasta que el vendedor carga un precio manualmente: el sistema nunca inventa uno. */
+  precio: ValorPublicable<number>;
+};
+
+/**
+ * Escalera de paquetes ya confirmada manualmente por el vendedor (decisión
+ * comercial 7, `docs/decisiones-pendientes.md`, resuelta 2026-08-22): hasta
+ * tres niveles acumulativos (IMPULSO/TRACCIÓN/ESCALA por defecto, nombres
+ * configurables), nunca un paquete único. `null` en el `DocumentContextV1`
+ * hasta que exista una confirmación manual explícita — ver
+ * `src/lib/paquetes.ts` (`EscaleraPaquetesConfirmada`) para el modelo
+ * persistido del que se deriva.
+ */
+export type SeleccionComercial = {
+  niveles: NivelComercial[];
 };
 
 export type MetricasActualesDocumento = {

@@ -71,6 +71,11 @@ export function registrarFuentesVelocentum(): void {
 
   // Satoshi no trae itálica para 600/800; Inter no trae itálica en este
   // paquete (sólo se relevó estático 18pt sin itálicas, por pedido
-  // explícito). react-pdf resuelve al peso/estilo más cercano ya
-  // registrado si falta una combinación exacta.
+  // explícito). CORRECCIÓN (auditoría 2026-08-23): a diferencia de lo que
+  // decía este comentario antes, @react-pdf/renderer NO degrada al
+  // peso/estilo más cercano si falta una combinación exacta — tira una
+  // excepción real ("Could not resolve font for ..."). Cualquier estilo
+  // nuevo que pida una combinación peso/estilo no registrada acá debe
+  // verificarse contra `PESOS_SATOSHI`/`PESOS_INTER` arriba, o el render
+  // de PDF falla en tiempo de ejecución, no en desarrollo.
 }

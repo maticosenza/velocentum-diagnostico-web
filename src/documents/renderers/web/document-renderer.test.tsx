@@ -51,17 +51,32 @@ describe("renderer web documental", () => {
     expect(html).not.toContain("Potencial</h3>");
   });
 
-  it("renderiza propuesta sin mostrar un precio excluido manualmente", () => {
+  it("renderiza propuesta con el nivel comercial confirmado, incluido su precio", () => {
     const html = render(buildPropuestaDocument(buildSnakeContext()));
 
     expect(html).toContain('data-document-kind="propuesta"');
-    expect(html).toContain("Growth 90 días");
+    expect(html).toContain('data-block-type="commercial-offer"');
+    expect(html).toContain("IMPULSO");
     expect(html).toContain("Medición");
     expect(html).toContain("Validar alcance, responsables y fecha de inicio.");
-    expect(html).not.toContain('data-value="900000"');
+    expect(html).toContain('data-value="900000"');
   });
 
-  it("muestra envío y precio únicamente cuando el modelo los habilita", () => {
+  it("un nivel comercial sin precio cargado muestra 'Precio a definir', nunca un cero", () => {
+    const contexto = buildSnakeContext();
+    if (!contexto.comercial) throw new Error("Fixture comercial incompleto");
+    contexto.comercial = {
+      niveles: contexto.comercial.niveles.map((nivel) => ({
+        ...nivel,
+        precio: { estado: "retenido", valor: null, confianza: "bloqueada", motivos: ["Sin precio cargado."] },
+      })),
+    };
+    const html = render(buildPropuestaDocument(contexto));
+    expect(html).toContain("Precio a definir");
+    expect(html).not.toContain('data-value="0"');
+  });
+
+  it("muestra el costo de envío únicamente cuando el modelo lo habilita", () => {
     const shippingContext = buildSnakeContext();
     shippingContext.envio = {
       estado: "si",
@@ -76,13 +91,6 @@ describe("renderer web documental", () => {
     const shippingHtml = render(buildDiagnosticoDocument(shippingContext));
     expect(shippingHtml).toContain('data-block-type="shipping"');
     expect(shippingHtml).toContain('data-value="5000"');
-
-    const commercialContext = buildSnakeContext();
-    if (!commercialContext.comercial) throw new Error("Fixture comercial incompleto");
-    commercialContext.comercial.incluirPrecioEnPdf = true;
-    const commercialHtml = render(buildPropuestaDocument(commercialContext));
-    expect(commercialHtml).toContain('data-block-type="commercial-offer"');
-    expect(commercialHtml).toContain('data-value="900000"');
   });
 
   it("renderiza la composición con una sola portada y ambas capas", () => {

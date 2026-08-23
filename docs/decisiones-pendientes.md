@@ -11,54 +11,116 @@ numerada de forma permanente; los números no se reutilizan.
 
 ## Abiertas
 
-### 10 · Cómo conectar la selección de paquetes confirmada a la propuesta comercial (`comercial` en `build-context.ts:479`)
+Ninguna por ahora.
 
-**Contexto.** El plan maestro (fase 13) dejó anotado como pendiente "conectar
-la selección persistida hacia `SeleccionComercial`/`buildDocumentContext()`
-para que el PDF de propuesta la use" — hoy `comercial: null` sigue
-hardcodeado. Al intentar implementarlo (2026-08-23) apareció un
-**desajuste estructural real entre los dos modelos**, no sólo plomería:
+## Cerradas
+
+### 10 · Cómo conectar la selección de paquetes confirmada a la propuesta comercial (`comercial` en `build-context.ts:479`) — **RESUELTA el 2026-08-22 (decisión 7), implementada el 2026-08-23**
+
+**Corrección a esta misma entrada.** La primera versión de esta entrada
+(escrita horas antes, misma fecha) planteaba esto como una decisión de
+producto nueva y sin resolver. Eso fue un error de lectura: **la decisión 7,
+ya cerrada el 2026-08-22, especifica exactamente la forma** — "escalera de
+hasta tres niveles (IMPULSO/TRACCIÓN/ESCALA), acumulativa... nunca un
+paquete único" — y ya lo decía todo lo necesario para conectar `comercial`
+sin inventar nada. Matías señaló el error y repitió la decisión textual; se
+implementó en base a eso el mismo día. Se deja el razonamiento original
+abajo tal cual se escribió, sin editarlo, para que quede registro del error
+y de cómo se corrigió — no porque el desajuste técnico que describe fuera
+falso (SÍ era real: `SeleccionComercial` tenía forma de paquete único), sino
+porque la conclusión de "hace falta una decisión nueva" era la equivocada.
+
+**Contexto original de esta entrada (según fue escrito, sin editar).** El
+plan maestro (fase 13) dejó anotado como pendiente "conectar la selección
+persistida hacia `SeleccionComercial`/`buildDocumentContext()` para que el
+PDF de propuesta la use" — hoy `comercial: null` sigue hardcodeado. Al
+intentar implementarlo (2026-08-23) apareció un **desajuste estructural real
+entre los dos modelos**, no sólo plomería:
 
 - Lo que se persiste (`EscaleraPaquetesConfirmada`, `src/lib/paquetes.ts`) es
   una **escalera de hasta tres niveles** (IMPULSO/TRACCIÓN/ESCALA),
   acumulativa, cada nivel con su propia lista de servicios y su propio
   precio (`NivelPaquete.precio: number | null`). Es un menú de tres
   opciones, no una oferta única.
-- Lo que el documento de propuesta consume (`SeleccionComercial`,
-  `src/documents/domain/types.ts:210-222`) es **un solo paquete**:
-  `paqueteId`, `nombre`, `alcance`, `exclusiones`, `entregables`,
-  `duracionDias`, `precio` (`Evidencia<number>`), `formaPago`, `inicio`,
-  `incluirPrecioEnPdf`. El bloque `"commercial-offer"` (`blocks.ts` →
-  `buildCommercialOffer`) arma UNA sola tarjeta de oferta, y
-  `propuesta.ts` sólo tiene una sección `"commercial-offer"` (singular).
-- La pantalla de confirmación (`confirmacion-paquetes.tsx`) nunca captura
+- Lo que el documento de propuesta consumía (`SeleccionComercial`,
+  `src/documents/domain/types.ts`) era **un solo paquete**: `paqueteId`,
+  `nombre`, `alcance`, `exclusiones`, `entregables`, `duracionDias`,
+  `precio` (`Evidencia<number>`), `formaPago`, `inicio`,
+  `incluirPrecioEnPdf`. El bloque `"commercial-offer"` armaba UNA sola
+  tarjeta de oferta.
+- La pantalla de confirmación (`confirmacion-paquetes.tsx`) nunca capturó
   `exclusiones`, `duracionDias`, `formaPago`, `inicio` ni
-  `incluirPrecioEnPdf` para ningún nivel — esos campos no existen en
-  ningún lugar de la UI ni del modelo persistido hoy.
+  `incluirPrecioEnPdf` para ningún nivel.
 
-**Por qué no se resolvió unilateralmente.** Completar la conexión exige
-decidir cosas de negocio que no están definidas en ningún documento
-existente:
+**Resolución real (la decisión ya existía, decisión 7): escalera de tres
+niveles, no paquete único.** Los campos que "faltaban" (duración, forma de
+pago, exclusiones, el toggle de precio) no faltaban porque hiciera falta una
+decisión nueva — faltaban porque pertenecían a un modelo de paquete único
+que la decisión 7 nunca pidió. Implementado así:
 
-1. ¿La propuesta muestra los tres niveles lado a lado (como el menú que
-   son), o el vendedor elige UNO como "la" oferta que se envía al
-   cliente?
-2. Si es un solo nivel: ¿de dónde salen duración, forma de pago, fecha de
-   inicio, exclusiones y si el precio va impreso en el PDF? ¿Campos
-   nuevos en la pantalla de confirmación, o un default fijo (por ejemplo,
-   90 días, alineado con el horizonte de escenarios)? Un default inventado
-   acá sería exactamente el tipo de dato de negocio que la regla de este
-   trabajo prohíbe asumir.
-3. Si son los tres niveles: el bloque `"commercial-offer"` (tipo y
-   plantilla) necesita rediseñarse para un menú de tres tarjetas, no una
-   sola — trabajo de plantilla/diseño, no sólo de plomería, y coincide con
-   el "rediseño visual" que fase 13 ya dejó pendiente por separado.
+- `SeleccionComercial` (`src/documents/domain/types.ts`) se redefinió como
+  `{ niveles: NivelComercial[] }`, con `NivelComercial = { id, nombre,
+  servicios: ServicioNivelComercial[], precio: ValorPublicable<number> }` —
+  mismas unidades por servicio que ya definía `src/lib/paquetes.ts`
+  (campañas activas, piezas por mes, campañas, alcance descrito), y el
+  precio como `ValorPublicable` (retenido, nunca cero, cuando el vendedor no
+  cargó un número) en vez de `Evidencia`, para ser consistente con el resto
+  del contrato documental.
+- `comercialDesdeEscalera()` (nuevo, `src/documents/domain/build-context.ts`)
+  traduce `EscaleraPaquetesConfirmada` (el tipo persistido) a
+  `SeleccionComercial`, revalidando `confirmado === true` y `niveles.length
+  > 0` — nunca confía ciegamente en que el JSON persistido tenga la forma
+  correcta.
+- `buildDocumentContext()` ganó un argumento nuevo, `paquetesConfirmados:
+  EscaleraPaquetesConfirmada | null`; `comercial: null` hardcodeado
+  (`build-context.ts:479`) se reemplazó por
+  `comercialDesdeEscalera(args.paquetesConfirmados)`.
+- `buildDocumentContextDesdeDiagnostico()` (`from-diagnostico.ts`) lee la
+  columna `diagnostico.propuesta` ya persistida (`separarContenidoGuardado`
+  + `normalizarEscaleraConfirmada`, ambos ya existentes desde la decisión 9)
+  y la pasa como `paquetesConfirmados` — sin selección persistida, o con una
+  escalera sin `confirmado: true`, sigue en `null`, nunca se filtra al
+  documento.
+- El bloque `"commercial-offer"` (`blocks.ts`, `templates/velocentum-v1/types.ts`)
+  pasó de una tarjeta única a una escalera de niveles (`niveles: {id, name,
+  services, price}[]`), y ambos renderers (web: `document-renderer.tsx`,
+  reutilizando el mismo layout de tarjetas que ya usan los escenarios; PDF:
+  `document.tsx`, reutilizando el mismo `cardGrid` que ya usan hallazgos y
+  escenarios) muestran los niveles lado a lado, cada uno con su propio
+  precio (o "Precio a definir"/"Sin datos" cuando el vendedor no lo cargó
+  todavía — nunca un cero).
+- La ruta de descarga (`documentos.$id.$slug.tsx`) agregó `propuesta` a su
+  `select()` de Supabase, único cambio de lectura de base de datos — sin
+  ninguna migración ni escritura nueva.
 
-**Qué se hizo en su lugar.** No se tocó `comercial: null` en
-`build-context.ts`. Queda exactamente como estaba, documentado acá para
-que Matías decida antes de que se implemente cualquiera de las dos rutas.
+**Pruebas nuevas.** `build-context.test.ts` (escalera confirmada puebla
+`comercial`; sin escalera queda `null`; escalera con `confirmado: false`
+nunca se filtra; un nivel sin precio queda retenido), `from-diagnostico.test.ts`
+(mismos tres casos pero contra la columna JSON persistida real, más la
+forma vieja de la columna sin sobre), `qa-numerica-bloque2.test.ts` sección 7
+(`buildCommercialOffer` con la escalera real, servicios/alcances/precios),
+`document-renderer.test.tsx` y `templates.test.ts` actualizados a la forma
+nueva. Suite completa, typecheck y build verificados después del cambio.
 
-## Cerradas
+**Bug real encontrado por la auditoría interna, corregido antes de
+commitear.** El PDF de propuesta tiraba una excepción real (no degradaba)
+al generarse con cualquier nivel sin precio cargado — el estado normal en
+producción según la propia decisión 7 ("precios siempre vacíos hasta que
+el vendedor los carga"). Causa: el estilo `sinDatos`
+(`src/documents/renderers/pdf/document.tsx`) pedía Inter en itálica, pero
+`registrar-fuentes.ts` sólo registra Inter en estilo normal — el bloque
+`commercial-offer` fue el primer camino de producción que efectivamente
+ejercitaba esa rama con un valor `null` real (los otros dos usos de
+`sinDatos` reciben siempre un valor no nulo por contrato de tipos, así que
+nunca se ejecutaban). Corregido sacando `fontStyle: "italic"` de
+`sinDatos` (el marcado semántico ya no dependía de eso: la palabra "Sin
+datos"/"Precio a definir" + el color de acento alcanzan) y corrigiendo el
+comentario de `registrar-fuentes.ts`, que afirmaba —incorrectamente— que
+`@react-pdf/renderer` degrada solo ante una combinación peso/estilo
+faltante. Agregada una prueba de regresión con `renderToBuffer` real
+(`document.test.tsx`) que arma un nivel sin precio y confirma, con texto
+extraído del PDF real (`pdfjs-dist`), que "Precio a definir" aparece sin
+que la generación falle.
 
 ### 1 · ¿Debe "margen total" en el motor de cálculo exigir 100% de cobertura de productos, igual que ya exige el documento? — **RESUELTA el 2026-08-22**
 

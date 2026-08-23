@@ -1,3 +1,5 @@
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { createRequire } from "node:module";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -5,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDiagnosticoDocument,
   buildProyeccion90dDocument,
+  buildPropuestaDocument,
   buildProyeccionPropuestaDocument,
 } from "../../templates/velocentum-v1";
 import { buildSnakeContext, buildTitanContext } from "../../templates/velocentum-v1/test-fixtures";
@@ -19,6 +22,20 @@ import {
 } from "../../../lib/fixtures-casos";
 import { buildDocumentContext } from "../../domain";
 import type { DatosDiagnostico } from "../../../lib/diagnostico-form";
+
+const require = createRequire(import.meta.url);
+GlobalWorkerOptions.workerSrc = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
+
+/** Extrae el texto real de las páginas (el buffer crudo viaja comprimido, FlateDecode). */
+async function textoCompletoDelPdf(buffer: Buffer): Promise<string> {
+  const documento = await getDocument({ data: new Uint8Array(buffer) }).promise;
+  let texto = "";
+  for (let pagina = 1; pagina <= documento.numPages; pagina++) {
+    const contenido = await documento.getPage(pagina).then((p) => p.getTextContent());
+    texto += contenido.items.map((item) => ("str" in item ? item.str : "")).join("");
+  }
+  return texto;
+}
 
 describe("Velocentum PDF renderer", () => {
   it("renders a complete 16:9 document to a PDF buffer", async () => {
@@ -200,5 +217,37 @@ describe("Velocentum PDF renderer", () => {
         }
       }
     }
+  });
+
+  it("commercial-offer: un nivel sin precio cargado renderiza 'Precio a definir' en el PDF real, sin tirar excepción (regresión: itálica de Inter no registrada)", async () => {
+    const contexto = buildSnakeContext();
+    if (!contexto.comercial) throw new Error("Fixture comercial incompleto");
+    contexto.comercial = {
+      niveles: [
+        ...contexto.comercial.niveles,
+        {
+          id: "traccion",
+          nombre: "TRACCIÓN",
+          servicios: [
+            {
+              servicio: "Google Ads",
+              unidad: "campañas_activas",
+              cantidad: 1,
+              descripcion: null,
+              hallazgoIds: ["rentabilidad"],
+            },
+          ],
+          precio: { estado: "retenido", valor: null, confianza: "bloqueada", motivos: ["Sin cargar."] },
+        },
+      ],
+    };
+    const model = buildPropuestaDocument(contexto);
+
+    const buffer = await renderToBuffer(createPdfDocumentElement(model));
+    expect(buffer.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+
+    const texto = await textoCompletoDelPdf(buffer);
+    expect(texto).toContain("Precio a definir");
+    expect(texto).toContain("TRACCIÓN");
   });
 });

@@ -671,7 +671,7 @@ siguiente acción.
 - **Siguiente acción:** el desglose por canal/producto/funnel pendiente de
   fase 11 también habilitaría más detalle acá (proyección por canal).
 
-### Fase 13 — Propuesta comercial y rediseño visual — **PARCIAL, generador de paquetes implementado (2026-08-22)**
+### Fase 13 — Propuesta comercial y rediseño visual — **PARCIAL, generador de paquetes y conexión a la propuesta implementados (2026-08-22/23)**
 
 - **Denominación del plan maestro:** "Propuesta comercial y rediseño
   visual".
@@ -724,19 +724,21 @@ siguiente acción.
   patrón que todos los campos de las fases 3 a 13. Wireado en
   `diagnosticos.$id.tsx`: la pantalla ahora muestra la selección
   persistida al recargar, con una opción de "Editar de nuevo".
-- **Lo que SIGUE pendiente, sin relación con la decisión 9:**
-  `buildDocumentContext()` sigue con `comercial: null` incondicional
-  (`src/documents/domain/build-context.ts:479`) — conectar la selección
-  ya persistida hacia `SeleccionComercial` para que el PDF de propuesta la
-  use. **Investigado el 2026-08-23: no es trabajo de plomería, es una
-  decisión de producto sin resolver** (entrada 10 de
-  `docs/decisiones-pendientes.md`, la única entrada **Abierta**): lo
-  persistido (`EscaleraPaquetesConfirmada`) es un menú de tres niveles con
-  precio propio cada uno; lo que consume el documento
-  (`SeleccionComercial`) es un solo paquete con campos (duración, forma de
-  pago, fecha de inicio, exclusiones, si el precio va impreso) que hoy no
-  se capturan en ningún lado. Bloqueado hasta que Matías resuelva esa
-  entrada, no por ninguna decisión de base de datos.
+- **Conexión a la propuesta (2026-08-23, entrada 10 de
+  `docs/decisiones-pendientes.md`):** `buildDocumentContext()` ya no tiene
+  `comercial: null` incondicional. La decisión 7 (arriba) ya especificaba
+  la forma — escalera de tres niveles, nunca un paquete único — así que se
+  implementó directamente sobre esa forma, sin necesitar ninguna decisión
+  nueva: `SeleccionComercial` (`src/documents/domain/types.ts`) pasó de
+  representar un paquete único a `{ niveles: NivelComercial[] }`;
+  `comercialDesdeEscalera()` (nuevo, `build-context.ts`) traduce
+  `EscaleraPaquetesConfirmada` (la ya persistida desde la decisión 9),
+  revalidando `confirmado === true`; `buildDocumentContextDesdeDiagnostico()`
+  (`from-diagnostico.ts`) lee la columna `diagnostico.propuesta` y la pasa
+  como `paquetesConfirmados`. El bloque `"commercial-offer"` y sus dos
+  renderers (web y PDF) se rediseñaron para mostrar los niveles lado a
+  lado, cada uno con su propio precio (retenido, nunca cero, si el
+  vendedor no lo cargó).
 - **Evidencia funcional construida (previa a este bloque):**
   - Plantilla de propuesta: `src/documents/templates/velocentum-v1/propuesta.ts`.
   - Salida combinada proyección + propuesta: `src/documents/templates/velocentum-v1/composicion.ts`.
@@ -761,15 +763,12 @@ siguiente acción.
   criterio que el resto del repo, son envoltorios finos de I/O sobre
   lógica pura ya probada.
 - **Pruebas faltantes:** QA visual de la interfaz de la herramienta.
-- **Riesgo:** ninguno nuevo; la selección confirmada ya se persiste.
-- **Bloqueo:** entrada 10 de `docs/decisiones-pendientes.md` (decisión de
-  producto sobre cómo mostrar la escalera en la propuesta), sin relación
-  con base de datos.
-- **Siguiente acción:** que Matías resuelva la entrada 10; recién entonces
-  conectar la selección persistida hacia
-  `SeleccionComercial`/`buildDocumentContext()`; después, aplicar el
-  sistema visual aprobado a los tres PDF y a la interfaz (comparte alcance
-  con fases 11/12).
+- **Riesgo:** ninguno nuevo; la selección confirmada ya se persiste y ya
+  llega al documento de propuesta.
+- **Bloqueo:** ninguno técnico ni de base de datos.
+- **Siguiente acción:** aplicar el sistema visual aprobado a los tres PDF y
+  a la interfaz de la herramienta (comparte alcance con fases 11/12) —
+  único punto real que sigue faltando de fase 13.
 
 ### Fase 14 — QA final, integración y publicación — **PENDIENTE**
 

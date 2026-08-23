@@ -224,10 +224,10 @@ export function validarContextoDocumento(
     }
   }
 
-  if (contexto.comercial && contexto.comercial.aprobadaManualmente !== true) {
+  if (contexto.comercial && contexto.comercial.niveles.length === 0) {
     problemas.push({
-      path: "comercial.aprobadaManualmente",
-      mensaje: "La propuesta comercial siempre requiere aprobación manual.",
+      path: "comercial.niveles",
+      mensaje: "Una selección comercial sin niveles debe ser null, no una escalera vacía.",
     });
   }
 

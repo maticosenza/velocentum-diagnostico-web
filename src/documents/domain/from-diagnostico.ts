@@ -17,6 +17,8 @@ import type {
   ResultadoCalculo,
 } from "../../lib/calculo-diagnostico";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
+import { separarContenidoGuardado } from "../../lib/contenido-propuesta";
+import { normalizarEscaleraConfirmada } from "../../lib/paquetes";
 import { buildDocumentContext } from "./build-context";
 import type { DocumentContextV1, TipoDocumento } from "./types";
 
@@ -30,6 +32,8 @@ export type DiagnosticoAlmacenado = {
   estados_bloque?: Partial<EstadosBloque> | null;
   fugas?: Fuga[] | null;
   oportunidad_total?: number | null;
+  /** Columna JSONB cruda: `{ propuesta, paquetes }` (ver `contenido-propuesta.ts`). */
+  propuesta?: unknown;
 };
 
 export type BuildDocumentContextDesdeDiagnosticoArgs = {
@@ -113,6 +117,8 @@ export function buildDocumentContextDesdeDiagnostico(
     throw new Error("El diagnóstico guardado no tiene datos: no se puede armar el documento.");
   }
 
+  const { paquetesCrudo } = separarContenidoGuardado(fila.propuesta);
+
   return buildDocumentContext({
     datos: fila.datos,
     resultado: resultadoDesdeDiagnostico(fila),
@@ -121,6 +127,7 @@ export function buildDocumentContextDesdeDiagnostico(
       version: finito(fila.version) && fila.version >= 1 ? fila.version : 1,
       fecha: typeof fila.fecha === "string" ? fila.fecha : "",
     },
+    paquetesConfirmados: normalizarEscaleraConfirmada(paquetesCrudo),
     ...(args.tipoDocumento ? { tipoDocumento: args.tipoDocumento } : {}),
     ...(args.templateVersion ? { templateVersion: args.templateVersion } : {}),
     ...(args.rulesetVersion ? { rulesetVersion: args.rulesetVersion } : {}),

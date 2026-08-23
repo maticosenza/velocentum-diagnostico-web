@@ -437,6 +437,41 @@ function ServicesBlock({ block }: { block: Extract<DocumentBlock, { type: "servi
   );
 }
 
+const LABELS_UNIDAD_COMERCIAL = {
+  campañas_activas: "campañas activas",
+  campañas: "campañas",
+  piezas_por_mes: "piezas por mes",
+  alcance_descrito: "alcance descrito",
+} as const;
+
+function ServicioNivelList({
+  services,
+}: {
+  services: Extract<DocumentBlock, { type: "commercial-offer" }>["niveles"][number]["services"];
+}) {
+  if (services.length === 0) return <p className="vdoc-muted">Sin servicios en este nivel.</p>;
+  return (
+    <ul className="vdoc-list">
+      {services.map((servicio, index) => (
+        <li key={`${servicio.service}-${index}`}>
+          <strong>{servicio.service}</strong>
+          {servicio.unit === "alcance_descrito"
+            ? servicio.description
+              ? ` — ${servicio.description}`
+              : null
+            : ` — ${servicio.quantity ?? 0} ${LABELS_UNIDAD_COMERCIAL[servicio.unit]}`}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Escalera de hasta tres niveles (decisión comercial 7): nunca un paquete
+ * único. Cada nivel es una tarjeta propia, con su propio precio (vacío
+ * hasta que el vendedor lo cargue) y sus servicios con hallazgo que los
+ * justifica.
+ */
 function CommercialOfferBlock({
   block,
 }: {
@@ -444,34 +479,21 @@ function CommercialOfferBlock({
 }) {
   return (
     <BlockFrame type="commercial-offer">
-      <article className="vdoc-offer">
-        <div className="vdoc-offer__headline">
-          <div>
-            <p className="vdoc-kicker">Paquete seleccionado</p>
-            <h3>{block.name}</h3>
-          </div>
-          {block.price ? <PublishedNumberView value={block.price} /> : null}
-        </div>
-        <div className="vdoc-offer__grid">
-          <div>
-            <h4>Alcance</h4>
-            <List items={block.scope} />
-          </div>
-          <div>
-            <h4>Entregables</h4>
-            <List items={block.deliverables} />
-          </div>
-          <div>
-            <h4>Exclusiones</h4>
-            <List items={block.exclusions} />
-          </div>
-        </div>
-        <div className="vdoc-offer__meta">
-          <span>{block.durationDays} días</span>
-          <span>{block.paymentTerms}</span>
-          {block.startDate ? <span>Inicio: {formatDocumentDate(block.startDate)}</span> : null}
-        </div>
-      </article>
+      <div className="vdoc-scenario-grid">
+        {block.niveles.map((nivel) => (
+          <article className="vdoc-scenario" key={nivel.id}>
+            <div className="vdoc-block__header">
+              <h3>{nivel.name}</h3>
+              {nivel.price ? (
+                <PublishedNumberView value={nivel.price} />
+              ) : (
+                <span className="vdoc-muted">Precio a definir</span>
+              )}
+            </div>
+            <ServicioNivelList services={nivel.services} />
+          </article>
+        ))}
+      </div>
     </BlockFrame>
   );
 }

@@ -206,15 +206,11 @@ describe("Velocentum document templates v1", () => {
     expect(snakeScenarios[0]?.contribution90d?.value).toBe(0);
   });
 
-  it("only exposes price after an approved manual selection asks to include it", () => {
-    const hidden = buildPropuestaDocument(buildSnakeContext());
-    expect(blocksOf(hidden, "commercial-offer")[0]?.price).toBeNull();
-
-    const visibleContext = buildSnakeContext();
-    if (!visibleContext.comercial) throw new Error("Fixture must include a commercial selection");
-    visibleContext.comercial.incluirPrecioEnPdf = true;
-    const visible = buildPropuestaDocument(visibleContext);
-    expect(blocksOf(visible, "commercial-offer")[0]?.price?.value).toBe(900_000);
+  it("exposes each tier's price when the confirmed ladder has one, and omits the block without a confirmed selection", () => {
+    const withSelection = buildPropuestaDocument(buildSnakeContext());
+    const niveles = blocksOf(withSelection, "commercial-offer")[0]?.niveles ?? [];
+    expect(niveles).toHaveLength(1);
+    expect(niveles[0]?.price?.value).toBe(900_000);
 
     const noSelectionContext = buildSnakeContext();
     noSelectionContext.comercial = null;

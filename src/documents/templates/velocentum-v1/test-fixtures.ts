@@ -236,17 +236,22 @@ export function buildSnakeContext(): DocumentContextV1 {
     ],
     servicios: [{ id: "medicion", nombre: "Medición", alcance: ["GA4", "Ads"] }],
     comercial: {
-      aprobadaManualmente: true,
-      paqueteId: "growth",
-      nombre: "Growth 90 días",
-      alcance: ["Medición", "Pauta"],
-      exclusiones: ["Producción audiovisual"],
-      entregables: ["Tablero"],
-      duracionDias: 90,
-      precio: { estado: "declarado", valor: 900_000, fuente: "seleccion-manual", periodo: null },
-      formaPago: "Mensual",
-      inicio: null,
-      incluirPrecioEnPdf: false,
+      niveles: [
+        {
+          id: "impulso",
+          nombre: "IMPULSO",
+          servicios: [
+            {
+              servicio: "Meta Ads",
+              unidad: "campañas_activas",
+              cantidad: 1,
+              descripcion: null,
+              hallazgoIds: ["rentabilidad"],
+            },
+          ],
+          precio: metric(900_000, ["seleccion-manual"]),
+        },
+      ],
     },
     restricciones: [],
     metodologia: [],

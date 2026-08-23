@@ -44,6 +44,13 @@ const LABELS_MAGNITUD = {
   ahorro_publicitario: "Ahorro publicitario",
 } as const;
 
+const LABELS_UNIDAD_COMERCIAL = {
+  campañas_activas: "campañas activas",
+  campañas: "campañas",
+  piezas_por_mes: "piezas por mes",
+  alcance_descrito: "alcance descrito",
+} as const;
+
 Font.registerHyphenationCallback((word) => [word]);
 
 const HEADING = theme.typography.heading;
@@ -298,13 +305,20 @@ function makeStyles(profile: PdfProfile) {
     /**
      * Sin datos / retenido (criterio de aceptación, sección 10 de la
      * especificación): nunca sólo un color — la palabra "Sin datos" en
-     * sí misma es la marca, con la advertencia como acento.
+     * sí misma es la marca, con la advertencia como acento. Sin
+     * `fontStyle: "italic"` a propósito (bug encontrado en auditoría,
+     * 2026-08-23): Inter sólo tiene registrado el estilo "normal"
+     * (`registrar-fuentes.ts`, `PESOS_INTER`); pedir itálica hace que
+     * `@react-pdf/renderer` tire una excepción real en vez de degradar al
+     * peso más cercano, como afirmaba (incorrectamente) el comentario de
+     * ese archivo. El marcado semántico (la palabra + el color de acento)
+     * no depende del itálico, así que se saca en vez de registrar una
+     * fuente itálica que este paquete de Inter no trae.
      */
     sinDatos: {
       fontFamily: BODY,
       fontWeight: W.semiBold,
       fontSize: 11,
-      fontStyle: "italic",
       color: theme.colors.warning,
     },
     badge: {
@@ -427,17 +441,6 @@ function makeStyles(profile: PdfProfile) {
       fontSize: 10,
     },
     roadmapBody: { flex: 1 },
-    commercialHero: {
-      padding: 18,
-      borderRadius: 14,
-      backgroundColor: theme.colors.primary,
-      color: theme.colors.surface,
-      marginBottom: 12,
-    },
-    commercialName: { fontFamily: HEADING, fontWeight: W.bold, fontSize: 20, marginBottom: 5 },
-    commercialPrice: { fontFamily: HEADING, fontWeight: W.black, fontSize: 25, marginTop: 10 },
-    columns: { flexDirection: "row", gap: 16 },
-    column: { flex: 1 },
   });
 }
 
@@ -687,27 +690,33 @@ function renderBlock(block: DocumentBlock, dark: boolean, styles: Styles): React
         </View>
       );
     case "commercial-offer":
+      // Escalera de hasta tres niveles (decisión comercial 7): nunca un
+      // paquete único. Cada nivel es su propia tarjeta, con su propio
+      // precio (ausente hasta que el vendedor lo carga) y sus servicios.
       return (
-        <View key="commercial-offer">
-          <View style={styles.commercialHero} wrap={false}>
-            <Text style={styles.commercialName}>{block.name}</Text>
-            <Text>
-              {block.durationDays} días - {block.paymentTerms}
-            </Text>
-            {block.price ? (
-              <Text style={styles.commercialPrice}>{formatPublishedNumber(block.price)}</Text>
-            ) : null}
-          </View>
-          <View style={styles.columns}>
-            <View style={styles.column}>
-              <Text style={styles.blockTitle}>Incluye</Text>
-              <BulletList items={[...block.scope, ...block.deliverables]} styles={styles} />
+        <View key="commercial-offer" style={styles.cardGrid}>
+          {block.niveles.map((nivel) => (
+            <View key={nivel.id} style={[...cardStyle, styles.cardWide]} wrap={false}>
+              <Text style={styles.itemTitle}>{nivel.name}</Text>
+              {nivel.price ? (
+                <Text style={[styles.amount, dark ? styles.amountDark : {}]}>
+                  {formatPublishedNumber(nivel.price)}
+                </Text>
+              ) : (
+                <Text style={styles.sinDatos}>Precio a definir</Text>
+              )}
+              <BulletList
+                items={nivel.services.map((servicio) =>
+                  servicio.unit === "alcance_descrito"
+                    ? servicio.description
+                      ? `${servicio.service} — ${servicio.description}`
+                      : servicio.service
+                    : `${servicio.service} — ${servicio.quantity ?? 0} ${LABELS_UNIDAD_COMERCIAL[servicio.unit]}`,
+                )}
+                styles={styles}
+              />
             </View>
-            <View style={styles.column}>
-              <Text style={styles.blockTitle}>No incluye</Text>
-              <BulletList items={block.exclusions} styles={styles} />
-            </View>
-          </View>
+          ))}
         </View>
       );
     case "restrictions":

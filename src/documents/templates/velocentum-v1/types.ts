@@ -126,16 +126,26 @@ export type DocumentBlock =
   | { type: "roadmap"; items: EtapaRoadmap[] }
   | { type: "services"; items: ServicioDocumento[] }
   | {
+      /**
+       * Escalera de hasta tres niveles (decisión comercial 7, resuelta
+       * 2026-08-22): nunca un paquete único. `niveles` nunca vacío — si no
+       * hay ningún nivel confirmado, el bloque entero es `null` (ver
+       * `buildCommercialOffer`).
+       */
       type: "commercial-offer";
-      packageId: string;
-      name: string;
-      scope: string[];
-      exclusions: string[];
-      deliverables: string[];
-      durationDays: number;
-      paymentTerms: string;
-      startDate: string | null;
-      price: PublishedNumber | null;
+      niveles: {
+        id: string;
+        name: string;
+        services: {
+          service: string;
+          unit: "campañas_activas" | "piezas_por_mes" | "campañas" | "alcance_descrito";
+          quantity: number | null;
+          description: string | null;
+          findingIds: string[];
+        }[];
+        /** null cuando el vendedor no cargó un precio para este nivel: nunca un cero inventado. */
+        price: PublishedNumber | null;
+      }[];
     }
   | { type: "restrictions"; items: RestriccionDocumento[] }
   | { type: "methodology"; items: SupuestoDocumento[] }

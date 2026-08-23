@@ -152,3 +152,75 @@ describe("contexto documental desde el diagnóstico persistido", () => {
     expect(contexto.diagnostico.fecha).toBe("");
   });
 });
+
+describe("comercial desde la columna `propuesta` persistida (build-context.ts:479)", () => {
+  const escaleraConfirmadaCruda = {
+    confirmado: true,
+    niveles: [
+      {
+        id: "impulso",
+        nombre: "IMPULSO",
+        servicios: [
+          {
+            servicio: "Meta Ads",
+            unidad: "campañas_activas",
+            cantidad: 1,
+            descripcion: null,
+            hallazgoIds: ["fuga_funnel_carrito"],
+            propuestoPorSistema: true,
+          },
+        ],
+        precio: 900_000,
+      },
+    ],
+  };
+
+  it("con selección confirmada persistida, la propuesta usa el paquete elegido con sus servicios, alcances y precios", () => {
+    const fila: DiagnosticoAlmacenado = {
+      ...filaGuardada(casoSnakeStore),
+      propuesta: { propuesta: null, paquetes: escaleraConfirmadaCruda },
+    };
+
+    const contexto = buildDocumentContextDesdeDiagnostico({ fila, tipoDocumento: "propuesta" });
+
+    expect(contexto.comercial?.niveles).toHaveLength(1);
+    expect(contexto.comercial?.niveles[0]).toMatchObject({
+      id: "impulso",
+      nombre: "IMPULSO",
+      servicios: [{ servicio: "Meta Ads", unidad: "campañas_activas", cantidad: 1 }],
+    });
+    expect(contexto.comercial?.niveles[0]?.precio).toMatchObject({ estado: "calculado", valor: 900_000 });
+  });
+
+  it("sin ninguna selección persistida, `comercial` queda en null y la propuesta se genera sin bloque comercial", () => {
+    const fila: DiagnosticoAlmacenado = filaGuardada(casoSnakeStore);
+    const contexto = buildDocumentContextDesdeDiagnostico({ fila, tipoDocumento: "propuesta" });
+
+    expect(contexto.comercial).toBeNull();
+  });
+
+  it("una selección persistida pero sin confirmar (`confirmado: false`) no se filtra al documento: `comercial` sigue en null", () => {
+    const fila: DiagnosticoAlmacenado = {
+      ...filaGuardada(casoSnakeStore),
+      propuesta: {
+        propuesta: null,
+        paquetes: { ...escaleraConfirmadaCruda, confirmado: false },
+      },
+    };
+
+    const contexto = buildDocumentContextDesdeDiagnostico({ fila, tipoDocumento: "propuesta" });
+
+    expect(contexto.comercial).toBeNull();
+  });
+
+  it("la forma vieja de la columna (sin sobre, es directamente la propuesta redactada) tampoco fabrica una selección comercial", () => {
+    const fila: DiagnosticoAlmacenado = {
+      ...filaGuardada(casoSnakeStore),
+      propuesta: { textoIntroductorio: "Propuesta redactada antes de este bloque." },
+    };
+
+    const contexto = buildDocumentContextDesdeDiagnostico({ fila, tipoDocumento: "propuesta" });
+
+    expect(contexto.comercial).toBeNull();
+  });
+});

@@ -12,6 +12,7 @@ import { buildDocumentContext, magnitudDeFuga } from "./build-context";
 import { impactoCalculado } from "../../lib/impacto-economico";
 import type { Fuga } from "../../lib/calculo-diagnostico";
 import { validarContextoDocumento } from "./validation";
+import type { EscaleraPaquetesConfirmada } from "../../lib/paquetes";
 
 function contexto(datos: DatosDiagnostico) {
   return buildDocumentContext({
@@ -218,5 +219,101 @@ describe("hallazgos: magnitud (corrección aprobada 2026-08-21, punto 3)", () =>
       faltantes: [],
     };
     expect(magnitudDeFuga(fugaLegada)).toBeNull();
+  });
+});
+
+describe("comercial: la escalera de paquetes confirmada, nunca un paquete inventado", () => {
+  const escaleraConfirmada: EscaleraPaquetesConfirmada = {
+    confirmado: true,
+    niveles: [
+      {
+        id: "impulso",
+        nombre: "IMPULSO",
+        servicios: [
+          {
+            servicio: "Meta Ads",
+            unidad: "campañas_activas",
+            cantidad: 1,
+            descripcion: null,
+            hallazgoIds: ["fuga_funnel_carrito"],
+            propuestoPorSistema: true,
+          },
+        ],
+        precio: 900_000,
+      },
+    ],
+  };
+
+  it("con una escalera confirmada, `comercial` expone los niveles, servicios y precios tal cual llegaron", () => {
+    const datos = casoSnakeStoreCoberturaCompleta;
+    const c = buildDocumentContext({
+      datos,
+      resultado: calcularDiagnostico(datos, configuracionRegresionFase2),
+      diagnostico: { id: "con-escalera", version: 1, fecha: "2026-08-20" },
+      paquetesConfirmados: escaleraConfirmada,
+    });
+
+    expect(validarContextoDocumento(c)).toEqual([]);
+    expect(c.comercial?.niveles).toHaveLength(1);
+    expect(c.comercial?.niveles[0]).toMatchObject({
+      id: "impulso",
+      nombre: "IMPULSO",
+      servicios: [
+        {
+          servicio: "Meta Ads",
+          unidad: "campañas_activas",
+          cantidad: 1,
+          descripcion: null,
+          hallazgoIds: ["fuga_funnel_carrito"],
+        },
+      ],
+    });
+    expect(c.comercial?.niveles[0]?.precio).toMatchObject({ estado: "calculado", valor: 900_000 });
+  });
+
+  it("sin escalera confirmada (argumento ausente), `comercial` sigue en null", () => {
+    const datos = casoSnakeStoreCoberturaCompleta;
+    const c = buildDocumentContext({
+      datos,
+      resultado: calcularDiagnostico(datos, configuracionRegresionFase2),
+      diagnostico: { id: "sin-escalera", version: 1, fecha: "2026-08-20" },
+    });
+
+    expect(c.comercial).toBeNull();
+  });
+
+  it("una escalera no confirmada (`confirmado: false`) nunca se filtra al documento", () => {
+    const datos = casoSnakeStoreCoberturaCompleta;
+    // `confirmado: false` nunca ocurre en la práctica en este tipo (el
+    // productor real, `confirmarPaquetes.functions.ts`, lo rechaza antes de
+    // persistir) — el cast simula un dato corrupto/legado para probar que
+    // `comercialDesdeEscalera` revalida en vez de confiar ciegamente en el tipo.
+    const escaleraNoConfirmada = {
+      ...escaleraConfirmada,
+      confirmado: false,
+    } as unknown as EscaleraPaquetesConfirmada;
+    const c = buildDocumentContext({
+      datos,
+      resultado: calcularDiagnostico(datos, configuracionRegresionFase2),
+      diagnostico: { id: "escalera-no-confirmada", version: 1, fecha: "2026-08-20" },
+      paquetesConfirmados: escaleraNoConfirmada,
+    });
+
+    expect(c.comercial).toBeNull();
+  });
+
+  it("un precio sin cargar en un nivel queda retenido, nunca en cero", () => {
+    const datos = casoSnakeStoreCoberturaCompleta;
+    const c = buildDocumentContext({
+      datos,
+      resultado: calcularDiagnostico(datos, configuracionRegresionFase2),
+      diagnostico: { id: "nivel-sin-precio", version: 1, fecha: "2026-08-20" },
+      paquetesConfirmados: {
+        confirmado: true,
+        niveles: [{ ...escaleraConfirmada.niveles[0]!, precio: null }],
+      },
+    });
+
+    expect(c.comercial?.niveles[0]?.precio).toMatchObject({ estado: "retenido", valor: null });
   });
 });

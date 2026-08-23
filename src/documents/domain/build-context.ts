@@ -4,6 +4,7 @@ import type { DatosDiagnostico } from "../../lib/diagnostico-form";
 import { calcularEscenarios90d, umbralDispersionDe } from "../../lib/escenarios-90d";
 import { impactosDeFuga, type TipoImpactoClasificado } from "../../lib/impacto-economico";
 import { mapearHallazgos } from "../../lib/propuesta";
+import type { EscaleraPaquetesConfirmada } from "../../lib/paquetes";
 import { escenariosDocumento } from "./escenarios-90d";
 import { construirResumenComercial } from "./resumen-comercial";
 import {
@@ -20,6 +21,7 @@ import type {
   HallazgoDocumento,
   PoliticaEnvio,
   RestriccionDocumento,
+  SeleccionComercial,
   ServicioDocumento,
   TipoDocumento,
   ValorPublicable,
@@ -36,6 +38,12 @@ export type BuildDocumentContextArgs = {
   tipoDocumento?: TipoDocumento;
   templateVersion?: string;
   rulesetVersion?: string;
+  /**
+   * Escalera de paquetes ya confirmada manualmente (decisión comercial 7).
+   * `null`/ausente cuando no hay ninguna confirmación todavía: `comercial`
+   * queda en `null` en ese caso, nunca se completa con un paquete inventado.
+   */
+  paquetesConfirmados?: EscaleraPaquetesConfirmada | null;
 };
 
 const FUENTE_DIAGNOSTICO = "diagnostico_cliente";
@@ -258,6 +266,38 @@ function resumenComercialDocumento(args: {
 }
 
 /**
+ * Traduce la escalera de paquetes ya confirmada (decisión comercial 7) al
+ * contrato documental. `null` sin una confirmación explícita — el tipo de
+ * origen (`EscaleraPaquetesConfirmada`) ya garantiza `confirmado: true`,
+ * pero se revalida acá porque llega como dato persistido (JSON de la
+ * columna `diagnostico.propuesta`), no como un valor construido en memoria.
+ */
+export function comercialDesdeEscalera(
+  escalera: EscaleraPaquetesConfirmada | null | undefined,
+): SeleccionComercial | null {
+  if (!escalera || escalera.confirmado !== true || escalera.niveles.length === 0) return null;
+  return {
+    niveles: escalera.niveles.map((nivel) => ({
+      id: nivel.id,
+      nombre: nivel.nombre,
+      servicios: nivel.servicios.map((servicio) => ({
+        servicio: servicio.servicio,
+        unidad: servicio.unidad,
+        cantidad: servicio.cantidad,
+        descripcion: servicio.descripcion,
+        hallazgoIds: [...servicio.hallazgoIds],
+      })),
+      precio: publicarNumero({
+        valor: nivel.precio,
+        evidenciaIds: [],
+        motivo: "El vendedor no cargó un precio para este nivel.",
+        confianza: "alta",
+      }),
+    })),
+  };
+}
+
+/**
  * Traduce el diagnóstico ya calculado al contrato común de documentos.
  * No recalcula el negocio, no genera escenarios y no completa ausencias con cero.
  */
@@ -476,7 +516,7 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
     resumenComercial: resumenComercialDocumento({ datos, resultado, confianza, envio, tipoDocumento }),
     roadmap: [],
     servicios: salidaHallazgos.servicios,
-    comercial: null,
+    comercial: comercialDesdeEscalera(args.paquetesConfirmados),
     restricciones,
     metodologia: [],
   };

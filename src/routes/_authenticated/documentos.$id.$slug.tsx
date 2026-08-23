@@ -65,7 +65,9 @@ function VistaPreviaDocumento() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("diagnostico")
-        .select("id, fecha, version, datos, derivados, estados_bloque, fugas, oportunidad_total")
+        .select(
+          "id, fecha, version, datos, derivados, estados_bloque, fugas, oportunidad_total, propuesta",
+        )
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;

@@ -285,36 +285,35 @@ export function buildCommercialOffer(context: DocumentContextV1): {
   restrictions: RestriccionDocumento[];
 } {
   const commercial = context.comercial;
-  if (!commercial || commercial.aprobadaManualmente !== true) {
+  if (!commercial || commercial.niveles.length === 0) {
     return { block: null, restrictions: [] };
   }
 
-  let price: PublishedNumber | null = null;
   const restrictions: RestriccionDocumento[] = [];
-  if (commercial.incluirPrecioEnPdf) {
-    const publishable = publicarNumeroDesdeEvidencia("comercial.precio", commercial.precio);
-    price = publishValue(publishable, "money");
+  const niveles = commercial.niveles.map((nivel) => {
+    const price = publishValue(nivel.precio, "money");
     const restriction = retainedRestriction(
-      "comercial:precio",
-      "Precio comercial retenido",
-      publishable,
+      `comercial:${nivel.id}:precio`,
+      `Precio retenido · ${nivel.nombre}`,
+      nivel.precio,
     );
     if (restriction) restrictions.push(restriction);
-  }
+    return {
+      id: nivel.id,
+      name: nivel.nombre,
+      services: nivel.servicios.map((servicio) => ({
+        service: servicio.servicio,
+        unit: servicio.unidad,
+        quantity: servicio.cantidad,
+        description: servicio.descripcion,
+        findingIds: [...servicio.hallazgoIds],
+      })),
+      price,
+    };
+  });
 
   return {
-    block: {
-      type: "commercial-offer",
-      packageId: commercial.paqueteId,
-      name: commercial.nombre,
-      scope: [...commercial.alcance],
-      exclusions: [...commercial.exclusiones],
-      deliverables: [...commercial.entregables],
-      durationDays: commercial.duracionDias,
-      paymentTerms: commercial.formaPago,
-      startDate: commercial.inicio,
-      price,
-    },
+    block: { type: "commercial-offer", niveles },
     restrictions,
   };
 }

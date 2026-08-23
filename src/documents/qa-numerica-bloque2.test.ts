@@ -312,34 +312,61 @@ describe("7 · los precios están vacíos salvo confirmación manual explícita"
     expect(blocksOf(model, "commercial-offer")).toHaveLength(0);
   });
 
-  it("buildCommercialOffer: sin aprobación manual no hay bloque; con aprobación pero sin `incluirPrecioEnPdf` el precio queda null", () => {
+  it("buildCommercialOffer: sin selección confirmada no hay bloque; con la escalera confirmada, cada nivel expone sus propios servicios y precio (o queda retenido, nunca en cero)", () => {
     const { contexto: ctx } = contexto(casoSnakeStoreCoberturaCompleta, "propuesta");
 
-    const sinAprobar = buildCommercialOffer(ctx);
-    expect(sinAprobar.block).toBeNull();
+    const sinSeleccion = buildCommercialOffer(ctx);
+    expect(sinSeleccion.block).toBeNull();
 
     const seleccion: SeleccionComercial = {
-      aprobadaManualmente: true,
-      paqueteId: "growth",
-      nombre: "Growth 90 días",
-      alcance: ["Medición"],
-      exclusiones: [],
-      entregables: ["Tablero"],
-      duracionDias: 90,
-      precio: { estado: "declarado", valor: 900_000, fuente: "seleccion-manual", periodo: null },
-      formaPago: "Mensual",
-      inicio: null,
-      incluirPrecioEnPdf: false,
+      niveles: [
+        {
+          id: "impulso",
+          nombre: "IMPULSO",
+          servicios: [
+            {
+              servicio: "Meta Ads",
+              unidad: "campañas_activas",
+              cantidad: 1,
+              descripcion: null,
+              hallazgoIds: ["fuga_funnel_carrito"],
+            },
+          ],
+          precio: { estado: "retenido", valor: null, confianza: "bloqueada", motivos: ["Sin cargar."] },
+        },
+      ],
     };
 
-    const aprobadaSinPrecio = buildCommercialOffer({ ...ctx, comercial: seleccion });
-    expect(aprobadaSinPrecio.block).not.toBeNull();
-    expect((aprobadaSinPrecio.block as { price: unknown }).price).toBeNull();
+    const conNivelSinPrecio = buildCommercialOffer({ ...ctx, comercial: seleccion });
+    expect(conNivelSinPrecio.block).not.toBeNull();
+    expect((conNivelSinPrecio.block as { niveles: { price: unknown }[] }).niveles[0]?.price).toBeNull();
 
-    const aprobadaConPrecio = buildCommercialOffer({
-      ...ctx,
-      comercial: { ...seleccion, incluirPrecioEnPdf: true },
-    });
-    expect((aprobadaConPrecio.block as { price: { value: number } }).price?.value).toBe(900_000);
+    const seleccionConPrecio: SeleccionComercial = {
+      niveles: [
+        {
+          ...seleccion.niveles[0]!,
+          precio: {
+            estado: "calculado",
+            valor: 900_000,
+            confianza: "alta",
+            evidenciaIds: [],
+            supuestos: [],
+          },
+        },
+      ],
+    };
+    const aprobadaConPrecio = buildCommercialOffer({ ...ctx, comercial: seleccionConPrecio });
+    const nivel = (
+      aprobadaConPrecio.block as {
+        niveles: {
+          name: string;
+          services: { service: string; unit: string; quantity: number | null }[];
+          price: { value: number } | null;
+        }[];
+      }
+    ).niveles[0];
+    expect(nivel?.name).toBe("IMPULSO");
+    expect(nivel?.services).toMatchObject([{ service: "Meta Ads", unit: "campañas_activas", quantity: 1 }]);
+    expect(nivel?.price?.value).toBe(900_000);
   });
 });
