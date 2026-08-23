@@ -1,0 +1,425 @@
+/**
+ * CSS del renderer web v2 (prototipo, Bloque Visual 2). Usa los mismos 14
+ * tokens de color de `VELOCENTUM_LIGHT_V1` (duplicados acá como custom
+ * properties porque CSS no puede importar el objeto TS del tema) y pila de
+ * fuentes del sistema en vez de duplicar las declaraciones `@font-face` de
+ * v1 — este renderer es para verificación estructural/textual del
+ * contrato v2 (paridad, ausencia de "Sin datos", etc.), no para
+ * integrarse a ninguna pantalla real (fuera de alcance de este bloque).
+ */
+:root {
+  --v2-primary: #3b2ef5;
+  --v2-primary-bright: #4b39ff;
+  --v2-accent: #7a6bff;
+  --v2-ink: #0d0b2d;
+  --v2-text: #171437;
+  --v2-muted: #55546b;
+  --v2-background: #faf9ff;
+  --v2-surface: #ffffff;
+  --v2-surface-soft: #f2efff;
+  --v2-border: #d9d3ff;
+  --v2-border-soft: #e9e5ff;
+  --v2-success: #20a464;
+  --v2-warning: #fbbf24;
+  --v2-risk: #d64a4a;
+  --v2-heading-font:
+    "Satoshi", "Inter", system-ui, -apple-system, sans-serif;
+  --v2-body-font: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+.vdoc2 {
+  display: flex;
+  flex-direction: column;
+  background: var(--v2-background);
+  color: var(--v2-text);
+  font-family: var(--v2-body-font);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.vdoc2-section {
+  padding: 48px 56px;
+}
+.vdoc2-section--dark {
+  background: var(--v2-ink);
+  color: var(--v2-surface);
+}
+.vdoc2-section--soft {
+  background: var(--v2-surface-soft);
+}
+.vdoc2-eyebrow {
+  font-family: var(--v2-heading-font);
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--v2-primary);
+  margin: 0 0 8px;
+}
+.vdoc2-section--dark .vdoc2-eyebrow {
+  color: #c8c2ff;
+}
+.vdoc2-section h2 {
+  font-family: var(--v2-heading-font);
+  font-weight: 700;
+  font-size: 27px;
+  margin: 0 0 20px;
+  color: var(--v2-ink);
+}
+.vdoc2-section--dark h2 {
+  color: var(--v2-surface);
+}
+.vdoc2-section__blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.vdoc2-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.vdoc2-badge {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--v2-primary);
+  background: var(--v2-surface-soft);
+}
+.vdoc2-kicker {
+  font-family: var(--v2-heading-font);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--v2-accent);
+  margin: 0 0 8px;
+}
+.vdoc2-muted {
+  color: var(--v2-muted);
+}
+
+/* Cover */
+.vdoc2-block--cover {
+  position: relative;
+  overflow: hidden;
+  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 8px;
+}
+.vdoc2-cover__gradient {
+  position: absolute;
+  inset: 0;
+  right: 0;
+  width: 45%;
+  left: auto;
+  background: linear-gradient(135deg, var(--v2-primary), var(--v2-primary-bright));
+  opacity: 0.9;
+}
+.vdoc2-cover__brand {
+  font-family: var(--v2-heading-font);
+  font-weight: 700;
+  z-index: 1;
+}
+.vdoc2-cover__content {
+  z-index: 1;
+  max-width: 560px;
+}
+.vdoc2-cover__client {
+  color: #dedcea;
+  margin: 0 0 8px;
+}
+.vdoc2-cover__content h1 {
+  font-family: var(--v2-heading-font);
+  font-weight: 900;
+  font-size: 44px;
+  line-height: 1.05;
+  margin: 0 0 16px;
+}
+.vdoc2-cover__subtitle {
+  font-size: 16px;
+  color: #dedcea;
+}
+.vdoc2-cover__date {
+  z-index: 1;
+  color: #cbc7d8;
+}
+
+/* Metric grid */
+.vdoc2-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 0;
+}
+.vdoc2-metric {
+  border: 1px solid var(--v2-border);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--v2-surface);
+}
+.vdoc2-section--dark .vdoc2-metric {
+  background: #1c173e;
+  border-color: #39345a;
+}
+.vdoc2-metric dt {
+  font-size: 12.5px;
+  color: var(--v2-muted);
+  margin-bottom: 8px;
+}
+.vdoc2-metric dd {
+  margin: 0;
+  font-family: var(--v2-heading-font);
+  font-weight: 700;
+  font-size: 24px;
+}
+
+/* Estado (retenido / no_aplica) */
+.vdoc2-estado {
+  font-weight: 600;
+  color: var(--v2-warning);
+  font-size: 13px;
+}
+.vdoc2-number--supuesto {
+  border-bottom: 1px dashed var(--v2-accent);
+}
+.vdoc2-number__mark {
+  color: var(--v2-accent);
+  margin-left: 2px;
+}
+
+/* Channel comparison */
+.vdoc2-channel__row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.vdoc2-channel__row:first-child {
+  margin-top: 0;
+}
+.vdoc2-channel__bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--v2-border);
+  overflow: hidden;
+  margin-top: 4px;
+}
+.vdoc2-channel__fill {
+  height: 100%;
+  background: var(--v2-primary);
+}
+
+/* Findings */
+.vdoc2-findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.vdoc2-finding {
+  display: flex;
+  gap: 10px;
+  border: 1px solid var(--v2-border);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--v2-surface);
+}
+.vdoc2-finding--alerta {
+  border-color: var(--v2-risk);
+  border-width: 2px;
+  background: #fbeaea;
+}
+.vdoc2-finding__index {
+  font-family: var(--v2-heading-font);
+  font-weight: 700;
+  color: var(--v2-accent);
+}
+.vdoc2-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.vdoc2-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--v2-surface-soft);
+  color: var(--v2-text);
+}
+.vdoc2-tag--alta {
+  color: var(--v2-risk);
+  background: #fbeaea;
+}
+.vdoc2-tag--media {
+  color: #8a6417;
+  background: #fef3d6;
+}
+.vdoc2-tag--baja {
+  color: var(--v2-muted);
+  background: var(--v2-surface-soft);
+}
+.vdoc2-finding h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+/* Commercial summary / bridge note */
+.vdoc2-commercial-summary__number,
+.vdoc2-commercial-summary__range {
+  font-family: var(--v2-heading-font);
+  font-weight: 900;
+  font-size: 40px;
+  margin: 0;
+}
+.vdoc2-bridge-note {
+  color: #dedcea;
+  font-size: 13.5px;
+  max-width: 560px;
+}
+
+/* Scenarios */
+.vdoc2-scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.vdoc2-scenario--larga {
+  grid-column: 1 / -1;
+}
+.vdoc2-scenario {
+  border: 1px solid var(--v2-border);
+  border-radius: 10px;
+  padding: 16px;
+  background: var(--v2-surface);
+}
+.vdoc2-scenario__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 10px;
+}
+.vdoc2-scenario__metric--primary dd {
+  font-family: var(--v2-heading-font);
+  font-weight: 900;
+  font-size: 22px;
+  color: var(--v2-primary);
+  margin: 0;
+}
+.vdoc2-scenario__metric--secondary dd {
+  font-family: var(--v2-heading-font);
+  font-weight: 700;
+  font-size: 16px;
+  margin: 0;
+}
+.vdoc2-scenario__note {
+  font-size: 12.5px;
+  color: var(--v2-muted);
+}
+.vdoc2-subsection {
+  margin-top: 14px;
+}
+.vdoc2-subsection h4 {
+  font-size: 13px;
+  margin: 0 0 6px;
+}
+.vdoc2-table-wrap {
+  overflow-x: auto;
+}
+.vdoc2-monthly-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.vdoc2-monthly-table th,
+.vdoc2-monthly-table td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--v2-border-soft);
+  white-space: nowrap;
+}
+.vdoc2-levers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.vdoc2-levers li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+/* Roadmap / services / restrictions / methodology */
+.vdoc2-roadmap {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.vdoc2-roadmap li {
+  display: flex;
+  gap: 14px;
+}
+.vdoc2-roadmap__days {
+  width: 100px;
+  font-family: var(--v2-heading-font);
+  font-weight: 700;
+  color: var(--v2-primary);
+}
+.vdoc2-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.vdoc2-card {
+  border: 1px solid var(--v2-border);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--v2-surface);
+}
+.vdoc2-restrictions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.vdoc2-restrictions li {
+  display: flex;
+  gap: 10px;
+  border-left: 3px solid var(--v2-warning);
+  background: var(--v2-surface);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.vdoc2-methodology {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 0;
+}
+.vdoc2-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.vdoc2-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 56px;
+  font-size: 12px;
+  color: var(--v2-muted);
+}
