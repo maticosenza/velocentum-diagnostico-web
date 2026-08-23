@@ -1,4 +1,4 @@
-import type { Fuga, ResultadoCalculo } from "../../lib/calculo-diagnostico";
+import type { EstadoBloque, Fuga, ResultadoCalculo } from "../../lib/calculo-diagnostico";
 import { productosCargados } from "../../lib/calculo-diagnostico";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
 import { calcularEscenarios90d, umbralDispersionDe } from "../../lib/escenarios-90d";
@@ -44,7 +44,66 @@ export type BuildDocumentContextArgs = {
    * queda en `null` en ese caso, nunca se completa con un paquete inventado.
    */
   paquetesConfirmados?: EscaleraPaquetesConfirmada | null;
+  configHallazgos?: ConfigHallazgos;
 };
+
+export type ConfigHallazgos = {
+  umbral_prioridad_fuga_pct_facturacion?: number;
+};
+
+/**
+ * Peso mínimo (como fracción de la facturación mensual) para que una fuga
+ * en un negocio con la economía ya sana ("verde") siga en prioridad "alta".
+ * Por defecto, 15%: una fuga individual por debajo de eso, cuando el MER ya
+ * supera el objetivo (`breakeven_roas` con la reserva aplicada), es una
+ * oportunidad de mejora, no una urgencia — mismo orden de magnitud que
+ * `tope_fuga_individual` (25% por defecto, el tope de la red de seguridad),
+ * pero más conservador porque acá el criterio no es "¿es creíble el
+ * número?" sino "¿amerita la máxima urgencia en un negocio que ya funciona
+ * bien?" (corrección 2026-08-23, incoherencia #2 del loop nocturno del
+ * 2026-08-22: ver docs/loop-nocturno-2026-08-22-escenarios.md, escenario 5
+ * — 39% de la facturación en fugas "alta" sobre un negocio sano).
+ */
+export const UMBRAL_PRIORIDAD_FUGA_PCT_FACTURACION_DEFECTO = 0.15;
+
+function umbralPrioridadFugaDe(cfg: ConfigHallazgos): number {
+  return typeof cfg.umbral_prioridad_fuga_pct_facturacion === "number"
+    ? cfg.umbral_prioridad_fuga_pct_facturacion
+    : UMBRAL_PRIORIDAD_FUGA_PCT_FACTURACION_DEFECTO;
+}
+
+/**
+ * La prioridad de un hallazgo no depende sólo de si tiene un monto positivo:
+ * también pondera cuánto pesa esa fuga sobre la facturación y qué tan sano
+ * está el bloque económico. `margen_negativo` es la única excepción
+ * explícita: siempre "alta", por encima de cualquier otro hallazgo (ver
+ * `mapearHallazgos` en `src/lib/propuesta.ts`, que lo empuja primero).
+ */
+function prioridadDeHallazgo(args: {
+  hallazgoId: string;
+  fuga: Fuga | undefined;
+  facturacionMensual: number | null;
+  estadoEconomia: EstadoBloque;
+  umbral: number;
+}): "alta" | "media" {
+  if (args.hallazgoId === "margen_negativo") return "alta";
+
+  const base: "alta" | "media" =
+    args.fuga && finito(args.fuga.monto) && (args.fuga.monto as number) > 0 ? "alta" : "media";
+  if (base !== "alta") return base;
+
+  if (
+    args.estadoEconomia === "verde" &&
+    args.facturacionMensual !== null &&
+    args.facturacionMensual > 0 &&
+    args.fuga
+  ) {
+    const peso = (args.fuga.monto as number) / args.facturacionMensual;
+    if (peso < args.umbral) return "media";
+  }
+
+  return "alta";
+}
 
 const FUENTE_DIAGNOSTICO = "diagnostico_cliente";
 const PERIODO_MENSUAL = "mensual";
@@ -198,6 +257,7 @@ export function magnitudDeFuga(fuga: Fuga): TipoImpactoClasificado | null {
 function hallazgosDocumento(
   datos: DatosDiagnostico,
   resultado: ResultadoCalculo,
+  cfg: ConfigHallazgos = {},
 ): { hallazgos: HallazgoDocumento[]; servicios: ServicioDocumento[] } {
   const mapeados = mapearHallazgos(
     datos,
@@ -219,6 +279,8 @@ function hallazgosDocumento(
         .filter((nombre): nombre is string => nombre !== null),
     ),
   ).map((nombre) => ({ id: idServicio(nombre), nombre, alcance: [] }));
+  const umbralPrioridad = umbralPrioridadFugaDe(cfg);
+  const facturacionMensual = finito(datos.facturacion_mensual) ? datos.facturacion_mensual : null;
   const hallazgos: HallazgoDocumento[] = mapeados.map((hallazgo) => {
     const fuga = resultado.fugas.find(
       (candidata) =>
@@ -228,7 +290,13 @@ function hallazgosDocumento(
       id: hallazgo.id,
       titulo: hallazgo.titulo,
       capa: hallazgo.capa,
-      prioridad: fuga && (fuga.monto as number) > 0 ? "alta" : "media",
+      prioridad: prioridadDeHallazgo({
+        hallazgoId: hallazgo.id,
+        fuga,
+        facturacionMensual,
+        estadoEconomia: resultado.estados_bloque.economia,
+        umbral: umbralPrioridad,
+      }),
       confianza: resultado.margen_bloqueado ? "baja" : "media",
       evidenciaIds: fuga ? [`fuga_${fuga.id}`] : [],
       monto: fuga
@@ -314,7 +382,7 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
     coberturaProductos: productos,
   });
   const contradiccion = resultado.contradiccion_margen;
-  const salidaHallazgos = hallazgosDocumento(datos, resultado);
+  const salidaHallazgos = hallazgosDocumento(datos, resultado, args.configHallazgos ?? {});
   const confianza: ConfianzaDocumento = resultado.margen_bloqueado
     ? "bloqueada"
     : general === 100 && restricciones.length === 0

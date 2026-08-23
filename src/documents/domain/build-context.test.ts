@@ -107,11 +107,16 @@ describe("adaptador conservador a DocumentContextV1", () => {
     expect(c.actual.merMarketplace).toMatchObject({ estado: "calculado", valor: 27.78 });
     expect(c.actual.roasProductAds).toMatchObject({ estado: "calculado", valor: 5 });
     expect(c.actual.merMarketplace).not.toEqual(c.actual.roasProductAds);
-    expect(c.servicios).toContainEqual({
-      id: "product_ads",
-      nombre: "Product Ads",
-      alcance: [],
-    });
+    // casoTitanWebB1 tiene 60% de cobertura de productos: el margen total
+    // (y por lo tanto breakeven_roas) queda retenido, así que el hallazgo
+    // "product_ads" (que desde el 2026-08-23 exige ROAS real por debajo del
+    // breakeven, no sólo que el canal exista) no puede evaluarse todavía —
+    // no es un bug, es la ausencia de la evidencia que probaría el
+    // problema. Ver el caso positivo (con evidencia real, dispara) en
+    // src/documents/correccion-incoherencias-escenarios.test.ts, describe "3b".
+    expect(c.servicios).not.toContainEqual(
+      expect.objectContaining({ id: "product_ads" }),
+    );
   });
 
   it("preserva cobertura parcial sin normalizarla a margen total", () => {

@@ -1595,6 +1595,29 @@ export function calcularDiagnostico(
     }
   }
 
+  // --- Margen de contribución negativo calculado (no retenido, no nulo):
+  // cada venta pierde plata antes de contar la publicidad. Ninguna fuga que
+  // dependa del margen se valoriza mientras siga así — multiplicar por un
+  // margen negativo produce una "oportunidad" negativa, que no significa
+  // nada (corrección 2026-08-23, incoherencia #1 del loop nocturno del
+  // 2026-08-22: ver docs/loop-nocturno-2026-08-22-escenarios.md). El
+  // hallazgo propio de prioridad máxima que señala esto vive en
+  // `src/lib/propuesta.ts` (`mapearHallazgos`, id "margen_negativo").
+  const MOTIVO_MARGEN_NEGATIVO =
+    "El margen de contribución calculado es negativo: no se valoriza ninguna fuga que dependa de él mientras siga así.";
+  if (!margenBloqueado && margen !== null && margen < 0) {
+    for (const f of fugas) {
+      if (f.usa_margen !== true) continue;
+      f.monto = null;
+      f.calculable = false;
+      if (!f.faltantes.includes("margen_negativo")) {
+        f.faltantes.push("margen_negativo");
+      }
+      f.detalle = MOTIVO_MARGEN_NEGATIVO;
+      retenerImpactosDeMargen(f, MOTIVO_MARGEN_NEGATIVO);
+    }
+  }
+
   // --- Red de seguridad: ninguna fuga puede salirse del rango razonable
   const DETALLE_SOSPECHOSA =
     "El cálculo superó el rango razonable para la facturación de la tienda. El umbral usado puede no aplicar a este tipo de negocio: el monto quedó topeado.";

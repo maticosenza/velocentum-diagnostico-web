@@ -78,6 +78,31 @@ export function mapearHallazgos(
     return f && f.tipo === "monto" && typeof f.monto === "number" && f.monto > 0;
   };
 
+  // Margen de contribución negativo calculado (no retenido, no nulo): el
+  // caso más grave que puede señalar el diagnóstico — el cliente puede
+  // mirar un ROAS bueno y creer que le va bien mientras pierde plata en
+  // cada venta. Va PRIMERO en el array a propósito, para quedar por
+  // encima de cualquier otro hallazgo (prioridad "alta" forzada en
+  // `src/documents/domain/build-context.ts`, `hallazgosDocumento`).
+  // Capa "recomendacion", nunca "servicio": lo que hay que revisar (costo
+  // de producto, envío, comisiones o precio) no mapea a ninguno de los
+  // seis servicios del catálogo cerrado — ninguna optimización de pauta
+  // resuelve un margen negativo (corrección 2026-08-23, incoherencia #1
+  // del loop nocturno: docs/loop-nocturno-2026-08-22-escenarios.md).
+  if (
+    !margenBloqueado &&
+    typeof derivados.margen_contribucion === "number" &&
+    derivados.margen_contribucion < 0
+  ) {
+    h.push({
+      id: "margen_negativo",
+      titulo: "Margen de contribución negativo",
+      capa: "recomendacion",
+      servicio: null,
+      nota: "Cada venta genera pérdida antes de contar la publicidad: ninguna optimización de pauta lo resuelve. Hay que revisar costo de producto, envío, comisiones o precio.",
+    });
+  }
+
   // Solo con el bloque en rojo. "sin_datos" significa que no sabemos: no afirmamos nada.
   if (estados.medicion === "rojo") {
     h.push({
@@ -142,26 +167,36 @@ export function mapearHallazgos(
   }
 
   // Mix desalineado: el producto que más factura tiene margen por debajo del ponderado.
-  // Solo si el bloque de economía tiene datos suficientes.
+  // Solo si el bloque de economía tiene datos suficientes y hay evidencia de
+  // que el problema es de MIX de producto, no de estructura de canal: con
+  // un solo producto declarado no hay mezcla que pueda estar desalineada
+  // (el hallazgo viejo disparaba igual con un solo SKU en dos canales de
+  // comisión distinta, porque comparaba el margen de ESE producto en el
+  // canal principal contra el margen ponderado de TODOS los canales — una
+  // diferencia de comisión entre canales, no un problema de catálogo;
+  // corrección 2026-08-23, incoherencia #3a del loop nocturno:
+  // docs/loop-nocturno-2026-08-22-escenarios.md).
   if (estados.economia !== "sin_datos" && !margenBloqueado) {
     const cargados = productosCargados(datos);
-    const margenes = derivados.margenes_producto ?? [];
-    const ponderado = derivados.margen_contribucion;
-    const principal = cargados
-      .filter((p) => typeof p.pct === "number" && (p.pct as number) > 0)
-      .sort((a, b) => (b.pct as number) - (a.pct as number))[0];
-    const margenPrincipal = principal ? margenes[principal.indice - 1] : null;
-    if (
-      typeof ponderado === "number" &&
-      typeof margenPrincipal === "number" &&
-      margenPrincipal < ponderado
-    ) {
-      h.push({
-        id: "mix_producto",
-        titulo: "Mix de producto desalineado con el margen",
-        capa: "servicio",
-        servicio: "Meta Ads",
-      });
+    if (cargados.length > 1) {
+      const margenes = derivados.margenes_producto ?? [];
+      const ponderado = derivados.margen_contribucion;
+      const principal = cargados
+        .filter((p) => typeof p.pct === "number" && (p.pct as number) > 0)
+        .sort((a, b) => (b.pct as number) - (a.pct as number))[0];
+      const margenPrincipal = principal ? margenes[principal.indice - 1] : null;
+      if (
+        typeof ponderado === "number" &&
+        typeof margenPrincipal === "number" &&
+        margenPrincipal < ponderado
+      ) {
+        h.push({
+          id: "mix_producto",
+          titulo: "Mix de producto desalineado con el margen",
+          capa: "servicio",
+          servicio: "Meta Ads",
+        });
+      }
     }
   }
 
@@ -435,15 +470,28 @@ export function mapearHallazgos(
     }
   }
 
-  if (datos.vende_mercado_libre) {
-    if (datos.ml_product_ads === true) {
-      h.push({
-        id: "product_ads",
-        titulo: "Product Ads sin ROAS objetivo por familia",
-        capa: "servicio",
-        servicio: "Product Ads",
-      });
-    }
+  // Antes disparaba con sólo `ml_product_ads === true` (evidencia de que el
+  // canal existe, no de que rinde mal) — cualquier vendedor con Product Ads
+  // activo recibía el hallazgo, rindiera 10x o 0,5x. Ahora exige evidencia
+  // real del problema: ROAS de Product Ads calculable Y por debajo del
+  // punto de equilibrio del negocio (mismo umbral que ya usa `mer_bajo`
+  // para Meta/Google). Sin `roas_product_ads` o sin `breakeven_roas`
+  // calculables, el hallazgo no se genera — no se afirma un problema sin
+  // el dato que lo probaría (corrección 2026-08-23, incoherencia #3b del
+  // loop nocturno: docs/loop-nocturno-2026-08-22-escenarios.md).
+  if (
+    datos.vende_mercado_libre &&
+    datos.ml_product_ads === true &&
+    typeof derivados.roas_product_ads === "number" &&
+    typeof derivados.breakeven_roas === "number" &&
+    derivados.roas_product_ads < derivados.breakeven_roas
+  ) {
+    h.push({
+      id: "product_ads",
+      titulo: "Product Ads con ROAS por debajo del punto de equilibrio",
+      capa: "servicio",
+      servicio: "Product Ads",
+    });
   }
 
   const financiacionConfirmada = [

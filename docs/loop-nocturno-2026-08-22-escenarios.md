@@ -251,19 +251,28 @@ exhaustiva de esto; acá sólo se registra como observación de paso.
 
 ## Qué quedó pendiente
 
-Ningún hallazgo de este documento se corrigió. Quedan para que Matías
-decida cuáles ameritan un bloque técnico:
+Ningún hallazgo de este documento se corrigió EN ESTE BLOQUE (el de
+generación de los escenarios, 2026-08-22). Quedaron para que Matías
+decidiera cuáles ameritaban un bloque técnico — decisión tomada, y las
+cuatro **ya están corregidas** (2026-08-23, commit posterior a este
+documento; ver `src/documents/correccion-incoherencias-escenarios.test.ts`
+para la verificación contra estos mismos seis escenarios):
 
-1. `gasto_no_rentable` (y cualquier lógica que dependa de
-   `margenPositivo`) debería distinguir "margen no calculado" de "margen
-   calculado y negativo" — hoy los trata igual.
-2. Las prioridades ALTA/MEDIA/BAJA de `mapearHallazgos` no tienen ningún
-   mecanismo que las module contra la salud general del negocio — un
-   fuga de funnel legítima en un negocio sano puede terminar con la misma
-   prioridad "ALTA" que en un negocio en crisis.
-3. `mix_producto` compara el margen del canal principal contra el margen
-   ponderado total — no compara productos entre sí. Con un solo producto
-   y dos canales de comisión distinta, dispara siempre.
-4. `product_ads` (el hallazgo, en `propuesta.ts`) no compara ningún ROAS
-   real contra ningún objetivo — dispara con sólo `ml_product_ads ===
-   true`.
+1. **RESUELTO.** `gasto_no_rentable` seguía sin distinguir "margen no
+   calculado" de "margen calculado y negativo" a nivel de esa fuga
+   puntual, pero el problema real (el margen negativo pasaba en
+   silencio, sin ninguna alarma) se resolvió con un hallazgo propio y
+   más general: `margen_negativo` (`src/lib/propuesta.ts`), de prioridad
+   máxima, que además retiene toda fuga que dependa del margen mientras
+   siga negativo (`src/lib/calculo-diagnostico.ts`) — un tratamiento más
+   completo que ajustar sólo `gasto_no_rentable`.
+2. **RESUELTO.** La prioridad ahora pondera el peso de la fuga sobre la
+   facturación cuando el bloque económico está en verde (umbral
+   configurable, 15% por defecto —
+   `UMBRAL_PRIORIDAD_FUGA_PCT_FACTURACION_DEFECTO`,
+   `src/documents/domain/build-context.ts`).
+3. **RESUELTO.** `mix_producto` ahora exige más de un producto declarado
+   (con un solo SKU no hay "mix" que pueda estar desalineado).
+4. **RESUELTO.** `product_ads` ahora exige ROAS real de Product Ads
+   calculable y por debajo del punto de equilibrio del negocio, no sólo
+   `ml_product_ads === true`.

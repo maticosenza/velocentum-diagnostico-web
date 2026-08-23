@@ -26,6 +26,12 @@ const ARCHIVOS_PERMITIDOS = new Set([
   // Generador de los PDFs/propuestas de revisión visual del bloque 1 (script
   // de un solo uso, no forma parte de la suite de cálculo ni de regresión).
   "generar-pdfs-escenarios-demo.test.ts",
+  // Bloque de corrección de las tres incoherencias que estos mismos seis
+  // escenarios originaron (2026-08-23, decisión consciente, no acoplamiento
+  // silencioso): verifica LECTURA de negocio (qué hallazgo aparece, con qué
+  // prioridad, nunca "el margen da exactamente X"), no valores de cálculo
+  // — mismo espíritu que el resto de este archivo, no una excepción a él.
+  "correccion-incoherencias-escenarios.test.ts",
 ]);
 
 function archivosFuente(dir: string, acc: string[] = []): string[] {
