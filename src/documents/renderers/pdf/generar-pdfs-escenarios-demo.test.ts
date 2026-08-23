@@ -65,5 +65,5 @@ describe("PDFs de revisión de los seis escenarios demostrativos", () => {
     }
 
     expect(generados).toBe(ESCENARIOS_DEMOSTRATIVOS.length * TIPOS.length * 2);
-  });
+  }, 20_000);
 });

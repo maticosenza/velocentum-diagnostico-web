@@ -728,8 +728,15 @@ siguiente acción.
   `buildDocumentContext()` sigue con `comercial: null` incondicional
   (`src/documents/domain/build-context.ts:479`) — conectar la selección
   ya persistida hacia `SeleccionComercial` para que el PDF de propuesta la
-  use es trabajo aparte, no bloqueado por ninguna decisión de base de
-  datos.
+  use. **Investigado el 2026-08-23: no es trabajo de plomería, es una
+  decisión de producto sin resolver** (entrada 10 de
+  `docs/decisiones-pendientes.md`, la única entrada **Abierta**): lo
+  persistido (`EscaleraPaquetesConfirmada`) es un menú de tres niveles con
+  precio propio cada uno; lo que consume el documento
+  (`SeleccionComercial`) es un solo paquete con campos (duración, forma de
+  pago, fecha de inicio, exclusiones, si el precio va impreso) que hoy no
+  se capturan en ningún lado. Bloqueado hasta que Matías resuelva esa
+  entrada, no por ninguna decisión de base de datos.
 - **Evidencia funcional construida (previa a este bloque):**
   - Plantilla de propuesta: `src/documents/templates/velocentum-v1/propuesta.ts`.
   - Salida combinada proyección + propuesta: `src/documents/templates/velocentum-v1/composicion.ts`.
@@ -755,11 +762,14 @@ siguiente acción.
   lógica pura ya probada.
 - **Pruebas faltantes:** QA visual de la interfaz de la herramienta.
 - **Riesgo:** ninguno nuevo; la selección confirmada ya se persiste.
-- **Bloqueo:** ninguno técnico ni de base de datos.
-- **Siguiente acción:** conectar la selección persistida hacia
-  `SeleccionComercial`/`buildDocumentContext()` para que el PDF de
-  propuesta la use; después, aplicar el sistema visual aprobado a los tres
-  PDF y a la interfaz (comparte alcance con fases 11/12).
+- **Bloqueo:** entrada 10 de `docs/decisiones-pendientes.md` (decisión de
+  producto sobre cómo mostrar la escalera en la propuesta), sin relación
+  con base de datos.
+- **Siguiente acción:** que Matías resuelva la entrada 10; recién entonces
+  conectar la selección persistida hacia
+  `SeleccionComercial`/`buildDocumentContext()`; después, aplicar el
+  sistema visual aprobado a los tres PDF y a la interfaz (comparte alcance
+  con fases 11/12).
 
 ### Fase 14 — QA final, integración y publicación — **PENDIENTE**
 

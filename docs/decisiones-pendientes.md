@@ -11,7 +11,52 @@ numerada de forma permanente; los números no se reutilizan.
 
 ## Abiertas
 
-Ninguna por ahora.
+### 10 · Cómo conectar la selección de paquetes confirmada a la propuesta comercial (`comercial` en `build-context.ts:479`)
+
+**Contexto.** El plan maestro (fase 13) dejó anotado como pendiente "conectar
+la selección persistida hacia `SeleccionComercial`/`buildDocumentContext()`
+para que el PDF de propuesta la use" — hoy `comercial: null` sigue
+hardcodeado. Al intentar implementarlo (2026-08-23) apareció un
+**desajuste estructural real entre los dos modelos**, no sólo plomería:
+
+- Lo que se persiste (`EscaleraPaquetesConfirmada`, `src/lib/paquetes.ts`) es
+  una **escalera de hasta tres niveles** (IMPULSO/TRACCIÓN/ESCALA),
+  acumulativa, cada nivel con su propia lista de servicios y su propio
+  precio (`NivelPaquete.precio: number | null`). Es un menú de tres
+  opciones, no una oferta única.
+- Lo que el documento de propuesta consume (`SeleccionComercial`,
+  `src/documents/domain/types.ts:210-222`) es **un solo paquete**:
+  `paqueteId`, `nombre`, `alcance`, `exclusiones`, `entregables`,
+  `duracionDias`, `precio` (`Evidencia<number>`), `formaPago`, `inicio`,
+  `incluirPrecioEnPdf`. El bloque `"commercial-offer"` (`blocks.ts` →
+  `buildCommercialOffer`) arma UNA sola tarjeta de oferta, y
+  `propuesta.ts` sólo tiene una sección `"commercial-offer"` (singular).
+- La pantalla de confirmación (`confirmacion-paquetes.tsx`) nunca captura
+  `exclusiones`, `duracionDias`, `formaPago`, `inicio` ni
+  `incluirPrecioEnPdf` para ningún nivel — esos campos no existen en
+  ningún lugar de la UI ni del modelo persistido hoy.
+
+**Por qué no se resolvió unilateralmente.** Completar la conexión exige
+decidir cosas de negocio que no están definidas en ningún documento
+existente:
+
+1. ¿La propuesta muestra los tres niveles lado a lado (como el menú que
+   son), o el vendedor elige UNO como "la" oferta que se envía al
+   cliente?
+2. Si es un solo nivel: ¿de dónde salen duración, forma de pago, fecha de
+   inicio, exclusiones y si el precio va impreso en el PDF? ¿Campos
+   nuevos en la pantalla de confirmación, o un default fijo (por ejemplo,
+   90 días, alineado con el horizonte de escenarios)? Un default inventado
+   acá sería exactamente el tipo de dato de negocio que la regla de este
+   trabajo prohíbe asumir.
+3. Si son los tres niveles: el bloque `"commercial-offer"` (tipo y
+   plantilla) necesita rediseñarse para un menú de tres tarjetas, no una
+   sola — trabajo de plantilla/diseño, no sólo de plomería, y coincide con
+   el "rediseño visual" que fase 13 ya dejó pendiente por separado.
+
+**Qué se hizo en su lugar.** No se tocó `comercial: null` en
+`build-context.ts`. Queda exactamente como estaba, documentado acá para
+que Matías decida antes de que se implemente cualquiera de las dos rutas.
 
 ## Cerradas
 

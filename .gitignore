@@ -20,6 +20,10 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# PDFs de revisión regenerables (docs/loop-nocturno-2026-08-22-cierre.md,
+# sección "Entrega de los 36 PDFs", explica cómo)
+/revision-pdfs-escenarios-demo/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

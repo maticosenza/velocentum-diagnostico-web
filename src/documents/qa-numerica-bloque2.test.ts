@@ -200,13 +200,25 @@ describe("2 · ninguna suma cruza magnitudes económicas", () => {
     // comparado nada (mismo defecto que auditoría encontró antes del fix:
     // el `continue` se disparaba siempre y ningún expect corría).
     expect(mesesComparados).toBeGreaterThan(0);
-    // NOTA (handoff): con inversión declarada, `ahorroPublicitarioHabilitado`
-    // sigue retenido en los tres meses de este fixture (no alcanza con
-    // inversion_meta/inversion_google > 0; falta algo más que este bloque
-    // no determinó por límite de tiempo — ver docs/loop-nocturno-2026-08-22-cierre.md).
-    // Por eso esta pierna no lleva un `toBeGreaterThan(0)` propio: queda
-    // pendiente de fixture, no de lógica. La comparación de facturación vs.
-    // contribución arriba sí se ejercita siempre (mesesComparados > 0).
+    // NOTA (investigado 2026-08-23, ver docs/loop-nocturno-2026-08-22-cierre.md
+    // sección 3): con inversión declarada, `ahorroPublicitarioHabilitado`
+    // sigue retenido en los tres meses de este fixture porque, con estos
+    // datos, genuinamente no hay ahorro publicitario que recuperar — no es
+    // un bug del motor. `mer_actual` (45.05) queda muy por encima de
+    // `breakeven_roas` (1.565): la cuenta es rentable, así que la fuga
+    // `gasto_no_rentable` ni siquiera se crea (sólo se agrega cuando
+    // mer < breakeven). `sobrefragmentacion` queda retenida porque el
+    // fixture no declara `conjuntos_activos`/`presupuesto_diario`. Sin
+    // ninguna de las dos fuentes, `consolidarAhorroPublicitario()` no tiene
+    // qué consolidar — la inversión declarada es sólo el tope del ahorro,
+    // nunca una fuente de ahorro por sí misma. Por eso esta pierna no lleva
+    // un `toBeGreaterThan(0)` propio: para ejercitarla, un fixture futuro
+    // necesitaría un MER por debajo del breakeven o una estructura de
+    // cuenta fragmentada (conjuntos_activos por encima del umbral
+    // sostenible + presupuesto_diario), ninguno de los dos aplicado acá a
+    // propósito (no se pidió corregir el fixture, sólo investigar). La
+    // comparación de facturación vs. contribución arriba sí se ejercita
+    // siempre (mesesComparados > 0).
     if (mesesConAhorroComparado === 0) {
       console.warn(
         "qa-numerica-bloque2: ningún mes calculó ahorroPublicitarioHabilitado; " +
