@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { formatDocumentDate } from "../web/format";
 import { textoEstadoV2, esSupuesto } from "../../semantica-v2/estado";
 import {
@@ -11,9 +11,16 @@ import {
   LABELS_PRIORIDAD,
   LABELS_TIPO_DOCUMENTO,
   LABELS_UNIDAD_COMERCIAL,
+  TITULO_SUPUESTOS_CON_DAGA,
 } from "../../semantica-v2/etiquetas";
+import {
+  PERSONALIDAD_POR_DOCUMENTO,
+  colorProfundidadTarjeta,
+  colorTexturaLinea,
+} from "../../semantica-v2/direccion-arte";
 import type {
   DocumentBlockV2,
+  DocumentKindV2,
   DocumentModelV2,
   DocumentSectionV2,
   EscenarioV2,
@@ -67,6 +74,54 @@ function List({ items, emptyLabel }: { items: string[]; emptyLabel?: string }) {
   );
 }
 
+/** D-5, contrato 6.7: línea corta + puntos bajo un título/subtítulo. */
+function HeadingRule() {
+  return (
+    <div className="vdoc2-heading-rule" aria-hidden="true">
+      <span className="vdoc2-heading-rule__line" />
+      <span className="vdoc2-heading-rule__dots">····</span>
+    </div>
+  );
+}
+
+/** D-5, contrato 6.4: ícono lineal en círculo — sólo escenario y canales. */
+function IconCircle({ kind }: { kind: "conservador" | "base" | "potencial" | "tienda" | "marketplace" }) {
+  return (
+    <span className={`vdoc2-icon-circle vdoc2-icon-circle--${kind}`} aria-hidden="true">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.2}>
+        {kind === "conservador" ? <circle cx="6" cy="6" r="3.5" /> : null}
+        {kind === "base" ? (
+          <>
+            <line x1="2" y1="6" x2="10" y2="6" />
+            <line x1="6" y1="2" x2="6" y2="10" />
+          </>
+        ) : null}
+        {kind === "potencial" ? (
+          <>
+            <line x1="2" y1="9" x2="10" y2="3" />
+            <line x1="6" y1="3" x2="10" y2="3" />
+            <line x1="10" y1="3" x2="10" y2="7" />
+          </>
+        ) : null}
+        {kind === "tienda" ? (
+          <>
+            <line x1="2" y1="5" x2="10" y2="5" />
+            <line x1="3" y1="5" x2="3" y2="10" />
+            <line x1="9" y1="5" x2="9" y2="10" />
+          </>
+        ) : null}
+        {kind === "marketplace" ? (
+          <>
+            <circle cx="4" cy="4" r="1.4" />
+            <circle cx="8" cy="8" r="1.4" />
+            <line x1="5" y1="5" x2="7" y2="7" />
+          </>
+        ) : null}
+      </svg>
+    </span>
+  );
+}
+
 function BlockFrame({ type, children }: { type: DocumentBlockV2["type"]; children: ReactNode }) {
   return (
     <div className={`vdoc2-block vdoc2-block--${type}`} data-block-type={type}>
@@ -84,6 +139,7 @@ function CoverBlock({ block }: { block: Extract<DocumentBlockV2, { type: "cover"
         <p className="vdoc2-cover__client">{block.clientName}</p>
         <h1>{block.title}</h1>
         <p className="vdoc2-cover__subtitle">{block.subtitle}</p>
+        <HeadingRule />
       </div>
       {/* C10, ronda 2.1: cliente, tipo de documento, fecha y versión — los
           cuatro campos. El cliente ya se muestra arriba
@@ -154,14 +210,14 @@ function ChannelComparisonBlock({
       <h3>Comparación entre canales</h3>
       <div className="vdoc2-channel">
         <div className="vdoc2-channel__row">
-          <span>{block.tienda.label}</span>
+          <span className="vdoc2-channel__label"><IconCircle kind="tienda" />{block.tienda.label}</span>
           <ValorV2View value={block.tienda.value} />
         </div>
         <div className="vdoc2-channel__bar">
           <div className="vdoc2-channel__fill" style={{ width: `${Math.max(4, (tVal / max) * 100)}%` }} />
         </div>
         <div className="vdoc2-channel__row">
-          <span>{block.marketplace.label}</span>
+          <span className="vdoc2-channel__label"><IconCircle kind="marketplace" />{block.marketplace.label}</span>
           <ValorV2View value={block.marketplace.value} />
         </div>
         <div className="vdoc2-channel__bar">
@@ -253,7 +309,7 @@ function CommercialSummaryBlock({
         {block.statement ? <p className="vdoc2-commercial-summary__statement">{block.statement}</p> : null}
         {block.assumptionsDetail.length > 0 ? (
           <div className="vdoc2-subsection">
-            <h4>Supuestos</h4>
+            <h4>{TITULO_SUPUESTOS_CON_DAGA}</h4>
             <List items={block.assumptionsDetail.map((s) => s.valor)} />
           </div>
         ) : null}
@@ -275,7 +331,10 @@ function ScenarioCard({ item }: { item: EscenarioV2 }) {
   return (
     <article className={classNames("vdoc2-scenario", `vdoc2-scenario--${item.id}`, !item.esCorta && "vdoc2-scenario--larga")}>
       <div className="vdoc2-block__header">
-        <h3>{LABELS_ESCENARIO[item.id]}</h3>
+        <div className="vdoc2-scenario__title">
+          <IconCircle kind={item.id} />
+          <h3>{LABELS_ESCENARIO[item.id]}</h3>
+        </div>
         <span className="vdoc2-badge">{item.confianza}</span>
       </div>
       <dl className="vdoc2-scenario__metrics">
@@ -362,7 +421,7 @@ function ScenarioCard({ item }: { item: EscenarioV2 }) {
         : null}
       {item.supuestos.length > 0 ? (
         <div className="vdoc2-subsection">
-          <h4>Supuestos</h4>
+          <h4>{TITULO_SUPUESTOS_CON_DAGA}</h4>
           <ul className="vdoc2-list">
             {item.supuestos.map((s) => (
               <li key={s.id}>
@@ -595,7 +654,7 @@ export function DocumentBlockViewV2({ block }: { block: DocumentBlockV2 }) {
   }
 }
 
-export function DocumentSectionViewV2({ section }: { section: DocumentSectionV2 }) {
+export function DocumentSectionViewV2({ section, kind }: { section: DocumentSectionV2; kind: DocumentKindV2 }) {
   const headingId = section.title ? `vdoc2-section-${section.id}` : undefined;
   return (
     <section
@@ -604,8 +663,17 @@ export function DocumentSectionViewV2({ section }: { section: DocumentSectionV2 
       aria-labelledby={headingId}
     >
       <div className="vdoc2-section__inner">
-        {section.eyebrow ? <p className="vdoc2-eyebrow">{section.eyebrow}</p> : null}
+        {section.eyebrow ? (
+          <p className="vdoc2-eyebrow">
+            {/* D-5, contrato 6.5: glifo de personalidad por documento. */}
+            <span className="vdoc2-eyebrow__glyph" aria-hidden="true">
+              {PERSONALIDAD_POR_DOCUMENTO[kind].glifo}
+            </span>
+            {section.eyebrow}
+          </p>
+        ) : null}
         {section.title ? <h2 id={headingId}>{section.title}</h2> : null}
+        {section.title ? <HeadingRule /> : null}
         <div className="vdoc2-section__blocks">
           {section.blocks.map((block, index) => (
             <DocumentBlockViewV2 block={block} key={`${section.id}-${block.type}-${index}`} />
@@ -617,15 +685,23 @@ export function DocumentSectionViewV2({ section }: { section: DocumentSectionV2 
 }
 
 export function DocumentWebRendererV2({ model, className }: DocumentWebRendererV2Props) {
+  // D-5, contrato 6.1/6.3: variables CSS calculadas a partir del MISMO
+  // módulo compartido que usa el renderer PDF — ningún valor decorativo
+  // se define por separado en este renderer (Q6).
+  const direccionArteVars = {
+    "--vdoc2-card-shadow": colorProfundidadTarjeta("pantalla"),
+    "--vdoc2-texture-line": colorTexturaLinea("pantalla"),
+  } as CSSProperties;
   return (
     <article
       className={classNames("vdoc2", className)}
       data-document-kind={model.kind}
       lang="es"
       aria-label={`${model.metadata.title} para ${model.metadata.clientName}`}
+      style={direccionArteVars}
     >
       {model.sections.map((section) => (
-        <DocumentSectionViewV2 key={section.id} section={section} />
+        <DocumentSectionViewV2 key={section.id} section={section} kind={model.kind} />
       ))}
       <footer className="vdoc2-footer">
         <span>Velocentum</span>

@@ -70,3 +70,11 @@ export const LABELS_TIPO_DOCUMENTO = {
   proyeccion_90d: "Proyección a 90 días",
   propuesta: "Propuesta comercial",
 } as const;
+
+/**
+ * D-4, ronda 2.2: título del bloque de supuestos que vincula
+ * explícitamente la marca † con esta lista — antes el bloque se
+ * titulaba sólo "Supuestos", sin ningún texto que conectara el símbolo
+ * con su destino. Idéntico en PDF y web (paridad).
+ */
+export const TITULO_SUPUESTOS_CON_DAGA = "Supuestos — referencia de los valores marcados con †";

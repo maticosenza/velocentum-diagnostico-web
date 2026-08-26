@@ -566,6 +566,17 @@ contenido inventado:
   (D1, `commercial-offer.pendiente === true`)**: el aviso "Selección
   comercial pendiente" es una sola oración por diseño — expandirlo
   requeriría inventar contenido, que D1 prohíbe explícitamente.
+- **Portada, perfil impresión, los tres documentos**: incluso con el
+  motivo de línea+puntos agregado en D-5 (sección 6.7), queda un vacío
+  vertical grande entre el subtítulo y el bloque de metadatos del pie
+  (`coverMeta`) — verificado por inspección visual en esta ronda sobre
+  `1-marketplace-fuerte-tienda-floja__diagnostico-impresion` página 1.
+  La portada sólo tiene cuatro campos de texto (título, subtítulo,
+  cliente/tipo/fecha/versión) y un acento decorativo — llenar ese
+  espacio requeriría agregar un componente nuevo con datos que la
+  portada no tiene (ej. una cifra destacada), fuera del alcance acotado
+  de esta ronda (D-5 es alineación de dirección de arte, no un rediseño
+  general). Queda documentado como residual, no resuelto.
 
 ### 5.9 C8 — Ninguna tarjeta reserva espacio vacío
 
@@ -603,4 +614,99 @@ muestran en columna (antes: cliente y fecha en fila con
 con un nombre de cliente largo rompía el espaciado; en columna cada
 campo tiene su ancho disponible completo, verificado con el test de
 estrés P10 (nombre de 106 caracteres).
+
+## 6 · Dirección de arte (D-5, Bloque Visual 2.2)
+
+Fuente: `Dropnkicks propuesta.pdf` (dirección de arte visual — paleta,
+tarjetas, iconografía, motivo de línea+puntos, geometría de fondo) y
+`velocentum_design_system.txt` (tokens de color/tipografía). Ningún
+contenido, copy ni cifra de la referencia se usa acá — la referencia es
+sólo dirección de arte, nunca fuente de datos. Todo lo de esta sección
+vive en un único módulo compartido, `src/documents/semantica-v2/direccion-arte.ts`,
+importado por igual desde `renderers/pdf-v2/document.tsx` y
+`renderers/web-v2/document-renderer.tsx`: ningún renderer define un
+recurso decorativo propio por fuera de este módulo (Q6).
+
+### 6.1 Textura/geometría de fondo, opacidad máxima
+
+Líneas diagonales muy sutiles, color de acento, espaciadas 46pt,
+dibujadas como trazos SVG (PDF) / `repeating-linear-gradient` (web) por
+DETRÁS del contenido (primer nodo renderizado, nunca el último — en PDF
+el orden de render define el z-order; en web, `z-index` explícito).
+Opacidad máxima: **0,05 en pantalla, 0,035 en impresión** —
+`TEXTURA_FONDO.opacidadMaximaPantalla` / `opacidadMaximaImpresion`. En
+A4 esto no compite con el límite de tinta plena de C3 (≤25%): una
+textura al 3,5% de opacidad sobre líneas de 1pt espaciadas 46pt aporta
+una fracción despreciable de cobertura de tinta, verificado
+programáticamente (test Q6).
+
+### 6.2 Degradado — dirección, extensión, límites por perfil
+
+El degradado ya existente (R-05, sección 2.12: `primary` →
+`primaryBright`) se mantiene como único degradado de marca — D-5 no
+agrega un segundo degradado, sólo fija su geometría como token
+reutilizable: dirección diagonal descendente, extensión 45% del ancho
+en pantalla (banda lateral de portada, sin cambios), 200pt de ancho en
+impresión (acento de portada contenido, C3, sin cambios de área). D-3
+(más abajo) reutiliza este MISMO degradado — más textura de línea — en
+vez de introducir un color sólido nuevo.
+
+### 6.3 Escala de profundidad de tarjeta (sombra/glow) por perfil
+
+`@react-pdf/renderer` no soporta `boxShadow` a nivel de `View` (no existe
+en `Style` de `@react-pdf/types`) — la "profundidad" en PDF se logra con
+una capa adicional (`CardShadowLayer`), un `View` absoluto del mismo
+`borderRadius`, desplazado `offsetPt` puntos, con `backgroundColor` en
+`rgba(59, 46, 245, opacidad)`, pintado ANTES que la tarjeta (queda
+detrás). En web se usa `box-shadow` real con los mismos valores. Tokens:
+pantalla `{ offsetPt: 3, opacidad: 0.12 }`, impresión `{ offsetPt: 2,
+opacidad: 0.08 }` (impresión más discreto, consistente con "A4 mantiene
+una adaptación imprimible", criterio 4 de D-5).
+
+### 6.4 Reglas de uso de iconografía
+
+Sólo en las superficies donde el ícono identifica una etapa, un canal o
+una acción — nunca por defecto en cada tarjeta (restricción explícita
+del prompt): portada (isotipo, ya existente, sin cambios), encabezado de
+tarjeta de escenario (ícono lineal que identifica el rol del escenario:
+conservador/base/potencial) y el bloque de comparación entre canales
+(ícono que distingue tienda propia de marketplace/canal externo).
+Hallazgos, servicios, restricciones y roadmap NO llevan ícono — ya tienen
+numeración 01/02/03 (R-04) como identificador visual, y agregar un ícono
+ahí sería decoración sin función.
+
+### 6.5 Personalidad por documento
+
+Diagnóstico, proyección y propuesta comparten paleta, tipografía y
+tarjetas (mismo sistema, D-5 criterio 1) pero se diferencian por un
+glifo propio junto al eyebrow de cada sección — nunca por un cambio de
+paleta ni de contenido:
+
+| Documento | Glifo | Tono |
+|---|---|---|
+| `diagnostico` | ◆ | neutral — lectura de estado actual |
+| `proyeccion_90d` | → | dinámico — proyección hacia adelante |
+| `propuesta` | ● | comercial — llamado a decisión |
+
+### 6.6 Límite duro de decoración
+
+Ninguna textura, degradado o capa de profundidad puede superponerse a:
+cifras (`ValorTexto`, `cardValue`, `commercialSummaryNumber`, sus
+equivalentes web), badges de prioridad/alerta, o filas de la tabla
+mensual. En código, esto se logra por orden de capas (la decoración
+siempre se pinta antes/detrás del contenido, nunca envuelve ni se
+superpone a un nodo de texto/valor) — verificado por inspección directa
+del árbol de render en el test Q6 y por inspección visual de los
+rásters regenerados.
+
+### 6.7 Motivo de línea + puntos
+
+Elemento de marca recurrente en la referencia: una línea corta seguida
+de puntos (`── ····`), en color de acento, inmediatamente debajo de un
+título o subtítulo. Se agrega como componente compartido
+(`HeadingRule` en PDF, `.vdoc2-heading-rule` en web) bajo el subtítulo de
+portada y bajo el título de cada sección de contenido — contribuye
+también a D-1 (ocupa espacio con intención en vez de dejarlo vacío) y a
+D-3 (evita que la portada A4 se sienta con demasiado vacío entre
+subtítulo y pie).
 

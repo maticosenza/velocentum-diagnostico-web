@@ -1,9 +1,11 @@
 /* eslint-disable react-refresh/only-export-components -- PDF primitives are not Fast Refresh UI components. */
 import React from "react";
 import {
+  Circle,
   Defs,
   Document,
   Font,
+  Line,
   LinearGradient,
   Page,
   Rect,
@@ -29,9 +31,17 @@ import {
   LABELS_PRIORIDAD,
   LABELS_TIPO_DOCUMENTO,
   LABELS_UNIDAD_COMERCIAL,
+  TITULO_SUPUESTOS_CON_DAGA,
 } from "../../semantica-v2/etiquetas";
+import {
+  PERSONALIDAD_POR_DOCUMENTO,
+  TEXTURA_FONDO,
+  colorProfundidadTarjeta,
+  colorTexturaLinea,
+} from "../../semantica-v2/direccion-arte";
 import type {
   DocumentBlockV2,
+  DocumentKindV2,
   DocumentModelV2,
   DocumentSectionV2,
   EscenarioV2,
@@ -116,7 +126,11 @@ export const PROFILES_V2: Record<PdfProfileV2, ProfileTokensV2> = {
   pantalla: {
     pageSize: [960, 540],
     pagePaddingH: 54,
-    pagePaddingTop: 84,
+    // 100 (antes 84): D-5 agrega `HeadingRule` (línea+puntos) bajo el
+    // título de sección, dentro del `header` absoluto — el padding crece
+    // en la misma medida para que el contenido no arranque debajo del
+    // header y se solape (verificado en la regeneración de esta ronda).
+    pagePaddingTop: 100,
     pagePaddingBottom: 48,
     escala: { titulo: 22, subtitulo: 10, label: 9, valor: 17, valorGrande: 30, badge: 8, nota: 8.5, pie: 8 },
     coverPadding: 64,
@@ -134,7 +148,7 @@ export const PROFILES_V2: Record<PdfProfileV2, ProfileTokensV2> = {
   impresion: {
     pageSize: "A4",
     pagePaddingH: 48,
-    pagePaddingTop: 78,
+    pagePaddingTop: 94,
     pagePaddingBottom: 46,
     escala: { titulo: 18, subtitulo: 9.5, label: 9.5, valor: 15, valorGrande: 24, badge: 8, nota: 9, pie: 8 },
     coverPadding: 48,
@@ -308,6 +322,11 @@ function makeStylesV2(profile: PdfProfileV2) {
     // las tarjetas de escenario "largas" quedaban con el encabezado
     // visible y el resto del contenido invisible). Las tarjetas de ancho
     // completo usan `standaloneCard`, sin `flex`.
+    // D-5, contrato 6.3: `@react-pdf/renderer` no soporta `boxShadow` en
+    // `View` — la profundidad se logra con un borde inferior/derecho más
+    // grueso y teñido (selvedge), sin agregar un nodo `View` extra (evita
+    // el riesgo de reabrir los bugs de `wrap`/`fixed` ya documentados en
+    // la ronda 2.1 para tarjetas con paginación ajustada).
     card: {
       flex: 1,
       minHeight: 72,
@@ -315,6 +334,10 @@ function makeStylesV2(profile: PdfProfileV2) {
       borderRadius: 10,
       borderWidth: 1,
       borderColor: theme.colors.border,
+      borderBottomWidth: profile === "pantalla" ? 3 : 2,
+      borderRightWidth: profile === "pantalla" ? 2 : 1.5,
+      borderBottomColor: colorProfundidadTarjeta(profile),
+      borderRightColor: colorProfundidadTarjeta(profile),
       backgroundColor: theme.colors.surface,
     },
     standaloneCard: {
@@ -323,6 +346,10 @@ function makeStylesV2(profile: PdfProfileV2) {
       borderRadius: 10,
       borderWidth: 1,
       borderColor: theme.colors.border,
+      borderBottomWidth: profile === "pantalla" ? 3 : 2,
+      borderRightWidth: profile === "pantalla" ? 2 : 1.5,
+      borderBottomColor: colorProfundidadTarjeta(profile),
+      borderRightColor: colorProfundidadTarjeta(profile),
       backgroundColor: theme.colors.surface,
     },
     cardFull: { width: "100%" },
@@ -574,10 +601,115 @@ function makeStylesV2(profile: PdfProfileV2) {
     roadmapBody: { flex: 1 },
     channelBar: { height: 10, borderRadius: 5, backgroundColor: theme.colors.border, overflow: "hidden", marginTop: 4 },
     channelBarFill: { height: 10, borderRadius: 5, backgroundColor: theme.colors.primary },
+    // D-5, contrato 6.7: motivo de línea + puntos bajo un título/subtítulo,
+    // fiel a la referencia. Contribuye a D-1 (ocupa espacio con intención)
+    // y D-3 (portada A4 menos vacía entre subtítulo y pie).
+    headingRuleRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4, marginBottom: 12 },
+    headingRuleLine: { width: 28, height: 2, backgroundColor: theme.colors.primary, borderRadius: 1 },
+    headingRuleDots: { fontSize: e.label, color: theme.colors.primary, letterSpacing: 2 },
+    // D-5, contrato 6.5: glifo de personalidad por documento junto al eyebrow.
+    personalityGlyph: { color: theme.colors.primary, marginRight: 5 },
+    // D-5, contrato 6.4: ícono lineal en círculo, sólo en encabezado de
+    // escenario y comparación entre canales.
+    iconCircle: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surfaceSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 6,
+    },
   });
 }
 
 type Styles = ReturnType<typeof makeStylesV2>;
+
+/** D-5, contrato 6.7: línea corta + puntos, bajo un título/subtítulo. */
+function HeadingRule({ styles }: { styles: Styles }) {
+  return (
+    <View style={styles.headingRuleRow} wrap={false}>
+      <View style={styles.headingRuleLine} />
+      <Text style={styles.headingRuleDots}>····</Text>
+    </View>
+  );
+}
+
+/**
+ * D-5, contrato 6.1: textura de fondo — líneas diagonales muy sutiles,
+ * pintadas ANTES que el contenido (queda detrás, el orden de render en
+ * `@react-pdf/renderer` define el z-order). Nunca se superpone a cifras,
+ * badges ni filas de tabla porque siempre se renderiza primero (contrato
+ * 6.6) y su opacidad está muy por debajo del umbral de tinta plena de A4.
+ */
+function BackgroundTexture({ profile }: { profile: PdfProfileV2 }) {
+  const [wPt, hPt] =
+    profile === "pantalla"
+      ? (PROFILES_V2.pantalla.pageSize as [number, number])
+      : [IMPRESION_ACCENT_GEOMETRY.pageWidthPt, IMPRESION_ACCENT_GEOMETRY.pageHeightPt];
+  const spacing = TEXTURA_FONDO.espaciadoLineaPt;
+  const color = colorTexturaLinea(profile);
+  const count = Math.ceil((wPt + hPt) / spacing);
+  return (
+    <Svg
+      style={{ position: "absolute", top: 0, left: 0, width: wPt, height: hPt }}
+      viewBox={`0 0 ${wPt} ${hPt}`}
+    >
+      {Array.from({ length: count }, (_, i) => {
+        const offset = i * spacing - hPt;
+        return (
+          <Line key={i} x1={offset} y1={0} x2={offset + hPt} y2={hPt} stroke={color} strokeWidth={1} />
+        );
+      })}
+    </Svg>
+  );
+}
+
+/** D-5, contrato 6.5: glifo de personalidad, un carácter junto al eyebrow. */
+function PersonalityGlyph({ kind, styles }: { kind: DocumentKindV2; styles: Styles }) {
+  return <Text style={styles.personalityGlyph}>{PERSONALIDAD_POR_DOCUMENTO[kind].glifo} </Text>;
+}
+
+/** D-5, contrato 6.4: ícono lineal en círculo — sólo escenario y canales. */
+function IconCircle({ kind, styles }: { kind: "conservador" | "base" | "potencial" | "tienda" | "marketplace"; styles: Styles }) {
+  const color = theme.colors.primary;
+  return (
+    <View style={styles.iconCircle}>
+      <Svg width={12} height={12} viewBox="0 0 12 12">
+        {kind === "conservador" ? <Circle cx={6} cy={6} r={3.5} stroke={color} strokeWidth={1.2} fill="none" /> : null}
+        {kind === "base" ? (
+          <>
+            <Line x1={2} y1={6} x2={10} y2={6} stroke={color} strokeWidth={1.2} />
+            <Line x1={6} y1={2} x2={6} y2={10} stroke={color} strokeWidth={1.2} />
+          </>
+        ) : null}
+        {kind === "potencial" ? (
+          <>
+            <Line x1={2} y1={9} x2={10} y2={3} stroke={color} strokeWidth={1.2} />
+            <Line x1={6} y1={3} x2={10} y2={3} stroke={color} strokeWidth={1.2} />
+            <Line x1={10} y1={3} x2={10} y2={7} stroke={color} strokeWidth={1.2} />
+          </>
+        ) : null}
+        {kind === "tienda" ? (
+          <>
+            <Line x1={2} y1={5} x2={10} y2={5} stroke={color} strokeWidth={1.2} />
+            <Line x1={3} y1={5} x2={3} y2={10} stroke={color} strokeWidth={1.2} />
+            <Line x1={9} y1={5} x2={9} y2={10} stroke={color} strokeWidth={1.2} />
+          </>
+        ) : null}
+        {kind === "marketplace" ? (
+          <>
+            <Circle cx={4} cy={4} r={1.4} stroke={color} strokeWidth={1} fill="none" />
+            <Circle cx={8} cy={8} r={1.4} stroke={color} strokeWidth={1} fill="none" />
+            <Line x1={5} y1={5} x2={7} y2={7} stroke={color} strokeWidth={1} />
+          </>
+        ) : null}
+      </Svg>
+    </View>
+  );
+}
 
 function ValorTexto({ value, dark, styles }: { value: ValorV2; dark: boolean; styles: Styles }) {
   const resultado = textoEstadoV2(value);
@@ -731,7 +863,10 @@ function ScenarioCard({
   return (
     <View style={[...cardStyle, full ? styles.cardFull : {}]} wrap={full}>
       <View style={styles.scenarioHeader} wrap={false}>
-        <Text style={styles.itemTitle}>{LABELS_ESCENARIO[item.id].toUpperCase()}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <IconCircle kind={item.id} styles={styles} />
+          <Text style={styles.itemTitle}>{LABELS_ESCENARIO[item.id].toUpperCase()}</Text>
+        </View>
         <Text style={styles.badge}>{item.confianza.toUpperCase()}</Text>
       </View>
       <View style={styles.scenarioMetrics} wrap={false}>
@@ -754,8 +889,20 @@ function ScenarioCard({
         reinversión.
       </Text>
       {item.mensual.length > 0 ? (
-        <View style={styles.monthlyTable}>
-          <Kicker />
+        // D-4, ronda 2.2: `wrap={false}` en la tabla completa (antes sólo
+        // cada fila lo tenía) — evita que la tabla se parta a mitad entre
+        // dos páginas dejando sus dagas † en una página distinta de la
+        // nota de referencia que las resuelve (encontrado por el test Q4:
+        // con la tarjeta larga `wrap={full}`, la tabla mensual podía
+        // quedar en una página y "Supuestos" en la siguiente).
+        <View style={styles.monthlyTable} wrap={false}>
+          {/* D-2, ronda 2.2: la identidad se repite UNA sola vez, sólo en
+              tarjetas de ancho completo (`full`, las únicas con contenido
+              largo que podría partirse entre páginas) — antes se repetía
+              de forma incondicional antes de cada subsección (tabla,
+              palancas, supuestos), incluso en tarjetas que entraban
+              enteras en una página. */}
+          {full ? <Kicker /> : null}
           {stacked ? (
             <MonthlyTableStacked mensual={item.mensual} dark={dark} styles={styles} />
           ) : (
@@ -772,9 +919,18 @@ function ScenarioCard({
               ))}
             </>
           )}
+          {/* D-4: nota de referencia en el MISMO bloque `wrap={false}` que
+              la tabla — nunca puede quedar en una página distinta de las
+              dagas que resuelve, sin depender de dónde caiga el bloque
+              "Supuestos" completo (que sigue existiendo más abajo). */}
+          {item.supuestos.length > 0 ? (
+            <Text style={[styles.estadoDetalle, dark ? styles.estadoDetalleDark : {}]}>
+              † remite a Supuestos, en este mismo escenario.
+            </Text>
+          ) : null}
         </View>
       ) : null}
-      {item.palancas.length > 0 ? (
+      {full && item.palancas.length > 0 && item.mensual.length === 0 ? (
         <View wrap={false}>
           <Kicker />
         </View>
@@ -790,13 +946,19 @@ function ScenarioCard({
                 {palanca.nombre}: {textoEstadoV2(palanca.monto).texto} ({LABELS_PERIODO[palanca.periodo]})
               </Text>
             ))}
+            {/* D-4: mismo criterio que en la tabla mensual — la nota vive
+                en el mismo `wrap={false}` que los montos con daga. */}
+            {item.supuestos.length > 0 && item.mensual.length === 0 ? (
+              <Text style={[styles.estadoDetalle, dark ? styles.estadoDetalleDark : {}]}>
+                † remite a Supuestos, en este mismo escenario.
+              </Text>
+            ) : null}
           </View>
         );
       })}
       {item.supuestos.length > 0 ? (
         <View style={styles.palancaGroup} wrap={false}>
-          <Kicker />
-          <Text style={styles.palancaGroupTitle}>Supuestos</Text>
+          <Text style={styles.palancaGroupTitle}>{TITULO_SUPUESTOS_CON_DAGA}</Text>
           <BulletList items={item.supuestos.map((s) => s.valor)} styles={styles} />
         </View>
       ) : null}
@@ -875,14 +1037,20 @@ function renderBlock(
       return (
         <View key="channel-comparison" style={standaloneCardStyle} wrap={false}>
           <Text style={styles.blockTitle}>Comparación entre canales</Text>
-          <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>{block.tienda.label}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <IconCircle kind="tienda" styles={styles} />
+            <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>{block.tienda.label}</Text>
+          </View>
           <Text style={[styles.cardValue, dark ? styles.cardValueDark : {}]}>{t.texto}</Text>
           <View style={styles.channelBar}>
             <View style={[styles.channelBarFill, { width: `${Math.max(4, (tVal / max) * 100)}%` }]} />
           </View>
-          <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}, { marginTop: 10 }]}>
-            {block.marketplace.label}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
+            <IconCircle kind="marketplace" styles={styles} />
+            <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>
+              {block.marketplace.label}
+            </Text>
+          </View>
           <Text style={[styles.cardValue, dark ? styles.cardValueDark : {}]}>{m.texto}</Text>
           <View style={styles.channelBar}>
             <View style={[styles.channelBarFill, { width: `${Math.max(4, (mVal / max) * 100)}%` }]} />
@@ -952,7 +1120,7 @@ function renderBlock(
             {block.assumptionsDetail.length > 0 ? (
               <View style={styles.palancaGroup} wrap={false}>
                 <Text style={[styles.palancaGroupTitle, dark ? { color: theme.colors.surface } : {}]}>
-                  Supuestos
+                  {TITULO_SUPUESTOS_CON_DAGA}
                 </Text>
                 <BulletList items={block.assumptionsDetail.map((s) => s.valor)} styles={styles} />
               </View>
@@ -1178,6 +1346,22 @@ function CoverPage({
               </LinearGradient>
             </Defs>
             <Rect x="0" y="0" width="100" height="100" fill="url(#coverGradientA4)" />
+            {/* D-3: líneas diagonales sutiles sobre el degradado — el
+                acento deja de leerse como un bloque sólido sin función
+                (D-5 criterio 2) y pasa a ser un elemento de dirección de
+                arte con intención, fiel a la geometría de la referencia. */}
+            {[10, 30, 50, 70, 90].map((offset) => (
+              <Line
+                key={offset}
+                x1={offset - 20}
+                y1={0}
+                x2={offset + 20}
+                y2={100}
+                stroke="#FFFFFF"
+                strokeWidth={0.6}
+                strokeOpacity={0.22}
+              />
+            ))}
           </Svg>
         </View>
         <View style={styles.coverMark}>
@@ -1185,6 +1369,7 @@ function CoverPage({
         </View>
         <Text style={[styles.coverTitle, styles.coverTitleLight]}>{block.title}</Text>
         <Text style={[styles.coverSubtitle, styles.coverSubtitleLight]}>{block.subtitle}</Text>
+        <HeadingRule styles={styles} />
         {/* C9: un solo tratamiento de wordmark ("Velocentum", caja mixta,
             texto) — reemplaza el logotipo SVG en minúscula por el mismo
             texto que ya usa el pie de página, sin tocar `marca.tsx` (v1,
@@ -1219,6 +1404,7 @@ function CoverPage({
       </View>
       <Text style={styles.coverTitle}>{block.title}</Text>
       <Text style={styles.coverSubtitle}>{block.subtitle}</Text>
+      <HeadingRule styles={styles} />
       {/* C9: mismo tratamiento textual que el pie de página (ver nota arriba). */}
       <View style={styles.coverWordmark}>
         <Text style={[styles.coverWordmarkText, { color: theme.colors.surface }]}>Velocentum</Text>
@@ -1274,10 +1460,12 @@ function ContentPage({
   section,
   profile,
   styles,
+  kind,
 }: {
   section: DocumentSectionV2;
   profile: PdfProfileV2;
   styles: Styles;
+  kind: DocumentKindV2;
 }) {
   const wantsDark = section.tone === "dark";
   // C3, ronda 2.1: una sección "dark" en impresión no va a sangre
@@ -1304,10 +1492,17 @@ function ContentPage({
           `fixed` dentro de contenido con wrap). Sin `fixed`, la franja
           sólo se repite en la primera página de la sección si se parte
           entre páginas — trade-off aceptado, documentado acá. */}
+      <BackgroundTexture profile={profile} />
       {impresionSoftened ? <View style={styles.impresionAccentBand} /> : null}
       <View style={styles.header} fixed>
-        {section.eyebrow ? <Text style={[styles.eyebrow, dark ? styles.eyebrowDark : {}]}>{section.eyebrow}</Text> : null}
+        {section.eyebrow ? (
+          <Text style={[styles.eyebrow, dark ? styles.eyebrowDark : {}]}>
+            <PersonalityGlyph kind={kind} styles={styles} />
+            {section.eyebrow}
+          </Text>
+        ) : null}
         {section.title ? <Text style={styles.title}>{section.title}</Text> : null}
+        {section.title ? <HeadingRule styles={styles} /> : null}
       </View>
       <View style={styles.content}>{section.blocks.map((block) => renderBlock(block, dark, styles, profile))}</View>
       <Footer dark={dark} styles={styles} />
@@ -1333,7 +1528,7 @@ function VelocentumPdfDocumentV2({ model, profile }: { model: DocumentModelV2; p
         if (section.blocks.some((block) => block.type === "transition" || block.type === "next-step")) {
           return <TransitionPage key={section.id} section={section} profile={profile} styles={styles} />;
         }
-        return <ContentPage key={section.id} section={section} profile={profile} styles={styles} />;
+        return <ContentPage key={section.id} section={section} profile={profile} styles={styles} kind={model.kind} />;
       })}
     </Document>
   );

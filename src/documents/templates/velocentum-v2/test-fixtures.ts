@@ -392,3 +392,66 @@ export function buildEstresContext(): DocumentContextV1 {
     },
   };
 }
+
+/**
+ * Bloque Visual 2.2, Parte A — barrido de cobertura: caso MAYORISTA puro
+ * (D7: nunca "mixto"). No hay fixture canónico para este caso entre los
+ * escenarios demostrativos de `src/lib/` — se construye acá, rotulado
+ * explícitamente como contexto de prueba del prototipo, derivado de
+ * `buildMulticanalContext` (misma forma de datos válida, sólo cambia
+ * `modalidad` y los campos que dependen de ella). Sirve para probar el
+ * componente de comparación entre canales y la deduplicación del MER
+ * (C6) en un caso donde "canal" no tiene el mismo significado retail
+ * que en s1/s4 — el bloque de comparación compara MER tienda propia vs.
+ * MER marketplace (canales de venta/publicidad), no modalidades
+ * comerciales, así que su comportamiento es idéntico independientemente
+ * de `modalidad` — verificado, no encontrado ningún acoplamiento
+ * indebido entre ambos conceptos.
+ */
+export function buildMayoristaContext(): DocumentContextV1 {
+  const base = buildMulticanalContext();
+  return {
+    ...base,
+    diagnostico: { ...base.diagnostico, id: "mayorista-fixture" },
+    cliente: { ...base.cliente, nombre: "Mayorista Demo" },
+    modalidad: { minorista: false, mayorista: true },
+    metodologia: [
+      {
+        id: "modalidad",
+        etiqueta: "Modalidad comercial",
+        valor: "Mayorista (D7): operación mayorista sin canal minorista activo.",
+        origen: "configuracion",
+        evidenciaId: null,
+      },
+      ...base.metodologia,
+    ],
+  };
+}
+
+/**
+ * Bloque Visual 2.2, Parte A — barrido de cobertura: caso MIXTO (D7:
+ * minorista con módulo mayorista activado — nunca sinónimo de
+ * "multicanal", que es tienda propia + Mercado Libre u otros canales de
+ * venta). Mismo criterio que `buildMayoristaContext`: derivado de
+ * `buildMulticanalContext`, rotulado como contexto de prueba del
+ * prototipo, sin tocar fixtures canónicos.
+ */
+export function buildMixtoContext(): DocumentContextV1 {
+  const base = buildMulticanalContext();
+  return {
+    ...base,
+    diagnostico: { ...base.diagnostico, id: "mixto-fixture" },
+    cliente: { ...base.cliente, nombre: "Mixto Demo" },
+    modalidad: { minorista: true, mayorista: true },
+    metodologia: [
+      {
+        id: "modalidad",
+        etiqueta: "Modalidad comercial",
+        valor: "Mixto (D7): operación minorista con módulo mayorista activado — no es multicanal.",
+        origen: "configuracion",
+        evidenciaId: null,
+      },
+      ...base.metodologia,
+    ],
+  };
+}

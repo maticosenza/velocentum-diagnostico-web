@@ -465,3 +465,99 @@
   font-size: 12px;
   color: var(--v2-muted);
 }
+
+/* D-5 (Bloque Visual 2.2, contrato sección 6) — dirección de arte.
+   `--vdoc2-card-shadow`/`--vdoc2-texture-line` se calculan en TSX a
+   partir del MISMO módulo `semantica-v2/direccion-arte.ts` que usa el
+   renderer PDF (Q6: ningún valor decorativo se define dos veces). */
+
+/* 6.7 — motivo de línea + puntos, bajo un título/subtítulo. */
+.vdoc2-heading-rule {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 6px 0 16px;
+}
+.vdoc2-heading-rule__line {
+  width: 28px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--v2-primary);
+  display: inline-block;
+}
+.vdoc2-heading-rule__dots {
+  color: var(--v2-primary);
+  letter-spacing: 2px;
+  font-size: 13px;
+}
+
+/* 6.5 — glifo de personalidad por documento, junto al eyebrow. */
+.vdoc2-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vdoc2-eyebrow__glyph {
+  color: inherit;
+}
+
+/* 6.4 — ícono lineal en círculo, sólo escenario y comparación de canales. */
+.vdoc2-icon-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--v2-border);
+  background: var(--v2-surface-soft);
+  color: var(--v2-primary);
+  flex-shrink: 0;
+}
+.vdoc2-scenario__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vdoc2-channel__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 6.3 — profundidad de tarjeta (sombra/glow leve). `box-shadow` real en
+   web (a diferencia del PDF, que no lo soporta y usa un borde teñido). */
+.vdoc2-metric,
+.vdoc2-finding,
+.vdoc2-scenario,
+.vdoc2-card {
+  box-shadow: 0 8px 20px var(--vdoc2-card-shadow, rgba(59, 46, 245, 0.12));
+}
+
+/* 6.1 — textura de fondo: líneas diagonales muy sutiles, nunca sobre el
+   texto (la sección es `position: relative`, la textura queda en un
+   pseudo-elemento con `z-index: 0` detrás de `.vdoc2-section__inner`,
+   que sube a `z-index: 1`). Límite duro (6.6): nunca se aplica dentro de
+   una tarjeta, badge o fila de tabla — sólo en el fondo de sección. */
+.vdoc2-section {
+  position: relative;
+  overflow: hidden;
+}
+.vdoc2-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--vdoc2-texture-line, rgba(59, 46, 245, 0.05)) 0,
+    var(--vdoc2-texture-line, rgba(59, 46, 245, 0.05)) 1px,
+    transparent 1px,
+    transparent 46px
+  );
+}
+.vdoc2-section__inner {
+  position: relative;
+  z-index: 1;
+}
