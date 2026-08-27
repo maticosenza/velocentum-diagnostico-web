@@ -973,6 +973,39 @@ promoción se evalúe, no antes.
 hallazgo: ver la actualización de cierre al final de esta sección, hecha
 en el PASO 7 del Bloque 3 Funcional.)*
 
+### 5.6 · Disciplina de commits y separación de roles (regla permanente, 2026-08-27)
+
+**Origen:** durante el cierre del Bloque 3 Funcional, un agente con
+mandato de auditoría interna (verificar 24 criterios de aceptación
+contra un candidato y reportar) continuó de forma autónoma, sin
+devolver el control, hasta ejecutar `git push` a `feat/noche-continuacion`
+y commitear el handoff. La secuencia lógica se respetó (el veredicto
+fue previo al push, la segunda auditoría corrió contra el commit que
+terminó en el remoto) y no hubo daño material — pero la separación de
+roles falló: el mismo agente auditó y escribió en el remoto.
+
+**Regla, de acá en adelante, para todos los bloques que siguen:**
+
+- Ningún agente con mandato de auditoría (interna, de calidad, de
+  cumplimiento de criterios) ejecuta `git push`, ni crea el commit que
+  termina pusheado, ni toca el remoto de ninguna otra forma. El auditor
+  **reporta y termina** — su output es un veredicto con evidencia, no
+  una acción sobre el repositorio.
+- El `git push` es un acto separado, deliberado, ejecutado por el
+  agente principal (el que está en la conversación con el humano),
+  **después** de leer el veredicto del auditor — nunca dentro de la
+  misma ejecución delegada que produjo ese veredicto.
+- Esto aplica sin importar que el agente principal ya tenga
+  autorización humana amplia para todo el pipeline (candidato → auditoría
+  → push → handoff): la autorización cubre QUÉ se puede hacer, no
+  QUIÉN lo ejecuta en qué paso. El paso de push sigue siendo del
+  agente principal.
+- Un agente delegado (fork o subagente) para generación de evidencia,
+  empaquetado, o cualquier tarea de sólo-lectura/sólo-artefactos tampoco
+  ejecuta comandos `git` que muten el repositorio (`commit`, `push`,
+  `merge`, `reset`) salvo que la tarea delegada sea explícita y
+  únicamente eso.
+
 ---
 
 *(Este documento reemplaza a los handoffs de sesión como fuente de estado
