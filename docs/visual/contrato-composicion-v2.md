@@ -577,6 +577,14 @@ contenido inventado:
   portada no tiene (ej. una cifra destacada), fuera del alcance acotado
   de esta ronda (D-5 es alineación de dirección de arte, no un rediseño
   general). Queda documentado como residual, no resuelto.
+- **`propuesta`, sección "Por qué ahora" (`findings`, variante
+  propuesta), perfil impresión, con pocos hallazgos de capa
+  "servicio"**: `colsFindings: 1` en impresión (decisión de la ronda
+  2.1, C2) deja una sola columna de tarjetas — con 2-3 hallazgos la
+  página queda con baja ocupación, observado en el barrido de
+  cobertura de esta ronda (`3-margen-fino-volumen-alto__propuesta-impresion`
+  página 3). Preexistente a D-5 (no es un residuo nuevo de esta
+  ronda) — no se agrega contenido inventado para llenarla.
 
 ### 5.9 C8 — Ninguna tarjeta reserva espacio vacío
 
@@ -629,16 +637,38 @@ recurso decorativo propio por fuera de este módulo (Q6).
 
 ### 6.1 Textura/geometría de fondo, opacidad máxima
 
-Líneas diagonales muy sutiles, color de acento, espaciadas 46pt,
-dibujadas como trazos SVG (PDF) / `repeating-linear-gradient` (web) por
-DETRÁS del contenido (primer nodo renderizado, nunca el último — en PDF
-el orden de render define el z-order; en web, `z-index` explícito).
+Líneas diagonales muy sutiles, color de acento, espaciadas 46pt.
 Opacidad máxima: **0,05 en pantalla, 0,035 en impresión** —
-`TEXTURA_FONDO.opacidadMaximaPantalla` / `opacidadMaximaImpresion`. En
-A4 esto no compite con el límite de tinta plena de C3 (≤25%): una
-textura al 3,5% de opacidad sobre líneas de 1pt espaciadas 46pt aporta
-una fracción despreciable de cobertura de tinta, verificado
-programáticamente (test Q6).
+`TEXTURA_FONDO.opacidadMaximaPantalla` / `opacidadMaximaImpresion`.
+
+**Web**: `repeating-linear-gradient` en `.vdoc2-section::before`, por
+DETRÁS del contenido vía `z-index` explícito (`.vdoc2-section__inner`
+sube a `z-index: 1`) — se aplica en el fondo de CADA sección.
+
+**PDF, alcance reducido tras un hallazgo real de esta ronda**: un
+primer intento dibujaba la misma textura en cada `ContentPage` con un
+`<Svg>` en `position: "absolute"`. `@react-pdf/renderer` no trata `Svg`
+como `View` bajo posicionamiento absoluto — el motor de paginación
+emitía la advertencia real `"Node of type SVG can't wrap between pages
+and it's bigger than available page height"`, el color `rgba()` no se
+pintaba como color translúcido (aparecía como trazo sólido mal
+coloreado) y, más grave, forzaba páginas adicionales completas
+ocupadas sólo por la textura. Se detectó comparando el conteo de
+páginas antes/después de la ronda (hasta +4 páginas por documento en
+los seis casos de control) — no por inspección visual sola. Se revirtió:
+en PDF, la textura de líneas queda **sólo en la portada**
+(`CoverPage`), donde el `Svg` está anidado dentro de un `View` de
+tamaño fijo (`coverAccentBounded`/`coverGradientLayer`), nunca como
+hijo `position: absolute` de una página de contenido. Verificado:
+regenerando los 6 documentos de control (s1/s4, 3 tipos × 2 perfiles)
+tras la corrección, el conteo de páginas volvió a coincidir
+exactamente con el de antes de esta ronda (ver informe de cobertura).
+
+En A4 esto no compite con el límite de tinta plena de C3 (≤25%): las
+líneas de portada (únicas que quedan en impresión) están contenidas en
+el acento ya acotado por C3 (`coverAccentBounded`, sección 5.4),
+verificado programáticamente (test Q3) y empíricamente (rasterizado,
+máximo de tinta observado 14% en 158 páginas A4 de esta ronda).
 
 ### 6.2 Degradado — dirección, extensión, límites por perfil
 

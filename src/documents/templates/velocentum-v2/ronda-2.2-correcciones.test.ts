@@ -296,19 +296,28 @@ describe("Ronda 2.2 — Q6 (D-5): tokens y componentes compartidos, sin decoraci
     expect(areaTintaTextura / AREA_PAGINA).toBeLessThan(0.01);
   });
 
-  it("ninguna decoración se superpone a una cifra: el orden de render pinta la textura ANTES que el contenido de la página (detrás, nunca encima)", () => {
-    // Verificación estructural sobre el código fuente del renderer: el
-    // componente `BackgroundTexture` se invoca como PRIMER hijo de
-    // `ContentPage`, antes de `styles.header`/`styles.content` — en
-    // `@react-pdf/renderer` el orden de render define el z-order, así que
-    // esto garantiza que la textura queda detrás sin ambigüedad.
+  it("ninguna decoración se superpone a una cifra: las líneas diagonales de portada se pintan ANTES que el título/subtítulo/meta (detrás, nunca encima)", () => {
+    // Hallazgo real de esta ronda: un primer intento agregaba una textura
+    // de fondo (`BackgroundTexture`, `Svg` en `position: absolute`) a
+    // CADA página de contenido — `@react-pdf/renderer` no trata `Svg`
+    // como `View` bajo posicionamiento absoluto (advertencia real: "Node
+    // of type SVG can't wrap between pages and it's bigger than available
+    // page height"), el color rgba() no se pintaba como se esperaba y
+    // forzaba páginas adicionales completas (verificado comparando el
+    // conteo de páginas antes/después: hasta +4 por documento). Se
+    // retiró de `ContentPage`; la textura de fondo queda sólo en la
+    // portada, donde el `Svg` está anidado en un `View` de tamaño fijo
+    // (`coverAccentBounded`/`coverGradientLayer`), no como hijo absoluto
+    // de la página — ahí sí se verifica el orden de render correcto.
     const fuente = require("node:fs").readFileSync(
       require.resolve("../../renderers/pdf-v2/document.tsx"),
       "utf-8",
     ) as string;
-    const indiceTextura = fuente.indexOf("<BackgroundTexture");
-    const indiceContenido = fuente.indexOf("styles.content");
-    expect(indiceTextura).toBeGreaterThan(0);
-    expect(indiceTextura).toBeLessThan(indiceContenido);
+    // No debe quedar ningún rastro del componente retirado.
+    expect(fuente).not.toContain("BackgroundTexture");
+    const indiceLineas = fuente.indexOf("D-3: líneas diagonales sutiles");
+    const indiceTitulo = fuente.indexOf("styles.coverTitle, styles.coverTitleLight");
+    expect(indiceLineas).toBeGreaterThan(0);
+    expect(indiceLineas).toBeLessThan(indiceTitulo);
   });
 });

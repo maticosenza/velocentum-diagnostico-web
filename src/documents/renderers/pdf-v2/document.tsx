@@ -33,12 +33,7 @@ import {
   LABELS_UNIDAD_COMERCIAL,
   TITULO_SUPUESTOS_CON_DAGA,
 } from "../../semantica-v2/etiquetas";
-import {
-  PERSONALIDAD_POR_DOCUMENTO,
-  TEXTURA_FONDO,
-  colorProfundidadTarjeta,
-  colorTexturaLinea,
-} from "../../semantica-v2/direccion-arte";
+import { PERSONALIDAD_POR_DOCUMENTO, colorProfundidadTarjeta } from "../../semantica-v2/direccion-arte";
 import type {
   DocumentBlockV2,
   DocumentKindV2,
@@ -126,11 +121,7 @@ export const PROFILES_V2: Record<PdfProfileV2, ProfileTokensV2> = {
   pantalla: {
     pageSize: [960, 540],
     pagePaddingH: 54,
-    // 100 (antes 84): D-5 agrega `HeadingRule` (línea+puntos) bajo el
-    // título de sección, dentro del `header` absoluto — el padding crece
-    // en la misma medida para que el contenido no arranque debajo del
-    // header y se solape (verificado en la regeneración de esta ronda).
-    pagePaddingTop: 100,
+    pagePaddingTop: 84,
     pagePaddingBottom: 48,
     escala: { titulo: 22, subtitulo: 10, label: 9, valor: 17, valorGrande: 30, badge: 8, nota: 8.5, pie: 8 },
     coverPadding: 64,
@@ -148,7 +139,7 @@ export const PROFILES_V2: Record<PdfProfileV2, ProfileTokensV2> = {
   impresion: {
     pageSize: "A4",
     pagePaddingH: 48,
-    pagePaddingTop: 94,
+    pagePaddingTop: 78,
     pagePaddingBottom: 46,
     escala: { titulo: 18, subtitulo: 9.5, label: 9.5, valor: 15, valorGrande: 24, badge: 8, nota: 9, pie: 8 },
     coverPadding: 48,
@@ -644,29 +635,6 @@ function HeadingRule({ styles }: { styles: Styles }) {
  * badges ni filas de tabla porque siempre se renderiza primero (contrato
  * 6.6) y su opacidad está muy por debajo del umbral de tinta plena de A4.
  */
-function BackgroundTexture({ profile }: { profile: PdfProfileV2 }) {
-  const [wPt, hPt] =
-    profile === "pantalla"
-      ? (PROFILES_V2.pantalla.pageSize as [number, number])
-      : [IMPRESION_ACCENT_GEOMETRY.pageWidthPt, IMPRESION_ACCENT_GEOMETRY.pageHeightPt];
-  const spacing = TEXTURA_FONDO.espaciadoLineaPt;
-  const color = colorTexturaLinea(profile);
-  const count = Math.ceil((wPt + hPt) / spacing);
-  return (
-    <Svg
-      style={{ position: "absolute", top: 0, left: 0, width: wPt, height: hPt }}
-      viewBox={`0 0 ${wPt} ${hPt}`}
-    >
-      {Array.from({ length: count }, (_, i) => {
-        const offset = i * spacing - hPt;
-        return (
-          <Line key={i} x1={offset} y1={0} x2={offset + hPt} y2={hPt} stroke={color} strokeWidth={1} />
-        );
-      })}
-    </Svg>
-  );
-}
-
 /** D-5, contrato 6.5: glifo de personalidad, un carácter junto al eyebrow. */
 function PersonalityGlyph({ kind, styles }: { kind: DocumentKindV2; styles: Styles }) {
   return <Text style={styles.personalityGlyph}>{PERSONALIDAD_POR_DOCUMENTO[kind].glifo} </Text>;
@@ -889,20 +857,32 @@ function ScenarioCard({
         reinversión.
       </Text>
       {item.mensual.length > 0 ? (
-        // D-4, ronda 2.2: `wrap={false}` en la tabla completa (antes sólo
-        // cada fila lo tenía) — evita que la tabla se parta a mitad entre
-        // dos páginas dejando sus dagas † en una página distinta de la
-        // nota de referencia que las resuelve (encontrado por el test Q4:
-        // con la tarjeta larga `wrap={full}`, la tabla mensual podía
-        // quedar en una página y "Supuestos" en la siguiente).
-        <View style={styles.monthlyTable} wrap={false}>
+        <View style={styles.monthlyTable}>
           {/* D-2, ronda 2.2: la identidad se repite UNA sola vez, sólo en
               tarjetas de ancho completo (`full`, las únicas con contenido
               largo que podría partirse entre páginas) — antes se repetía
               de forma incondicional antes de cada subsección (tabla,
               palancas, supuestos), incluso en tarjetas que entraban
-              enteras en una página. */}
-          {full ? <Kicker /> : null}
+              enteras en una página.
+              D-4: la nota de referencia va JUNTO al encabezado/kicker
+              (mismo `wrap={false}`, bloque chico) — no en toda la tabla:
+              un primer intento marcó la tabla ENTERA `wrap={false}` para
+              garantizar que la nota y las dagas nunca quedaran en páginas
+              distintas, pero eso obligaba a mover la tabla completa a la
+              página siguiente en vez de partir filas, disparando un
+              crecimiento desproporcionado de la paginación (hallazgo real,
+              revertido: hasta +4 páginas por documento). Con la nota en el
+              encabezado, la primera página de la tabla siempre la lleva;
+              las filas individuales (cada una ya `wrap={false}`) se
+              siguen partiendo entre páginas como antes de esta ronda. */}
+          <View wrap={false}>
+            {full ? <Kicker /> : null}
+            {item.supuestos.length > 0 ? (
+              <Text style={[styles.estadoDetalle, dark ? styles.estadoDetalleDark : {}]}>
+                † remite a Supuestos, en este mismo escenario.
+              </Text>
+            ) : null}
+          </View>
           {stacked ? (
             <MonthlyTableStacked mensual={item.mensual} dark={dark} styles={styles} />
           ) : (
@@ -919,15 +899,6 @@ function ScenarioCard({
               ))}
             </>
           )}
-          {/* D-4: nota de referencia en el MISMO bloque `wrap={false}` que
-              la tabla — nunca puede quedar en una página distinta de las
-              dagas que resuelve, sin depender de dónde caiga el bloque
-              "Supuestos" completo (que sigue existiendo más abajo). */}
-          {item.supuestos.length > 0 ? (
-            <Text style={[styles.estadoDetalle, dark ? styles.estadoDetalleDark : {}]}>
-              † remite a Supuestos, en este mismo escenario.
-            </Text>
-          ) : null}
         </View>
       ) : null}
       {full && item.palancas.length > 0 && item.mensual.length === 0 ? (
@@ -1492,7 +1463,20 @@ function ContentPage({
           `fixed` dentro de contenido con wrap). Sin `fixed`, la franja
           sólo se repite en la primera página de la sección si se parte
           entre páginas — trade-off aceptado, documentado acá. */}
-      <BackgroundTexture profile={profile} />
+      {/* D-5, hallazgo real de esta ronda: `Svg` en `@react-pdf/renderer` NO
+          se comporta como `View` bajo `position: "absolute"` — combinado
+          con `wrap` de página, generaba el warning "Node of type SVG can't
+          wrap between pages and it's bigger than available page height",
+          el color rgba() no se pintaba como se esperaba (aparecía como
+          trazo amarillo opaco en vez del violeta translúcido pedido) y
+          forzaba páginas adicionales completas ocupadas sólo por la
+          textura (verificado comparando el conteo de páginas antes/después
+          de esta ronda: hasta +4 páginas por documento). Se retira de
+          `ContentPage` — la textura de fondo queda sólo en la portada
+          (`CoverPage`), donde el `Svg` está anidado dentro de un `View`
+          con tamaño fijo, no como hijo `position: absolute` de la página,
+          y ahí sí se verificó correcta (ver captura de portada, sección 9
+          del handoff). */}
       {impresionSoftened ? <View style={styles.impresionAccentBand} /> : null}
       <View style={styles.header} fixed>
         {section.eyebrow ? (
@@ -1501,8 +1485,15 @@ function ContentPage({
             {section.eyebrow}
           </Text>
         ) : null}
+        {/* D-5: el motivo de línea+puntos se reserva para portada/hero
+            (`CoverPage`) — agregarlo también acá, en el header absoluto de
+            CADA página de contenido, exigía crecer `pagePaddingTop` en
+            todas las páginas y eso disparó un crecimiento desproporcionado
+            de la paginación (hallazgo real de esta ronda, verificado
+            comparando el conteo de páginas antes/después: hasta +4 páginas
+            por documento). Revertido: `pagePaddingTop` vuelve a su valor
+            de la ronda 2.1 y el motivo no se repite en cada sección. */}
         {section.title ? <Text style={styles.title}>{section.title}</Text> : null}
-        {section.title ? <HeadingRule styles={styles} /> : null}
       </View>
       <View style={styles.content}>{section.blocks.map((block) => renderBlock(block, dark, styles, profile))}</View>
       <Footer dark={dark} styles={styles} />
