@@ -516,6 +516,16 @@ duplicar números que puedan divergir.
 
 ### 5.6 C5 — Identidad del escenario repetida ante una posible continuación (ataca C-01 residual (b))
 
+**Esta sección describe el diseño original de la ronda 2.1 (repetir el
+nombre incondicionalmente ante cada subsección). Quedó reemplazada por
+un mecanismo de medición real — ver sección 7, Bloque Visual 2.2.3 —
+después de que las rondas 2.2.1 y 2.2.2 encontraran, con evidencia real,
+que ese diseño y sus dos reglas estáticas sucesoras podían dejar la
+marca fuera de la cabecera de la página de continuación, o mostrarla de
+más en una tarjeta que no continúa. Se conserva sin editar como registro
+histórico de las decisiones descartadas — no describe el comportamiento
+actual del código.**
+
 Causa real: `@react-pdf/renderer` no tiene un mecanismo nativo para
 "repetir el nombre del escenario sólo en la página donde continúa" —
 la reserva de repetición de encabezados de Bloque Visual 2 se cumplía
@@ -743,4 +753,81 @@ portada y bajo el título de cada sección de contenido — contribuye
 también a D-1 (ocupa espacio con intención en vez de dejarlo vacío) y a
 D-3 (evita que la portada A4 se sienta con demasiado vacío entre
 subtítulo y pie).
+
+## 7 · Marca de continuación medida en dos pasadas (Bloque Visual 2.2.3)
+
+Reemplaza por completo el diseño de la sección 5.6 y las dos reglas
+estáticas sucesoras de las rondas 2.2.1/2.2.2 (documentadas y
+descartadas con evidencia en `docs/visual/handoff-ronda-2.2.2.md`,
+sección 7). Autorizado expresamente por la auditoría externa de la
+ronda 2.2.3, con el límite explícito de no volver a intentar el
+`render`-prop con `subPageNumber` ni un heurístico estático de altura —
+ambos probados y descartados con evidencia real en rondas anteriores.
+
+**Por qué:** ninguna de las dos vías descartadas puede saber, sin
+consultar mecanismos internos no documentados de `@react-pdf/renderer`
+o sin arriesgar una regresión real (marca duplicada en una tarjeta que
+no continúa — D-2), dónde va a caer el quiebre de página real de una
+tarjeta de escenario. La única fuente de verdad confiable es el PDF ya
+renderizado.
+
+**Cómo se obtiene el mapa.** `medirPaginacionV2`
+(`src/documents/renderers/pdf-v2/paginacion.ts`) recibe un PDF ya
+renderizado y lo parsea con `pdfjs` (mismo motor que usa toda la suite
+de pruebas de este prototipo para inspección de texto). Recorre, en el
+mismo orden en que se renderizan, cada tarjeta de escenario larga
+(`largas`, dentro de cada bloque `"scenarios"` de cada sección) y busca
+la posición (número de página) de seis marcadores de texto posibles, en
+orden de composición: el header propio de la tarjeta (nombre + badge de
+confianza, para anclar la página de referencia), las métricas (KPI),
+la nota de reinversión, la tabla mensual, cada uno de los tres grupos de
+palancas que tenga contenido, y el bloque de supuestos. Cualquier
+marcador cuya página difiera de la del marcador inmediatamente anterior
+es "el primer elemento de una página nueva" y se agrega al conjunto de
+esa tarjeta — una tarjeta puede necesitar más de un marcador si se
+parte en más de dos páginas.
+
+**Qué contiene el mapa (`MapaPaginacionV2`).** Un
+`ReadonlyMap<EscenarioV2["id"], ReadonlySet<LimiteContinuacionV2Bloque>>`
+— por cada tarjeta larga, el conjunto (posiblemente vacío) de bloques
+que deben llevar el marcador `{NOMBRE} (continuación)` antes de sí.
+`LimiteContinuacionV2Bloque` es uno de: `"metricas"`, `"nota"`,
+`"tabla"`, `` `grupo:${tipo}` `` (uno por cada una de las tres
+magnitudes de palanca) o `"supuestos"`.
+
+**Cómo lo consume la pasada 2.** `createPdfDocumentElementV2` acepta un
+tercer parámetro opcional (`mapaPaginacion`, por defecto un mapa vacío —
+"pasada 1 sin marcas"), que se hilvana sin transformar por
+`VelocentumPdfDocumentV2` → `ContentPage` → `renderBlock` → el caso
+`"scenarios"` → cada `ScenarioCard`. `ScenarioCard` ya no decide nada:
+sólo pinta el marcador `{NOMBRE} (continuación)` en el bloque que el
+mapa indique, dentro del MISMO `wrap={false}` que el contenido que
+introduce (nunca como hermano suelto) — así el marcador nunca puede
+separarse de su bloque en un corte de página, incluso si insertarlo
+desplaza dónde cae ese corte.
+
+**Orquestación (`renderPdfV2ConDosPasadas`).** El primer intento
+renderiza sin ningún marcador y mide (pasada 1, L2). El mapa medido
+alimenta un segundo renderizado (pasada 2, L3), que se vuelve a medir:
+si el mapa resultante coincide con el que se usó para producirlo, ESE
+renderizado es el definitivo — típicamente ocurre en el segundo intento.
+Si insertar los marcadores desplazó algún quiebre (L7 del prompt —
+ocurre cuando el hueco que deja un marcador cambia cuánto contenido
+entra en la página anterior), el mapa recién medido alimenta un tercer
+intento, y así hasta convergir o agotar un techo de 4 intentos — nunca
+itera indefinidamente. Ningún documento de esta ronda necesitó más de 2
+intentos para converger (ver handoff, sección 7).
+
+**Garantía de determinismo (L5, U3).** `renderPdfV2ConDosPasadas` es
+una función pura de `(model, profile)`: sin `Date.now()`, sin
+aleatoriedad, sin estado compartido entre corridas. El único riesgo real
+identificado fue el metadato `CreationDate` del PDF (`@react-pdf/renderer`
+usa `new Date()` por defecto si no se especifica, y ese valor viaja
+además al identificador de archivo del PDF vía
+`PDFSecurity.generateFileID`, así que una fecha real vuelve no
+determinista el archivo completo, no sólo el metadato). Se fija a una
+fecha constante (`FECHA_CREACION_FIJA_V2`,
+`src/documents/renderers/pdf-v2/document.tsx`) — verificado por hash
+SHA-256 sobre dos corridas independientes en la prueba U3 y sobre los 48
+PDFs de esta ronda (handoff, sección 7).
 

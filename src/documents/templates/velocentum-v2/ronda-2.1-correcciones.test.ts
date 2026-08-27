@@ -25,6 +25,7 @@ import {
   V2_CONTRAST_TOKENS,
   type PdfProfileV2,
 } from "../../renderers/pdf-v2/document";
+import { renderPdfV2ConDosPasadas } from "../../renderers/pdf-v2/paginacion";
 import { DocumentWebRendererV2 } from "../../renderers/web-v2/document-renderer";
 import { filasBalanceadas } from "../../semantica-v2/balanceo";
 import type { DocumentContextV1 } from "../../domain";
@@ -168,7 +169,11 @@ describe("Ronda 2.1 — P4 (C4): contraste calculado ≥ 4,5:1 en texto de cuerp
 describe("Ronda 2.1 — P5 (C5): toda continuación identifica su escenario o repite el encabezado de su tabla", () => {
   it("cada tarjeta de escenario larga antepone la identidad del escenario a cada subsección que podría iniciar una página nueva", async () => {
     const model = buildProyeccion90dDocumentV2(buildMulticanalContext());
-    const buffer = await renderToBuffer(createPdfDocumentElementV2(model, "impresion"));
+    // Bloque Visual 2.2.3: el mapa de marcadores se mide sobre el PDF real
+    // (renderizado en dos pasadas, `renderPdfV2ConDosPasadas`) en vez de
+    // aplicarse con una regla estática incondicional — mismo criterio en
+    // todo este archivo a partir de esta ronda.
+    const { buffer } = await renderPdfV2ConDosPasadas(model, "impresion");
     const texto = await textoCompletoDelPdf(buffer);
     // Las 3 subsecciones (tabla mensual, palancas, supuestos) del escenario
     // "conservador" (único con mensual+palancas+supuestos en el fixture)

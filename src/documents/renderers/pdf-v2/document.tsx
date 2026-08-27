@@ -801,15 +801,24 @@ function MonthlyTableStacked({
   mensual,
   dark,
   styles,
+  marcadorAntes,
 }: {
   mensual: EscenarioV2["mensual"];
   dark: boolean;
   styles: Styles;
+  /**
+   * Bloque Visual 2.2.3: se pinta DENTRO del `wrap={false}` del primer
+   * mes (no como hermano suelto antes de la tabla) — así nunca puede
+   * quedar huérfano en la página anterior si el primer mes se mueve
+   * entero a la siguiente.
+   */
+  marcadorAntes?: React.ReactNode;
 }) {
   return (
     <View>
-      {mensual.map((mes) => (
+      {mensual.map((mes, index) => (
         <View key={mes.mes} style={styles.monthlyStackedMonth} wrap={false}>
+          {index === 0 ? marcadorAntes : null}
           <Text style={[styles.monthlyStackedMonthLabel, dark ? styles.monthlyStackedMonthLabelDark : {}]}>
             Mes {mes.mes}
           </Text>
@@ -829,6 +838,27 @@ function MonthlyTableStacked({
   );
 }
 
+export type TipoPalancaV2 = "facturacion_incremental" | "contribucion_incremental" | "ahorro_publicitario";
+
+/**
+ * Bloque de una tarjeta de escenario que puede abrir una página de
+ * continuación. Bloque Visual 2.2.3: reemplaza la regla estática de las
+ * rondas 2.2.1/2.2.2 (marcador siempre antes de Supuestos, o un
+ * heurístico de altura que no generalizó — ver
+ * docs/visual/handoff-ronda-2.2.2.md) por un mapa MEDIDO sobre el PDF
+ * real (`paginacion.ts`, `medirPaginacionV2`), consumido acá tal cual.
+ * Este componente no decide SI ni DÓNDE continúa una tarjeta — sólo
+ * pinta el marcador donde el mapa dice que hace falta.
+ */
+export type LimiteContinuacionV2Bloque = "metricas" | "nota" | "tabla" | `grupo:${TipoPalancaV2}` | "supuestos";
+
+/** Por tarjeta (`EscenarioV2.id`), el conjunto de bloques que efectivamente abren una página nueva. */
+export type MapaPaginacionV2 = ReadonlyMap<EscenarioV2["id"], ReadonlySet<LimiteContinuacionV2Bloque>>;
+
+const SIN_MARCADORES: ReadonlySet<LimiteContinuacionV2Bloque> = new Set();
+/** Mapa vacío: pasada 1 sin ninguna marca (L2) y valor por defecto de `createPdfDocumentElementV2`. */
+export const MAPA_PAGINACION_VACIO_V2: MapaPaginacionV2 = new Map();
+
 function ScenarioCard({
   item,
   dark,
@@ -837,8 +867,7 @@ function ScenarioCard({
   styles,
   full,
   profile,
-  hayCortasPrecedentes,
-  esPrimeraLarga,
+  marcadores,
 }: {
   item: EscenarioV2;
   dark: boolean;
@@ -847,56 +876,23 @@ function ScenarioCard({
   styles: Styles;
   full: boolean;
   profile: PdfProfileV2;
-  hayCortasPrecedentes: boolean;
-  esPrimeraLarga: boolean;
+  /**
+   * Bloque Visual 2.2.3 — mapa medido sobre el PDF real (ver
+   * `paginacion.ts`), no una regla estática. `renderBlock` (caso
+   * "scenarios") lo calcula una vez por documento con
+   * `medirPaginacionV2` y lo pasa acá ya resuelto para esta tarjeta
+   * puntual; `SIN_MARCADORES` cuando no hay mapa disponible todavía
+   * (pasada 1, sin ninguna marca — L2 del prompt).
+   */
+  marcadores: ReadonlySet<LimiteContinuacionV2Bloque>;
 }) {
   const grupos = ["facturacion_incremental", "contribucion_incremental", "ahorro_publicitario"] as const;
   const stacked = PROFILES_V2[profile].monthlyStacked;
   const nombreEscenario = LABELS_ESCENARIO[item.id];
-  // Corrección 1/2, ronda 2.2.1 — reemplaza dos intentos previos que
-  // resultaron inseguros o insuficientes:
-  //  1) el `render`-prop de react-pdf (con o sin comparación de
-  //     `subPageNumber`) hace desaparecer el texto del encabezado por
-  //     completo dentro de la tarjeta real (`CardGrid` con varias filas +
-  //     `wrap={false}` anidados) — reproducido de punta a punta con
-  //     `vite-node` sobre el pipeline real (no era un artefacto de
-  //     transpilación de un script suelto). El único uso de `render` que
-  //     ya existía en este código (número de página del pie) siempre lo
-  //     combina con `fixed`; se descarta apostar la identidad de una
-  //     tarjeta a un patrón que rompe el texto en este árbol de
-  //     componentes.
-  //  2) una primera regla estática ("toda tarjeta larga con tabla mensual
-  //     y supuestos, en cualquier perfil") daba un FALSO POSITIVO real:
-  //     "1-marketplace-fuerte-tienda-floja" en impresión, escenario
-  //     CONSERVADOR, entra solo en su propia página A4 y no debía llevar
-  //     el marcador. Una segunda versión ("sólo si hay cortas antes Y es
-  //     la primera tarjeta larga") corrigió ese caso pero generó un FALSO
-  //     NEGATIVO real en el mismo documento: BASE y POTENCIAL (2da y 3ra
-  //     tarjeta larga) SÍ continúan entre páginas — el propio
-  //     encabezado "BASE" queda al final de la página de CONSERVADOR,
-  //     separado del resto de su contenido — y se quedaban sin marcador.
-  //     Ambos casos verificados generando y comparando texto real,
-  //     página por página, de los 48 PDFs de esta ronda.
-  // Regla final, sin ningún mecanismo interno de paginación, calibrada
-  // contra los DOS documentos reales anteriores (no sólo uno):
-  //  - en PANTALLA (540pt), una tarjeta larga con tabla mensual + 2+
-  //    grupos de palancas + supuestos SIEMPRE excede una página completa
-  //    por sí sola — confirmado en los 6 escenarios demostrativos: cada
-  //    escenario largo continúa, sin excepción.
-  //  - en IMPRESIÓN (A4, 841pt), el comportamiento es EN CASCADA: la
-  //    primera tarjeta larga entra sola en una página propia SALVO que
-  //    algo más (la grilla de tarjetas cortas) ya haya ocupado espacio
-  //    antes de que empezara; pero cada tarjeta larga siguiente hereda el
-  //    problema igual — la anterior deja tan poco margen al final de su
-  //    página que la siguiente ya no entra completa, sin importar si la
-  //    primera entró o no. Por eso el marcador es necesario salvo en el
-  //    único caso verificado como seguro: la primera tarjeta larga,
-  //    cuando no hay ninguna tarjeta corta antes.
-  const marcaContinuacion =
-    full &&
-    item.mensual.length > 0 &&
-    item.supuestos.length > 0 &&
-    (profile === "pantalla" || hayCortasPrecedentes || !esPrimeraLarga);
+  const Marcador = ({ bloque }: { bloque: LimiteContinuacionV2Bloque }) =>
+    marcadores.has(bloque) ? (
+      <Text style={[styles.scenarioKicker, dark ? styles.scenarioKickerDark : {}]}>{nombreEscenario} (continuación)</Text>
+    ) : null;
   return (
     <View style={[...cardStyle, full ? styles.cardFull : {}]} wrap={full}>
       <View style={styles.scenarioHeader} wrap={false}>
@@ -906,25 +902,45 @@ function ScenarioCard({
         </View>
         <Text style={styles.badge}>{item.confianza.toUpperCase()}</Text>
       </View>
-      <View style={styles.scenarioMetrics} wrap={false}>
-        <View style={styles.scenarioMetric}>
-          <Text style={styles.scenarioMetricLabel}>Contribución incremental 90 días</Text>
-          <ValorTexto value={item.contribucion90d} dark={dark} styles={styles} />
-        </View>
-        <View style={styles.scenarioMetric}>
-          <Text style={styles.scenarioMetricLabel}>Facturación incremental 90 días</Text>
-          <ValorTexto value={item.facturacion90d} dark={dark} styles={styles} />
-        </View>
-        <View style={styles.scenarioMetric}>
-          <Text style={styles.scenarioMetricLabel}>Ahorro publicitario 90 días</Text>
-          <ValorTexto value={item.ahorroPublicitario90d} dark={dark} styles={styles} />
+      {/* Bloque Visual 2.2.3: primer elemento de la continuación cuando el
+          quiebre real cae justo antes de las métricas — el header quedó
+          huérfano al pie de la página anterior (evidencia real, perfil
+          impresión: "1-marketplace-fuerte-tienda-floja"). `wrap={false}`
+          ENVUELVE al marcador junto con el bloque que introduce — sin
+          esto, Yoga puede separarlos entre dos páginas (el marcador se
+          queda en la página vieja, el bloque real arranca la nueva),
+          exactamente el defecto que este mecanismo tiene que evitar. */}
+      <View wrap={false}>
+        <Marcador bloque="metricas" />
+        <View style={styles.scenarioMetrics}>
+          <View style={styles.scenarioMetric}>
+            <Text style={styles.scenarioMetricLabel}>Contribución incremental 90 días</Text>
+            <ValorTexto value={item.contribucion90d} dark={dark} styles={styles} />
+          </View>
+          <View style={styles.scenarioMetric}>
+            <Text style={styles.scenarioMetricLabel}>Facturación incremental 90 días</Text>
+            <ValorTexto value={item.facturacion90d} dark={dark} styles={styles} />
+          </View>
+          <View style={styles.scenarioMetric}>
+            <Text style={styles.scenarioMetricLabel}>Ahorro publicitario 90 días</Text>
+            <ValorTexto value={item.ahorroPublicitario90d} dark={dark} styles={styles} />
+          </View>
         </View>
       </View>
-      <Text style={styles.scenarioNote}>
-        El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre, el efecto
-        sería mayor al proyectado. Esta versión trata el ahorro de forma conservadora y no asume esa
-        reinversión.
-      </Text>
+      {/* Bloque Visual 2.2.3: primer elemento de la continuación cuando el
+          quiebre real cae justo antes de la nota — evidencia real:
+          "1-marketplace-fuerte-tienda-floja" en cascada, impresión: las
+          métricas quedan con el header pero la nota (y todo lo que sigue)
+          se va entera a la página siguiente. Mismo criterio de arriba:
+          marcador y nota, un solo `wrap={false}`. */}
+      <View wrap={false}>
+        <Marcador bloque="nota" />
+        <Text style={styles.scenarioNote}>
+          El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre, el efecto
+          sería mayor al proyectado. Esta versión trata el ahorro de forma conservadora y no asume esa
+          reinversión.
+        </Text>
+      </View>
       {item.mensual.length > 0 ? (
         <View style={styles.monthlyTable}>
           {/* D-4: la nota de referencia va JUNTO al encabezado (mismo
@@ -937,12 +953,7 @@ function ScenarioCard({
               revertido: hasta +4 páginas por documento). Con la nota en el
               encabezado, la primera página de la tabla siempre la lleva;
               las filas individuales (cada una ya `wrap={false}`) se
-              siguen partiendo entre páginas como antes de esta ronda.
-              Corrección 1/2, ronda 2.2.1: acá NO va marcador de identidad
-              — la evidencia muestra que el quiebre real nunca ocurre en
-              este punto (el header, justo arriba, siempre entra en la
-              misma página que la tabla); ponerlo acá sería exactamente
-              D-2 (repetición en una tarjeta que no continúa). */}
+              siguen partiendo entre páginas como antes de esta ronda. */}
           <View wrap={false}>
             {item.supuestos.length > 0 ? (
               <Text style={[styles.estadoDetalle, dark ? styles.estadoDetalleDark : {}]}>
@@ -951,10 +962,23 @@ function ScenarioCard({
             ) : null}
           </View>
           {stacked ? (
-            <MonthlyTableStacked mensual={item.mensual} dark={dark} styles={styles} />
+            <MonthlyTableStacked
+              mensual={item.mensual}
+              dark={dark}
+              styles={styles}
+              marcadorAntes={<Marcador bloque="tabla" />}
+            />
           ) : (
             <>
-              <MonthlyTableHeader styles={styles} />
+              {/* Bloque Visual 2.2.3: el marcador va DENTRO del mismo
+                  `wrap={false}` que la fila de encabezado de la tabla
+                  (no antes, suelto) — mismo criterio que arriba: nunca
+                  puede quedar huérfano si el encabezado se mueve entero
+                  a la página siguiente. */}
+              <View wrap={false}>
+                <Marcador bloque="tabla" />
+                <MonthlyTableHeader styles={styles} />
+              </View>
               {item.mensual.map((mes) => (
                 <View key={mes.mes} style={styles.monthlyTableRow} wrap={false}>
                   <Text style={styles.monthlyTableMonthCell}>Mes {mes.mes}</Text>
@@ -973,6 +997,9 @@ function ScenarioCard({
         if (palancasDelGrupo.length === 0) return null;
         return (
           <View key={tipo} style={styles.palancaGroup} wrap={false}>
+            {/* Bloque Visual 2.2.3: primer elemento de la continuación
+                cuando el quiebre real cae justo antes de ESTE grupo. */}
+            <Marcador bloque={`grupo:${tipo}`} />
             <Text style={styles.palancaGroupTitle}>{LABELS_MAGNITUD[tipo]}</Text>
             {palancasDelGrupo.map((palanca) => (
               <Text key={palanca.id} style={bodyStyle}>
@@ -992,15 +1019,12 @@ function ScenarioCard({
       {item.supuestos.length > 0 ? (
         <View style={styles.palancaGroup} wrap={false}>
           {/* Corrección 1, ronda 2.2.1: éste era el punto de quiebre real
-              (evidencia: "la página abre directamente con 'Supuestos...'
-              sin ninguna identidad de escenario") — no tenía ningún
-              marcador. `marcaContinuacion` es la regla estática de arriba:
-              sólo pantalla, sólo tarjetas largas con tabla mensual. */}
-          {marcaContinuacion ? (
-            <Text style={[styles.scenarioKicker, dark ? styles.scenarioKickerDark : {}]}>
-              {nombreEscenario} (continuación)
-            </Text>
-          ) : null}
+              original (evidencia: "la página abre directamente con
+              'Supuestos...' sin ninguna identidad de escenario"). Bloque
+              Visual 2.2.3: ahora es uno más de los bloques que el mapa
+              medido puede marcar — se pinta acá sólo cuando el quiebre
+              real cae acá. */}
+          <Marcador bloque="supuestos" />
           <Text style={styles.palancaGroupTitle}>{TITULO_SUPUESTOS_CON_DAGA}</Text>
           <BulletList items={item.supuestos.map((s) => s.valor)} styles={styles} />
         </View>
@@ -1019,6 +1043,7 @@ function renderBlock(
   dark: boolean,
   styles: Styles,
   profile: PdfProfileV2,
+  mapaPaginacion: MapaPaginacionV2,
 ): React.ReactNode {
   const p = PROFILES_V2[profile];
   const cardStyle = [styles.card, dark ? styles.cardDark : {}];
@@ -1214,14 +1239,13 @@ function renderBlock(
                     styles={styles}
                     full={false}
                     profile={profile}
-                    hayCortasPrecedentes={cortas.length > 0}
-                    esPrimeraLarga={false}
+                    marcadores={mapaPaginacion.get(item.id) ?? SIN_MARCADORES}
                   />
                 );
               }}
             />
           ) : null}
-          {largas.map((item, index) => (
+          {largas.map((item) => (
             <ScenarioCard
               key={item.id}
               item={item}
@@ -1231,8 +1255,7 @@ function renderBlock(
               styles={styles}
               full
               profile={profile}
-              hayCortasPrecedentes={cortas.length > 0}
-              esPrimeraLarga={index === 0}
+              marcadores={mapaPaginacion.get(item.id) ?? SIN_MARCADORES}
             />
           ))}
         </View>
@@ -1530,11 +1553,13 @@ function ContentPage({
   profile,
   styles,
   kind,
+  mapaPaginacion,
 }: {
   section: DocumentSectionV2;
   profile: PdfProfileV2;
   styles: Styles;
   kind: DocumentKindV2;
+  mapaPaginacion: MapaPaginacionV2;
 }) {
   const wantsDark = section.tone === "dark";
   // C3, ronda 2.1: una sección "dark" en impresión no va a sangre
@@ -1594,14 +1619,32 @@ function ContentPage({
         {section.title ? <Text style={styles.title}>{section.title}</Text> : null}
       </View>
       <View style={styles.content}>
-        {section.blocks.map((block) => renderBlock(block, dark, styles, profile))}
+        {section.blocks.map((block) => renderBlock(block, dark, styles, profile, mapaPaginacion))}
       </View>
       <Footer dark={dark} styles={styles} />
     </Page>
   );
 }
 
-function VelocentumPdfDocumentV2({ model, profile }: { model: DocumentModelV2; profile: PdfProfileV2 }) {
+/**
+ * Fecha de creación fija (no `new Date()`): el metadato `CreationDate`
+ * de un PDF viaja al identificador de archivo (`PDFSecurity.generateFileID`,
+ * hash de `CreationDate` + el resto de `info`), así que con la fecha real
+ * dos renderizados del mismo documento nunca son bit a bit idénticos.
+ * Bloque Visual 2.2.3, U3/L5: el determinismo (mismo hash en corridas
+ * consecutivas) es un criterio de aceptación explícito de esta ronda.
+ */
+const FECHA_CREACION_FIJA_V2 = new Date("2026-01-01T00:00:00.000Z");
+
+function VelocentumPdfDocumentV2({
+  model,
+  profile,
+  mapaPaginacion,
+}: {
+  model: DocumentModelV2;
+  profile: PdfProfileV2;
+  mapaPaginacion: MapaPaginacionV2;
+}) {
   const styles = makeStylesV2(profile);
   return (
     <Document
@@ -1610,6 +1653,7 @@ function VelocentumPdfDocumentV2({ model, profile }: { model: DocumentModelV2; p
       subject={`${model.metadata.title} - ${model.metadata.clientName}`}
       creator={`Velocentum · ${model.templateId}`}
       language="es-AR"
+      creationDate={FECHA_CREACION_FIJA_V2}
     >
       {model.sections.map((section) => {
         const cover = section.blocks.find(
@@ -1619,7 +1663,16 @@ function VelocentumPdfDocumentV2({ model, profile }: { model: DocumentModelV2; p
         if (section.blocks.some((block) => block.type === "transition" || block.type === "next-step")) {
           return <TransitionPage key={section.id} section={section} profile={profile} styles={styles} />;
         }
-        return <ContentPage key={section.id} section={section} profile={profile} styles={styles} kind={model.kind} />;
+        return (
+          <ContentPage
+            key={section.id}
+            section={section}
+            profile={profile}
+            styles={styles}
+            kind={model.kind}
+            mapaPaginacion={mapaPaginacion}
+          />
+        );
       })}
     </Document>
   );
@@ -1628,6 +1681,7 @@ function VelocentumPdfDocumentV2({ model, profile }: { model: DocumentModelV2; p
 export function createPdfDocumentElementV2(
   model: DocumentModelV2,
   profile: PdfProfileV2 = "pantalla",
+  mapaPaginacion: MapaPaginacionV2 = MAPA_PAGINACION_VACIO_V2,
 ): React.ReactElement<DocumentProps> {
-  return <VelocentumPdfDocumentV2 model={model} profile={profile} />;
+  return <VelocentumPdfDocumentV2 model={model} profile={profile} mapaPaginacion={mapaPaginacion} />;
 }

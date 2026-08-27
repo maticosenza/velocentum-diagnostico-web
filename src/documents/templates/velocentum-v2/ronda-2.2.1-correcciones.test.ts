@@ -19,6 +19,7 @@ import {
 } from "./test-fixtures";
 import type { DocumentBlockV2, DocumentModelV2 } from "./types";
 import { createPdfDocumentElementV2, type PdfProfileV2 } from "../../renderers/pdf-v2/document";
+import { renderPdfV2ConDosPasadas } from "../../renderers/pdf-v2/paginacion";
 
 function blocksOf<T extends DocumentBlockV2["type"]>(
   model: DocumentModelV2,
@@ -73,7 +74,11 @@ describe("Ronda 2.2.1 — R1 (Corrección 1): ninguna página de continuación d
     // prueba es exactamente la que hubiera detectado ese defecto.
     for (const perfil of ["pantalla", "impresion"] as PdfProfileV2[]) {
       const model = buildProyeccion90dDocumentV2(buildTresEscenariosLargosContext());
-      const paginas = await textoPorPagina(await renderToBuffer(createPdfDocumentElementV2(model, perfil)));
+      // Bloque Visual 2.2.3: mapa medido sobre el PDF real (dos pasadas),
+      // no la regla estática incondicional que esta prueba documentaba
+      // originalmente.
+      const { buffer } = await renderPdfV2ConDosPasadas(model, perfil);
+      const paginas = await textoPorPagina(buffer);
       let paginasConSupuestos = 0;
       paginas.forEach((texto, index) => {
         if (!texto.includes("Supuestos —")) return;

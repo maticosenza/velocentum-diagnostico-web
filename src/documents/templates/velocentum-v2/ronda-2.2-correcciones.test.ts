@@ -39,6 +39,7 @@ import {
   PROFILES_V2,
   type PdfProfileV2,
 } from "../../renderers/pdf-v2/document";
+import { renderPdfV2ConDosPasadas } from "../../renderers/pdf-v2/paginacion";
 import { DocumentWebRendererV2 } from "../../renderers/web-v2/document-renderer";
 import {
   PROFUNDIDAD_TARJETA,
@@ -123,7 +124,10 @@ describe("Ronda 2.2 — Q2 (D-2): ninguna tarjeta que quepa entera repite su pro
 
   it("escenario largo (full, con tabla mensual): el nombre se repite una sola vez además del header (2 en total dentro del bloque de escenarios), nunca 3+", async () => {
     const model = buildProyeccion90dDocumentV2(buildMulticanalContext());
-    const paginas = await textoPorPagina(await renderToBuffer(createPdfDocumentElementV2(model, "impresion")));
+    // Bloque Visual 2.2.3: mapa medido sobre el PDF real (dos pasadas), no
+    // una regla estática incondicional.
+    const { buffer } = await renderPdfV2ConDosPasadas(model, "impresion");
+    const paginas = await textoPorPagina(buffer);
     const texto = paginas.filter((p) => p.includes(MARCA_SECCION_ESCENARIOS)).join("\n");
     // El fixture multicanal tiene mensual+palancas+supuestos en
     // "conservador" (full=true) — antes de esta ronda el kicker se
