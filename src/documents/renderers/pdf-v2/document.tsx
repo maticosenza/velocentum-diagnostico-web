@@ -801,24 +801,24 @@ function MonthlyTableStacked({
   mensual,
   dark,
   styles,
-  marcadorAntes,
+  marcadorParaMes,
 }: {
   mensual: EscenarioV2["mensual"];
   dark: boolean;
   styles: Styles;
   /**
-   * Bloque Visual 2.2.3: se pinta DENTRO del `wrap={false}` del primer
-   * mes (no como hermano suelto antes de la tabla) — así nunca puede
-   * quedar huérfano en la página anterior si el primer mes se mueve
-   * entero a la siguiente.
+   * Bloque Visual 2.2.3: se pinta DENTRO del `wrap={false}` de CADA mes
+   * (no como hermano suelto antes de la tabla) — así nunca puede quedar
+   * huérfano en la página anterior si ese mes se mueve entero a la
+   * siguiente. El padre decide, mes por mes, si hace falta marcador.
    */
-  marcadorAntes?: React.ReactNode;
+  marcadorParaMes: (mes: number) => React.ReactNode;
 }) {
   return (
     <View>
-      {mensual.map((mes, index) => (
+      {mensual.map((mes) => (
         <View key={mes.mes} style={styles.monthlyStackedMonth} wrap={false}>
-          {index === 0 ? marcadorAntes : null}
+          {marcadorParaMes(mes.mes)}
           <Text style={[styles.monthlyStackedMonthLabel, dark ? styles.monthlyStackedMonthLabelDark : {}]}>
             Mes {mes.mes}
           </Text>
@@ -850,7 +850,13 @@ export type TipoPalancaV2 = "facturacion_incremental" | "contribucion_incrementa
  * Este componente no decide SI ni DÓNDE continúa una tarjeta — sólo
  * pinta el marcador donde el mapa dice que hace falta.
  */
-export type LimiteContinuacionV2Bloque = "metricas" | "nota" | "tabla" | `grupo:${TipoPalancaV2}` | "supuestos";
+export type LimiteContinuacionV2Bloque =
+  | "metricas"
+  | "nota"
+  | "tabla"
+  | `mes:${number}`
+  | `grupo:${TipoPalancaV2}`
+  | "supuestos";
 
 /** Por tarjeta (`EscenarioV2.id`), el conjunto de bloques que efectivamente abren una página nueva. */
 export type MapaPaginacionV2 = ReadonlyMap<EscenarioV2["id"], ReadonlySet<LimiteContinuacionV2Bloque>>;
@@ -966,7 +972,9 @@ function ScenarioCard({
               mensual={item.mensual}
               dark={dark}
               styles={styles}
-              marcadorAntes={<Marcador bloque="tabla" />}
+              marcadorParaMes={(mes) =>
+                mes === item.mensual[0]?.mes ? <Marcador bloque="tabla" /> : <Marcador bloque={`mes:${mes}`} />
+              }
             />
           ) : (
             <>
@@ -979,13 +987,23 @@ function ScenarioCard({
                 <Marcador bloque="tabla" />
                 <MonthlyTableHeader styles={styles} />
               </View>
-              {item.mensual.map((mes) => (
-                <View key={mes.mes} style={styles.monthlyTableRow} wrap={false}>
-                  <Text style={styles.monthlyTableMonthCell}>Mes {mes.mes}</Text>
-                  <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.contribucionIncrementalHabilitada).texto}</Text>
-                  <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.facturacionProyectada).texto}</Text>
-                  <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.facturacionIncrementalHabilitada).texto}</Text>
-                  <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.ahorroPublicitarioHabilitado).texto}</Text>
+              {item.mensual.map((mes, index) => (
+                <View key={mes.mes} wrap={false}>
+                  {/* Bloque Visual 2.2.3: cada fila de mes ya se parte
+                      individualmente entre páginas (D-4, sin cambios) —
+                      la fila 1 la cubre el marcador "tabla" de arriba;
+                      cualquier fila SIGUIENTE que abra su propia página
+                      también necesita el primer elemento. Fuera de
+                      `monthlyTableRow` (`flexDirection: row`): el
+                      marcador es una línea propia, no una columna más. */}
+                  {index > 0 ? <Marcador bloque={`mes:${mes.mes}`} /> : null}
+                  <View style={styles.monthlyTableRow}>
+                    <Text style={styles.monthlyTableMonthCell}>Mes {mes.mes}</Text>
+                    <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.contribucionIncrementalHabilitada).texto}</Text>
+                    <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.facturacionProyectada).texto}</Text>
+                    <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.facturacionIncrementalHabilitada).texto}</Text>
+                    <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.ahorroPublicitarioHabilitado).texto}</Text>
+                  </View>
                 </View>
               ))}
             </>

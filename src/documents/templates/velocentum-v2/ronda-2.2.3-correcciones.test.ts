@@ -70,7 +70,7 @@ function esPaginaDeContinuacion(textoSinEncabezado: string): boolean {
     textoSinEncabezado,
   );
   if (empiezaConHeaderPropio) return false;
-  return /^(Contribución incremental 90 días|El presupuesto liberado|Mes 1\b|Facturación incremental\b|Contribución incremental\b|Ahorro publicitario\b|Supuestos —)/.test(
+  return /^(Contribución incremental 90 días|El presupuesto liberado|Mes \d+\b|Facturación incremental\b|Contribución incremental\b|Ahorro publicitario\b|Supuestos —)/.test(
     textoSinEncabezado,
   );
 }

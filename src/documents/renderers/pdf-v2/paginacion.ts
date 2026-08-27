@@ -146,16 +146,18 @@ export async function medirPaginacionV2(model: DocumentModelV2, buffer: Buffer):
             cursor = posicion;
           }
         }
-        if (item.mensual.length > 0) {
-          const posicionTabla = buscarDesde(paginas, cursor, /Mes 1\b/);
-          if (posicionTabla) {
-            if (posicionTabla.pagina !== paginaAnterior) {
-              marcadores.add("tabla");
-              paginaAnterior = posicionTabla.pagina;
-            }
-            cursor = posicionTabla;
+        // Cada fila de mes ya se parte individualmente entre páginas
+        // (D-4, sin cambios de esta ronda) — Mes 1 lo cubre "tabla"; cada
+        // mes SIGUIENTE es su propio candidato independiente.
+        item.mensual.forEach((mes, index) => {
+          const posicionMes = buscarDesde(paginas, cursor, new RegExp(`Mes ${mes.mes}\\b`));
+          if (!posicionMes) return;
+          if (posicionMes.pagina !== paginaAnterior) {
+            marcadores.add(index === 0 ? "tabla" : `mes:${mes.mes}`);
+            paginaAnterior = posicionMes.pagina;
           }
-        }
+          cursor = posicionMes;
+        });
 
         for (const tipo of GRUPOS_ORDEN) {
           const cantidad = item.palancas.filter((p) => p.tipo === tipo).length;
