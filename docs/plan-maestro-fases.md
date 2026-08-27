@@ -6,6 +6,21 @@ Bloque estrictamente documental: no se implementó ni se corrigió código
 para producir este documento. Toda observación de "corrección necesaria"
 queda anotada para un bloque técnico posterior, no aplicada acá.
 
+**Reconciliación 2026-08-27 (PASO 1 del Bloque 3 Funcional).** Este
+documento seguía congelado en el HEAD `d07fcac` (23/08, 398 pruebas) sin
+ninguna mención de la rama de trabajo que efectivamente ejecutó el
+"rediseño visual" y la "capa 11-13" pendientes que las fases 11 y 13
+dejaban abiertas: los **Bloques Visuales** (1, 2, 2.1, 2.2, 2.2.1, 2.2.2,
+2.2.3) y ahora el **Bloque 3 Funcional**. Esa rama de trabajo vive en
+`docs/visual/` (fuente de verdad propia, con sus 38 identificadores E/C/R
+y las decisiones D1-D8/DHB-1-3/DA-1-4) y NO tiene fila propia en la matriz
+de fases de abajo — la sección 5 nueva, más abajo, la reconcilia contra
+esta matriz sin reescribir ni renumerar las catorce fases. La matriz de
+fases (sección 2) se conserva tal cual estaba, como registro histórico de
+lo verificado en esa fecha — no se re-verificó línea por línea en esta
+reconciliación, salvo lo que la sección 5 señala explícitamente. Ver
+sección 5.5 para el HEAD de cierre real de este bloque.
+
 **Fuentes incorporadas al repositorio en este bloque** (ya no dependen de
 un archivo suelto pasado por chat):
 
@@ -846,6 +861,117 @@ margen total calculado debe usar explícitamente una de estas variantes, no
 `casoSnakeStore`/`casoTitanWebB1` a secas** — usarlos sin la variante
 `CoberturaCompleta` para probar algo que depende de margen total ahora
 produce `null` por diseño, no un bug.
+
+## 5 · Bloque Visual y Bloque 3 Funcional (reconciliación 2026-08-27)
+
+Rama de trabajo separada de la matriz de fases 1-14 de arriba, con su
+propia fuente de verdad en `docs/visual/` (auditoría con 38
+identificadores E-01 a E-18/C-01 a C-08/R-01 a R-12, decisiones D1-D8,
+DHB-1 a DHB-3, DA-1 a DA-4). Corresponde al trabajo pendiente que las
+fases 11 ("rediseño de la interfaz de la herramienta", fuera de los
+documentos) y 13 ("aplicar el sistema visual aprobado... a la interfaz de
+la herramienta") dejaban explícitamente abierto, más los hallazgos de
+contrato/estados que la auditoría visual encontró y que fases 1-10 nunca
+cubrieron (D4, DHB-1, DHB-2, DHB-3, catálogo cerrado de servicios).
+
+**No reemplaza ni renumera las fases 1-14** — corre en paralelo, sobre un
+prototipo nuevo (`velocentum-v2`, plantillas/renderers/capa semántica
+compartida en `src/documents/templates/velocentum-v2/`,
+`src/documents/renderers/pdf-v2/`, `src/documents/semantica-v2/`),
+mientras `velocentum-v1` sigue siendo lo único que produce producción. La
+promoción de v2 sobre v1 es un evento futuro, explícito, con criterios
+propios (sección 14 del prompt del Bloque 3 Funcional,
+`docs/funcional/contrato-bloque-3.md`) — no ocurre automáticamente al
+cerrar un bloque.
+
+### 5.1 · Bloques cerrados
+
+| Bloque | HEAD de cierre | Contenido | Artefactos |
+|---|---|---|---|
+| Visual 1 | `57aa879` (corrección documental — HEAD de PARTIDA del bloque, `e5080e20b2be491c3f45ad9846fc07441e68c103`, no confundir con el de cierre) | Auditoría documental, 38 identificadores, decisiones D1-D8 | `docs/visual/auditoria-visual-2026-08-23.md`, `contrato-estados.md`, `inventario-componentes.md`, `perfiles-pantalla-a4.md`, `wireframes.md`, `matriz-hallazgos.md` |
+| Visual 2 | `490d3e8` (informe de cierre; prototipo en `f8db560`) | Primera implementación visual de v2 sobre los hallazgos de composición | `docs/visual/handoff-bloque-visual-2.md`, ZIP de cierre referenciado ahí |
+| Visual 2.1 | `89b2b7b` | Correcciones C1-C10 sobre el prototipo v2 | `ronda-2.1-correcciones.test.ts` |
+| Visual 2.2 | `8d685ed` (HEAD estable, ya con el fix del bug de paginación de `9923df6`) | Dirección de arte (D-5), correcciones residuales D-1 a D-4 | `informe-cobertura-2-2.md` |
+| Visual 2.2.1 | `84f4109e505fb9fc8a1f8028aa8f1fc4c2d2e201` | C1-C5: continuación de escenario, redundancia, transición pantalla, montajes, conteo de páginas | `docs/visual/handoff-ronda-2.2.1.md` |
+| Visual 2.2.2 | `5e2edc9a88d57c9c49071b67c2c5b7acf0cdc592` | Cierre de Corrección A (propuesta perdía su página principal); Corrección B investigada, no resuelta de forma segura, revertida | `docs/visual/handoff-ronda-2.2.2.md` |
+| Visual 2.2.3 | `7caa9bbb3025bb195689f67331f915f9cdb59434` | Marca de continuación medida en dos pasadas — Corrección B resuelta | `docs/visual/handoff-ronda-2.2.3.md`, `velocentum-bloque-visual-2-2-3-revision.zip` |
+| **3 Funcional** | *(este bloque, ver sección 5.5)* | Contrato de estados de dos ejes (D4), DHB-1/2/3, DA-1-4, bloqueo real de exportación | `docs/funcional/contrato-bloque-3.md`, `docs/visual/handoff-bloque-3.md`, `velocentum-bloque-3-funcional-revision.zip` |
+
+### 5.2 · Decisiones humanas cerradas (entrada de este bloque, no en discusión)
+
+D1 (bloqueo de exportación sin selección comercial), D4 (dos ejes de
+estado, copy exacto), D5 (margen negativo: alerta + retención + hallazgos
+conservados + propuesta cualitativa), D7 (terminología multicanal ≠
+mixto), DHB-1 (inversión $0 declarada → dato conservado, ratio
+`no_aplica`), DHB-2 (propuesta cualitativa, siete piezas, cero promesas
+económicas), DHB-3 (roadmap 30/60/90 determinístico, trazable), DA-1 a
+DA-4 (Eje 1 visible en `metric-grid`/`coverage`; `servicio` como lista de
+referencias al catálogo cerrado; título de la sección de hallazgos
+alineado a su contenido real; sección de fortalezas determinística).
+Catálogo comercial cerrado de seis servicios, sin excepciones: Meta Ads,
+Google Ads, Product Ads, Desarrollo y optimización web, Planificación y
+creación de contenido, Diseño de marca — el mismo catálogo que
+`docs/plan-maestro-fases.md` ya documentaba en la fase 8 (`SERVICIOS`,
+`src/lib/paquetes.ts`) para la escalera de paquetes de v1; el Bloque 3
+Funcional lo hace también el único vocabulario válido para
+`hallazgo.servicio` en el contrato documental (`DocumentContextV1`).
+
+### 5.3 · Residuales aceptados
+
+Corrección B del Bloque Visual 2.2.2 (marca de continuación fuera de la
+cabecera) quedó documentada como no resuelta de forma segura en esa
+ronda — **resuelta en el Bloque Visual 2.2.3** (renderizado en dos
+pasadas), no queda residual. Ningún otro residual visual abierto al
+2026-08-27; ver `docs/visual/handoff-ronda-2.2.3.md` sección 7 para el
+detalle.
+
+### 5.4 · Dependencias y secuencia restante (no se altera en este bloque)
+
+1. **Bloque 3 Funcional** (este bloque) — contrato de estados, DHB-1/2/3,
+   DA-1 a DA-4, bloqueo de exportación.
+2. **Bloque Visual 3** — pendiente, no empieza en este bloque.
+3. **Fase 14** ("QA final, integración y publicación", sección 2 de este
+   documento) — pendiente; sus criterios de entrada (fases 3, 6, 7, 8, 9,
+   11, 12, 13 avanzadas) ya se cumplen sobre v1; la promoción de v2 es un
+   criterio ADICIONAL, propio de esta rama de trabajo, no sustituye a los
+   de fase 14.
+4. Staging/Lovable y QA completo.
+5. Candidato de publicación.
+6. Aprobación humana explícita.
+7. Prompt independiente de publicación.
+
+Cada etapa depende de que la anterior cierre con veredicto APROBADO en su
+auditoría interna correspondiente. Ninguna etapa se salteó ni se
+adelantó.
+
+### 5.5 · Criterios de entrada/salida y prohibiciones de integración
+
+**Entrada al Bloque 3 Funcional:** Bloque Visual 2.2.3 cerrado y
+pusheado (`7caa9bbb`), 718 pruebas + 1 todo, typecheck y build limpios.
+**Salida:** ver handoff de este bloque (`docs/visual/handoff-bloque-3.md`)
+para el veredicto final y los 24 criterios de aceptación uno por uno.
+
+**Prohibiciones vigentes durante toda esta rama de trabajo (Visual y
+Bloque 3), sin excepción:** no integrar a `main`; no publicar; no
+desplegar; no tocar base, migraciones, secretos ni producción; no
+promover v2 sobre v1 (`velocentum-v1` sigue siendo lo único que produce
+producción hasta una promoción explícita, con los criterios de la
+sección 14 del prompt del Bloque 3 Funcional, verificados y aprobados
+por un humano); no avanzar a Bloque Visual 3, fase 14, staging ni
+publicación desde este bloque.
+
+**Plan de reversión:** cada bloque vive en commits propios sobre
+`feat/noche-continuacion`, nunca mezclados con `main`; revertir cualquier
+bloque de esta rama es `git revert`/`git reset` sobre esos commits
+puntuales, sin ningún impacto en `main` ni en producción, porque ninguno
+de los dos fue tocado. Un plan de reversión de v2 a v1 en un solo paso
+(post-promoción) es uno de los seis criterios obligatorios de la sección
+14 del prompt del Bloque 3 Funcional — se escribe recién cuando la
+promoción se evalúe, no antes.
+
+*(HEAD de cierre real de este bloque, artefactos y estado final de cada
+hallazgo: ver la actualización de cierre al final de esta sección, hecha
+en el PASO 7 del Bloque 3 Funcional.)*
 
 ---
 

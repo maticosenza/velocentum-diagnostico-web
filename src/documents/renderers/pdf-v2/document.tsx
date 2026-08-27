@@ -21,7 +21,7 @@ import { VELOCENTUM_LIGHT_V1 } from "../../theme";
 import { registrarFuentesVelocentum } from "../../theme/fuentes/registrar-fuentes";
 import { SimboloVelocentum } from "../pdf/marca";
 import { filasBalanceadas } from "../../semantica-v2/balanceo";
-import { textoEstadoV2 } from "../../semantica-v2/estado";
+import { textoEstadoV2, textoOrigenV2 } from "../../semantica-v2/estado";
 import {
   ICONOS_PRIORIDAD,
   LABELS_CAPA,
@@ -939,14 +939,19 @@ function ScenarioCard({
           métricas quedan con el header pero la nota (y todo lo que sigue)
           se va entera a la página siguiente. Mismo criterio de arriba:
           marcador y nota, un solo `wrap={false}`. */}
-      <View wrap={false}>
-        <Marcador bloque="nota" />
-        <Text style={styles.scenarioNote}>
-          El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre, el efecto
-          sería mayor al proyectado. Esta versión trata el ahorro de forma conservadora y no asume esa
-          reinversión.
-        </Text>
-      </View>
+      {/* S8 (Bloque 3 Funcional): la nota sólo tiene sentido si hay un
+          ahorro publicable del que hablar — nunca si está
+          retenido/no_aplica/evidencia_faltante. */}
+      {item.ahorroPublicitario90d.estado === "calculado" ? (
+        <View wrap={false}>
+          <Marcador bloque="nota" />
+          <Text style={styles.scenarioNote}>
+            El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre, el efecto
+            sería mayor al proyectado. Esta versión trata el ahorro de forma conservadora y no asume esa
+            reinversión.
+          </Text>
+        </View>
+      ) : null}
       {item.mensual.length > 0 ? (
         <View style={styles.monthlyTable}>
           {/* D-4: la nota de referencia va JUNTO al encabezado (mismo
@@ -1092,6 +1097,12 @@ function renderBlock(
               <View style={styles.progressTrack}>
                 <View style={[styles.progressBar, { width: `${Math.max(0, Math.min(100, item.value))}%` }]} />
               </View>
+              {/* DA-1 (Bloque 3 Funcional): chip de Eje 1, sólo cuando hay origen inequívoco. */}
+              {item.origen ? (
+                <Text style={[styles.estadoDetalle, dark ? { color: theme.colors.surface } : {}]}>
+                  {textoOrigenV2(item.origen)}
+                </Text>
+              ) : null}
             </View>
           ))}
         </View>
@@ -1109,6 +1120,12 @@ function renderBlock(
               <View key={item.id ?? index} style={cardStyle} wrap={false}>
                 <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>{item.label}</Text>
                 <ValorTexto value={item.value} dark={dark} styles={styles} />
+                {/* DA-1: chip de Eje 1, sólo cuando hay origen inequívoco. */}
+                {item.origen ? (
+                  <Text style={[styles.estadoDetalle, dark ? { color: theme.colors.surface } : {}]}>
+                    {textoOrigenV2(item.origen)}
+                  </Text>
+                ) : null}
               </View>
             );
           }}
@@ -1150,6 +1167,29 @@ function renderBlock(
           <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>{block.label}</Text>
           <ValorTexto value={block.cost} dark={dark} styles={styles} />
         </View>
+      );
+    case "strengths":
+      return (
+        <CardGrid
+          key="strengths"
+          items={block.items}
+          cols={p.colsServices}
+          styles={styles}
+          render={(raw, index) => {
+            const item = raw as (typeof block.items)[number];
+            const metrica = textoEstadoV2(item.metrica);
+            const umbral = textoEstadoV2(item.umbral);
+            return (
+              <View key={item.id ?? index} style={cardStyle} wrap={false}>
+                <Text style={[styles.findingIndex, dark ? styles.findingIndexDark : {}]}>✓</Text>
+                <Text style={styles.itemTitle}>{item.etiqueta}</Text>
+                <Text style={bodyStyle}>
+                  {metrica.texto}, por encima del umbral de referencia ({umbral.texto}).
+                </Text>
+              </View>
+            );
+          }}
+        />
       );
     case "findings":
       return (

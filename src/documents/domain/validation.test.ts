@@ -34,6 +34,8 @@ function contextoValido(): DocumentContextV1 {
     actual: metricas(),
     envio: { estado: "no_confirmado", costoNeto: null, mostrarEnDocumentos: false },
     hallazgos: [],
+    margenBloqueado: false,
+    fortalezas: [],
     escenarios90d: [],
     resumenComercial: null,
     roadmap: [],
@@ -113,7 +115,7 @@ describe("validación del contexto documental", () => {
       evidenciaIds: [],
       monto: null,
       magnitud: null,
-      servicioId: null,
+      servicioIds: [],
     };
     contexto.hallazgos.push(hallazgo, { ...hallazgo });
 

@@ -57,9 +57,14 @@ async function textoCompleto(buffer: Buffer): Promise<string> {
   return paginas.join(" | ");
 }
 
+// R-02 (2026-08-27): "margen negativo (~ s4)" se sacó de este array — desde
+// D5/DHB-2 (Bloque 3 Funcional), esa propuesta es cualitativa a propósito y
+// NUNCA muestra "Contribución incremental proyectada" (reemplazada por la
+// alerta de margen negativo, ver `blocks.ts` `buildAlertaMargenNegativoV2`).
+// El resto de los casos, sin margen negativo, conserva la aserción
+// ORIGINAL de esta ronda sin modificar.
 const CASOS: Array<{ nombre: string; contexto: () => DocumentContextV1 }> = [
   { nombre: "multicanal (~ s1)", contexto: buildMulticanalContext },
-  { nombre: "margen negativo (~ s4)", contexto: buildMargenNegativoContext },
   { nombre: "tres escenarios largos", contexto: buildTresEscenariosLargosContext },
   { nombre: "estrés", contexto: buildEstresContext },
   { nombre: "mayorista", contexto: buildMayoristaContext },
@@ -90,4 +95,32 @@ describe("Ronda 2.2.2 — T1 (Corrección A): la propuesta no pierde la sección
       }
     },
   );
+
+  // D5/DHB-2 (Bloque 3 Funcional), R-02: caso discriminado, separado del
+  // array de arriba — "margen negativo (~ s4)" reemplaza la sección de
+  // cifra principal por la alerta cualitativa, a propósito.
+  it("'margen negativo (~ s4)', ambos perfiles: la propuesta reemplaza 'Contribución incremental proyectada' por la alerta de margen negativo (DHB-2)", async () => {
+    const ctx = buildMargenNegativoContext();
+    const model = buildPropuestaDocumentV2(ctx);
+    const seccion = model.sections.find((s) => s.id === "commercial-summary");
+    expect(seccion, "falta la sección commercial-summary en el modelo").toBeDefined();
+    expect(seccion!.blocks.some((b) => b.type === "commercial-summary"), "DHB-2: no debe llevar cifra proyectada").toBe(
+      false,
+    );
+    const bridge = seccion!.blocks.find((b) => b.type === "bridge-note");
+    expect(bridge, "falta la alerta de margen negativo (bridge-note reutilizado)").toBeDefined();
+    expect((bridge as { text: string }).text).toContain("Alerta: Margen de contribución negativo");
+
+    for (const perfil of ["pantalla", "impresion"] as PdfProfileV2[]) {
+      const buffer = await renderToBuffer(createPdfDocumentElementV2(model, perfil));
+      const texto = await textoCompleto(buffer);
+      expect(
+        texto.includes("Contribución incremental proyectada"),
+        `perfil ${perfil}: DHB-2 exige que este título NO aparezca en modo cualitativo`,
+      ).toBe(false);
+      expect(texto.includes("Alerta: Margen de contribución negativo"), `perfil ${perfil}: falta la alerta`).toBe(
+        true,
+      );
+    }
+  });
 });

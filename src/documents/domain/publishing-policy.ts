@@ -36,6 +36,21 @@ export function valorRetenido<T>(...motivos: string[]): ValorPublicable<T> {
   };
 }
 
+/**
+ * Bloque 3 Funcional, D4 Eje 2: el dato de ENTRADA no está — nunca una
+ * regla de negocio bloqueando un cálculo que sí sería posible con datos.
+ * Ver `docs/funcional/contrato-bloque-3.md` sección 1 para el
+ * discriminador explícito de cada call site.
+ */
+export function valorEvidenciaFaltante<T>(...motivos: string[]): ValorPublicable<T> {
+  return {
+    estado: "evidencia_faltante",
+    valor: null,
+    confianza: "bloqueada",
+    motivos,
+  };
+}
+
 export function valorNoAplica<T>(motivo: string): ValorPublicable<T> {
   return { estado: "no_aplica", valor: null, motivo };
 }

@@ -30,7 +30,11 @@ describe("adaptador conservador a DocumentContextV1", () => {
     expect(c.actual.facturacion).toMatchObject({ estado: "calculado", valor: 50_000_000 });
     expect(c.actual.inversionTotal).toMatchObject({ estado: "calculado", valor: 1_800_000 });
     expect(c.actual.merMarketplace).toMatchObject({ estado: "calculado", valor: 27.78 });
-    expect(c.actual.roasProductAds).toMatchObject({ estado: "retenido", valor: null });
+    // D4/Bloque 3 Funcional: faltan las ventas atribuidas de Product Ads (dato
+    // de entrada ausente), no una regla de negocio — reclasificado de
+    // "retenido" a "evidencia_faltante" (contrato-bloque-3.md sección 1,
+    // caso "Faltan ventas atribuidas o inversión de Product Ads").
+    expect(c.actual.roasProductAds).toMatchObject({ estado: "evidencia_faltante", valor: null });
     expect(c.evidencia["inversion_product_ads"]).toMatchObject({
       estado: "declarado",
       valor: 1_800_000,
@@ -319,6 +323,13 @@ describe("comercial: la escalera de paquetes confirmada, nunca un paquete invent
       },
     });
 
-    expect(c.comercial?.niveles[0]?.precio).toMatchObject({ estado: "retenido", valor: null });
+    // D4/Bloque 3 Funcional: el precio es un dato de entrada ausente (el
+    // vendedor no lo cargó), no una regla de negocio — reclasificado de
+    // "retenido" a "evidencia_faltante" (contrato-bloque-3.md sección 1,
+    // fila general "falta un campo de entrada").
+    expect(c.comercial?.niveles[0]?.precio).toMatchObject({
+      estado: "evidencia_faltante",
+      valor: null,
+    });
   });
 });

@@ -63,7 +63,7 @@ export function buildMulticanalContext(): DocumentContextV1 {
         evidenciaIds: ["fixture"],
         monto: metric(3_500_000),
         magnitud: "facturacion_incremental",
-        servicioId: "meta-ads",
+        servicioIds: ["meta-ads"],
       },
       {
         id: "checkout",
@@ -74,7 +74,7 @@ export function buildMulticanalContext(): DocumentContextV1 {
         evidenciaIds: ["fixture"],
         monto: metric(1_200_000),
         magnitud: "contribucion_incremental",
-        servicioId: "web",
+        servicioIds: ["web"],
       },
       {
         id: "fragmentacion",
@@ -85,7 +85,7 @@ export function buildMulticanalContext(): DocumentContextV1 {
         evidenciaIds: ["fixture"],
         monto: null,
         magnitud: null,
-        servicioId: null,
+        servicioIds: [],
       },
       {
         id: "comisiones",
@@ -96,9 +96,11 @@ export function buildMulticanalContext(): DocumentContextV1 {
         evidenciaIds: ["fixture"],
         monto: null,
         magnitud: null,
-        servicioId: null,
+        servicioIds: [],
       },
     ],
+    margenBloqueado: false,
+    fortalezas: [],
     escenarios90d: [
       {
         id: "conservador",
@@ -303,7 +305,7 @@ export function buildMargenNegativoContext(): DocumentContextV1 {
         evidenciaIds: ["fixture"],
         monto: null,
         magnitud: null,
-        servicioId: null,
+        servicioIds: [],
       },
       {
         id: "comisiones-alto",
@@ -314,9 +316,11 @@ export function buildMargenNegativoContext(): DocumentContextV1 {
         evidenciaIds: ["fixture"],
         monto: null,
         magnitud: null,
-        servicioId: null,
+        servicioIds: [],
       },
     ],
+    margenBloqueado: false,
+    fortalezas: [],
     escenarios90d: [
       {
         id: "conservador",

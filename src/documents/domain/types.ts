@@ -8,11 +8,30 @@
 
 import type { TipoImpactoClasificado } from "../../lib/impacto-economico";
 
-export type EstadoEvidencia = "verificado" | "declarado" | "no_disponible" | "no_aplica";
+export type EstadoEvidencia =
+  | "verificado"
+  | "declarado"
+  | "estimado_configuracion"
+  | "no_disponible"
+  | "no_aplica";
 
 export type Evidencia<T> =
   | {
       estado: "verificado" | "declarado";
+      valor: T;
+      fuente: string | null;
+      periodo: string | null;
+    }
+  | {
+      /**
+       * D4, Eje 1 (Bloque 3 Funcional): referencia configurada en el
+       * sistema (benchmark, default de configuración), nunca dato del
+       * cliente ni verificación real. Copy D4 exacto: "Referencia
+       * configurada; no validada con datos del cliente". Sin call site
+       * real hoy — se agrega por exigencia de D4 (Eje 1 completo), ver
+       * `docs/funcional/contrato-bloque-3.md` sección 1.
+       */
+      estado: "estimado_configuracion";
       valor: T;
       fuente: string | null;
       periodo: string | null;
@@ -35,6 +54,20 @@ export type ValorPublicable<T> =
     }
   | {
       estado: "retenido";
+      valor: null;
+      confianza: "bloqueada";
+      motivos: string[];
+    }
+  | {
+      /**
+       * D4, Eje 2 (Bloque 3 Funcional): el dato de ENTRADA no está — no
+       * una regla de negocio bloqueando un cálculo que sí sería posible
+       * con datos. Copy D4 exacto: "Falta [dato] para realizar este
+       * cálculo". Se decide en el call site con un discriminador
+       * explícito (`docs/funcional/contrato-bloque-3.md` sección 1) —
+       * nunca parseando `motivos`.
+       */
+      estado: "evidencia_faltante";
       valor: null;
       confianza: "bloqueada";
       motivos: string[];
@@ -86,7 +119,14 @@ export type HallazgoDocumento = {
    * clasificar.
    */
   magnitud: TipoImpactoClasificado | null;
-  servicioId: string | null;
+  /**
+   * Bloque 3 Funcional, C-03/E-09/DA-2: lista de referencias al catálogo
+   * cerrado de seis servicios (`SERVICIOS`, `src/lib/propuesta.ts:21-28`),
+   * nunca texto libre ni un id inventado. Vacía cuando el hallazgo no
+   * mapea a ningún servicio reconocible. Ver
+   * `docs/funcional/contrato-bloque-3.md` sección "Servicios (C-03/E-09/DA-2)".
+   */
+  servicioIds: string[];
 };
 
 export type SupuestoDocumento = {
@@ -117,6 +157,22 @@ export type ServicioDocumento = {
   id: string;
   nombre: string;
   alcance: string[];
+};
+
+/**
+ * DA-4/R-07 (Bloque 3 Funcional): una fortaleza determinística, sólo para
+ * las dos dimensiones de `EstadosBloque` que exponen tanto su métrica real
+ * como su umbral como campos de salida de `resultado.derivados` — nunca
+ * redactada libremente. Ver `docs/funcional/contrato-bloque-3.md`
+ * sección 6 (medición/cuenta/creativos quedan explícitamente sin
+ * resolver, sin fortaleza generada para ellas).
+ */
+export type FortalezaDocumento = {
+  id: "economia" | "funnel_web";
+  etiqueta: string;
+  metrica: ValorPublicable<number>;
+  umbral: ValorPublicable<number>;
+  unidad: "ratio" | "porcentaje";
 };
 
 /**
@@ -291,6 +347,14 @@ export type DocumentContextV1 = {
   actual: MetricasActualesDocumento;
   envio: PoliticaEnvio;
   hallazgos: HallazgoDocumento[];
+  /**
+   * D5/DHB-2 (Bloque 3 Funcional): espejo estructural de
+   * `resultado.margen_bloqueado` — discriminador explícito para activar el
+   * modo cualitativo de la propuesta, nunca inferido parseando `motivos`.
+   * Ver `docs/funcional/contrato-bloque-3.md` sección 3.
+   */
+  margenBloqueado: boolean;
+  fortalezas: FortalezaDocumento[];
   escenarios90d: Escenario90d[];
   /**
    * `null` para un diagnóstico (esa pieza no proyecta — punto 3 de la

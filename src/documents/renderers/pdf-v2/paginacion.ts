@@ -124,8 +124,12 @@ export async function medirPaginacionV2(model: DocumentModelV2, buffer: Buffer):
         let paginaAnterior = posicionHeader.pagina;
         const marcadores = new Set<LimiteContinuacionV2Bloque>();
 
-        // Métricas y nota son incondicionales (toda tarjeta las renderiza,
-        // corta o larga) — sólo la tabla mensual depende de `item.mensual`.
+        // Métricas son incondicionales (toda tarjeta las renderiza, corta o
+        // larga). La nota de reinversión (S8, Bloque 3 Funcional) sólo se
+        // renderiza si `ahorroPublicitario90d` es "calculado" — cuando no
+        // lo es, `buscarDesde` no encuentra el texto y `posicion` queda
+        // `undefined`; el `if (posicion)` de abajo ya lo tolera sin marcar
+        // nada, no hace falta ningún cambio en la lógica de medición.
         {
           const posicion = buscarDesde(paginas, cursor, /Contribución incremental 90 días/);
           if (posicion) {

@@ -39,12 +39,21 @@ export function publishValue(
   };
 }
 
+/**
+ * S16 (Bloque 3 Funcional), cambio mecánico forzado por tipo: v1 no
+ * conoce el estado `evidencia_faltante` (Eje 2 nuevo, D4) — antes de
+ * Bloque 3, todo lo que ahora es `evidencia_faltante` era `retenido`, y
+ * ya producía esta misma restricción. Sin este `||`, esos casos
+ * desaparecerían silenciosamente de la salida de v1 (regresión real, no
+ * un cambio de comportamiento intencional). Misma forma de salida que
+ * antes — `motivos` existe igual en ambos estados.
+ */
 function retainedRestriction(
   id: string,
   label: string,
   value: ValorPublicable<number>,
 ): RestriccionDocumento | null {
-  if (value.estado !== "retenido") return null;
+  if (value.estado !== "retenido" && value.estado !== "evidencia_faltante") return null;
   return {
     id: `retenido:${id}`,
     etiqueta: label,

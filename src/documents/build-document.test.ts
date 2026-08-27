@@ -134,3 +134,64 @@ describe("armado del modelo desde un diagnóstico persistido", () => {
     expect(bloques.some((bloque) => bloque.type === "commercial-offer")).toBe(false);
   });
 });
+
+describe("S16 (Bloque 3 Funcional): v1 produce exactamente la misma salida que antes del bloque", () => {
+  it("DHB-3 nunca puebla el roadmap real de v1, aunque haya selección comercial confirmada", () => {
+    // Verificado indirectamente: el roadmap real requiere `comercial`
+    // confirmado, que `casoSnakeStore` no tiene — alcanza con confirmar
+    // que el bloque roadmap nunca aparece con contenido para ningún caso
+    // de este archivo, y que la sección sigue existiendo (sin bloques),
+    // igual que siempre.
+    for (const documento of DOCUMENTOS_DISPONIBLES) {
+      const model = buildDocumentModelDesdeDiagnostico(fila(casoSnakeStore), documento.id);
+      const bloqueRoadmap = model.sections.flatMap((s) => s.blocks).find((b) => b.type === "roadmap");
+      expect(bloqueRoadmap, `roadmap con contenido en ${documento.id}`).toBeUndefined();
+    }
+  });
+
+  it("DHB-1: una inversión $0 declarada en tienda propia sigue mostrando la restricción retenida de siempre, no no_aplica", () => {
+    const datos: DatosDiagnostico = {
+      ...casoSnakeStore,
+      facturacion_mensual: 40_000_000,
+      inversion_meta: 0,
+      inversion_google: 0,
+    };
+    const model = buildDocumentModelDesdeDiagnostico(fila(datos), "velocentum-diagnostico/v1");
+    const restricciones = model.sections
+      .flatMap((s) => s.blocks)
+      .filter((b) => b.type === "restrictions")
+      .flatMap((b) => b.items);
+    const merTienda = restricciones.find((r) => r.id === "retenido:merTienda");
+    expect(merTienda, "v1 debe seguir mostrando la restricción retenida para $0 declarado").toBeDefined();
+    expect(merTienda?.detalle).toBe("Faltan facturación o inversión del perímetro de tienda propia.");
+  });
+
+  it("DHB-1: la reversión sólo aplica al no_aplica causado por inversión $0 — el no_aplica de negocio (canal declarado inaplicable) nunca se toca", () => {
+    // casoTitanWebB1: canal_tienda_no_aplica=true (declarado por el cliente,
+    // no por inversión $0) — debe seguir siendo no_aplica en v1, sin
+    // ninguna restricción "retenido:merTienda" inventada.
+    const model = buildDocumentModelDesdeDiagnostico(fila(casoTitanWebB1), "velocentum-diagnostico/v1");
+    const restricciones = model.sections
+      .flatMap((s) => s.blocks)
+      .filter((b) => b.type === "restrictions")
+      .flatMap((b) => b.items);
+    expect(restricciones.some((r) => r.id === "retenido:merTienda")).toBe(false);
+  });
+
+  it("E-07: la confianza de escenario en v1 sigue siendo la de cobertura, no la acotada por sus propias magnitudes (que sólo aplica a v2)", () => {
+    const model = buildDocumentModelDesdeDiagnostico(
+      fila(casoSnakeStore),
+      "velocentum-proyeccion-90d/v1",
+    );
+    const bloque = model.sections.flatMap((s) => s.blocks).find((b) => b.type === "scenarios");
+    expect(bloque?.type).toBe("scenarios");
+    if (bloque?.type !== "scenarios") throw new Error("fixture inesperado");
+    // casoSnakeStore: cobertura general no llega a 100% → confianza "media"
+    // (build-context.ts). Con E-07 activo (sólo para v2) el escenario
+    // quedaría "baja" (ninguna magnitud calculada) — v1 debe seguir en
+    // "media", igual que antes del bloque.
+    for (const item of bloque.items) {
+      expect(item.confidence).toBe("media");
+    }
+  });
+});

@@ -58,6 +58,9 @@ export function publicarV2(valor: ValorPublicable<number>, formato: FormatoValor
   if (valor.estado === "retenido") {
     return { estado: "retenido", formato, motivos: [...valor.motivos] };
   }
+  if (valor.estado === "evidencia_faltante") {
+    return { estado: "evidencia_faltante", formato, motivos: [...valor.motivos] };
+  }
   return { estado: "no_aplica", formato, motivo: valor.motivo };
 }
 
@@ -73,20 +76,61 @@ export function buildCoverageBlockV2(context: DocumentContextV1): DocumentBlockV
     type: "coverage",
     confidence: context.cobertura.confianza,
     items: [
-      { id: "general", label: "Cobertura general", value: context.cobertura.general },
-      { id: "canales", label: "Cobertura de canales", value: context.cobertura.canales },
-      { id: "productos", label: "Cobertura de productos", value: context.cobertura.productos },
+      { id: "general", label: "Cobertura general", value: context.cobertura.general, origen: null },
+      {
+        id: "canales",
+        label: "Cobertura de canales",
+        value: context.cobertura.canales,
+        origen: context.evidencia["mix_canales"]?.estado ?? null,
+      },
+      {
+        id: "productos",
+        label: "Cobertura de productos",
+        value: context.cobertura.productos,
+        origen: context.evidencia["productos_muestra"]?.estado ?? null,
+      },
     ],
   };
 }
 
+/**
+ * DA-1: `evidenciaId` sólo para los campos con un único origen inequívoco
+ * (`facturacion`/`ticket`) — el resto de `METRIC_DEFINITIONS` deriva de 2 o
+ * 3 `evidenciaIds` sin regla de colapso definida, así que no lleva chip.
+ * Ver `docs/funcional/contrato-bloque-3.md` sección 9.
+ */
+const ORIGEN_METRIC_GRID: Partial<Record<keyof MetricasActualesDocumento, string>> = {
+  facturacion: "facturacion_mensual",
+  ticket: "ticket_promedio",
+};
+
 export function buildMetricGridV2(context: DocumentContextV1): DocumentBlockV2 | null {
-  const items = METRIC_DEFINITIONS.map((definition) => ({
-    id: definition.id,
-    label: definition.label,
-    value: publicarV2(context.actual[definition.id], definition.format),
-  }));
+  const items = METRIC_DEFINITIONS.map((definition) => {
+    const evidenciaId = ORIGEN_METRIC_GRID[definition.id];
+    return {
+      id: definition.id,
+      label: definition.label,
+      value: publicarV2(context.actual[definition.id], definition.format),
+      origen: evidenciaId ? (context.evidencia[evidenciaId]?.estado ?? null) : null,
+    };
+  });
   return items.length > 0 ? { type: "metric-grid", items } : null;
+}
+
+/**
+ * DA-4/R-07 (Bloque 3 Funcional): fortalezas ya decididas en el dominio
+ * (`domain/build-context.ts`, `fortalezasDocumento`) — este bloque sólo
+ * traduce a `ValorV2`, sin agregar ni descartar ningún criterio.
+ */
+export function buildFortalezasV2(context: DocumentContextV1): DocumentBlockV2 | null {
+  if (context.fortalezas.length === 0) return null;
+  const items = context.fortalezas.map((f) => ({
+    id: f.id,
+    etiqueta: f.etiqueta,
+    metrica: publicarV2(f.metrica, f.unidad === "ratio" ? "ratio" : "percent"),
+    umbral: publicarV2(f.umbral, f.unidad === "ratio" ? "ratio" : "percent"),
+  }));
+  return { type: "strengths", items };
 }
 
 /**
@@ -251,6 +295,40 @@ export function buildCommercialSummaryV2(context: DocumentContextV1): DocumentBl
       high: r.dispersion.alta,
       dataToCloseIt: [...r.dispersion.datosParaCerrarla],
     },
+  };
+}
+
+/**
+ * D5/DHB-2 (Bloque 3 Funcional): `esCualitativa` cuando `margen_bloqueado`
+ * (contradicción confirmada) o cuando el hallazgo `margen_negativo` está
+ * presente (margen calculado pero negativo, todavía no bloqueado) — la
+ * misma señal que ya prioriza ese hallazgo primero
+ * (`build-context.ts:90`, `prioridadDeHallazgo`). Discriminador
+ * estructural, nunca inferido parseando `motivos`.
+ */
+export function esPropuestaCualitativaV2(context: DocumentContextV1): boolean {
+  return context.margenBloqueado || context.hallazgos.some((h) => h.id === "margen_negativo");
+}
+
+/**
+ * DHB-2, piezas 1+2: alerta clara de margen negativo (pieza 1, texto
+ * tomado literal del `titulo` del hallazgo `margen_negativo` ya existente
+ * — nada redactado libremente) seguida de la explicación fija de por qué
+ * la propuesta no publica promesas económicas (pieza 2). Condicionado a
+ * `esPropuestaCualitativaV2`. No se agrega al array `findings` (DHB-2
+ * pieza 1 no lo exige — R-02, PASO 0.1): reemplaza `commercial-summary`
+ * en su propia sección, ver `propuesta.ts`.
+ */
+export function buildAlertaMargenNegativoV2(context: DocumentContextV1): DocumentBlockV2 | null {
+  if (!esPropuestaCualitativaV2(context)) return null;
+  const alerta =
+    context.hallazgos.find((h) => h.id === "margen_negativo")?.titulo ?? "Margen de contribución negativo";
+  return {
+    type: "bridge-note",
+    text:
+      `Alerta: ${alerta}. No proyectamos contribución, ahorro ni retorno: el margen de contribución actual ` +
+      "es negativo, así que cualquier cifra de rentabilidad futura no tendría respaldo real. Esta propuesta " +
+      "se enfoca en resolver esa causa raíz antes de proyectar ningún resultado económico.",
   };
 }
 

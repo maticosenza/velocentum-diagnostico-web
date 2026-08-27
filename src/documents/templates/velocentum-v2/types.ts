@@ -13,6 +13,7 @@
  */
 import type {
   ConfianzaDocumento,
+  EstadoEvidencia,
   EtapaRoadmap,
   RestriccionDocumento,
   ServicioDocumento,
@@ -33,6 +34,12 @@ export type ValorV2 =
     }
   | {
       estado: "retenido";
+      formato: FormatoValorV2;
+      motivos: string[];
+    }
+  | {
+      /** D4 Eje 2, Bloque 3 Funcional: dato de entrada ausente (no una regla de negocio). */
+      estado: "evidencia_faltante";
       formato: FormatoValorV2;
       motivos: string[];
     }
@@ -87,6 +94,14 @@ export type EscenarioV2 = {
   esCorta: boolean;
 };
 
+/** DA-4/R-07 (Bloque 3 Funcional): ver `domain/types.ts` `FortalezaDocumento`. */
+export type FortalezaV2 = {
+  id: "economia" | "funnel_web";
+  etiqueta: string;
+  metrica: ValorV2;
+  umbral: ValorV2;
+};
+
 export type HallazgoV2 = {
   id: string;
   titulo: string;
@@ -128,9 +143,23 @@ export type DocumentBlockV2 =
   | {
       type: "coverage";
       confidence: ConfianzaDocumento;
-      items: { id: "general" | "canales" | "productos"; label: string; value: number }[];
+      /**
+       * DA-1: `origen` (Eje 1) sólo cuando hay un `evidenciaId` inequívoco
+       * detrás del valor — `null` cuando no hay uno (`general`, el mínimo
+       * entre los otros dos, nunca tiene origen propio). Ver
+       * `docs/funcional/contrato-bloque-3.md` sección 9.
+       */
+      items: {
+        id: "general" | "canales" | "productos";
+        label: string;
+        value: number;
+        origen: EstadoEvidencia | null;
+      }[];
     }
-  | { type: "metric-grid"; items: { id: string; label: string; value: ValorV2 }[] }
+  | {
+      type: "metric-grid";
+      items: { id: string; label: string; value: ValorV2; origen: EstadoEvidencia | null }[];
+    }
   | { type: "shipping"; label: string; cost: ValorV2 }
   | {
       type: "channel-comparison";
@@ -138,6 +167,7 @@ export type DocumentBlockV2 =
       marketplace: { label: string; value: ValorV2 };
     }
   | { type: "findings"; variante: "diagnostico" | "propuesta"; items: HallazgoV2[] }
+  | { type: "strengths"; items: FortalezaV2[] }
   | { type: "scenarios"; items: EscenarioV2[] }
   | {
       type: "commercial-summary";

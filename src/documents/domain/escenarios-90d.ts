@@ -80,6 +80,38 @@ function visiblePara(id: IdEscenario, confianza: ConfianzaDocumento): boolean {
   return id !== "potencial" || confianza === "alta";
 }
 
+const RANGO_CONFIANZA: Record<Exclude<ConfianzaDocumento, "bloqueada">, number> = {
+  baja: 1,
+  media: 2,
+  alta: 3,
+};
+
+/**
+ * E-07 (Bloque 3 Funcional): la confianza de un escenario ya no copia
+ * `confianzaDocumento` tal cual — se deriva de sus propias tres magnitudes
+ * (`acumulado90d` de cada línea). Sin ninguna magnitud `calculado`, el
+ * escenario nunca puede llevar "alta": pasa a "baja". Con al menos una
+ * `calculado`, la confianza es `confianzaDocumento` acotada por la peor
+ * confianza real entre esas magnitudes publicadas — nunca mejor que lo que
+ * efectivamente se muestra. Ver `docs/funcional/contrato-bloque-3.md`
+ * sección "Confianza (E-07)".
+ */
+export function confianzaEscenario(
+  confianzaDocumento: ConfianzaDocumento,
+  lineas: LineaImpacto90d[],
+): ConfianzaDocumento {
+  const confianzasCalculadas = lineas
+    .map((linea) => linea.acumulado90d)
+    .filter((valor) => valor.estado === "calculado")
+    .map((valor) => valor.confianza);
+  if (confianzasCalculadas.length === 0) return "baja";
+  const peor = confianzasCalculadas.reduce((min, actual) =>
+    RANGO_CONFIANZA[actual] < RANGO_CONFIANZA[min] ? actual : min,
+  );
+  const base = confianzaValorable(confianzaDocumento);
+  return RANGO_CONFIANZA[base] < RANGO_CONFIANZA[peor] ? base : peor;
+}
+
 /** Línea totalmente retenida: nunca lleva un número, sólo el motivo. */
 function lineaRetenidaDocumento(motivo: string): LineaImpacto90d {
   return {
@@ -195,23 +227,31 @@ function escenarioCalculadoADocumento(
 ): Escenario90d {
   const supuestoFC = `rampa_escenario_${c.id}`;
   const supuestoAhorro = `rampa_ahorro_${c.id}`;
+  const facturacionIncremental = lineaDocumento(c.facturacionIncremental, confianzaDocumento, null, supuestoFC);
+  const contribucionIncremental = lineaDocumento(
+    c.contribucionIncremental,
+    confianzaDocumento,
+    overrideMargenEnvio,
+    supuestoFC,
+  );
+  const ahorroPublicitario = lineaDocumento(
+    c.ahorroPublicitario,
+    confianzaDocumento,
+    overrideMargenEnvio,
+    supuestoAhorro,
+  );
+  const confianza = confianzaEscenario(confianzaDocumento, [
+    facturacionIncremental,
+    contribucionIncremental,
+    ahorroPublicitario,
+  ]);
   return {
     id: c.id,
-    visible: visiblePara(c.id, confianzaDocumento),
-    confianza: confianzaDocumento,
-    facturacionIncremental: lineaDocumento(c.facturacionIncremental, confianzaDocumento, null, supuestoFC),
-    contribucionIncremental: lineaDocumento(
-      c.contribucionIncremental,
-      confianzaDocumento,
-      overrideMargenEnvio,
-      supuestoFC,
-    ),
-    ahorroPublicitario: lineaDocumento(
-      c.ahorroPublicitario,
-      confianzaDocumento,
-      overrideMargenEnvio,
-      supuestoAhorro,
-    ),
+    visible: visiblePara(c.id, confianza),
+    confianza,
+    facturacionIncremental,
+    contribucionIncremental,
+    ahorroPublicitario,
     mensual: mensualDocumento(c, confianzaDocumento, overrideMargenEnvio),
     supuestos: supuestosRampa(c.id),
     restriccionesAplicadas: [],

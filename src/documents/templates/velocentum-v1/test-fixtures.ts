@@ -45,9 +45,11 @@ export function buildTitanContext(): DocumentContextV1 {
         evidenciaIds: ["productos"],
         monto: valorRetenido("La comisión efectiva todavía no está verificada."),
         magnitud: null,
-        servicioId: "auditoria-marketplace",
+        servicioIds: ["auditoria-marketplace"],
       },
     ],
+    margenBloqueado: false,
+    fortalezas: [],
     escenarios90d: [
       {
         id: "base",
@@ -171,9 +173,11 @@ export function buildSnakeContext(): DocumentContextV1 {
         evidenciaIds: ["fixture"],
         monto: null,
         magnitud: null,
-        servicioId: "medicion",
+        servicioIds: ["medicion"],
       },
     ],
+    margenBloqueado: false,
+    fortalezas: [],
     escenarios90d: [
       {
         id: "base",

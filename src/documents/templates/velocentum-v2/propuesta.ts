@@ -1,5 +1,12 @@
 import type { DocumentContextV1 } from "../../domain";
-import { buildBridgeNoteV2, buildCommercialOfferV2, buildCommercialSummaryV2, buildFindingsV2 } from "./blocks";
+import {
+  buildAlertaMargenNegativoV2,
+  buildBridgeNoteV2,
+  buildCommercialOfferV2,
+  buildCommercialSummaryV2,
+  buildFindingsV2,
+  esPropuestaCualitativaV2,
+} from "./blocks";
 import {
   contentSectionV2,
   coverSectionV2,
@@ -15,14 +22,24 @@ import {
  * alcance permitida — contrato sección 2.18): `buildFindingsV2` recibe
  * `variante: "propuesta"`, así que sólo muestra los hallazgos de capa
  * "servicio" en vez de duplicar exactamente el diagnóstico completo.
+ *
+ * D5/DHB-2 (Bloque 3 Funcional): con margen negativo/bloqueado, la
+ * propuesta se emite en modo cualitativo — `commercial-summary` (cifra,
+ * rango, redacción) NUNCA se renderiza, se reemplaza por la alerta fija
+ * de `buildAlertaMargenNegativoV2` (piezas 1+2 de DHB-2, sin tocar el
+ * array `findings` — R-02, PASO 0.1). El resto de las siete piezas
+ * (servicios, plan de validación, roadmap, próximo paso, selección
+ * comercial) ya son incondicionales en este template — ver
+ * `docs/funcional/contrato-bloque-3.md` sección 3.
  */
 const TEMPLATE_ID = "velocentum-propuesta/v2";
 
 export function buildPropuestaDocumentV2(context: DocumentContextV1) {
+  const esCualitativa = esPropuestaCualitativaV2(context);
   const findings = buildFindingsV2(context, "propuesta");
   const commercial = buildCommercialOfferV2(context);
-  const summary = buildCommercialSummaryV2(context);
-  const bridge = buildBridgeNoteV2(context);
+  const summary = esCualitativa ? null : buildCommercialSummaryV2(context);
+  const bridge = esCualitativa ? buildAlertaMargenNegativoV2(context) : buildBridgeNoteV2(context);
 
   return createModelV2({
     context,
@@ -39,8 +56,10 @@ export function buildPropuestaDocumentV2(context: DocumentContextV1) {
       ),
       contentSectionV2({
         id: "commercial-summary",
-        eyebrow: "Lo que importa",
-        title: "Contribución incremental proyectada",
+        eyebrow: esCualitativa ? "Por qué no proyectamos" : "Lo que importa",
+        title: esCualitativa
+          ? "Margen negativo: foco en la causa raíz"
+          : "Contribución incremental proyectada",
         blocks: [summary, bridge],
         tone: "dark",
       }),

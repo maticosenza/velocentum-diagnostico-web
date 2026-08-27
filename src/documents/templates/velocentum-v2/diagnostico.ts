@@ -3,6 +3,7 @@ import {
   buildChannelComparisonV2,
   buildCoverageBlockV2,
   buildFindingsV2,
+  buildFortalezasV2,
   buildMetricGridV2,
   buildShippingV2,
   dedupeMetricGridV2,
@@ -27,6 +28,7 @@ export function buildDiagnosticoDocumentV2(context: DocumentContextV1) {
   // tienda/marketplace no se repiten en la grilla de métricas.
   const metrics = dedupeMetricGridV2(buildMetricGridV2(context), channelComparison);
   const shipping = buildShippingV2(context);
+  const fortalezas = buildFortalezasV2(context);
   const findings = buildFindingsV2(context, "diagnostico");
 
   return createModelV2({
@@ -53,13 +55,17 @@ export function buildDiagnosticoDocumentV2(context: DocumentContextV1) {
         // auditoría, ronda 1): la grilla por sí sola ya ocupa la página
         // completa, así que un bloque corto después de ella terminaba solo
         // en la página de continuación.
-        blocks: [coverage, channelComparison, metrics, shipping],
+        blocks: [coverage, channelComparison, metrics, shipping, fortalezas],
       }),
       transitionSectionV2("diagnostic-transition", "De los datos a las prioridades"),
       contentSectionV2({
         id: "findings",
         eyebrow: "Diagnóstico",
-        title: "Funnel, retención y hallazgos priorizados",
+        // DA-3 (Bloque 3 Funcional): renombrado — la página sólo trae
+        // hallazgos (`buildFindingsV2`), sin funnel ni retención con
+        // estructura propia (eso es Bloque Visual 3). Ver
+        // `docs/funcional/contrato-bloque-3.md` sección 7.
+        title: "Hallazgos priorizados",
         blocks: [findings],
       }),
       restrictionsGroupedSectionV2(context.restricciones),

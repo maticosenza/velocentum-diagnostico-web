@@ -37,6 +37,20 @@
   line-height: 1.5;
 }
 
+/**
+ * C-08 (Bloque 3 Funcional): vista previa del perfil A4 — antes no existía
+ * ninguna forma de ver la composición de impresión sin descargar el PDF
+ * (`docs/visual/matriz-hallazgos.md` C-08). `.vdoc2--pantalla` no cambia
+ * nada (composición existente, sin redefinir). `.vdoc2--impresion` acota
+ * el ancho a A4 (210mm) para aproximar la composición de impresión — no
+ * reproduce paginación real, sólo la proporción del perfil.
+ */
+.vdoc2--impresion {
+  max-width: 210mm;
+  margin: 0 auto;
+  box-shadow: 0 0 0 1px var(--v2-border);
+}
+
 .vdoc2-section {
   padding: 48px 56px;
 }

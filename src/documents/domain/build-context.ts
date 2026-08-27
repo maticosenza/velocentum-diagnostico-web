@@ -1,23 +1,27 @@
 import type { EstadoBloque, Fuga, ResultadoCalculo } from "../../lib/calculo-diagnostico";
-import { productosCargados } from "../../lib/calculo-diagnostico";
+import { inversionCanal, productosCargados } from "../../lib/calculo-diagnostico";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
 import { calcularEscenarios90d, umbralDispersionDe } from "../../lib/escenarios-90d";
 import { impactosDeFuga, type TipoImpactoClasificado } from "../../lib/impacto-economico";
 import { mapearHallazgos } from "../../lib/propuesta";
 import type { EscaleraPaquetesConfirmada } from "../../lib/paquetes";
+import { serviciosCanonicosDe } from "../../lib/paquetes";
 import { escenariosDocumento } from "./escenarios-90d";
 import { construirResumenComercial } from "./resumen-comercial";
 import {
   envioBloqueaRentabilidad,
   resolverPoliticaEnvio,
   valorCalculado,
+  valorEvidenciaFaltante,
   valorNoAplica,
   valorRetenido,
 } from "./publishing-policy";
 import type {
   ConfianzaDocumento,
   DocumentContextV1,
+  EtapaRoadmap,
   Evidencia,
+  FortalezaDocumento,
   HallazgoDocumento,
   PoliticaEnvio,
   RestriccionDocumento,
@@ -143,6 +147,50 @@ function publicarNumero(args: {
 }
 
 /**
+ * Bloque 3 Funcional, D4 Eje 2: variante de `publicarNumero` para campos
+ * cuya ausencia es SIEMPRE "el dato de entrada no está" — nunca una regla
+ * de negocio. `datoFaltante` es el NOMBRE del dato (no una oración), para
+ * que el copy D4 "Falta [dato] para realizar este cálculo" lea natural.
+ * Ver `docs/funcional/contrato-bloque-3.md` sección 1.
+ */
+function publicarNumeroOFaltante(args: {
+  valor: number | null | undefined;
+  evidenciaIds: string[];
+  datoFaltante: string;
+  confianza?: Exclude<ConfianzaDocumento, "bloqueada">;
+}): ValorPublicable<number> {
+  if (!finito(args.valor)) return valorEvidenciaFaltante(args.datoFaltante);
+  return valorCalculado({
+    valor: args.valor,
+    confianza: args.confianza ?? "media",
+    evidenciaIds: args.evidenciaIds,
+  });
+}
+
+/**
+ * DHB-1: un ratio con denominador de inversión declarada en cero es
+ * `no_aplica` (matemáticamente no formable), nunca `retenido` ni
+ * `evidencia_faltante`. El discriminador se calcula desde el dato CRUDO
+ * (`inversionCanal`, ya distingue `0` declarado de `null` ausente en
+ * `calculo-diagnostico.ts`) — nunca desde el ratio ya nulo, que colapsa
+ * ambos casos. Ver `docs/funcional/contrato-bloque-3.md` sección 1.
+ */
+function publicarRatioDeInversion(args: {
+  valorRatio: number | null | undefined;
+  denominadorInversion: number | null;
+  evidenciaIds: string[];
+  datoFaltante: string;
+  motivoNoAplica: string;
+}): ValorPublicable<number> {
+  if (args.denominadorInversion === 0) return valorNoAplica(args.motivoNoAplica);
+  return publicarNumeroOFaltante({
+    valor: args.valorRatio,
+    evidenciaIds: args.evidenciaIds,
+    datoFaltante: args.datoFaltante,
+  });
+}
+
+/**
  * El adaptador documental nunca infiere la política nueva desde el monto legado.
  * El motor conserva ese monto para compatibilidad, pero el PDF debe esperar una
  * decisión explícita del cliente.
@@ -230,6 +278,132 @@ function restriccionesDocumento(args: {
 }
 
 /**
+ * DA-4/R-07 (Bloque 3 Funcional): fortalezas determinísticas, sólo para
+ * `economia` y `funnel_web` — las dos dimensiones de `EstadosBloque` que
+ * exponen tanto su métrica real como su umbral como campos de
+ * `resultado.derivados`. `medicion`/`cuenta`/`creativos` quedan
+ * explícitamente sin resolver (ver `docs/funcional/contrato-bloque-3.md`
+ * sección 6) — nunca se fabrica una fortaleza para ellas.
+ */
+function fortalezasDocumento(resultado: ResultadoCalculo): FortalezaDocumento[] {
+  const fortalezas: FortalezaDocumento[] = [];
+  const d = resultado.derivados;
+
+  if (resultado.estados_bloque.economia === "verde" && finito(d.mer_actual) && finito(d.breakeven_roas)) {
+    fortalezas.push({
+      id: "economia",
+      etiqueta: "Economía",
+      metrica: valorCalculado({ valor: d.mer_actual, confianza: "alta", evidenciaIds: [] }),
+      umbral: valorCalculado({ valor: d.breakeven_roas, confianza: "alta", evidenciaIds: [] }),
+      unidad: "ratio",
+    });
+  }
+
+  if (
+    resultado.estados_bloque.funnel_web === "verde" &&
+    finito(d.cr_tienda) &&
+    finito(d.cr_umbral_verde)
+  ) {
+    fortalezas.push({
+      id: "funnel_web",
+      etiqueta: "Rendimiento web",
+      metrica: valorCalculado({ valor: d.cr_tienda, confianza: "alta", evidenciaIds: [] }),
+      umbral: valorCalculado({ valor: d.cr_umbral_verde, confianza: "alta", evidenciaIds: [] }),
+      unidad: "porcentaje",
+    });
+  }
+
+  return fortalezas;
+}
+
+/**
+ * DHB-3/E-18 (Bloque 3 Funcional): roadmap 30/60/90 determinístico. Vacío
+ * sin selección comercial confirmada — nunca se completa con contenido
+ * inventado. Fuentes únicas: `hallazgos` (ya priorizados), los servicios
+ * de `comercial.niveles[]` (con sus `hallazgoIds` de justificación, ya
+ * existentes) y `restricciones` (para el plan de validación de la etapa
+ * 90). Reparto: hallazgo "alta" ligado a un servicio seleccionado → etapa
+ * 30; "media" ligado a un servicio seleccionado → etapa 60; servicio
+ * seleccionado sin ningún hallazgo "alta" asociado + las restricciones
+ * vigentes → etapa 90. Cada acción es literal (título de hallazgo, nombre
+ * de servicio o etiqueta de restricción), nunca texto redactado. Ver
+ * `docs/funcional/contrato-bloque-3.md` sección 4.
+ */
+export function roadmapDocumento(
+  hallazgos: HallazgoDocumento[],
+  comercial: SeleccionComercial | null,
+  restricciones: RestriccionDocumento[],
+): EtapaRoadmap[] {
+  if (comercial === null) return [];
+
+  const hallazgosPorId = new Map(hallazgos.map((h) => [h.id, h]));
+  const serviciosSeleccionados = new Map<string, { servicio: string; hallazgoIds: string[] }>();
+  for (const nivel of comercial.niveles) {
+    for (const servicio of nivel.servicios) {
+      const existente = serviciosSeleccionados.get(servicio.servicio);
+      if (existente) {
+        existente.hallazgoIds.push(...servicio.hallazgoIds);
+      } else {
+        serviciosSeleccionados.set(servicio.servicio, {
+          servicio: servicio.servicio,
+          hallazgoIds: [...servicio.hallazgoIds],
+        });
+      }
+    }
+  }
+
+  const acciones30: { accion: string; origen: string }[] = [];
+  const acciones60: { accion: string; origen: string }[] = [];
+  const serviciosConHallazgoAlta = new Set<string>();
+
+  for (const servicio of serviciosSeleccionados.values()) {
+    for (const hallazgoId of servicio.hallazgoIds) {
+      const hallazgo = hallazgosPorId.get(hallazgoId);
+      if (!hallazgo) continue;
+      if (hallazgo.prioridad === "alta") {
+        acciones30.push({ accion: hallazgo.titulo, origen: `el hallazgo "${hallazgo.titulo}"` });
+        serviciosConHallazgoAlta.add(servicio.servicio);
+      } else if (hallazgo.prioridad === "media") {
+        acciones60.push({ accion: hallazgo.titulo, origen: `el hallazgo "${hallazgo.titulo}"` });
+      }
+    }
+  }
+
+  const acciones90: { accion: string; origen: string }[] = [];
+  for (const servicio of serviciosSeleccionados.values()) {
+    if (!serviciosConHallazgoAlta.has(servicio.servicio)) {
+      acciones90.push({ accion: servicio.servicio, origen: `el servicio "${servicio.servicio}"` });
+    }
+  }
+  for (const restriccion of restricciones) {
+    acciones90.push({ accion: restriccion.etiqueta, origen: `la restricción "${restriccion.etiqueta}"` });
+  }
+
+  const etapas: EtapaRoadmap[] = [];
+  const agregarEtapa = (
+    id: string,
+    etiqueta: string,
+    desdeDia: number,
+    hastaDia: number,
+    items: { accion: string; origen: string }[],
+  ) => {
+    if (items.length === 0) return;
+    etapas.push({
+      id,
+      etiqueta,
+      desdeDia,
+      hastaDia,
+      acciones: items.map((i) => i.accion),
+      resultadoEsperado: `Avance sobre ${items.map((i) => i.origen).join(", ")}.`,
+    });
+  };
+  agregarEtapa("etapa_30", "Días 1 a 30", 0, 30, acciones30);
+  agregarEtapa("etapa_60", "Días 31 a 60", 31, 60, acciones60);
+  agregarEtapa("etapa_90", "Días 61 a 90", 61, 90, acciones90);
+  return etapas;
+}
+
+/**
  * De qué magnitud económica es el monto de una fuga (corrección aprobada
  * 2026-08-21, punto 3). `fuga.monto` (legado) nunca representó facturación
  * incremental: por diseño, siempre fue contribución (tramos de funnel) o
@@ -307,7 +481,9 @@ function hallazgosDocumento(
           })
         : null,
       magnitud: fuga ? magnitudDeFuga(fuga) : null,
-      servicioId: hallazgo.servicio ? idServicio(hallazgo.servicio) : null,
+      servicioIds: serviciosCanonicosDe(hallazgo.servicio).map((nombreCanonico) =>
+        idServicio(nombreCanonico),
+      ),
     };
   });
   return { hallazgos, servicios };
@@ -355,10 +531,10 @@ export function comercialDesdeEscalera(
         descripcion: servicio.descripcion,
         hallazgoIds: [...servicio.hallazgoIds],
       })),
-      precio: publicarNumero({
+      precio: publicarNumeroOFaltante({
         valor: nivel.precio,
         evidenciaIds: [],
-        motivo: "El vendedor no cargó un precio para este nivel.",
+        datoFaltante: "el precio de este nivel",
         confianza: "alta",
       }),
     })),
@@ -375,6 +551,7 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
   const productos = limitarCobertura(resultado.derivados.cobertura_productos);
   const general = Math.min(coberturaCanales, productos);
   const envio = politicaEnvioDocumento(datos, resultado);
+  const comercial = comercialDesdeEscalera(args.paquetesConfirmados);
   const restricciones = restriccionesDocumento({
     resultado,
     envio,
@@ -482,10 +659,10 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
   const coberturaCompleta = coberturaCanales === 100 && productos === 100;
   const margenTotal =
     margenPublicable && coberturaCompleta
-      ? publicarNumero({
+      ? publicarNumeroOFaltante({
           valor: resultado.derivados.margen_contribucion,
           evidenciaIds: ["productos_muestra", "mix_canales", "politica_envio"],
-          motivo: "No se pudo calcular el margen total.",
+          datoFaltante: "el detalle de productos o canales",
           confianza: confianzaPublicable,
         })
       : valorRetenido<number>(
@@ -496,10 +673,10 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
               : "La cobertura de canales o productos es parcial.",
         );
   const margenMuestra = margenPublicable
-    ? publicarNumero({
+    ? publicarNumeroOFaltante({
         valor: resultado.derivados.margen_muestra,
         evidenciaIds: ["productos_muestra", "mix_canales", "politica_envio"],
-        motivo: "No se pudo calcular el margen de la muestra.",
+        datoFaltante: "el detalle de productos o canales",
         confianza: coberturaCompleta ? "alta" : "media",
       })
     : valorRetenido<number>(
@@ -531,60 +708,68 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
     },
     evidencia,
     actual: {
-      facturacion: publicarNumero({
+      facturacion: publicarNumeroOFaltante({
         valor: datos.facturacion_mensual,
         evidenciaIds: ["facturacion_mensual"],
-        motivo: "No se declaró la facturación mensual.",
+        datoFaltante: "la facturación mensual",
       }),
-      ticket: publicarNumero({
+      ticket: publicarNumeroOFaltante({
         valor: datos.ticket_promedio,
         evidenciaIds: ["ticket_promedio"],
-        motivo: "No se declaró el ticket promedio.",
+        datoFaltante: "el ticket promedio",
       }),
-      pedidos: publicarNumero({
+      pedidos: publicarNumeroOFaltante({
         valor: resultado.derivados.pedidos_mensuales,
         evidenciaIds: ["facturacion_mensual", "ticket_promedio"],
-        motivo: "Faltan facturación o ticket para calcular pedidos.",
+        datoFaltante: "la facturación o el ticket para calcular pedidos",
       }),
       margenTotal,
       margenMuestra,
-      inversionTotal: publicarNumero({
+      inversionTotal: publicarNumeroOFaltante({
         valor: resultado.derivados.inversion_publicitaria_total,
         evidenciaIds: ["inversion_meta", "inversion_google", "inversion_product_ads"],
-        motivo: "No se declaró inversión publicitaria.",
+        datoFaltante: "la inversión publicitaria declarada",
       }),
       merTienda:
         datos.canal_tienda_no_aplica === true
           ? valorNoAplica("El cliente declaró que no vende por tienda propia.")
-          : publicarNumero({
-              valor: resultado.derivados.mer_tienda_propia,
+          : publicarRatioDeInversion({
+              valorRatio: resultado.derivados.mer_tienda_propia,
+              denominadorInversion: inversionCanal(datos, "tienda_propia"),
               evidenciaIds: ["mix_canales", "inversion_meta", "inversion_google"],
-              motivo: "Faltan facturación o inversión del perímetro de tienda propia.",
+              datoFaltante: "la facturación o la inversión del perímetro de tienda propia",
+              motivoNoAplica: "La inversión declarada de tienda propia es $0: el ratio no es formable.",
             }),
       merMarketplace:
         datos.canal_ml_no_aplica === true || datos.vende_mercado_libre === false
           ? valorNoAplica("El cliente declaró que no vende por Mercado Libre.")
-          : publicarNumero({
-              valor: resultado.derivados.mer_marketplace,
+          : publicarRatioDeInversion({
+              valorRatio: resultado.derivados.mer_marketplace,
+              denominadorInversion: inversionCanal(datos, "mercado_libre"),
               evidenciaIds: ["mix_canales", "inversion_product_ads"],
-              motivo: "Faltan facturación o inversión del perímetro de marketplace.",
+              datoFaltante: "la facturación o la inversión del perímetro de marketplace",
+              motivoNoAplica: "La inversión declarada de Mercado Libre es $0: el ratio no es formable.",
             }),
       roasProductAds:
         datos.ml_product_ads === false
           ? valorNoAplica("El cliente declaró que no usa Product Ads.")
-          : publicarNumero({
-              valor: resultado.derivados.roas_product_ads,
+          : publicarRatioDeInversion({
+              valorRatio: resultado.derivados.roas_product_ads,
+              denominadorInversion: inversionCanal(datos, "mercado_libre"),
               evidenciaIds: ["ventas_product_ads", "inversion_product_ads"],
-              motivo: "Faltan ventas atribuidas o inversión de Product Ads.",
+              datoFaltante: "las ventas atribuidas o la inversión de Product Ads",
+              motivoNoAplica: "La inversión declarada de Product Ads es $0: el ratio no es formable.",
             }),
     },
     envio,
     hallazgos: salidaHallazgos.hallazgos,
+    margenBloqueado: resultado.margen_bloqueado,
+    fortalezas: fortalezasDocumento(resultado),
     escenarios90d: escenariosDocumento(datos, resultado, confianza, envio),
     resumenComercial: resumenComercialDocumento({ datos, resultado, confianza, envio, tipoDocumento }),
-    roadmap: [],
+    roadmap: roadmapDocumento(salidaHallazgos.hallazgos, comercial, restricciones),
     servicios: salidaHallazgos.servicios,
-    comercial: comercialDesdeEscalera(args.paquetesConfirmados),
+    comercial,
     restricciones,
     metodologia: [],
   };

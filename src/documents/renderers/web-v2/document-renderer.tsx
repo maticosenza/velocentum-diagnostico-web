@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { formatDocumentDate } from "../web/format";
-import { textoEstadoV2, esSupuesto } from "../../semantica-v2/estado";
+import { textoEstadoV2, textoOrigenV2, esSupuesto } from "../../semantica-v2/estado";
 import {
   ICONOS_PRIORIDAD,
   LABELS_CAPA,
@@ -28,9 +28,20 @@ import type {
 } from "../../templates/velocentum-v2/types";
 import "./document-renderer.css";
 
+/** Mismo par de perfiles que el renderer PDF (`PdfProfileV2`) — literal propio, sin importar entre renderers. */
+export type PerfilWebV2 = "pantalla" | "impresion";
+
 export type DocumentWebRendererV2Props = {
   model: DocumentModelV2;
   className?: string;
+  /**
+   * C-08 (Bloque 3 Funcional): vista previa del perfil A4 en el renderer
+   * web — antes SIEMPRE "pantalla", sin ninguna forma de ver la
+   * composición de impresión sin descargar el PDF. Default "pantalla"
+   * para no alterar la composición existente cuando no se pasa. No
+   * conectado a ningún botón/ruta real (sección 4.2 EXCLUIDO).
+   */
+  profile?: PerfilWebV2;
 };
 
 function classNames(...values: Array<string | undefined | false>) {
@@ -173,6 +184,8 @@ function CoverageBlock({ block }: { block: Extract<DocumentBlockV2, { type: "cov
             <progress aria-label={item.label} max={100} value={item.value}>
               {item.value}%
             </progress>
+            {/* DA-1 (Bloque 3 Funcional): chip de Eje 1, sólo cuando hay origen inequívoco. */}
+            {item.origen ? <p className="vdoc2-muted">{textoOrigenV2(item.origen)}</p> : null}
           </div>
         ))}
       </div>
@@ -189,6 +202,8 @@ function MetricGridBlock({ block }: { block: Extract<DocumentBlockV2, { type: "m
             <dt>{item.label}</dt>
             <dd>
               <ValorV2View value={item.value} />
+              {/* DA-1: chip de Eje 1, sólo cuando hay origen inequívoco. */}
+              {item.origen ? <p className="vdoc2-muted">{textoOrigenV2(item.origen)}</p> : null}
             </dd>
           </div>
         ))}
@@ -357,10 +372,15 @@ function ScenarioCard({ item }: { item: EscenarioV2 }) {
           </dd>
         </div>
       </dl>
-      <p className="vdoc2-scenario__note">
-        El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre, el efecto sería
-        mayor al proyectado. Esta versión trata el ahorro de forma conservadora y no asume esa reinversión.
-      </p>
+      {/* S8 (Bloque 3 Funcional): la nota de reinversión sólo tiene sentido
+          si hay un ahorro publicable del que hablar — nunca si está
+          retenido/no_aplica/evidencia_faltante. */}
+      {item.ahorroPublicitario90d.estado === "calculado" ? (
+        <p className="vdoc2-scenario__note">
+          El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre, el efecto sería
+          mayor al proyectado. Esta versión trata el ahorro de forma conservadora y no asume esa reinversión.
+        </p>
+      ) : null}
       {item.mensual.length > 0 ? (
         <div className="vdoc2-subsection">
           <h4>Detalle mensual</h4>
@@ -492,6 +512,31 @@ function ServicesBlock({ block }: { block: Extract<DocumentBlockV2, { type: "ser
   );
 }
 
+/** DA-4/R-07 (Bloque 3 Funcional): ver `domain/build-context.ts` `fortalezasDocumento`. */
+function StrengthsBlock({ block }: { block: Extract<DocumentBlockV2, { type: "strengths" }> }) {
+  return (
+    <BlockFrame type="strengths">
+      <div className="vdoc2-card-grid">
+        {block.items.map((item) => {
+          const metrica = textoEstadoV2(item.metrica);
+          const umbral = textoEstadoV2(item.umbral);
+          return (
+            <article className="vdoc2-card" key={item.id}>
+              <div className="vdoc2-finding__index" aria-hidden="true">
+                ✓
+              </div>
+              <h3>{item.etiqueta}</h3>
+              <p>
+                {metrica.texto}, por encima del umbral de referencia ({umbral.texto}).
+              </p>
+            </article>
+          );
+        })}
+      </div>
+    </BlockFrame>
+  );
+}
+
 function ServicioNivelList({
   services,
 }: {
@@ -607,6 +652,8 @@ export function DocumentBlockViewV2({ block }: { block: DocumentBlockV2 }) {
       return <ShippingBlock block={block} />;
     case "findings":
       return <FindingsBlock block={block} />;
+    case "strengths":
+      return <StrengthsBlock block={block} />;
     case "commercial-summary":
       return <CommercialSummaryBlock block={block} />;
     case "bridge-note":
@@ -684,18 +731,20 @@ export function DocumentSectionViewV2({ section, kind }: { section: DocumentSect
   );
 }
 
-export function DocumentWebRendererV2({ model, className }: DocumentWebRendererV2Props) {
+export function DocumentWebRendererV2({ model, className, profile = "pantalla" }: DocumentWebRendererV2Props) {
   // D-5, contrato 6.1/6.3: variables CSS calculadas a partir del MISMO
   // módulo compartido que usa el renderer PDF — ningún valor decorativo
-  // se define por separado en este renderer (Q6).
+  // se define por separado en este renderer (Q6). C-08: ahora sigue el
+  // `profile` real en vez de "pantalla" fijo.
   const direccionArteVars = {
-    "--vdoc2-card-shadow": colorProfundidadTarjeta("pantalla"),
-    "--vdoc2-texture-line": colorTexturaLinea("pantalla"),
+    "--vdoc2-card-shadow": colorProfundidadTarjeta(profile),
+    "--vdoc2-texture-line": colorTexturaLinea(profile),
   } as CSSProperties;
   return (
     <article
-      className={classNames("vdoc2", className)}
+      className={classNames("vdoc2", `vdoc2--${profile}`, className)}
       data-document-kind={model.kind}
+      data-profile={profile}
       lang="es"
       aria-label={`${model.metadata.title} para ${model.metadata.clientName}`}
       style={direccionArteVars}

@@ -71,9 +71,24 @@ export function coverageSectionV2(context: DocumentContextV1): DocumentSectionV2
         type: "coverage",
         confidence: context.cobertura.confianza,
         items: [
-          { id: "general", label: "Cobertura general", value: context.cobertura.general },
-          { id: "canales", label: "Cobertura de canales", value: context.cobertura.canales },
-          { id: "productos", label: "Cobertura de productos", value: context.cobertura.productos },
+          {
+            id: "general",
+            label: "Cobertura general",
+            value: context.cobertura.general,
+            origen: null,
+          },
+          {
+            id: "canales",
+            label: "Cobertura de canales",
+            value: context.cobertura.canales,
+            origen: context.evidencia["mix_canales"]?.estado ?? null,
+          },
+          {
+            id: "productos",
+            label: "Cobertura de productos",
+            value: context.cobertura.productos,
+            origen: context.evidencia["productos_muestra"]?.estado ?? null,
+          },
         ],
       },
     ],
