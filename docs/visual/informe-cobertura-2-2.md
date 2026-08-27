@@ -6,9 +6,27 @@ Barrido sobre los cuatro escenarios demostrativos que faltaban (2, 3, 5,
 el lenguaje visual de D-5 y las correcciones D-1 a D-4 ya aplicadas.
 
 Generación: 6 casos × 3 documentos × 2 perfiles = 36 PDFs + 18 renders
-web. Sumados a los 12 PDFs + 6 web de s1/s4 corregidos: **48 PDFs, 409
-páginas rasterizadas** (158 de ellas en perfil impresión/A4), 24
+web. Sumados a los 12 PDFs + 6 web de s1/s4 corregidos: **48 PDFs**, 24
 renders web en total para esta ronda.
+
+> **Corrección de ronda 2.2.1 (Corrección 5):** el conteo original de
+> esta sección ("409 páginas rasterizadas", "158 de ellas en perfil
+> impresión") no se reprodujo al regenerar los 48 PDFs directamente
+> desde los commits reales (`git worktree` sobre `9923df6` y sobre el
+> HEAD posterior al fix de paginación, `8d685ed`) — la comparación
+> documento por documento mostró discrepancias puntuales (p. ej.
+> `propuesta-impresion` de s1/s4: 6/4 páginas reales contra 7/5
+> citadas). El conteo reproducible y verificado es: **313 páginas
+> totales, 152 en perfil impresión/A4 y 161 en pantalla**, estable
+> entre `8d685ed` (HEAD antes de esta ronda) y el HEAD final de la
+> ronda 2.2.1 — es decir, las Correcciones 1 a 5 de esta ronda no
+> agregaron ni quitaron una sola página. Método: `pdfinfo` sobre los 48
+> PDFs regenerados con `createPdfDocumentElementV2` + `renderToBuffer`,
+> sumando `Pages:` de cada uno. El número "451" (con el bug de
+> paginación de D-5 todavía presente, commit `9923df6`) tampoco
+> corresponde a "409" — sugiere que el conteo original de esta sección
+> se tomó en un punto intermedio, no reproducible ahora contra ningún
+> commit real.
 
 Los escenarios 2/3/5/6 se generaron con un script efímero fuera de
 `src/` (no commiteado, borrado antes del cierre) que usa el motor real
@@ -47,26 +65,30 @@ antes de esta ronda (comparación real contra un render de 89b2b7b vía
 |---|---|---|
 | 1-marketplace-fuerte-tienda-floja / diagnostico-impresion | 5 | 5 |
 | 1-marketplace-fuerte-tienda-floja / proyeccion_90d-impresion | 8 | 8 |
-| 1-marketplace-fuerte-tienda-floja / propuesta-impresion | 7 | 7 |
+| 1-marketplace-fuerte-tienda-floja / propuesta-impresion | 6 | 6 |
 | 4-roas-bueno-margen-negativo / diagnostico-impresion | 5 | 5 |
 | 4-roas-bueno-margen-negativo / proyeccion_90d-impresion | 6 | 6 |
-| 4-roas-bueno-margen-negativo / propuesta-impresion | 5 | 5 |
+| 4-roas-bueno-margen-negativo / propuesta-impresion | 4 | 4 |
 
-Sin crecimiento en ninguno de los 6 documentos de control.
+Sin crecimiento en ninguno de los 6 documentos de control. (Corrección
+2.2.1: la fila `propuesta-impresion` de s1/s4 citaba 7/5 — no se
+reprodujo al regenerar desde `89b2b7b` vía `git worktree`; el valor
+real y estable, verificado en ambos extremos de la comparación, es
+6/4.)
 
-## Verificación automatizada (las 409 páginas)
+## Verificación automatizada (las 313 páginas)
 
 - **Barrido de texto** (extracción real vía `pdfjs-dist` sobre las 48
   PDFs, página por página): cero ocurrencias de `undefined`, `NaN`,
   `null`, `[object Object]`, `Sin datos`, `††`.
-- **Cobertura de tinta en A4** (158 páginas de perfil impresión,
-  rasterizadas a 100dpi, fracción de píxeles con luminosidad <128/255):
-  máximo observado 14,0% — **cero páginas por encima del 25%** exigido
+- **Cobertura de tinta en A4** (152 páginas de perfil impresión,
+  rasterizadas a 150dpi, fracción de píxeles con luminosidad <128/255):
+  máximo observado 14,1% — **cero páginas por encima del 25%** exigido
   por C3/D-5.
 
 ## Inspección visual dirigida
 
-Dado el volumen (409 páginas), la inspección página por página
+Dado el volumen (313 páginas), la inspección página por página
 completa de las 48 PDFs no es proporcional a lo que se puede verificar
 con garantía manual en el tiempo de este bloque — se complementó el
 barrido automatizado (cubre el 100% de las páginas para los defectos

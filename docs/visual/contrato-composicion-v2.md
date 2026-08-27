@@ -668,7 +668,11 @@ En A4 esto no compite con el límite de tinta plena de C3 (≤25%): las
 líneas de portada (únicas que quedan en impresión) están contenidas en
 el acento ya acotado por C3 (`coverAccentBounded`, sección 5.4),
 verificado programáticamente (test Q3) y empíricamente (rasterizado,
-máximo de tinta observado 14% en 158 páginas A4 de esta ronda).
+máximo de tinta observado 14,1% en las 152 páginas A4 de los 48 PDFs
+— corrección de ronda 2.2.1: el informe de cobertura de esta sección
+citaba 158 páginas A4/409 totales, un número que no se reprodujo al
+regenerar los 48 PDFs desde los commits reales; ver la nota de
+corrección en `informe-cobertura-2-2.md`).
 
 ### 6.2 Degradado — dirección, extensión, límites por perfil
 

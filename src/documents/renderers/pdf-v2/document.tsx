@@ -598,6 +598,28 @@ function makeStylesV2(profile: PdfProfileV2) {
     headingRuleRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4, marginBottom: 12 },
     headingRuleLine: { width: 28, height: 2, backgroundColor: theme.colors.primary, borderRadius: 1 },
     headingRuleDots: { fontSize: e.label, color: theme.colors.primary, letterSpacing: 2 },
+    // Corrección 3, ronda 2.2.1: variante clara de HeadingRule para la
+    // transición en pantalla (fondo `theme.colors.primary`, ver
+    // `transitionPage` más abajo).
+    headingRuleLineLight: { backgroundColor: theme.colors.surface },
+    headingRuleDotsLight: { color: theme.colors.surface },
+    // Corrección 3, ronda 2.2.1: acento contenido de dirección de arte para
+    // que la transición/cierre en pantalla deje de ser un bloque de color
+    // liso con una sola línea de texto (D-5 viñeta 7). Mismo patrón seguro
+    // que `coverAccentBounded`: `Svg` anidado dentro de un `View` de tamaño
+    // fijo, nunca `position: absolute` directo sobre un `Page` con `wrap`
+    // (ver nota de ContentPage sobre el hallazgo real de esta ronda con
+    // `Svg` bajo posicionamiento absoluto). El fondo violeta a sangre
+    // completa se conserva (C3 sólo exige fondo claro en A4); esto agrega
+    // textura sobre ese fondo, no lo reemplaza.
+    transitionAccentBounded: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      width: 260,
+      height: 260,
+      overflow: "hidden",
+    },
     // D-5, contrato 6.5: glifo de personalidad por documento junto al eyebrow.
     personalityGlyph: { color: theme.colors.primary, marginRight: 5 },
     // D-5, contrato 6.4: ícono lineal en círculo, sólo en encabezado de
@@ -618,12 +640,18 @@ function makeStylesV2(profile: PdfProfileV2) {
 
 type Styles = ReturnType<typeof makeStylesV2>;
 
-/** D-5, contrato 6.7: línea corta + puntos, bajo un título/subtítulo. */
-function HeadingRule({ styles }: { styles: Styles }) {
+/**
+ * D-5, contrato 6.7: línea corta + puntos, bajo un título/subtítulo.
+ * `light` (ronda 2.2.1, Corrección 3): variante clara para fondos donde el
+ * acento violeta por defecto (`theme.colors.primary`) quedaría invisible
+ * sobre un fondo del mismo color — p. ej. la transición en pantalla, que
+ * sigue a sangre completa en violeta (C3 sólo aplica a A4).
+ */
+function HeadingRule({ styles, light }: { styles: Styles; light?: boolean }) {
   return (
     <View style={styles.headingRuleRow} wrap={false}>
-      <View style={styles.headingRuleLine} />
-      <Text style={styles.headingRuleDots}>····</Text>
+      <View style={[styles.headingRuleLine, light ? styles.headingRuleLineLight : {}]} />
+      <Text style={[styles.headingRuleDots, light ? styles.headingRuleDotsLight : {}]}>····</Text>
     </View>
   );
 }
@@ -809,6 +837,8 @@ function ScenarioCard({
   styles,
   full,
   profile,
+  hayCortasPrecedentes,
+  esPrimeraLarga,
 }: {
   item: EscenarioV2;
   dark: boolean;
@@ -817,23 +847,62 @@ function ScenarioCard({
   styles: Styles;
   full: boolean;
   profile: PdfProfileV2;
+  hayCortasPrecedentes: boolean;
+  esPrimeraLarga: boolean;
 }) {
   const grupos = ["facturacion_incremental", "contribucion_incremental", "ahorro_publicitario"] as const;
   const stacked = PROFILES_V2[profile].monthlyStacked;
-  // C5, ronda 2.1: identidad del escenario repetida junto a cada
-  // subsección que podría iniciar una página nueva si la tarjeta se
-  // parte (el header con el nombre puede quedar en la página anterior).
-  const Kicker = () => (
-    <Text style={[styles.scenarioKicker, dark ? styles.scenarioKickerDark : {}]}>
-      {LABELS_ESCENARIO[item.id]}
-    </Text>
-  );
+  const nombreEscenario = LABELS_ESCENARIO[item.id];
+  // Corrección 1/2, ronda 2.2.1 — reemplaza dos intentos previos que
+  // resultaron inseguros o insuficientes:
+  //  1) el `render`-prop de react-pdf (con o sin comparación de
+  //     `subPageNumber`) hace desaparecer el texto del encabezado por
+  //     completo dentro de la tarjeta real (`CardGrid` con varias filas +
+  //     `wrap={false}` anidados) — reproducido de punta a punta con
+  //     `vite-node` sobre el pipeline real (no era un artefacto de
+  //     transpilación de un script suelto). El único uso de `render` que
+  //     ya existía en este código (número de página del pie) siempre lo
+  //     combina con `fixed`; se descarta apostar la identidad de una
+  //     tarjeta a un patrón que rompe el texto en este árbol de
+  //     componentes.
+  //  2) una primera regla estática ("toda tarjeta larga con tabla mensual
+  //     y supuestos, en cualquier perfil") daba un FALSO POSITIVO real:
+  //     "1-marketplace-fuerte-tienda-floja" en impresión, escenario
+  //     CONSERVADOR, entra solo en su propia página A4 y no debía llevar
+  //     el marcador. Una segunda versión ("sólo si hay cortas antes Y es
+  //     la primera tarjeta larga") corrigió ese caso pero generó un FALSO
+  //     NEGATIVO real en el mismo documento: BASE y POTENCIAL (2da y 3ra
+  //     tarjeta larga) SÍ continúan entre páginas — el propio
+  //     encabezado "BASE" queda al final de la página de CONSERVADOR,
+  //     separado del resto de su contenido — y se quedaban sin marcador.
+  //     Ambos casos verificados generando y comparando texto real,
+  //     página por página, de los 48 PDFs de esta ronda.
+  // Regla final, sin ningún mecanismo interno de paginación, calibrada
+  // contra los DOS documentos reales anteriores (no sólo uno):
+  //  - en PANTALLA (540pt), una tarjeta larga con tabla mensual + 2+
+  //    grupos de palancas + supuestos SIEMPRE excede una página completa
+  //    por sí sola — confirmado en los 6 escenarios demostrativos: cada
+  //    escenario largo continúa, sin excepción.
+  //  - en IMPRESIÓN (A4, 841pt), el comportamiento es EN CASCADA: la
+  //    primera tarjeta larga entra sola en una página propia SALVO que
+  //    algo más (la grilla de tarjetas cortas) ya haya ocupado espacio
+  //    antes de que empezara; pero cada tarjeta larga siguiente hereda el
+  //    problema igual — la anterior deja tan poco margen al final de su
+  //    página que la siguiente ya no entra completa, sin importar si la
+  //    primera entró o no. Por eso el marcador es necesario salvo en el
+  //    único caso verificado como seguro: la primera tarjeta larga,
+  //    cuando no hay ninguna tarjeta corta antes.
+  const marcaContinuacion =
+    full &&
+    item.mensual.length > 0 &&
+    item.supuestos.length > 0 &&
+    (profile === "pantalla" || hayCortasPrecedentes || !esPrimeraLarga);
   return (
     <View style={[...cardStyle, full ? styles.cardFull : {}]} wrap={full}>
       <View style={styles.scenarioHeader} wrap={false}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <IconCircle kind={item.id} styles={styles} />
-          <Text style={styles.itemTitle}>{LABELS_ESCENARIO[item.id].toUpperCase()}</Text>
+          <Text style={styles.itemTitle}>{nombreEscenario.toUpperCase()}</Text>
         </View>
         <Text style={styles.badge}>{item.confianza.toUpperCase()}</Text>
       </View>
@@ -858,15 +927,9 @@ function ScenarioCard({
       </Text>
       {item.mensual.length > 0 ? (
         <View style={styles.monthlyTable}>
-          {/* D-2, ronda 2.2: la identidad se repite UNA sola vez, sólo en
-              tarjetas de ancho completo (`full`, las únicas con contenido
-              largo que podría partirse entre páginas) — antes se repetía
-              de forma incondicional antes de cada subsección (tabla,
-              palancas, supuestos), incluso en tarjetas que entraban
-              enteras en una página.
-              D-4: la nota de referencia va JUNTO al encabezado/kicker
-              (mismo `wrap={false}`, bloque chico) — no en toda la tabla:
-              un primer intento marcó la tabla ENTERA `wrap={false}` para
+          {/* D-4: la nota de referencia va JUNTO al encabezado (mismo
+              `wrap={false}`, bloque chico) — no en toda la tabla: un
+              primer intento marcó la tabla ENTERA `wrap={false}` para
               garantizar que la nota y las dagas nunca quedaran en páginas
               distintas, pero eso obligaba a mover la tabla completa a la
               página siguiente en vez de partir filas, disparando un
@@ -874,9 +937,13 @@ function ScenarioCard({
               revertido: hasta +4 páginas por documento). Con la nota en el
               encabezado, la primera página de la tabla siempre la lleva;
               las filas individuales (cada una ya `wrap={false}`) se
-              siguen partiendo entre páginas como antes de esta ronda. */}
+              siguen partiendo entre páginas como antes de esta ronda.
+              Corrección 1/2, ronda 2.2.1: acá NO va marcador de identidad
+              — la evidencia muestra que el quiebre real nunca ocurre en
+              este punto (el header, justo arriba, siempre entra en la
+              misma página que la tabla); ponerlo acá sería exactamente
+              D-2 (repetición en una tarjeta que no continúa). */}
           <View wrap={false}>
-            {full ? <Kicker /> : null}
             {item.supuestos.length > 0 ? (
               <Text style={[styles.estadoDetalle, dark ? styles.estadoDetalleDark : {}]}>
                 † remite a Supuestos, en este mismo escenario.
@@ -899,11 +966,6 @@ function ScenarioCard({
               ))}
             </>
           )}
-        </View>
-      ) : null}
-      {full && item.palancas.length > 0 && item.mensual.length === 0 ? (
-        <View wrap={false}>
-          <Kicker />
         </View>
       ) : null}
       {grupos.map((tipo) => {
@@ -929,6 +991,16 @@ function ScenarioCard({
       })}
       {item.supuestos.length > 0 ? (
         <View style={styles.palancaGroup} wrap={false}>
+          {/* Corrección 1, ronda 2.2.1: éste era el punto de quiebre real
+              (evidencia: "la página abre directamente con 'Supuestos...'
+              sin ninguna identidad de escenario") — no tenía ningún
+              marcador. `marcaContinuacion` es la regla estática de arriba:
+              sólo pantalla, sólo tarjetas largas con tabla mensual. */}
+          {marcaContinuacion ? (
+            <Text style={[styles.scenarioKicker, dark ? styles.scenarioKickerDark : {}]}>
+              {nombreEscenario} (continuación)
+            </Text>
+          ) : null}
           <Text style={styles.palancaGroupTitle}>{TITULO_SUPUESTOS_CON_DAGA}</Text>
           <BulletList items={item.supuestos.map((s) => s.valor)} styles={styles} />
         </View>
@@ -1142,12 +1214,14 @@ function renderBlock(
                     styles={styles}
                     full={false}
                     profile={profile}
+                    hayCortasPrecedentes={cortas.length > 0}
+                    esPrimeraLarga={false}
                   />
                 );
               }}
             />
           ) : null}
-          {largas.map((item) => (
+          {largas.map((item, index) => (
             <ScenarioCard
               key={item.id}
               item={item}
@@ -1157,6 +1231,8 @@ function renderBlock(
               styles={styles}
               full
               profile={profile}
+              hayCortasPrecedentes={cortas.length > 0}
+              esPrimeraLarga={index === 0}
             />
           ))}
         </View>
@@ -1420,8 +1496,30 @@ function TransitionPage({
   }
   return (
     <Page size={PROFILES_V2[profile].pageSize} style={styles.transitionPage}>
+      {/* Corrección 3, ronda 2.2.1: D-5 viñeta 7 ("transiciones y cierres
+          con intención visual, evitando bloques planos sin función")
+          quedó sin atender en pantalla — el fondo violeta a sangre se
+          conserva (C3 no aplica acá), pero ya no es un rectángulo liso con
+          una sola línea de texto. */}
+      <View style={styles.transitionAccentBounded}>
+        <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {[10, 30, 50, 70, 90].map((offset) => (
+            <Line
+              key={offset}
+              x1={offset - 20}
+              y1={0}
+              x2={offset + 20}
+              y2={100}
+              stroke={theme.colors.surface}
+              strokeWidth={0.6}
+              strokeOpacity={0.16}
+            />
+          ))}
+        </Svg>
+      </View>
       <Text style={styles.transitionMark}>VELOCENTUM / {section.eyebrow ?? "SIGUIENTE"}</Text>
       <Text style={styles.transitionTitle}>{block?.label ?? section.title ?? "Próximo paso"}</Text>
+      <HeadingRule styles={styles} light />
       <Footer dark styles={styles} />
     </Page>
   );
@@ -1495,7 +1593,9 @@ function ContentPage({
             de la ronda 2.1 y el motivo no se repite en cada sección. */}
         {section.title ? <Text style={styles.title}>{section.title}</Text> : null}
       </View>
-      <View style={styles.content}>{section.blocks.map((block) => renderBlock(block, dark, styles, profile))}</View>
+      <View style={styles.content}>
+        {section.blocks.map((block) => renderBlock(block, dark, styles, profile))}
+      </View>
       <Footer dark={dark} styles={styles} />
     </Page>
   );

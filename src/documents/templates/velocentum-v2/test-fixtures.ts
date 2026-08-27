@@ -233,6 +233,42 @@ export function buildMulticanalContext(): DocumentContextV1 {
   };
 }
 
+/**
+ * Ronda 2.2.1, Corrección 1/R1: variante de `buildMulticanalContext` donde
+ * los TRES escenarios (no sólo "conservador") tienen tabla mensual +
+ * palancas + supuestos completos — mismo patrón de contenido "en cascada"
+ * verificado en `1-marketplace-fuerte-tienda-floja` (fuera de `src/lib/`,
+ * por eso se reconstruye acá): cuando ninguna tarjeta es corta, cada
+ * tarjeta larga hereda el problema de espacio de la anterior, no sólo la
+ * primera. Valores puramente sintéticos, sin relación con ningún cliente.
+ */
+export function buildTresEscenariosLargosContext(): DocumentContextV1 {
+  const base = buildMulticanalContext();
+  const conservador = base.escenarios90d.find((e) => e.id === "conservador")!;
+  const clonarComo = (id: "base" | "potencial") => ({
+    ...conservador,
+    id,
+    facturacionIncremental: {
+      ...conservador.facturacionIncremental,
+      palancas: conservador.facturacionIncremental.palancas.map((p) => ({ ...p, id: `${p.id}_${id}` })),
+    },
+    contribucionIncremental: {
+      ...conservador.contribucionIncremental,
+      palancas: conservador.contribucionIncremental.palancas.map((p) => ({ ...p, id: `${p.id}_${id}` })),
+    },
+    ahorroPublicitario: {
+      ...conservador.ahorroPublicitario,
+      palancas: conservador.ahorroPublicitario.palancas.map((p) => ({ ...p, id: `${p.id}_${id}` })),
+    },
+    mensual: conservador.mensual,
+    supuestos: conservador.supuestos.map((s) => ({ ...s, id: `${s.id}_${id}`, etiqueta: `${s.etiqueta} (${id})` })),
+  });
+  return {
+    ...base,
+    escenarios90d: [conservador, clonarComo("base"), clonarComo("potencial")],
+  };
+}
+
 /** Análogo de `4-roas-bueno-margen-negativo` (s4): margen negativo, sin datos de funnel. */
 export function buildMargenNegativoContext(): DocumentContextV1 {
   return {
