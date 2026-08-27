@@ -397,3 +397,123 @@ pida).
 
 Pruebas: `src/documents/build-document.test.ts`, describe "S16 (Bloque 3
 Funcional)".
+
+## 11 · R-03 (2026-08-27): corrección de tres hallazgos visuales reales, con verificación permanente
+
+Ronda de corrección sobre PASO 6, iniciada por revisión externa directa
+de rásters. Los tres hallazgos son reales; el diagnóstico inicial de
+esta sesión sobre H2 y H3 fue parcialmente incorrecto y se corrigió con
+evidencia antes de tocar código (ver detalle en cada uno).
+
+**H1 — título invisible en secciones `tone: "dark"` (severidad máxima:
+en el caso DHB-2 es el titular de la alerta de margen negativo).**
+Preexistente al Bloque 3 (idéntico en HEAD `7caa9bbb`, verificado por
+`git show`). Causa: `styles.title` (`pdf-v2/document.tsx`) fija
+`color: theme.colors.ink` sin variante `*Dark`, a diferencia de
+`eyebrow`/`eyebrowDark` justo arriba. Alcance real, acotado por lectura
+de código: sólo las secciones `tone: "dark"` que pasan por `ContentPage`
+con `title` no nulo — únicamente "commercial-summary"
+(`propuesta.ts`/`proyeccion-90d.ts`), sólo en perfil pantalla
+(`impresionSoftened` ya aplana a claro en impresión). Cover/transición/
+next-step usan rutas de render propias, con color ya resuelto
+correctamente, no afectadas. Fix: `titleDark: { color: theme.colors.surface }`,
+aplicado igual que `eyebrowDark` (`dark ? styles.titleDark : {}`).
+Verificado por contraste REAL (no sólo el par de tokens del tema): el
+test extrae el color de relleno efectivo del stream del PDF vía
+`getOperatorList()` en el carácter donde arranca el título, y confirma
+que ratio WCAG ≥ 3:1 contra el fondo real de la sección. El cuerpo de la
+alerta ("Alerta: Margen de contribución negativo...") no duplica el
+titular ("Margen negativo: foco en la causa raíz") — mismo hallazgo, no
+el mismo texto.
+
+*Vacío de layout (H1.5), reportado, NO implementado — pendiente de
+aprobación explícita*: la página de "commercial-summary" en modo
+cualitativo (sólo alerta + eyebrow, sin cifra ni supuestos) ocupa ~15%
+del área de una página 16:9/A4 completa, en AMBOS perfiles (confirmado
+visualmente en pantalla e impresión). El contenido se distribuye desde
+arriba (`header` fijo + `content` en flujo normal, sin `justifyContent`
+ni `alignItems` centrados) porque `ContentPage` nunca tuvo un modo
+"contenido corto" — el resto de bloques que comparten esta sección
+(cifra + rango + supuestos) normalmente llenan el espacio, así que el
+vacío nunca se manifestó antes de DHB-2. Propuesta (no implementada):
+tratamiento de layout propio para la alerta cualitativa — centrado
+vertical del bloque dentro del área de contenido (`justifyContent:
+"center"` en el contenedor de la sección cuando el único bloque
+presente es `bridge-note` en modo alerta) y/o una tarjeta con borde/
+fondo propio (mismo lenguaje visual que `cardAlerta`, ya usado para el
+hallazgo de margen negativo en `findings`) en vez de texto plano — para
+darle jerarquía visual propia a la única pieza que un cliente con
+margen negativo va a leer en esa página.
+
+**H2 — página sin contenido real / desborde de footer.** El diagnóstico
+inicial de esta sesión fue incorrecto en dos puntos: (a) atribuyó la
+causa a los chips de DA-1 — descartado por prueba directa (quitar los
+chips del mismo caso no cambia el conteo de páginas, 6/6 con y sin
+chips); (b) afirmó que impresión "corta correctamente" — falso, el
+mismo mecanismo roto produce dos síntomas distintos por perfil (ver
+abajo). Causa raíz real, aislada por prueba directa contra HEAD
+`7caa9bbb`: el caso 1 (multicanal) pasaba de 6/5 páginas
+(pantalla/impresión) a 6/6 sólo cuando el bloque `strengths` (DA-4,
+nuevo de este bloque) está presente — confirmado quitando sólo ese
+bloque del modelo, sin tocar nada más. El `CardGrid` compartido (usado
+por metric-grid, services, findings Y strengths) envolvía cada fila en
+un `<View style={styles.cardRow}>` SIN `wrap={false}` — cada tarjeta
+individual sí lo tenía, pero no el contenedor de fila, que es lo que
+Yoga mide para decidir el corte de página. Con una fila cerca del borde
+de página, dos síntomas de la misma causa según perfil: pantalla no
+cortaba y el footer quedaba superpuesto sobre la fila; impresión sí
+cortaba a una página nueva, pero la fila desbordada no se
+re-renderizaba ahí, dejando una página con sólo el header fijo (~95
+caracteres de texto). Fix: `wrap={false}` en el contenedor de fila de
+`CardGrid` — un solo lugar, compartido por los cuatro tipos de grilla,
+no un ajuste del caso 1. Verificado por prueba directa (revertir el fix
+reproduce exactamente la página vacía real, mismo texto) y por barrido
+automático sobre las 329 páginas reales (umbral de 115 caracteres,
+calibrado contra la página vacía real de ~95-100 y el contenido corto
+real más bajo observado, ~130-145) — 0 páginas por debajo del umbral
+tras el fix. Invariante adicional verificado: para diagnóstico,
+impresión nunca tiene más páginas que pantalla, en los 8 casos.
+
+**H3 — glifo roto en el eyebrow del diagnóstico.** La hipótesis externa
+(colisión de byte) se confirmó de forma precisa: el codepoint real es
+`◆` (U+25C6, diagnóstico — NO `→`, ese es `proyeccion_90d`), y la capa
+de texto REAL del PDF (no un artefacto de rasterización) contiene `Æ`
+(U+00C6) en su lugar — confirmado extrayendo el texto vía `pdfjs`
+directamente del PDF generado, sin pasar por `pdftoppm`. Barrido
+adicional: TODA la familia "diamante" (`◆` U+25C6, `◇` U+25C7, `♦`
+U+2666, `⬥` U+2B25) se verificó rota a través de Satoshi Bold vía
+`@react-pdf/renderer` — cada codepoint produce basura DISTINTA (Æ, Ç, f,
+%), consistente con un glifo ausente de la fuente resuelto a un slot
+equivocado durante el subsetting, no con una colisión de un único byte
+fijo. `■`, `○`, `▲`/`▽` (estos dos últimos ya en uso en `etiquetas.ts`
+para prioridad) se verificaron correctos por el mismo mecanismo. Fix:
+sustitución sistemática — `◆` → `■` en la única constante
+`PERSONALIDAD_POR_DOCUMENTO` (`semantica-v2/direccion-arte.ts`), usada
+por ambos renderers (PDF y web), sin parches puntuales. Verificado por
+barrido automático de mojibake sobre las 329 páginas reales (todo
+carácter no-ASCII fuera de la prosa española y de los 9 símbolos
+esperados del propio código está prohibido) y por una regresión directa
+que busca literalmente `Æ`.
+
+**Cobertura automática resultante (COBERTURA del prompt R-03):** los
+tres hallazgos, más el barrido general de mojibake y de páginas sin
+contenido, corren sobre los 48 documentos/329 páginas reales en cada
+corrida de suite (`generar-pdfs-bloque-3.test.ts`, incorporado al repo
+— ver decisión de árbol abajo), no sólo sobre una muestra. Lo que
+NO queda cubierto automáticamente: (a) ocupación/tinta por página (R-01/
+el "25% de tinta" de la sección 12.3 del prompt) — sigue siendo
+verificación visual manual; (b) el vacío de layout de H1.5 (es un juicio
+de diseño, no un defecto binario) — reportado, no chequeado por
+umbral; (c) inspección visual de las 274 páginas no muestreadas
+individualmente durante esta ronda (S13/paridad y las otras verificaciones
+programáticas sí las cubren indirectamente).
+
+**Árbol — generador de PDFs incorporado al repo.** `generar-pdfs-bloque-3.test.ts`
+pasa a ser parte permanente de la suite (no un script descartable),
+mismo criterio que el generador hermano de v1
+(`generar-pdfs-escenarios-demo.test.ts`): las verificaciones H1/H2/H3
+necesitan generar los 48 documentos reales para correr, y dejarlas fuera
+del repo las volvería no-reproducibles. Se agregó a la lista de archivos
+permitidos a importar `fixtures-escenarios-demo.ts`
+(`src/lib/fixtures-escenarios-demo.test.ts`), mismo mecanismo ya
+existente para su análogo de v1.

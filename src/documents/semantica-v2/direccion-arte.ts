@@ -64,9 +64,22 @@ export const ICONOGRAFIA_SUPERFICIES = [
  * Personalidad por documento (contrato 6.5): un glifo/tono distinto por
  * `DocumentKindV2`, aplicado únicamente al eyebrow — nunca cambia la
  * paleta base ni introduce contenido nuevo.
+ *
+ * H3 (R-03, Bloque 3 Funcional, 2026-08-27): `diagnostico` usaba "◆"
+ * (U+25C6) — se reemplaza por "■" (U+25A0). Todo glifo de la familia
+ * "diamante" (◆ U+25C6, ◇ U+25C7, ♦ U+2666, ⬥ U+2B25) se verificó roto a
+ * través de Satoshi Bold vía @react-pdf/renderer: la capa de texto real
+ * del PDF contiene un carácter distinto y arbitrario por cada uno (Æ, Ç,
+ * f, % respectivamente — no es el mismo glifo mal decodificado, es
+ * basura distinta por codepoint, consistente con un glifo ausente de la
+ * fuente resuelto a un slot equivocado durante el subsetting). "■", "○"
+ * y "▲"/"▽" (ya usados en `etiquetas.ts` para prioridad) se verificaron
+ * correctos por el mismo mecanismo. Sustitución sistemática vía esta
+ * única constante — la usan ambos renderers (PDF y web), sin parches
+ * puntuales. Ver `docs/funcional/contrato-bloque-3.md` sección 10 (R-03).
  */
 export const PERSONALIDAD_POR_DOCUMENTO: Record<DocumentKindV2, { glifo: string; tono: string }> = {
-  diagnostico: { glifo: "◆", tono: "neutral — lectura de estado actual" },
+  diagnostico: { glifo: "■", tono: "neutral — lectura de estado actual" },
   proyeccion_90d: { glifo: "→", tono: "dinámico — proyección hacia adelante" },
   propuesta: { glifo: "●", tono: "comercial — llamado a decisión" },
 };

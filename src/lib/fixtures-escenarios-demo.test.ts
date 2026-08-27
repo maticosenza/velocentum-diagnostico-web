@@ -32,6 +32,12 @@ const ARCHIVOS_PERMITIDOS = new Set([
   // prioridad, nunca "el margen da exactamente X"), no valores de cálculo
   // — mismo espíritu que el resto de este archivo, no una excepción a él.
   "correccion-incoherencias-escenarios.test.ts",
+  // Generador de los 48 PDFs de revisión visual v2 del Bloque 3 Funcional
+  // (2026-08-27) — mismo espíritu que el generador hermano de v1 de arriba:
+  // decisión consciente y declarada, no acoplamiento silencioso. Incorporado
+  // al repo (no descartable) porque las verificaciones H1/H2/H3 de la
+  // ronda R-03 necesitan generar los 48 documentos reales para correr.
+  "generar-pdfs-bloque-3.test.ts",
 ]);
 
 function archivosFuente(dir: string, acc: string[] = []): string[] {

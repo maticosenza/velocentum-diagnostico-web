@@ -216,6 +216,15 @@ function makeStylesV2(profile: PdfProfileV2) {
       color: theme.colors.ink,
       maxWidth: 720,
     },
+    // H1 (R-03, Bloque 3 Funcional, 2026-08-27): faltaba, a diferencia de
+    // `eyebrowDark` justo arriba — `title` quedaba en `theme.colors.ink`
+    // (oscuro) sobre `pageDark` (fondo oscuro), invisible. Preexistente al
+    // Bloque 3 (idéntico en el HEAD 7caa9bbb), afectaba únicamente la
+    // sección "commercial-summary" (única sección con `tone: "dark"` que
+    // pasa por `ContentPage` con `title` no nulo) en perfil pantalla —
+    // `impresionSoftened` ya neutralizaba el bug en impresión. Ver
+    // `docs/funcional/contrato-bloque-3.md` sección 10 (R-03).
+    titleDark: { color: theme.colors.surface },
     footer: {
       position: "absolute",
       left: p.pagePaddingH,
@@ -767,7 +776,29 @@ function CardGrid({
         const inicio = cursor;
         cursor += cantidad;
         return (
-          <View key={filaIndex} style={styles.cardRow}>
+          // H2 (R-03, Bloque 3 Funcional, 2026-08-27): sin `wrap={false}`
+          // acá, una fila cerca del borde de página podía desbordar de dos
+          // formas simultáneas y aparentemente contradictorias, según
+          // perfil — pantalla: Yoga subestimaba la altura real de la fila
+          // y no cortaba página, el footer terminaba superpuesto sobre la
+          // fila; impresión: SÍ cortaba a una página nueva, pero la fila
+          // desbordada no se re-renderizaba ahí, dejando una página con
+          // sólo el header fijo. Reproducido de forma aislada agregando
+          // (y quitando) el bloque `strengths` nuevo de DA-4 al caso real
+          // "1-marketplace-fuerte-tienda-floja" — confirmado contra el
+          // HEAD anterior a este bloque (7caa9bbb) que el patrón correcto
+          // ya existía ahí (impresión = pantalla − 1) y que este bloque lo
+          // rompió al agregar una fila más al final de la sección. Cada
+          // tarjeta individual ya tenía su propio `wrap={false}`
+          // (`cardStyle`/`standaloneCardStyle` en cada `case` de
+          // `renderBlock`) — faltaba en el contenedor de fila, que es lo
+          // que Yoga mide para decidir el corte de página. Mismo mecanismo
+          // que ya se usa para escenarios/marcadores en este archivo
+          // (grupo + su contenido con un solo `wrap={false}`), aplicado acá
+          // al único lugar compartido por TODOS los `CardGrid` (metric-grid,
+          // services, findings, strengths) — no es un ajuste puntual del
+          // caso 1. Ver `docs/funcional/contrato-bloque-3.md` sección 10.
+          <View key={filaIndex} style={styles.cardRow} wrap={false}>
             {fila.map((item, i) => render(item, inicio + i))}
           </View>
         );
@@ -1674,7 +1705,9 @@ function ContentPage({
             comparando el conteo de páginas antes/después: hasta +4 páginas
             por documento). Revertido: `pagePaddingTop` vuelve a su valor
             de la ronda 2.1 y el motivo no se repite en cada sección. */}
-        {section.title ? <Text style={styles.title}>{section.title}</Text> : null}
+        {section.title ? (
+          <Text style={[styles.title, dark ? styles.titleDark : {}]}>{section.title}</Text>
+        ) : null}
       </View>
       <View style={styles.content}>
         {section.blocks.map((block) => renderBlock(block, dark, styles, profile, mapaPaginacion))}
