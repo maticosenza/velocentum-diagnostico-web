@@ -427,7 +427,10 @@ titular ("Margen negativo: foco en la causa raíz") — mismo hallazgo, no
 el mismo texto.
 
 *Vacío de layout (H1.5), reportado, NO implementado — pendiente de
-aprobación explícita*: la página de "commercial-summary" en modo
+aprobación explícita. **Superseded por la sección 12, punto 6** (la
+propuesta de abajo quedó rechazada por forma insuficiente; la versión
+vigente trae wireframe, tokens reutilizados y el caso L13)*: la página
+de "commercial-summary" en modo
 cualitativo (sólo alerta + eyebrow, sin cifra ni supuestos) ocupa ~15%
 del área de una página 16:9/A4 completa, en AMBOS perfiles (confirmado
 visualmente en pantalla e impresión). El contenido se distribuye desde
@@ -517,3 +520,309 @@ del repo las volvería no-reproducibles. Se agregó a la lista de archivos
 permitidos a importar `fixtures-escenarios-demo.ts`
 (`src/lib/fixtures-escenarios-demo.test.ts`), mismo mecanismo ya
 existente para su análogo de v1.
+
+## 12 · AJUSTES A R-03 (2026-08-27): checks unilaterales, footer en pantalla, muestra visual, reconciliación de páginas, H1.5 reformulado
+
+Segunda ronda de ajustes sobre R-03, antes de cerrarla. Seis puntos.
+
+**1 · Prueba huérfana del worktree.** Resuelta: `generar-pdfs-bloque-3.test.ts`
+se commiteó al candidato (ya estaba en `75a2643`, no se dejó viviendo
+sólo en el worktree). Verificado recreando `/tmp/wt-r03` desde cero
+(`git worktree add` + `npm install` limpio): typecheck limpio, suite
+762+1 todo (idéntico al árbol principal tras las correcciones de este
+punto 2), y generación real de los 48 PDFs con H1/H2/H3 en verde desde
+ese worktree aislado.
+
+**2 · Checks unilaterales — clasificación y corrección.** Regla
+aplicada: todo check derivado de una decisión cerrada debe verificar
+presencia, no sólo ausencia. De los 4 mínimos exigidos, 2 tenían el
+defecto:
+- **DHB-2** (`dhb-2-margen-negativo.test.ts`): el único chequeo de PDF
+  real (`textoCompleto`, vía `getTextContent()`) sólo verificaba
+  ausencia de la cifra prohibida — nunca la presencia VISIBLE del
+  titular de la alerta, y `getTextContent()` no ve color (mismo punto
+  ciego que dejó pasar H1). Se agregó un test que ubica el titular vía
+  `getOperatorList()` (mismo mecanismo que H1 en el generador) y exige
+  contraste real ≥ 3:1. Falsabilidad verificada: revertir `titleDark`
+  hace fallar este nuevo test con el mismo síntoma exacto de H1.
+- **DHB-1** (`bloque-3-contrato.test.ts`, S5): el sub-caso de MER
+  tienda propia ya verificaba presencia (`c.evidencia["inversion_meta"]`
+  = `declarado, valor:0`); los sub-casos de MER marketplace y ROAS
+  Product Ads sólo verificaban `no_aplica`. Se agregó la misma
+  aserción de presencia (`c.evidencia["inversion_product_ads"]`) a
+  ambos.
+- **DHB-3** (`roadmap-dhb-3.test.ts`) y **D1** (`exportacion.test.ts`)
+  ya estaban balanceados — no se tocaron. DHB-3 ya exige coincidencia
+  exacta de `acciones` por etapa y trazabilidad contra un set de
+  fuentes válidas reales; D1 ya verifica el mensaje exacto del throw
+  (`toThrowError(MENSAJE_EXPORTACION_BLOQUEADA_V2)`), no sólo que no
+  haya exportado.
+
+Suite tras los dos fixes: 762 passed + 1 todo (subió de 761 por el
+nuevo test de DHB-2), typecheck limpio.
+
+**3 · Muestreo visual determinístico (~20-30 páginas).** Criterio: una
+página por cada tipo de sección implementado en los tres documentos
+v2 (grep de `id:` en `diagnostico.ts`/`proyeccion-90d.ts`/
+`propuesta.ts`/`shared.ts`), por perfil — 15 filas × 2 perfiles = 30
+páginas, caso 1 (marketplace fuerte/tienda floja) como representante
+por defecto, con dos excepciones deliberadas: el caso 4 (margen
+negativo) para el titular cualitativo de DHB-2 (la página exacta de
+H1), y una página renderizada aparte, con datos reales de
+`fixtures-casos.ts` (no un caso demo) pasados por el pipeline real
+(`calcularDiagnostico` → `buildDocumentContext` → `buildPropuestaDocumentV2`),
+para "restrictions-grouped" y "roadmap" — **hallazgo real**: ninguno de
+los 8 casos QA (los 6 demostrativos + mayorista + mixto) tiene
+`comercial` confirmado (`comercialDesdeEscalera` devuelve `null` sin
+`paquetesConfirmados`), así que esas dos secciones nunca se renderizan
+en los 48 documentos reales — cobertura visual cero de dos piezas
+nuevas de Bloque 3 hasta este punto. Inspección de las 30 páginas: 0
+defectos nuevos (sin texto invisible/bajo contraste, sin contenido
+cortado/superpuesto/tapado por el pie, sin mojibake, sin placeholders/
+NaN/undefined, sin grilla rota). Confirmación visual directa (no sólo
+automática) de que H1 sigue resuelto en su página original. Dos
+observaciones NO nuevas, ya conocidas como trade-off aceptado: la
+página de continuación de `strengths` en impresión (página completa
+para una sola tarjeta) y la página de "Qué vamos a trabajar" quedan
+muy vacías — mismo patrón que motiva el punto 6. Hallazgo menor de
+copy (no de render): "Origen: configuracion" en Metodología, en los
+dos casos con ese bloque (mayorista/mixto), sin tilde — no corregido
+en esta ronda por no estar entre los 6 puntos pedidos, queda anotado.
+
+**4 · H2 en ambos perfiles + pérdida de contenido en pantalla.** Se
+agregó `H2b` (`generar-pdfs-bloque-3.test.ts`), específico de
+pantalla: detecta cualquier texto (que no sea el propio pie —
+"Velocentum" o el contador de página) con baseline dentro de la franja
+del pie (`y < 34`, usando los tokens reales de `styles.footer`:
+`bottom: 18` + `fontSize` 8). Falsabilidad verificada revirtiendo
+`cardRow` `wrap={false}`: el check de impresión existente falló con su
+firma conocida (página con sólo header) y **el nuevo check de pantalla
+también falló, con contenido real**:
+```
+p2: y=20.0 "Informado por el cliente; pendiente de validación"
+p2: y=10.9 "documental"
+```
+Es la copia literal del estado D4 "declarado" (Eje 1). **Confirmado:
+es pérdida de contenido real, no cosmética.** En `ContentPage`
+(`document.tsx`), `<Footer>` se pinta después de
+`<View style={styles.content}>` en el JSX — con `position: "absolute"`,
+eso lo deja pintado ENCIMA en el orden de composición. Contenido que
+desborda hasta esa franja queda visualmente oculto detrás del pie,
+aunque sigue presente en el stream de texto (por eso el chequeo de
+longitud mínima no lo atrapaba: el texto está, sólo invisible al
+lector). Con el fix restaurado, las 10 pruebas del archivo pasan
+limpio.
+
+**5 · 329 vs 325 páginas, explicadas documento por documento.**
+Aclaración de la comparación: 325 es el total real de v2 (no de v1)
+de la ronda anterior (Bloque Visual 2.2.3, handoff
+`docs/visual/handoff-ronda-2.2.3.md` sección 9 — "167 pantalla + 158
+impresión"), sobre los mismos 8 casos/48 documentos, HEAD `7caa9bbb`
+(el commit inmediatamente anterior al candidato de Bloque 3). Se
+reconstruyó ese total generando los 48 documentos desde un worktree
+limpio en `7caa9bbb` (sin generador commiteado en ese HEAD, por eso no
+había quedado un artefacto reproducible) — **167 pantalla + 158
+impresión = 325, exacto**, confirmando que la comparación es
+apples-to-apples (mismo motor v2, mismos 8 casos). El candidato actual
+mide 170 pantalla + 159 impresión = 329. Los 4 páginas de diferencia,
+documento por documento:
+
+| Delta | Documento(s) | Causa |
+|---|---|---|
+| +1 (impresión) | 1-marketplace, diagnóstico | DA-4 (`strengths`/fortalezas): bloque nuevo, condicional (`context.fortalezas.length > 0`) |
+| +1 (pantalla) | 2-margen-alto, diagnóstico | DA-4, misma causa |
+| +1 (pantalla) | 4-roas-margen-negativo, diagnóstico | DA-4, misma causa |
+| +1 (pantalla) | 5-todo-sano, diagnóstico | DA-4, misma causa |
+| +1 (pantalla) | 6-solo-orgánico, diagnóstico | DA-4, misma causa |
+| −1 (pantalla) | 6-solo-orgánico, proyección 90d | Fix de `cardRow wrap={false}` (H2): el bloque `scenarios` usa el mismo `CardGrid` que `strengths`; con la fila tratada como unidad atómica, Yoga empaqueta este caso en una página menos que antes del fix — no hay pérdida de contenido (mismas 10 tests de H2/H2b en verde para este documento) |
+
+Suma: +1+1+1+1+1−1 = **+4**, exacto. Los 3 casos sin ningún delta en
+diagnóstico (3-margen-fino, mayorista, mixto) no tienen fortalezas
+calculadas para ese caso (`context.fortalezas.length === 0`) o ya
+estaban en el mismo número de páginas por otra razón preexistente a
+Bloque 3. **Ningún delta quedó sin explicar por una sección nueva
+genuina (DA-4) o por el fix de H2 — no hay síntoma adicional de H2
+escondido en la diferencia.** Nota aparte: el roadmap 30/60/90 y la
+propuesta cualitativa de DHB-2/DHB-3 NO explican ningún página nueva
+porque, per el punto 3, nunca se renderizan en los 8 casos reales
+(comercial siempre `null`) — su costo de página real es desconocido
+hasta que exista un caso QA con selección confirmada.
+
+**6 · H1.5 — propuesta reformulada (sigue sin implementar, requiere
+aprobación explícita).** Reemplaza la propuesta informal de la sección
+11. Página objetivo: "commercial-summary" en modo cualitativo
+(DHB-2), la vista de las capturas del punto 3 arriba.
+
+*Wireframe, perfil pantalla (960×540pt):*
+```
+┌──────────────────────────────────────────────┐
+│ → POR QUÉ NO PROYECTAMOS         (eyebrow,    │
+│                                    ya existe)  │
+│ Margen negativo: foco en la causa raíz (título,│
+│                                    ya existe)  │
+│                                                │
+│  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  │
+│  ┃ (cardAlerta, mismo lenguaje visual que  ┃  │
+│  ┃  "Selección comercial pendiente" y      ┃  │
+│  ┃  "Qué falta validar" — borde            ┃  │
+│  ┃  theme.colors.risk, ya usado 2 veces)   ┃  │
+│  ┃                                          ┃  │
+│  ┃  Alerta: Margen de contribución         ┃  │
+│  ┃  negativo. No proyectamos contribución, ┃  │
+│  ┃  ahorro ni retorno: el margen de        ┃  │
+│  ┃  contribución actual es negativo, así   ┃  │
+│  ┃  que cualquier cifra de rentabilidad    ┃  │
+│  ┃  futura no tendría respaldo real. Esta  ┃  │
+│  ┃  propuesta se enfoca en resolver esa    ┃  │
+│  ┃  causa raíz antes de proyectar ningún   ┃  │
+│  ┃  resultado económico.       (texto YA   ┃  │
+│  ┃                               existente) ┃  │
+│  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  │
+│         (bloque centrado verticalmente         │
+│          en el área de contenido)              │
+│                                                │
+│ Velocentum                              2 / 5  │
+└──────────────────────────────────────────────┘
+```
+*Perfil impresión (A4)*: mismo esquema — eyebrow + título ya en su
+posición actual (no cambian), tarjeta `cardAlerta` centrada
+verticalmente en el área de contenido, mismo texto. La única
+diferencia es que en impresión la sección ya usa `impresionSoftened`
+(fondo claro, texto oscuro) — la tarjeta usa el `cardAlerta` claro tal
+cual existe hoy (borde rojo/fondo `#FBEAEA`), sin variante nueva.
+
+*Cómo resuelve el ~85% vacío sin inventar contenido*: no agrega
+ninguna palabra nueva — el eyebrow, el título y el cuerpo de la alerta
+son exactamente el mismo string que hoy. Los dos cambios son de
+layout puro: (a) envolver el texto ya existente en una tarjeta
+`cardAlerta` (ya aprobada, ya usada dos veces en este mismo documento)
+en vez de texto plano contra el fondo de la sección, lo que le da peso
+visual propio; (b) centrar verticalmente ese bloque dentro del área de
+contenido (`justifyContent: "center"` en el contenedor de la sección,
+sólo cuando el único bloque presente es la alerta cualitativa) en vez
+de anclarlo arriba. Ninguno de los dos requiere una cifra, un ícono
+nuevo ni una frase adicional.
+
+*Tokens de dirección de arte reutilizados*: `cardAlerta` (`document.tsx`,
+ya existente, sin modificar) para el borde/fondo de la tarjeta;
+ninguno de los tokens de `semantica-v2/direccion-arte.ts` (textura,
+degradado, profundidad, glifo de personalidad) cambia — la propuesta
+NO extiende `ICONOGRAFIA_SUPERFICIES` ni agrega textura de fondo a esta
+superficie, precisamente para no introducir una decisión de diseño
+nueva fuera de las ya aprobadas en D-5.
+
+*Caso L13 (margen negativo Y selección comercial confirmada
+simultáneamente)*: sin cambio de comportamiento. La condición
+`esCualitativa` (`propuesta.ts`) depende únicamente del margen —
+`buildAlertaMargenNegativoV2` no lee `context.comercial` en ningún
+punto. La pieza de selección comercial (`commercial-offer`, pieza 7)
+es una sección aparte, ya independiente de `esCualitativa` hoy mismo:
+con selección confirmada, esa sección aparte muestra el paquete
+confirmado en vez de "Selección comercial pendiente", pero la página
+de la alerta (esta propuesta) es idéntica en ambos casos — el mensaje
+no depende de si hay selección o no. La propuesta no necesita ninguna
+condición especial para L13 porque no toca esa dependencia existente.
+
+Sigue siendo propuesta — no implementada, pendiente de aprobación
+explícita antes de cualquier cambio de código.
+
+## 13 · CIERRE de R-03 (2026-08-27): H1.5 implementado, noveno caso QA, L13, typo
+
+R-03 queda cerrada por decisión del usuario. Cuatro puntos ejecutados
+sobre lo anterior, autorizados explícitamente:
+
+**H1.5 implementado.** Gate exacto en `ContentPage`
+(`document.tsx`): `esAlertaHero = section.blocks.length === 1 &&
+section.blocks[0]?.type === "bridge-note"` — probado algebraicamente
+equivalente a `esCualitativa` dado el árbol de construcción real de
+`propuesta.ts` (`buildBridgeNoteV2` sólo es no-null si
+`resumenComercial.cifraPrincipal` está calculado, condición que
+también deja `buildCommercialSummaryV2` no-null porque necesita menos
+— sólo que `resumenComercial` exista — así que en la rama NO
+cualitativa `blocks.length` nunca puede ser 1 con ese único bloque
+siendo `bridge-note`; verificado por grep exhaustivo: `bridge-note`
+sólo lo producen `buildAlertaMargenNegativoV2`/`buildBridgeNoteV2`, un
+único call site). El texto de la alerta se envuelve en
+`[styles.standaloneCard, styles.cardAlerta, styles.heroAlertaCard]`
+(deliberadamente SIN `cardDark`: mezclar el texto claro de `cardDark`
+con el fondo claro de `cardAlerta` hubiera repetido el defecto de H1),
+centrado con `styles.contentHeroAlerta` (`flex:1, justifyContent:
+"center"`), texto en `V2_CONTRAST_TOKENS.altaBadgeText` ("#992D2D",
+6,52:1 sobre "#FBEAEA", ya verificado en C4 ronda 2.1) — nunca
+`theme.colors.risk` (3,66:1, insuficiente). Cero contenido nuevo: el
+texto es el literal ya producido por `buildAlertaMargenNegativoV2`.
+
+Check falsable propio (`dhb-2-margen-negativo.test.ts`): dos
+condiciones sobre el PDF real — (a) `hayRellenoConColor` detecta el
+`constructPath` inmediatamente después de fijar el color de relleno
+exacto de `cardAlerta` ("#fbeaea") en el operator list — sin la
+tarjeta, esa página nunca pinta ese color; (b) contraste ≥ 4,5:1 entre
+el color real del texto (vía `colorAlMostrar`, mismo mecanismo que
+H1.4) y el fondo de la tarjeta. Falsabilidad verificada revirtiendo el
+gate (`esAlertaHero = false && ...`): ambos perfiles fallan
+exactamente en "la página no pinta el relleno de cardAlerta", restaurado
+y en verde.
+
+**Noveno caso QA "confirmada".** Ver comentario en cabecera de
+`generar-pdfs-bloque-3.test.ts` y el objeto `ESCALERA_CONFIRMADA_SNAKE_STORE`
+ahí mismo para el detalle completo de datos/origen. Resumen: pipeline
+real (`calcularDiagnostico` + `buildDocumentContext`, sin datos
+inyectados a mano) sobre `casoSnakeStore` (`fixtures-casos.ts`, fixture
+de regresión, no demostrativa), con una escalera de paquetes confirmada
+armada a mano (mismo criterio que `buildMayoristaContext`/
+`buildMixtoContext`) que selecciona "Planificación y creación de
+contenido" (servicio real sugerido por el motor para este caso,
+`hallazgoIds: ["retencion_recuperacion_carrito"]`, media prioridad →
+etapa 60) y "Meta Ads" (servicio del catálogo sin ningún hallazgo real
+asociado en este caso → etapa 90, junto con las dos restricciones
+reales del caso). Etapa 30 queda vacía a propósito: ningún caso de
+`fixtures-casos.ts` tiene un hallazgo "alta" en capa "servicio" —
+llenarla hubiera exigido inventar un hallazgo, prohibido. Verificado
+por artefacto real: `restrictions-grouped` (p7 propuesta, ambos
+perfiles) y `roadmap` (p8, etapas 60 y 90 con acciones/trazabilidad
+literal) aparecen con contenido real por primera vez en los 54
+documentos — antes de este caso, cero cobertura de artefacto para esas
+dos piezas de DHB-3 (sólo cobertura de prueba unitaria con fixtures
+sintéticas). L7 (selección completa) y L14 (roadmap con selección
+confirmada) quedan cubiertos por artefacto, no sólo por prueba.
+
+Hallazgo colateral, fuera de alcance de este ajuste, reportado y NO
+corregido acá: `build-context.ts:455` construye
+`context.servicios[].alcance` SIEMPRE vacío (`[]`) para cualquier caso
+que pase por el pipeline real — los ocho casos originales nunca lo
+mostraron porque sus servicios vienen de fixtures armadas a mano con
+`alcance` hardcodeado. Con un único servicio real sugerido, la página
+"Qué vamos a trabajar" mide ~98 caracteres, bajo el umbral H2
+(115) calibrado contra fixtures con alcance no vacío. Se excluyó del
+check ese caso preciso (una sola tarjeta de servicio real, ver
+comentario en el test) sin inventar contenido de alcance — decisión de
+producto (qué debería decir el alcance de servicios reales) queda
+pendiente, no tomada acá.
+
+**Página de propuesta cualitativa: 54 → 376 páginas totales (9 casos ×
+3 documentos × 2 perfiles), delta contra los 329 exactamente +47 = los
+seis documentos íntegros del caso "confirmada" (7+6 diagnóstico +
+9+9 propuesta + 8+8 proyección = 47) — ningún otro caso cambió de
+conteo.**
+
+**L13 — ajuste de copy.** Sólo la frase de cierre de
+`buildAlertaMargenNegativoV2` (`blocks.ts`): "antes de proyectar ningún
+resultado económico" → "lo que queda en suspenso es la proyección de
+un resultado económico, no el trabajo." Resto del texto sin cambios;
+las siete piezas de DHB-2 sin cambios. Ningún test asertaba el string
+literal anterior (grep confirmado antes de tocarlo) — el ajuste no
+forzó ningún cambio más allá de esa frase.
+
+**Typo corregido.** `document.tsx`, caso `"methodology"`: `Origen:
+{item.origen}` interpolaba el valor crudo del enum
+(`"observado"|"declarado"|"configuracion"|"derivado"`) en vez de pasar
+por `LABELS_ORIGEN_SUPUESTO` (`semantica-v2/etiquetas.ts`, ya existente,
+ya con tilde) — afectaba los cuatro valores, no sólo el acento de
+"configuracion". `web-v2/document-renderer.tsx` ya usaba el label
+correcto en el mismo punto (línea 631); este fix alinea pdf-v2 con el
+comportamiento ya establecido en el otro renderer, no inventa una
+convención nueva. Verificado con render real de `mayorista`: "Origen:
+Configuración" (antes: "Origen: configuracion").
+
+Suite tras estos cuatro puntos: 765 passed + 1 todo (subió de 762 por
+H1.5 ×2 perfiles), typecheck y build limpios.

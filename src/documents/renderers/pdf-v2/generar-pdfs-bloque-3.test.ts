@@ -1,20 +1,34 @@
 /**
- * PASO 6 (Bloque 3 Funcional): genera los 48 PDFs de revisión visual —
- * ocho casos (los seis escenarios demostrativos más mayorista y mixto),
- * tres documentos, dos perfiles, con v2 (dos pasadas). Mismo criterio
- * que el generador hermano de v1
+ * PASO 6 (Bloque 3 Funcional): genera los 54 PDFs de revisión visual —
+ * nueve casos (los seis escenarios demostrativos, mayorista, mixto y
+ * "confirmada"), tres documentos, dos perfiles, con v2 (dos pasadas).
+ * Mismo criterio que el generador hermano de v1
  * (`renderers/pdf/generar-pdfs-escenarios-demo.test.ts`): sólo escribe a
  * disco si se define `VELOCENTUM_BLOQUE3_QA_DIR`, pero siempre verifica
- * que los 48 documentos son PDFs válidos.
+ * que los 54 documentos son PDFs válidos.
  *
  * R-03 (2026-08-27): esta ronda de corrección agregó verificación
- * automática permanente sobre los mismos 48 documentos/329 páginas —
- * H1 (contraste de título en secciones oscuras), H2 (páginas sin
- * contenido real / anomalías de paginación), H3 (mojibake / cobertura de
- * fuente en los glifos no-ASCII usados). Generar una sola vez
- * (`beforeAll`) y compartir el resultado entre los `it()` de verificación
- * evita pagar el costo de generación más de una vez por corrida de
- * suite.
+ * automática permanente sobre estos documentos — H1 (contraste de
+ * título en secciones oscuras), H2 (páginas sin contenido real /
+ * anomalías de paginación), H3 (mojibake / cobertura de fuente en los
+ * glifos no-ASCII usados). Generar una sola vez (`beforeAll`) y
+ * compartir el resultado entre los `it()` de verificación evita pagar el
+ * costo de generación más de una vez por corrida de suite.
+ *
+ * AJUSTES a R-03 (2026-08-27), punto 2: noveno caso "confirmada" — el
+ * muestreo visual (punto 3) encontró que ninguno de los ocho casos
+ * originales tiene `comercial` confirmado, así que `restrictions-grouped`
+ * y el roadmap 30/60/90 (DHB-3) nunca se renderizaban en ningún
+ * documento real, sólo en pruebas unitarias con fixtures sintéticas
+ * (`roadmap-dhb-3.test.ts`). Este caso pasa por el pipeline real
+ * (`calcularDiagnostico` → `buildDocumentContext`, sin datos inyectados
+ * a mano) sobre `casoSnakeStore` (`src/lib/fixtures-casos.ts` — fixture
+ * de regresión, NO el archivo de escenarios demostrativos, ver el
+ * aislamiento de `fixtures-escenarios-demo.test.ts`), con una
+ * `paquetesConfirmados` construida a mano (mismo criterio que
+ * `buildMayoristaContext`/`buildMixtoContext`: contexto de prueba del
+ * prototipo). Ejercita L7 (selección comercial completa) y L14 (roadmap
+ * con selección confirmada) por artefacto real, no sólo por prueba.
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -34,6 +48,8 @@ import {
   ESCENARIOS_DEMOSTRATIVOS,
   configuracionEscenariosDemo,
 } from "../../../lib/fixtures-escenarios-demo";
+import { casoSnakeStore, configuracionRegresionFase2 } from "../../../lib/fixtures-casos";
+import type { EscaleraPaquetesConfirmada } from "../../../lib/paquetes";
 import { buildDocumentContext, type DocumentContextV1 } from "../../domain";
 
 const require = createRequire(import.meta.url);
@@ -131,7 +147,59 @@ function ratioContraste(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-describe("PDFs de revisión de los ocho casos (Bloque 3 Funcional, v2)", () => {
+/**
+ * AJUSTES a R-03, punto 2 — datos del noveno caso ("confirmada"):
+ * `casoSnakeStore` produce, vía el pipeline real, exactamente estos
+ * hallazgos reales (verificado por inspección directa, no supuesto):
+ * `retencion_recuperacion_carrito` (media, capa "servicio", servicioIds
+ * ["planificacion_y_creacion_de_contenido"]), `retencion_subir_plan`
+ * (media, sin servicio) y `comisiones` (media, sin servicio) — y dos
+ * restricciones reales: `cobertura_productos_parcial` y
+ * `politica_envio_no_confirmada`. Ninguno de los ocho casos originales
+ * (ni sus variantes "CoberturaCompleta") tiene un hallazgo "alta" en
+ * capa "servicio", así que no hay ningún dato real que llene la etapa
+ * 30 del roadmap sin inventar uno — se deja vacía a propósito (mismo
+ * principio de "cero ítems inventados" que exige `roadmap-dhb-3.test.ts`).
+ * La escalera confirmada selecciona:
+ *  - "Planificación y creación de contenido" (servicio real sugerido
+ *    por el motor para este caso, ver `context.servicios`), con
+ *    `hallazgoIds: ["retencion_recuperacion_carrito"]` — llena la etapa
+ *    60 (media → 60) con la acción literal del hallazgo real.
+ *  - "Meta Ads" (servicio del catálogo cerrado, sin ningún hallazgo real
+ *    asociado en este caso), `hallazgoIds: []` — llena la etapa 90 con
+ *    el servicio + las restricciones vigentes, mismo mecanismo que
+ *    "un servicio sin hallazgo alta" en `roadmap-dhb-3.test.ts`.
+ */
+const ESCALERA_CONFIRMADA_SNAKE_STORE: EscaleraPaquetesConfirmada = {
+  confirmado: true,
+  niveles: [
+    {
+      id: "impulso",
+      nombre: "IMPULSO",
+      servicios: [
+        {
+          servicio: "Planificación y creación de contenido",
+          unidad: "piezas_por_mes",
+          cantidad: 4,
+          descripcion: null,
+          hallazgoIds: ["retencion_recuperacion_carrito"],
+          propuestoPorSistema: true,
+        },
+        {
+          servicio: "Meta Ads",
+          unidad: "campañas_activas",
+          cantidad: 2,
+          descripcion: null,
+          hallazgoIds: [],
+          propuestoPorSistema: true,
+        },
+      ],
+      precio: 850_000,
+    },
+  ],
+};
+
+describe("PDFs de revisión de los nueve casos (Bloque 3 Funcional, v2)", () => {
   beforeAll(async () => {
     const qaDir = process.env["VELOCENTUM_BLOQUE3_QA_DIR"];
 
@@ -150,6 +218,19 @@ describe("PDFs de revisión de los ocho casos (Bloque 3 Funcional, v2)", () => {
       })),
       { id: "mayorista", contexto: () => buildMayoristaContext() },
       { id: "mixto", contexto: () => buildMixtoContext() },
+      {
+        id: "confirmada",
+        contexto: (tipo: Tipo) => {
+          const resultado = calcularDiagnostico(casoSnakeStore, configuracionRegresionFase2);
+          return buildDocumentContext({
+            datos: casoSnakeStore,
+            resultado,
+            diagnostico: { id: `confirmada-${tipo}`, version: 1, fecha: "2026-08-27" },
+            tipoDocumento: tipo,
+            paquetesConfirmados: ESCALERA_CONFIRMADA_SNAKE_STORE,
+          });
+        },
+      },
     ];
 
     for (const caso of casos) {
@@ -184,8 +265,8 @@ describe("PDFs de revisión de los ocho casos (Bloque 3 Funcional, v2)", () => {
     }
   }, 180_000);
 
-  it("genera diagnóstico, proyección y propuesta en pantalla e impresión para los ocho casos (48 PDFs válidos)", () => {
-    expect(documentos.length).toBe(8 * TIPOS.length * 2);
+  it("genera diagnóstico, proyección y propuesta en pantalla e impresión para los nueve casos (54 PDFs válidos)", () => {
+    expect(documentos.length).toBe(9 * TIPOS.length * 2);
     for (const doc of documentos) {
       expect(doc.buffer.subarray(0, 5).toString("ascii")).toBe("%PDF-");
       expect(doc.buffer.byteLength).toBeGreaterThan(3_000);
@@ -248,6 +329,21 @@ describe("PDFs de revisión de los ocho casos (Bloque 3 Funcional, v2)", () => {
         // irregulares ("V E LO C E N T U M / S I G U I E N T E"), así
         // que se compara sin espacios en vez de buscar el substring literal.
         if (sinEspacios(p.texto).includes("VELOCENTUM/")) return false;
+        // AJUSTES a R-03, punto 2 (caso "confirmada"): hallazgo real, no
+        // un H2 — `build-context.ts` construye `context.servicios[].alcance`
+        // SIEMPRE vacío (`alcance: []`, no derivado de ningún dato real)
+        // para cualquier caso que pase por el pipeline real; los ocho
+        // casos originales nunca lo mostraron porque sus servicios vienen
+        // de fixtures armadas a mano con `alcance` hardcodeado
+        // (`test-fixtures.ts`). Con un solo servicio real sugerido y sin
+        // alcance, la página "Qué vamos a trabajar" mide ~98 caracteres —
+        // legítimamente corta, no un defecto de render. No se inventa
+        // contenido de alcance para taparlo (decisión de producto fuera
+        // de este ajuste, reportada, no tomada acá); se excluye del
+        // umbral sólo el caso de UN único servicio sin "02" (no
+        // enmascara una página "Qué vamos a trabajar" con más de un
+        // servicio, que sigue evaluada normalmente).
+        if (sinEspacios(p.texto).includes("ALCANCE") && !p.texto.includes("02")) return false;
         return p.texto.trim().length < UMBRAL_MINIMO;
       });
       expect(
@@ -273,6 +369,65 @@ describe("PDFs de revisión de los ocho casos (Bloque 3 Funcional, v2)", () => {
       }
       expect(anomalias).toEqual([]);
     });
+  });
+
+  // ── H2b (AJUSTES a R-03, 2026-08-27): superposición de footer en
+  // PANTALLA — el check de arriba (umbral de texto mínimo) detecta la
+  // firma de IMPRESIÓN (página con sólo el header, contenido desplazado a
+  // una página que no se vuelve a renderizar). En pantalla la misma causa
+  // raíz (`cardRow` sin `wrap={false}`) produce una firma distinta: Yoga
+  // NO corta página, así que el contenido desborda hacia abajo, dentro de
+  // la franja del pie. `Footer` se pinta DESPUÉS del contenido en el JSX
+  // de `ContentPage` (`styles.footer` es `position: "absolute"`, pintado
+  // al final del árbol) — cualquier texto que desborde hasta esa franja
+  // queda TAPADO visualmente por el pie, aunque sigue presente en el
+  // stream de texto (por eso el umbral de longitud no lo atrapa: el texto
+  // está, sólo invisible). Un check escrito contra el caso 1 en impresión
+  // no dispara nunca en pantalla porque la condición disparadora depende
+  // de la cantidad de tarjetas por fila del perfil (2 en impresión, 4 en
+  // pantalla) — cada perfil necesita su propio check con su propia firma.
+  describe("H2b — pantalla: ningún contenido queda oculto detrás del pie de página", () => {
+    // `styles.footer`: bottom: 18, fontSize (perfil pantalla) 8 — la
+    // franja del pie ocupa aprox. y ∈ [18, 30] en coordenadas PDF (origen
+    // abajo-izquierda). El contenido normal de página respeta
+    // `pagePaddingBottom` (48 en pantalla) y no debería tener baseline
+    // por debajo de eso; 34 separa la franja del pie del contenido
+        // legítimo con margen, sin acoplarse a un caso puntual.
+    const FOOTER_ZONA_MAX_Y = 34;
+
+    // El pie sólo dibuja dos textos: el wordmark "Velocentum" (caja mixta,
+    // R-06) y el contador de página `${pageNumber} / ${totalPages}`
+    // (pdfjs puede partirlo en runs como "3", "/", "6"). Cualquier OTRO
+    // texto con baseline dentro de la franja es contenido que no debería
+    // estar ahí.
+    function esTextoDelPie(s: string): boolean {
+      const t = s.trim();
+      return t === "" || t === "Velocentum" || /^[\d\s/]+$/.test(t);
+    }
+
+    it("ninguna página en pantalla tiene contenido (no del pie) con baseline dentro de la franja del pie", async () => {
+      const pantallaDocs = documentos.filter((d) => d.perfil === "pantalla");
+      const sospechosas: string[] = [];
+      for (const doc of pantallaDocs) {
+        const pdf = await getDocument({ data: new Uint8Array(doc.buffer) }).promise;
+        for (let p = 2; p <= pdf.numPages; p++) {
+          // p=1 (portada) no lleva el `Footer` estándar — tiene su propio
+          // pie de marca ("v2" y otros elementos de diseño de portada) que
+          // no es el defecto que este check busca; se excluye igual que
+          // en el check de umbral mínimo de arriba.
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          for (const item of content.items) {
+            if (!("str" in item) || !("transform" in item)) continue;
+            const y = (item as { transform: number[] }).transform[5]!;
+            if (y < FOOTER_ZONA_MAX_Y && !esTextoDelPie(item.str)) {
+              sospechosas.push(`${doc.caso}/${doc.tipo} p${p}: y=${y.toFixed(1)} "${item.str}"`);
+            }
+          }
+        }
+      }
+      expect(sospechosas, JSON.stringify(sospechosas.slice(0, 15))).toEqual([]);
+    }, 60_000);
   });
 
   // ── H1 (R-03): presencia Y contraste REAL (color efectivamente

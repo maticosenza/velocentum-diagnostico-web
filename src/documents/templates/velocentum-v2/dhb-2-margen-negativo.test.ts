@@ -19,7 +19,7 @@
  */
 import { createRequire } from "node:module";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { getDocument, GlobalWorkerOptions, OPS } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
 import type { DocumentBlockV2, HallazgoV2 } from "./types";
 import { buildDiagnosticoDocumentV2 } from "./diagnostico";
@@ -38,6 +38,100 @@ async function textoCompleto(buffer: Buffer): Promise<string> {
     paginas.push(contenido.items.map((item) => ("str" in item ? item.str : "")).join(" "));
   }
   return paginas.join(" | ");
+}
+
+/**
+ * R-03 (AJUSTES, 2026-08-27), corrección de check unilateral: `textoCompleto`
+ * usa `getTextContent()`, que expone el texto presente en el stream sin
+ * importar su color — exactamente el motivo por el que H1 (título
+ * invisible por texto oscuro sobre fondo oscuro) pasó en verde acá antes
+ * de esta ronda. Este helper camina `getOperatorList()` en cambio, para
+ * obtener el color de relleno REAL con el que se pinta el primer carácter
+ * de `textoObjetivo` — mismo mecanismo que `generar-pdfs-bloque-3.test.ts`
+ * (H1.4), reimplementado acá porque este archivo verifica la pieza 1+2 de
+ * DHB-2 de forma autocontenida, sin depender del generador de las 48
+ * revisiones para atrapar una regresión de contraste en su propio bloque.
+ */
+function sinEspacios(s: string): string {
+  return s.replace(/\s+/g, "");
+}
+async function colorAlMostrar(
+  pagina: { getOperatorList: () => Promise<{ fnArray: number[]; argsArray: unknown[] }> },
+  textoObjetivo: string,
+): Promise<string | null> {
+  const objetivo = sinEspacios(textoObjetivo);
+  const opList = await pagina.getOperatorList();
+  const OPS_POR_CODIGO: Record<number, string> = {};
+  for (const [nombre, codigo] of Object.entries(OPS)) OPS_POR_CODIGO[codigo as number] = nombre;
+
+  let colorActual: string | null = null;
+  let acumulado = "";
+  for (let i = 0; i < opList.fnArray.length; i++) {
+    const nombre = OPS_POR_CODIGO[opList.fnArray[i]!];
+    const args = opList.argsArray[i];
+    if (nombre === "setFillRGBColor" && Array.isArray(args) && typeof args[0] === "string") {
+      colorActual = args[0];
+    }
+    if (nombre === "showText" && Array.isArray(args) && Array.isArray(args[0])) {
+      const antes = acumulado.length;
+      for (const glifo of args[0]) {
+        if (glifo && typeof glifo === "object" && typeof glifo.unicode === "string") {
+          acumulado += glifo.unicode;
+        }
+      }
+      const acumuladoSinEspacios = sinEspacios(acumulado);
+      const antesSinEspacios = sinEspacios(acumulado.slice(0, antes));
+      if (acumuladoSinEspacios.includes(objetivo) && !antesSinEspacios.includes(objetivo)) {
+        return colorActual;
+      }
+    }
+  }
+  return null;
+}
+function luminanciaRelativa(hex: string): number {
+  const limpio = hex.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(limpio.substring(i, i + 2), 16) / 255);
+  const canal = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * canal(r!) + 0.7152 * canal(g!) + 0.0722 * canal(b!);
+}
+function ratioContraste(a: string, b: string): number {
+  const [l1, l2] = [luminanciaRelativa(a), luminanciaRelativa(b)];
+  const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * H1.5 (AJUSTES a R-03, 2026-08-27): "el texto se renderiza DENTRO de la
+ * tarjeta, no como párrafo suelto" — la señal estructural es que la
+ * página pinta un `constructPath` (react-pdf/pdfjs combina trazo+relleno
+ * en un único operador, no hay `fill`/`eoFill` sueltos — verificado
+ * inspeccionando el operator list real) inmediatamente después de fijar
+ * el color exacto de `cardAlerta` (`#FBEAEA`) como color de relleno. Sin
+ * la tarjeta (párrafo suelto, versión previa), esa página nunca fija ese
+ * color de relleno — ni el fondo oscuro de pantalla ni el claro de
+ * `impresionSoftened` lo usan.
+ */
+async function hayRellenoConColor(
+  pagina: { getOperatorList: () => Promise<{ fnArray: number[]; argsArray: unknown[] }> },
+  colorObjetivo: string,
+): Promise<boolean> {
+  const opList = await pagina.getOperatorList();
+  const OPS_POR_CODIGO: Record<number, string> = {};
+  for (const [nombre, codigo] of Object.entries(OPS)) OPS_POR_CODIGO[codigo as number] = nombre;
+
+  for (let i = 0; i < opList.fnArray.length - 1; i++) {
+    const nombre = OPS_POR_CODIGO[opList.fnArray[i]!];
+    const args = opList.argsArray[i];
+    if (
+      nombre === "setFillRGBColor" &&
+      Array.isArray(args) &&
+      args[0] === colorObjetivo &&
+      OPS_POR_CODIGO[opList.fnArray[i + 1]!] === "constructPath"
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function findingsItems(sections: { blocks: DocumentBlockV2[] }[]): HallazgoV2[] {
@@ -152,4 +246,53 @@ describe("S12 — DHB-2: las siete piezas están presentes, sin ninguna promesa 
     expect(texto).not.toContain("Contribución incremental a 90 días");
     expect(texto).not.toContain("Contribución incremental proyectada");
   });
+
+  it("R-03 (AJUSTES): el título de la pieza 1 ('Margen negativo: foco en la causa raíz') está PRESENTE y con contraste real, no sólo ausente lo prohibido", async () => {
+    // Regla general de la ronda: todo check derivado de una decisión
+    // cerrada verifica presencia, no sólo ausencia — el test de arriba
+    // sólo confirma que no aparece la cifra prohibida; éste confirma que
+    // el titular SÍ aparece, visible, en la sección `tone: "dark"` donde
+    // vivía H1 (color de texto igual al del fondo).
+    const model = buildPropuestaDocumentV2(buildMargenNegativoContext());
+    const seccion = model.sections.find((s) => s.id === "commercial-summary");
+    expect(seccion?.title).toBe("Margen negativo: foco en la causa raíz");
+    expect(seccion?.tone).toBe("dark");
+
+    const buffer = await renderToBuffer(createPdfDocumentElementV2(model, "pantalla"));
+    const documento = await getDocument({ data: new Uint8Array(buffer) }).promise;
+    let color: string | null = null;
+    for (let n = 1; n <= documento.numPages && color === null; n++) {
+      const pagina = await documento.getPage(n);
+      color = await colorAlMostrar(pagina, "Margen negativo: foco en la causa raíz");
+    }
+    expect(color, "el título de la pieza 1 no se encontró en el stream de texto de ninguna página").not.toBeNull();
+    expect(color).not.toBe("#0d0b2d");
+    expect(ratioContraste(color!, "#0d0b2d")).toBeGreaterThanOrEqual(3);
+  });
+
+  it.each(["pantalla", "impresion"] as const)(
+    "H1.5 (AJUSTES a R-03, aprobado): el cuerpo de la alerta se renderiza DENTRO de la tarjeta cardAlerta, con contraste ≥ 4,5:1 contra su fondo — perfil %s",
+    async (perfil) => {
+      const model = buildPropuestaDocumentV2(buildMargenNegativoContext());
+      const buffer = await renderToBuffer(createPdfDocumentElementV2(model, perfil));
+      const documento = await getDocument({ data: new Uint8Array(buffer) }).promise;
+
+      let color: string | null = null;
+      let tieneTarjeta = false;
+      for (let n = 1; n <= documento.numPages; n++) {
+        const pagina = await documento.getPage(n);
+        const c = await colorAlMostrar(pagina, "No proyectamos contribución");
+        if (c !== null) {
+          color = c;
+          tieneTarjeta = await hayRellenoConColor(pagina, "#fbeaea");
+          break;
+        }
+      }
+      expect(color, "el cuerpo de la alerta no se encontró en ninguna página").not.toBeNull();
+      expect(tieneTarjeta, "la página no pinta el relleno de cardAlerta (#FBEAEA) — el texto no está dentro de la tarjeta").toBe(
+        true,
+      );
+      expect(ratioContraste(color!, "#fbeaea")).toBeGreaterThanOrEqual(4.5);
+    },
+  );
 });

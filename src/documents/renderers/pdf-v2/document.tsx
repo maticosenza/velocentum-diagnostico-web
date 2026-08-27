@@ -27,6 +27,7 @@ import {
   LABELS_CAPA,
   LABELS_ESCENARIO,
   LABELS_MAGNITUD,
+  LABELS_ORIGEN_SUPUESTO,
   LABELS_PERIODO,
   LABELS_PRIORIDAD,
   LABELS_TIPO_DOCUMENTO,
@@ -476,6 +477,24 @@ function makeStylesV2(profile: PdfProfileV2) {
     commercialSummaryStatementDark: { color: V2_CONTRAST_TOKENS.onDarkCardBody },
     bridgeNote: { fontSize: e.nota, color: theme.colors.muted, lineHeight: 1.4, marginTop: 10, maxWidth: 480 },
     bridgeNoteDark: { color: V2_CONTRAST_TOKENS.onDarkCardBodyAlt },
+    // H1.5 (AJUSTES a R-03, 2026-08-27, aprobado con condiciones): la
+    // única pieza de la sección "commercial-summary" cualitativa (DHB-2)
+    // es este `bridge-note` — sin cifra ni supuestos, ocupaba ~15% del
+    // área de página, pegado arriba. Se envuelve en una tarjeta
+    // `cardAlerta` centrada en vez de párrafo suelto: mismo texto, cero
+    // contenido nuevo. `cardAlerta` es siempre clara (fondo #FBEAEA) —
+    // deliberadamente SIN `cardDark`, aunque la sección sea `tone:"dark"`
+    // en pantalla: mezclar cardDark (texto claro) con el fondo claro de
+    // cardAlerta dejaría el texto invisible, el mismo defecto que H1.
+    // Texto en `altaBadgeText` ("#992D2D"), no `theme.colors.risk`: ya
+    // documentado en C4 (ronda 2.1) que risk sobre este fondo da 3,66:1,
+    // insuficiente para texto de cuerpo; altaBadgeText da 6,52:1.
+    heroAlertaCard: { alignSelf: "center", maxWidth: 480 },
+    heroAlertaTexto: { fontSize: e.nota, lineHeight: 1.4, color: V2_CONTRAST_TOKENS.altaBadgeText },
+    // Centra la única pieza dentro del área de contenido disponible
+    // (entre header y footer) — gate exacto en `ContentPage`, nunca se
+    // aplica a ninguna otra sección.
+    contentHeroAlerta: { flex: 1, justifyContent: "center" },
     // C1, ronda 2.1: tabla mensual apilada etiqueta/valor por mes, sólo
     // en impresión (`monthlyStacked`) — evita el desborde de la tabla
     // horizontal de 5 columnas en el ancho de tarjeta A4, sin bajar la
@@ -1098,6 +1117,7 @@ function renderBlock(
   styles: Styles,
   profile: PdfProfileV2,
   mapaPaginacion: MapaPaginacionV2,
+  esAlertaHero = false,
 ): React.ReactNode {
   const p = PROFILES_V2[profile];
   const cardStyle = [styles.card, dark ? styles.cardDark : {}];
@@ -1301,6 +1321,17 @@ function renderBlock(
       );
     }
     case "bridge-note":
+      if (esAlertaHero) {
+        return (
+          <View
+            key="bridge-note"
+            style={[styles.standaloneCard, styles.cardAlerta, styles.heroAlertaCard]}
+            wrap={false}
+          >
+            <Text style={styles.heroAlertaTexto}>{block.text}</Text>
+          </View>
+        );
+      }
       return (
         <Text key="bridge-note" style={[styles.bridgeNote, dark ? styles.bridgeNoteDark : {}]}>
           {block.text}
@@ -1452,7 +1483,7 @@ function renderBlock(
             <View key={item.id} style={standaloneCardStyle} wrap={false}>
               <Text style={styles.itemTitle}>{item.etiqueta}</Text>
               <Text style={bodyStyle}>{item.valor}</Text>
-              <Text style={bodyStyle}>Origen: {item.origen}</Text>
+              <Text style={bodyStyle}>Origen: {LABELS_ORIGEN_SUPUESTO[item.origen]}</Text>
             </View>
           ))}
         </View>
@@ -1658,6 +1689,16 @@ function ContentPage({
   // una tarjeta que ya no es oscura).
   const impresionSoftened = wantsDark && profile === "impresion";
   const dark = wantsDark && !impresionSoftened;
+  // H1.5 (AJUSTES a R-03, 2026-08-27): gate exacto de la propuesta
+  // aprobada — un único bloque `bridge-note` en la sección equivale,
+  // dado el árbol de construcción de `propuesta.ts`, a `esCualitativa`
+  // (DHB-2): `buildBridgeNoteV2` sólo devuelve no-null si
+  // `resumenComercial.cifraPrincipal.estado === "calculado"`, condición
+  // que también deja `buildCommercialSummaryV2` no-null (necesita menos:
+  // sólo que `resumenComercial` exista) — así que en la rama NO
+  // cualitativa, `blocks.length` nunca puede ser 1 con ese único bloque
+  // siendo `bridge-note`. No se extiende a ninguna otra sección.
+  const esAlertaHero = section.blocks.length === 1 && section.blocks[0]?.type === "bridge-note";
   return (
     <Page
       size={PROFILES_V2[profile].pageSize}
@@ -1709,8 +1750,8 @@ function ContentPage({
           <Text style={[styles.title, dark ? styles.titleDark : {}]}>{section.title}</Text>
         ) : null}
       </View>
-      <View style={styles.content}>
-        {section.blocks.map((block) => renderBlock(block, dark, styles, profile, mapaPaginacion))}
+      <View style={[styles.content, esAlertaHero ? styles.contentHeroAlerta : {}]}>
+        {section.blocks.map((block) => renderBlock(block, dark, styles, profile, mapaPaginacion, esAlertaHero))}
       </View>
       <Footer dark={dark} styles={styles} />
     </Page>

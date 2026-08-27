@@ -99,7 +99,7 @@ describe("S5 — DHB-1: inversión declarada en cero", () => {
     expect(c.evidencia["inversion_meta"]).toMatchObject({ estado: "declarado", valor: 0 });
   });
 
-  it("MER marketplace: inversión Product Ads $0 declarada → no_aplica", () => {
+  it("MER marketplace: inversión Product Ads $0 declarada → no_aplica; el cero queda 'declarado' (R-03/DHB-1, presencia no sólo ausencia)", () => {
     const datos: DatosDiagnostico = {
       ...casoTitanWebB1,
       ml_product_ads: true,
@@ -107,9 +107,10 @@ describe("S5 — DHB-1: inversión declarada en cero", () => {
     };
     const c = contexto(datos);
     expect(c.actual.merMarketplace).toMatchObject({ estado: "no_aplica" });
+    expect(c.evidencia["inversion_product_ads"]).toMatchObject({ estado: "declarado", valor: 0 });
   });
 
-  it("ROAS Product Ads: inversión Product Ads $0 declarada → no_aplica", () => {
+  it("ROAS Product Ads: inversión Product Ads $0 declarada → no_aplica; el cero queda 'declarado' (R-03/DHB-1, presencia no sólo ausencia)", () => {
     const datos: DatosDiagnostico = {
       ...casoTitanWebB1,
       ml_product_ads: true,
@@ -117,6 +118,7 @@ describe("S5 — DHB-1: inversión declarada en cero", () => {
     };
     const c = contexto(datos);
     expect(c.actual.roasProductAds).toMatchObject({ estado: "no_aplica" });
+    expect(c.evidencia["inversion_product_ads"]).toMatchObject({ estado: "declarado", valor: 0 });
   });
 });
 

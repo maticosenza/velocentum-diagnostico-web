@@ -318,6 +318,17 @@ export function esPropuestaCualitativaV2(context: DocumentContextV1): boolean {
  * `esPropuestaCualitativaV2`. No se agrega al array `findings` (DHB-2
  * pieza 1 no lo exige — R-02, PASO 0.1): reemplaza `commercial-summary`
  * en su propia sección, ver `propuesta.ts`.
+ *
+ * L13 (AJUSTES a R-03, 2026-08-27), ajuste de copy — sólo la frase de
+ * cierre: en el caso margen negativo + selección comercial confirmada,
+ * el documento SÍ muestra paquete, precio y roadmap (piezas 6/7 y
+ * roadmap 30/60/90, ninguna gateada por `esCualitativa`) — mostrar eso
+ * no viola DHB-2, un precio y un plan de acción no son un resultado
+ * económico proyectado. La frase de cierre anterior ("antes de proyectar
+ * ningún resultado económico") leía como si TODO el trabajo quedara en
+ * suspenso, no sólo la proyección. Se retiene lo demás del texto sin
+ * cambios (alerta literal del hallazgo, explicación de por qué no hay
+ * cifra de rentabilidad).
  */
 export function buildAlertaMargenNegativoV2(context: DocumentContextV1): DocumentBlockV2 | null {
   if (!esPropuestaCualitativaV2(context)) return null;
@@ -328,7 +339,8 @@ export function buildAlertaMargenNegativoV2(context: DocumentContextV1): Documen
     text:
       `Alerta: ${alerta}. No proyectamos contribución, ahorro ni retorno: el margen de contribución actual ` +
       "es negativo, así que cualquier cifra de rentabilidad futura no tendría respaldo real. Esta propuesta " +
-      "se enfoca en resolver esa causa raíz antes de proyectar ningún resultado económico.",
+      "se enfoca en resolver esa causa raíz: lo que queda en suspenso es la proyección de un resultado " +
+      "económico, no el trabajo.",
   };
 }
 
