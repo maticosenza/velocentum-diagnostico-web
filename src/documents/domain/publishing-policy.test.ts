@@ -21,7 +21,7 @@ describe("política de valores publicables", () => {
     });
     const retenido = valorRetenido<number>("Falta el margen total.");
 
-    expect(cero).toMatchObject({ estado: "calculado", valor: 0 });
+    expect(cero).toMatchObject({ estado: "disponible", valor: 0 });
     expect(retenido).toMatchObject({ estado: "retenido", valor: null });
     expect(valorNoAplica<number>("No vende por tienda propia")).toMatchObject({
       estado: "no_aplica",
@@ -37,7 +37,7 @@ describe("política de valores publicables", () => {
         fuente: "cliente",
         periodo: "mensual",
       }),
-    ).toMatchObject({ estado: "calculado", valor: 0 });
+    ).toMatchObject({ estado: "disponible", valor: 0 });
 
     expect(
       evidenciaDisponible({

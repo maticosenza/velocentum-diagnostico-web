@@ -35,7 +35,7 @@ describe("S8 — nota de reinversión de ahorro publicitario, sólo si es public
   it("caso con ahorro calculado: la nota aparece en el PDF y en el web", async () => {
     const model = buildProyeccion90dDocumentV2(buildMulticanalContext());
     const scenarios = model.sections.flatMap((s) => s.blocks).find((b) => b.type === "scenarios");
-    const conAhorro = scenarios?.type === "scenarios" && scenarios.items.some((i) => i.ahorroPublicitario90d.estado === "calculado");
+    const conAhorro = scenarios?.type === "scenarios" && scenarios.items.some((i) => i.ahorroPublicitario90d.estado === "disponible");
     expect(conAhorro, "fixture inesperado: ningún escenario con ahorro calculado").toBe(true);
 
     const buffer = await renderToBuffer(createPdfDocumentElementV2(model, "pantalla"));
@@ -50,7 +50,7 @@ describe("S8 — nota de reinversión de ahorro publicitario, sólo si es public
     const model = buildProyeccion90dDocumentV2(buildMargenNegativoContext());
     const scenarios = model.sections.flatMap((s) => s.blocks).find((b) => b.type === "scenarios");
     const algunCalculado =
-      scenarios?.type === "scenarios" && scenarios.items.some((i) => i.ahorroPublicitario90d.estado === "calculado");
+      scenarios?.type === "scenarios" && scenarios.items.some((i) => i.ahorroPublicitario90d.estado === "disponible");
     expect(algunCalculado, "fixture inesperado: hay ahorro calculado, no sirve para probar la ausencia").toBe(false);
 
     const buffer = await renderToBuffer(createPdfDocumentElementV2(model, "pantalla"));

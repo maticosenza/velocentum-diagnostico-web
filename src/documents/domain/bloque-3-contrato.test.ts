@@ -41,7 +41,7 @@ function contexto(datos: DatosDiagnostico) {
 
 describe("S1 — los 9 estados de D4 existen y producen el copy literal, sin reformular", () => {
   it("Eje 2 (ValorV2): los 4 estados producen el copy exacto de la sección 3.1 del prompt", () => {
-    expect(textoEstadoV2(publicarV2({ estado: "calculado", valor: 5, confianza: "alta", evidenciaIds: [], supuestos: [] }, "number")).texto).toBe(
+    expect(textoEstadoV2(publicarV2({ estado: "disponible", valor: 5, confianza: "alta", evidenciaIds: [], supuestos: [] }, "number")).texto).toBe(
       "5",
     );
     expect(textoEstadoV2({ estado: "retenido", formato: "number", motivos: ["x"] }).texto).toBe(

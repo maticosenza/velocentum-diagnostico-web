@@ -46,7 +46,7 @@ export type ConfianzaDocumento = "alta" | "media" | "baja" | "bloqueada";
 
 export type ValorPublicable<T> =
   | {
-      estado: "calculado";
+      estado: "disponible";
       valor: T;
       confianza: Exclude<ConfianzaDocumento, "bloqueada">;
       evidenciaIds: string[];
@@ -173,6 +173,40 @@ export type FortalezaDocumento = {
   metrica: ValorPublicable<number>;
   umbral: ValorPublicable<number>;
   unidad: "ratio" | "porcentaje";
+};
+
+/**
+ * R-09 (Bloque Visual 3, HEAD 82bb66e): una etapa del funnel web de tienda
+ * propia. `valor` y `conversion` se leen SIN modificación de
+ * `resultado.derivados.funnel` (`FunnelDerivado`, `src/lib/funnel.ts`) —
+ * nunca se deriva ni se estima una tasa nueva acá. `conversion` es
+ * `null` en la primera etapa (visitas, no tiene etapa anterior) y
+ * `no_aplica` cuando el motor no pudo formar la tasa (denominador cero),
+ * mismo criterio que DHB-1 para ratios no formables.
+ */
+export type EtapaFunnelWebDocumento = {
+  id: "visitas" | "agregados_carrito" | "checkouts_iniciados" | "compras";
+  etiqueta: string;
+  valor: ValorPublicable<number>;
+  conversion: ValorPublicable<number> | null;
+};
+
+/**
+ * R-09 (Bloque Visual 3): funnel web de tienda propia, forma tabular.
+ * NUNCA se aplica a Mercado Libre (regla dura del motor, `src/lib/funnel.ts`
+ * `funnelNoAplica`). `etapas` trae dos filas (visitas/compras) cuando
+ * `desglosado` es `false` (faltan etapas intermedias — `FunnelDerivado`
+ * estado `combinado`, un concepto de `EstadoFunnel` DISTINTO del Eje 2
+ * de `ValorPublicable` pese a compartir uno de sus literales textuales —
+ * decoy identificado en el PASO 1 de `docs/prompts/bloque-visual-3.md`),
+ * o cuatro cuando es `true` (`FunnelDerivado` con desglose completo por
+ * tramo).
+ */
+export type FunnelWebDocumento = {
+  desglosado: boolean;
+  etapas: EtapaFunnelWebDocumento[];
+  /** Compras ÷ visitas — siempre presente cuando el bloque existe. */
+  conversionGlobal: ValorPublicable<number>;
 };
 
 /**
@@ -355,6 +389,8 @@ export type DocumentContextV1 = {
    */
   margenBloqueado: boolean;
   fortalezas: FortalezaDocumento[];
+  /** R-09 (Bloque Visual 3). `null` cuando el funnel no aplica al canal, no tiene datos o los datos son incompatibles entre sí. */
+  funnelWeb: FunnelWebDocumento | null;
   escenarios90d: Escenario90d[];
   /**
    * `null` para un diagnóstico (esa pieza no proyecta — punto 3 de la

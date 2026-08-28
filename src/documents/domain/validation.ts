@@ -47,7 +47,7 @@ function validarValorPublicable(
   path: string,
 ): ProblemaValidacionDocumento[] {
   const problemas: ProblemaValidacionDocumento[] = [];
-  if (valor.estado === "calculado") {
+  if (valor.estado === "disponible") {
     if (valor.valor === null || valor.valor === undefined) {
       problemas.push({
         path: `${path}.valor`,
@@ -216,7 +216,7 @@ export function validarContextoDocumento(
         });
       }
     }
-    if (r.dispersion.alta && r.cifraPrincipal.estado === "calculado") {
+    if (r.dispersion.alta && r.cifraPrincipal.estado === "disponible") {
       problemas.push({
         path: "resumenComercial.cifraPrincipal",
         mensaje: "Con dispersión alta no se debe publicar una cifra principal.",

@@ -5,7 +5,7 @@ import type { ValorV2 } from "../templates/velocentum-v2/types";
 describe("textoEstadoV2", () => {
   it("calculado: devuelve el número formateado, nunca un texto de estado", () => {
     const valor: ValorV2 = {
-      estado: "calculado",
+      estado: "disponible",
       valor: 15000000,
       formato: "money",
       confianza: "alta",
@@ -50,7 +50,7 @@ describe("esSupuesto", () => {
   it("true sólo si es calculado con supuestos", () => {
     expect(
       esSupuesto({
-        estado: "calculado",
+        estado: "disponible",
         valor: 1,
         formato: "number",
         confianza: "alta",
@@ -60,7 +60,7 @@ describe("esSupuesto", () => {
     ).toBe(true);
     expect(
       esSupuesto({
-        estado: "calculado",
+        estado: "disponible",
         valor: 1,
         formato: "number",
         confianza: "alta",

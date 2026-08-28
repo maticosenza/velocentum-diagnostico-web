@@ -217,8 +217,8 @@ function ChannelComparisonBlock({
 }: {
   block: Extract<DocumentBlockV2, { type: "channel-comparison" }>;
 }) {
-  const tVal = block.tienda.value.estado === "calculado" ? block.tienda.value.valor : 0;
-  const mVal = block.marketplace.value.estado === "calculado" ? block.marketplace.value.valor : 0;
+  const tVal = block.tienda.value.estado === "disponible" ? block.tienda.value.valor : 0;
+  const mVal = block.marketplace.value.estado === "disponible" ? block.marketplace.value.valor : 0;
   const max = Math.max(tVal, mVal, 0.001);
   return (
     <BlockFrame type="channel-comparison">
@@ -375,7 +375,7 @@ function ScenarioCard({ item }: { item: EscenarioV2 }) {
       {/* S8 (Bloque 3 Funcional): la nota de reinversión sólo tiene sentido
           si hay un ahorro publicable del que hablar — nunca si está
           retenido/no_aplica/evidencia_faltante. */}
-      {item.ahorroPublicitario90d.estado === "calculado" ? (
+      {item.ahorroPublicitario90d.estado === "disponible" ? (
         <p className="vdoc2-scenario__note">
           El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre, el efecto sería
           mayor al proyectado. Esta versión trata el ahorro de forma conservadora y no asume esa reinversión.
@@ -537,6 +537,39 @@ function StrengthsBlock({ block }: { block: Extract<DocumentBlockV2, { type: "st
   );
 }
 
+/**
+ * R-09 (Bloque Visual 3): funnel web de tienda propia. Reutiliza el
+ * patrón de `vdoc2-metric-grid` ya aprobado (mismo usado en
+ * `MetricGridBlock`) — sin gráfico nuevo, sin composición nueva.
+ */
+function FunnelBlock({ block }: { block: Extract<DocumentBlockV2, { type: "funnel" }> }) {
+  return (
+    <BlockFrame type="funnel">
+      <dl className="vdoc2-metric-grid">
+        {block.etapas.map((etapa) => (
+          <div className="vdoc2-metric" key={etapa.id}>
+            <dt>{etapa.etiqueta}</dt>
+            <dd>
+              <ValorV2View value={etapa.valor} />
+              {etapa.conversion ? (
+                <p className="vdoc2-muted">
+                  Conversión desde la etapa anterior: <ValorV2View value={etapa.conversion} />
+                </p>
+              ) : null}
+            </dd>
+          </div>
+        ))}
+        <div className="vdoc2-metric" key="conversion-global">
+          <dt>Conversión global</dt>
+          <dd>
+            <ValorV2View value={block.conversionGlobal} />
+          </dd>
+        </div>
+      </dl>
+    </BlockFrame>
+  );
+}
+
 function ServicioNivelList({
   services,
 }: {
@@ -654,6 +687,8 @@ export function DocumentBlockViewV2({ block }: { block: DocumentBlockV2 }) {
       return <FindingsBlock block={block} />;
     case "strengths":
       return <StrengthsBlock block={block} />;
+    case "funnel":
+      return <FunnelBlock block={block} />;
     case "commercial-summary":
       return <CommercialSummaryBlock block={block} />;
     case "bridge-note":

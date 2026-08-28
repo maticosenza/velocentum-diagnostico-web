@@ -75,14 +75,14 @@ describe("punta a punta: una cifra cargada en el formulario llega idéntica al P
       diagnostico: { id: "qa-e2e-formulario-a-pdf", version: 1, fecha: "2026-08-22" },
       tipoDocumento: "diagnostico",
     });
-    expect(contexto.actual.facturacion.estado).toBe("calculado");
+    expect(contexto.actual.facturacion.estado).toBe("disponible");
     expect(contexto.actual.facturacion.valor).toBe(FACTURACION_DEL_FORMULARIO);
 
     // 4) Modelo de documento: el bloque de métricas expone la misma cifra.
     const model = buildDiagnosticoDocument(contexto);
     const metricas = blocksOf(model, "metric-grid").flatMap((b) => b.items);
     const facturacionItem = metricas.find((m) => m.id === "facturacion");
-    // Presencia en metric-grid ya implica "calculado" (buildMetricGrid
+    // Presencia en metric-grid ya implica "disponible" (buildMetricGrid
     // filtra cualquier ValorPublicable que no lo esté: ver blocks.ts).
     expect(facturacionItem).toBeDefined();
     expect(facturacionItem!.value.value).toBe(FACTURACION_DEL_FORMULARIO);

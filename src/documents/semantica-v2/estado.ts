@@ -17,14 +17,14 @@ export type TextoEstadoV2 = {
   texto: string;
   /** true cuando `texto` es un número real; false cuando es un texto de estado D4. */
   esNumero: boolean;
-  /** Línea secundaria opcional (motivo de `no_aplica`, o tooltip de "calculado"). */
+  /** Línea secundaria opcional (motivo de `no_aplica`, o tooltip de "disponible"). */
   detalle: string | null;
 };
 
 const COPY_DISPONIBLE = "Calculado con los datos disponibles";
 
 export function textoEstadoV2(valor: ValorV2): TextoEstadoV2 {
-  if (valor.estado === "calculado") {
+  if (valor.estado === "disponible") {
     return {
       texto: formatearNumeroConSupuesto(valor.valor, valor.formato, valor.supuestos),
       esNumero: true,
@@ -60,7 +60,7 @@ export function textoEstadoV2(valor: ValorV2): TextoEstadoV2 {
 }
 
 export function esSupuesto(valor: ValorV2): boolean {
-  return valor.estado === "calculado" && valor.supuestos.length > 0;
+  return valor.estado === "disponible" && valor.supuestos.length > 0;
 }
 
 const COPY_ORIGEN: Record<EstadoEvidencia, string> = {

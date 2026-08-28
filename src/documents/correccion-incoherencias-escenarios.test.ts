@@ -247,7 +247,7 @@ describe("4 · los cinco escenarios restantes no cambian su lectura salvo por la
         const fuga = fugasPorId.get(hallazgo.id);
         if (!fuga || fuga.monto === null || !fuga.calculable) continue;
         expect(hallazgo.monto).not.toBeNull();
-        if (hallazgo.monto!.estado === "calculado") {
+        if (hallazgo.monto!.estado === "disponible") {
           expect(hallazgo.monto!.valor).toBe(fuga.monto);
         }
       }

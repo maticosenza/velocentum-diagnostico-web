@@ -49,11 +49,11 @@ describe("construirResumenComercial", () => {
   it("la cifra dominante es contribución incremental del conservador, nunca facturación", () => {
     const resumen = armar(casoConOportunidad, "alta");
     expect(resumen.escenarioComunicado).toBe("conservador");
-    expect(resumen.cifraPrincipal.estado).toBe("calculado");
-    expect(resumen.limiteInferior.estado).toBe("calculado");
+    expect(resumen.cifraPrincipal.estado).toBe("disponible");
+    expect(resumen.limiteInferior.estado).toBe("disponible");
     // El límite superior, con confianza alta, es el escenario potencial.
     expect(resumen.idEscenarioLimiteSuperior).toBe("potencial");
-    if (resumen.cifraPrincipal.estado === "calculado" && resumen.limiteInferior.estado === "calculado") {
+    if (resumen.cifraPrincipal.estado === "disponible" && resumen.limiteInferior.estado === "disponible") {
       expect(resumen.cifraPrincipal.valor).toBe(resumen.limiteInferior.valor);
     }
   });
@@ -112,8 +112,8 @@ describe("construirResumenComercial", () => {
     expect(resumen.dispersion.datosParaCerrarla.length).toBeGreaterThan(0);
     expect(resumen.cifraPrincipal.estado).toBe("retenido");
     // El rango sigue publicado: "se muestra el rango sin cifra principal", no se oculta todo.
-    expect(resumen.limiteInferior.estado).toBe("calculado");
-    expect(resumen.limiteSuperior.estado).toBe("calculado");
+    expect(resumen.limiteInferior.estado).toBe("disponible");
+    expect(resumen.limiteSuperior.estado).toBe("disponible");
     expect(resumen.redaccion).not.toBeNull();
   });
 

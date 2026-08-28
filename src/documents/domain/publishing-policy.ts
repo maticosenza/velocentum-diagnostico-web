@@ -19,7 +19,7 @@ export function valorCalculado<T>(args: {
   supuestos?: string[];
 }): ValorPublicable<T> {
   return {
-    estado: "calculado",
+    estado: "disponible",
     valor: args.valor,
     confianza: args.confianza,
     evidenciaIds: [...args.evidenciaIds],
@@ -145,7 +145,7 @@ export function envioBloqueaRentabilidad(envio: PoliticaEnvio): boolean {
 }
 
 export function valorEsPublicable<T>(valor: ValorPublicable<T>): boolean {
-  return valor.estado === "calculado";
+  return valor.estado === "disponible";
 }
 
 /** El escenario potencial sólo puede mostrarse con cobertura/confianza alta. */

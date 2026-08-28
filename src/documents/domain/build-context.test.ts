@@ -27,9 +27,9 @@ describe("adaptador conservador a DocumentContextV1", () => {
     const c = contexto(casoTitanWebB1);
 
     expect(validarContextoDocumento(c)).toEqual([]);
-    expect(c.actual.facturacion).toMatchObject({ estado: "calculado", valor: 50_000_000 });
-    expect(c.actual.inversionTotal).toMatchObject({ estado: "calculado", valor: 1_800_000 });
-    expect(c.actual.merMarketplace).toMatchObject({ estado: "calculado", valor: 27.78 });
+    expect(c.actual.facturacion).toMatchObject({ estado: "disponible", valor: 50_000_000 });
+    expect(c.actual.inversionTotal).toMatchObject({ estado: "disponible", valor: 1_800_000 });
+    expect(c.actual.merMarketplace).toMatchObject({ estado: "disponible", valor: 27.78 });
     // D4/Bloque 3 Funcional: faltan las ventas atribuidas de Product Ads (dato
     // de entrada ausente), no una regla de negocio — reclasificado de
     // "retenido" a "evidencia_faltante" (contrato-bloque-3.md sección 1,
@@ -72,7 +72,7 @@ describe("adaptador conservador a DocumentContextV1", () => {
     });
     expect(c.cobertura).toMatchObject({ general: 60, canales: 100, productos: 60 });
     expect(c.actual.margenTotal).toMatchObject({ estado: "retenido", valor: null });
-    expect(c.actual.margenMuestra).toMatchObject({ estado: "calculado", valor: 0.6375 });
+    expect(c.actual.margenMuestra).toMatchObject({ estado: "disponible", valor: 0.6375 });
   });
 
   it("respeta no absorbe y conserva false y cero como evidencia real", () => {
@@ -94,9 +94,9 @@ describe("adaptador conservador a DocumentContextV1", () => {
       valor: false,
     });
     expect(c.evidencia["inversion_meta"]).toMatchObject({ estado: "declarado", valor: 0 });
-    expect(c.actual.facturacion).toMatchObject({ estado: "calculado", valor: 0 });
-    expect(c.actual.inversionTotal).toMatchObject({ estado: "calculado", valor: 0 });
-    expect(c.actual.pedidos).toMatchObject({ estado: "calculado", valor: 0 });
+    expect(c.actual.facturacion).toMatchObject({ estado: "disponible", valor: 0 });
+    expect(c.actual.inversionTotal).toMatchObject({ estado: "disponible", valor: 0 });
+    expect(c.actual.pedidos).toMatchObject({ estado: "disponible", valor: 0 });
     expect(c.actual.roasProductAds).toMatchObject({ estado: "no_aplica", valor: null });
   });
 
@@ -108,8 +108,8 @@ describe("adaptador conservador a DocumentContextV1", () => {
       ml_ventas_product_ads: 9_000_000,
     });
 
-    expect(c.actual.merMarketplace).toMatchObject({ estado: "calculado", valor: 27.78 });
-    expect(c.actual.roasProductAds).toMatchObject({ estado: "calculado", valor: 5 });
+    expect(c.actual.merMarketplace).toMatchObject({ estado: "disponible", valor: 27.78 });
+    expect(c.actual.roasProductAds).toMatchObject({ estado: "disponible", valor: 5 });
     expect(c.actual.merMarketplace).not.toEqual(c.actual.roasProductAds);
     // casoTitanWebB1 tiene 60% de cobertura de productos: el margen total
     // (y por lo tanto breakeven_roas) queda retenido, así que el hallazgo
@@ -132,7 +132,7 @@ describe("adaptador conservador a DocumentContextV1", () => {
 
     expect(c.cobertura).toMatchObject({ general: 60, canales: 60, productos: 60 });
     expect(c.actual.margenTotal).toMatchObject({ estado: "retenido", valor: null });
-    expect(c.actual.margenMuestra).toMatchObject({ estado: "calculado", valor: 0.3148 });
+    expect(c.actual.margenMuestra).toMatchObject({ estado: "disponible", valor: 0.3148 });
     expect(c.restricciones.map((r) => r.id)).toContain("cobertura_canales_parcial");
   });
 
@@ -277,7 +277,7 @@ describe("comercial: la escalera de paquetes confirmada, nunca un paquete invent
         },
       ],
     });
-    expect(c.comercial?.niveles[0]?.precio).toMatchObject({ estado: "calculado", valor: 900_000 });
+    expect(c.comercial?.niveles[0]?.precio).toMatchObject({ estado: "disponible", valor: 900_000 });
   });
 
   it("sin escalera confirmada (argumento ausente), `comercial` sigue en null", () => {

@@ -992,7 +992,7 @@ function ScenarioCard({
       {/* S8 (Bloque 3 Funcional): la nota sólo tiene sentido si hay un
           ahorro publicable del que hablar — nunca si está
           retenido/no_aplica/evidencia_faltante. */}
-      {item.ahorroPublicitario90d.estado === "calculado" ? (
+      {item.ahorroPublicitario90d.estado === "disponible" ? (
         <View wrap={false}>
           <Marcador bloque="nota" />
           <Text style={styles.scenarioNote}>
@@ -1185,8 +1185,8 @@ function renderBlock(
     case "channel-comparison": {
       const t = textoEstadoV2(block.tienda.value);
       const m = textoEstadoV2(block.marketplace.value);
-      const tVal = block.tienda.value.estado === "calculado" ? block.tienda.value.valor : 0;
-      const mVal = block.marketplace.value.estado === "calculado" ? block.marketplace.value.valor : 0;
+      const tVal = block.tienda.value.estado === "disponible" ? block.tienda.value.valor : 0;
+      const mVal = block.marketplace.value.estado === "disponible" ? block.marketplace.value.valor : 0;
       const max = Math.max(tVal, mVal, 0.001);
       return (
         <View key="channel-comparison" style={standaloneCardStyle} wrap={false}>
@@ -1241,6 +1241,35 @@ function renderBlock(
             );
           }}
         />
+      );
+    case "funnel":
+      return (
+        <React.Fragment key="funnel">
+          <CardGrid
+            key="funnel-etapas"
+            items={block.etapas}
+            cols={p.colsMetricGrid}
+            styles={styles}
+            render={(raw, index) => {
+              const etapa = raw as (typeof block.etapas)[number];
+              return (
+                <View key={etapa.id ?? index} style={cardStyle} wrap={false}>
+                  <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>{etapa.etiqueta}</Text>
+                  <ValorTexto value={etapa.valor} dark={dark} styles={styles} />
+                  {etapa.conversion ? (
+                    <Text style={[styles.estadoDetalle, dark ? { color: theme.colors.surface } : {}]}>
+                      Conversión desde la etapa anterior: {textoEstadoV2(etapa.conversion).texto}
+                    </Text>
+                  ) : null}
+                </View>
+              );
+            }}
+          />
+          <View key="funnel-conversion-global" style={standaloneCardStyle} wrap={false}>
+            <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>Conversión global</Text>
+            <ValorTexto value={block.conversionGlobal} dark={dark} styles={styles} />
+          </View>
+        </React.Fragment>
       );
     case "findings":
       return (
@@ -1693,7 +1722,7 @@ function ContentPage({
   // aprobada — un único bloque `bridge-note` en la sección equivale,
   // dado el árbol de construcción de `propuesta.ts`, a `esCualitativa`
   // (DHB-2): `buildBridgeNoteV2` sólo devuelve no-null si
-  // `resumenComercial.cifraPrincipal.estado === "calculado"`, condición
+  // `resumenComercial.cifraPrincipal.estado === "disponible"`, condición
   // que también deja `buildCommercialSummaryV2` no-null (necesita menos:
   // sólo que `resumenComercial` exista) — así que en la rama NO
   // cualitativa, `blocks.length` nunca puede ser 1 con ese único bloque

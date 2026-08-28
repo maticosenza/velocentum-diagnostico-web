@@ -19,9 +19,11 @@ import {
 import type {
   ConfianzaDocumento,
   DocumentContextV1,
+  EtapaFunnelWebDocumento,
   EtapaRoadmap,
   Evidencia,
   FortalezaDocumento,
+  FunnelWebDocumento,
   HallazgoDocumento,
   PoliticaEnvio,
   RestriccionDocumento,
@@ -314,6 +316,55 @@ function fortalezasDocumento(resultado: ResultadoCalculo): FortalezaDocumento[] 
   }
 
   return fortalezas;
+}
+
+const ETIQUETA_ETAPA_FUNNEL: Record<EtapaFunnelWebDocumento["id"], string> = {
+  visitas: "Visitas",
+  agregados_carrito: "Agregados al carrito",
+  checkouts_iniciados: "Checkouts iniciados",
+  compras: "Compras",
+};
+
+/**
+ * R-09 (Bloque Visual 3, HEAD 82bb66e): funnel web de tienda propia,
+ * forma tabular. Lee sin modificar `resultado.derivados.funnel`
+ * (`FunnelDerivado`) — nunca deriva ni estima una tasa que el motor no
+ * exponga. `null` cuando el motor marca `no_aplica`, `sin_datos` o
+ * `error` (mismo criterio que cualquier otro bloque opcional: nunca un
+ * bloque vacío con encabezado).
+ */
+function funnelWebDocumento(resultado: ResultadoCalculo): FunnelWebDocumento | null {
+  const f = resultado.derivados.funnel;
+  if (f.estado === "no_aplica" || f.estado === "sin_datos" || f.estado === "error") return null;
+
+  const tasa = (v: number | null): ValorPublicable<number> =>
+    finito(v)
+      ? valorCalculado({ valor: v, confianza: "alta", evidenciaIds: [] })
+      : valorNoAplica("Este cálculo no corresponde a este caso");
+  const conteo = (v: number | null): ValorPublicable<number> =>
+    finito(v) ? valorCalculado({ valor: v, confianza: "alta", evidenciaIds: [] }) : valorEvidenciaFaltante("Falta este dato para completar la etapa.");
+
+  const etapa = (id: EtapaFunnelWebDocumento["id"], valor: number | null, conversion: ValorPublicable<number> | null): EtapaFunnelWebDocumento => ({
+    id,
+    etiqueta: ETIQUETA_ETAPA_FUNNEL[id],
+    valor: conteo(valor),
+    conversion,
+  });
+
+  const etapas: EtapaFunnelWebDocumento[] = f.desglosado
+    ? [
+        etapa("visitas", f.visitas, null),
+        etapa("agregados_carrito", f.agregados_carrito, tasa(f.p_carrito_dado_visita)),
+        etapa("checkouts_iniciados", f.checkouts_iniciados, tasa(f.p_checkout_dado_carrito)),
+        etapa("compras", f.compras, tasa(f.p_compra_dado_checkout)),
+      ]
+    : [etapa("visitas", f.visitas, null), etapa("compras", f.compras, null)];
+
+  return {
+    desglosado: f.desglosado,
+    etapas,
+    conversionGlobal: tasa(f.cr_global),
+  };
 }
 
 /**
@@ -765,6 +816,7 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
     hallazgos: salidaHallazgos.hallazgos,
     margenBloqueado: resultado.margen_bloqueado,
     fortalezas: fortalezasDocumento(resultado),
+    funnelWeb: funnelWebDocumento(resultado),
     escenarios90d: escenariosDocumento(datos, resultado, confianza, envio),
     resumenComercial: resumenComercialDocumento({ datos, resultado, confianza, envio, tipoDocumento }),
     roadmap: roadmapDocumento(salidaHallazgos.hallazgos, comercial, restricciones),

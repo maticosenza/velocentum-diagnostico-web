@@ -25,7 +25,7 @@ export type FormatoValorV2 = "money" | "percent" | "ratio" | "number";
 
 export type ValorV2 =
   | {
-      estado: "calculado";
+      estado: "disponible";
       valor: number;
       formato: FormatoValorV2;
       confianza: Exclude<ConfianzaDocumento, "bloqueada">;
@@ -102,6 +102,14 @@ export type FortalezaV2 = {
   umbral: ValorV2;
 };
 
+/** R-09 (Bloque Visual 3): ver `domain/types.ts` `EtapaFunnelWebDocumento`. */
+export type EtapaFunnelV2 = {
+  id: "visitas" | "agregados_carrito" | "checkouts_iniciados" | "compras";
+  etiqueta: string;
+  valor: ValorV2;
+  conversion: ValorV2 | null;
+};
+
 export type HallazgoV2 = {
   id: string;
   titulo: string;
@@ -168,6 +176,7 @@ export type DocumentBlockV2 =
     }
   | { type: "findings"; variante: "diagnostico" | "propuesta"; items: HallazgoV2[] }
   | { type: "strengths"; items: FortalezaV2[] }
+  | { type: "funnel"; desglosado: boolean; etapas: EtapaFunnelV2[]; conversionGlobal: ValorV2 }
   | { type: "scenarios"; items: EscenarioV2[] }
   | {
       type: "commercial-summary";

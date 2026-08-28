@@ -29,7 +29,7 @@ export function publishValue(
   value: ValorPublicable<number>,
   format: DocumentValueFormat,
 ): PublishedNumber | null {
-  if (value.estado !== "calculado") return null;
+  if (value.estado !== "disponible") return null;
   return {
     value: value.valor,
     format,

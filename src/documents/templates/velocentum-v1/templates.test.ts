@@ -271,14 +271,14 @@ describe("Velocentum document templates v1", () => {
         motivos: ["El rango entre el escenario conservador y el potencial es demasiado amplio."],
       },
       limiteInferior: {
-        estado: "calculado",
+        estado: "disponible",
         valor: 1_000_000,
         confianza: "alta",
         evidenciaIds: [],
         supuestos: ["rampa_escenario_conservador"],
       },
       limiteSuperior: {
-        estado: "calculado",
+        estado: "disponible",
         valor: 4_000_000,
         confianza: "alta",
         evidenciaIds: [],

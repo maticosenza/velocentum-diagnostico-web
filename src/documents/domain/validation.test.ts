@@ -36,6 +36,7 @@ function contextoValido(): DocumentContextV1 {
     hallazgos: [],
     margenBloqueado: false,
     fortalezas: [],
+    funnelWeb: null,
     escenarios90d: [],
     resumenComercial: null,
     roadmap: [],
@@ -58,7 +59,7 @@ describe("validación del contexto documental", () => {
     const contexto = contextoValido();
     contexto.cobertura.productos = 120;
     contexto.actual.ticket = {
-      estado: "calculado",
+      estado: "disponible",
       valor: Number.NaN,
       confianza: "alta",
       evidenciaIds: [],

@@ -189,7 +189,7 @@ describe("comercial desde la columna `propuesta` persistida (build-context.ts:47
       nombre: "IMPULSO",
       servicios: [{ servicio: "Meta Ads", unidad: "campañas_activas", cantidad: 1 }],
     });
-    expect(contexto.comercial?.niveles[0]?.precio).toMatchObject({ estado: "calculado", valor: 900_000 });
+    expect(contexto.comercial?.niveles[0]?.precio).toMatchObject({ estado: "disponible", valor: 900_000 });
   });
 
   it("sin ninguna selección persistida, `comercial` queda en null y la propuesta se genera sin bloque comercial", () => {

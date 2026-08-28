@@ -20,6 +20,16 @@ HEAD, no los documentos de `docs/visual/` (congelados desde el
 | `"retenido"`, regla de negocio | `margenTotal`/`margenMuestra` cuando `resultado.margen_bloqueado` (contradicción confirmada), cuando la cobertura de canales/productos es parcial (`!coberturaCompleta`), o cuando la política de envío no está confirmada (`build-context.ts:526-552`); `MOTIVO_SIN_CONSERVADOR`/`MOTIVO_SIN_LIMITE_SUPERIOR` (`resumen-comercial.ts:64,67`); retención de fugas con `usa_margen: true` cuando el margen es negativo (`src/lib/calculo-diagnostico.ts`, ver D5); `overrideMargenEnvio` cuando `envioBloqueaRentabilidad(envio)` retiene contribución/ahorro publicitario en escenarios (`escenarios-90d.ts:228`, `MOTIVO_ENVIO_NO_CONFIRMADO`) | **retenido** (sin cambio) |
 | ratio con denominador = inversión declarada en $0 | `merTienda` (`inversionCanal(datos,"tienda_propia") === 0`), `merMarketplace`/`roasProductAds` (`inversionProductAds(datos) === 0`) — hoy caen en `publicarNumero` genérico (`build-context.ts:556-579`), sin distinguir "cero real" de "dato ausente" | **no_aplica** (DHB-1) — "Este cálculo no corresponde a este caso" |
 
+**Actualización 2026-08-28 (Bloque Visual 3, reserva R-1):** al cierre de
+Bloque 3 Funcional el renombrado de la primera fila nunca se ejecutó —
+el código seguía usando el literal `"calculado"`. Bloque Visual 3 lo
+implementó como renombrado mecánico (sin cambio de comportamiento):
+`ValorPublicable.estado`/`ValorV2.estado` usan hoy `"disponible"`, y
+`"calculado"` no existe más como estado del Eje 2 en `src/documents/`
+(verificado: cero ocurrencias). La columna "ANTES" de esta fila queda
+como registro histórico; la columna "DESPUÉS" es ahora el estado real
+del código, no una intención pendiente.
+
 **Corrección 2026-08-27 (durante PASO 3) a la primera versión de este
 contrato:** la primera redacción de este documento clasificaba
 "cobertura de canales/productos parcial" como `evidencia_faltante` por
@@ -826,3 +836,53 @@ Configuración" (antes: "Origen: configuracion").
 
 Suite tras estos cuatro puntos: 765 passed + 1 todo (subió de 762 por
 H1.5 ×2 perfiles), typecheck y build limpios.
+
+## 14 · R-09 (Bloque Visual 3, 2026-08-28): PARCIALMENTE RESUELTO — funnel construido, retención documentada sin resolver
+
+La sección 7 de este documento dejaba pendiente, explícitamente, dos
+componentes de R-09: el funnel web y el bloque de retención. Bloque
+Visual 3 (HEAD de partida `82bb66e`) resolvió el primero y dejó el
+segundo documentado, mismo criterio que R-07 — no se fabrica un
+componente para exponer algo que el motor no expone estructurado.
+
+**Funnel — CONSTRUIDO.** `resultado.derivados.funnel` (`FunnelDerivado`,
+`src/lib/funnel.ts`) ya traía la cascada completa del canal tienda
+propia (visitas/agregados/checkouts/compras, tres tasas por tramo,
+conversión global), pero nunca llegaba a `DocumentContextV1`. Se agregó
+`funnelWebDocumento` (`domain/build-context.ts`) que lo traduce SIN
+derivar ni recalcular ninguna tasa: lee los campos de `FunnelDerivado`
+tal cual, marca `no_aplica` (DHB-1) cuando una tasa tiene denominador
+cero, y devuelve `null` (bloque ausente, nunca vacío con encabezado)
+cuando el estado del motor es `no_aplica`/`sin_datos`/`error`. Forma
+visual: tabular, reutilizando el patrón `metric-grid` ya aprobado
+(`vdoc2-metric-grid`/`vdoc2-metric` en web; `CardGrid` en PDF) — cuatro
+tarjetas (o dos, cuando `desglosado` es falso y faltan etapas
+intermedias) más una tarjeta de conversión global. Sin gráfico nuevo,
+sin composición nueva. Verificado con `funnel-web-r09.test.ts` (cinco
+casos: desglosado, combinado, no_aplica, sin_datos, denominador cero) y
+con inspección visual real (PDF rasterizado, pantalla e impresión) y de
+markup web (`renderToStaticMarkup`) — paridad semántica confirmada
+texto por texto entre ambos renderers.
+
+**Retención — SIN RESOLVER, documentado (mismo criterio que R-07).**
+A diferencia del funnel, no existe un `XxxDerivado` estructurado
+análogo para retención en `resultado.derivados`. Lo que expone el motor
+son dos `Fuga` independientes (`recuperacion_carrito`, `recompra`,
+`calculo-diagnostico.ts:1315-1440`), cada una con su impacto monetario
+tipado — ya mapeadas a `hallazgos` y ya visibles hoy en la sección de
+hallazgos del documento. No hay un objeto con la forma de
+"cascada de retención" (tasa actual, tasa objetivo, ventana, cohortes)
+en `derivados`: esos números viven como campos de ENTRADA de
+`DatosDiagnostico` (`retencion_recuperacion_pct_actual`,
+`recompra_tasa_actual_pct`, etc.), no como salida derivada. Construir
+un bloque de retención exigiría una de dos cosas fuera de alcance de
+este bloque: (a) que el motor exponga un derivado de retención nuevo
+(cambio del motor, prohibido en la sección 4 de este bloque), o (b) un
+componente que sólo re-empaquete visualmente los mismos dos hallazgos
+que el usuario ya ve en la sección de hallazgos, sin aportar
+información nueva — decisión explícita del usuario: no fabricarlo.
+Queda para un bloque futuro con mandato de diseño explícito sobre qué
+forma debería tener ese derivado en el motor.
+
+**Estado final de R-09: PARCIALMENTE RESUELTO.** Funnel: sí. Retención:
+no, con la razón documentada arriba — no "resuelto" a secas.

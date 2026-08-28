@@ -4,6 +4,7 @@ import {
   buildCoverageBlockV2,
   buildFindingsV2,
   buildFortalezasV2,
+  buildFunnelV2,
   buildMetricGridV2,
   buildShippingV2,
   dedupeMetricGridV2,
@@ -29,6 +30,10 @@ export function buildDiagnosticoDocumentV2(context: DocumentContextV1) {
   const metrics = dedupeMetricGridV2(buildMetricGridV2(context), channelComparison);
   const shipping = buildShippingV2(context);
   const fortalezas = buildFortalezasV2(context);
+  // R-09 (Bloque Visual 3): funnel web de tienda propia. `null` cuando no
+  // aplica al canal, no hay datos o hay un error de coherencia — mismo
+  // criterio que `fortalezas`, nunca un bloque vacío con encabezado.
+  const funnel = buildFunnelV2(context);
   const findings = buildFindingsV2(context, "diagnostico");
 
   return createModelV2({
@@ -55,15 +60,17 @@ export function buildDiagnosticoDocumentV2(context: DocumentContextV1) {
         // auditoría, ronda 1): la grilla por sí sola ya ocupa la página
         // completa, así que un bloque corto después de ella terminaba solo
         // en la página de continuación.
-        blocks: [coverage, channelComparison, metrics, shipping, fortalezas],
+        blocks: [coverage, channelComparison, metrics, shipping, funnel, fortalezas],
       }),
       transitionSectionV2("diagnostic-transition", "De los datos a las prioridades"),
       contentSectionV2({
         id: "findings",
         eyebrow: "Diagnóstico",
-        // DA-3 (Bloque 3 Funcional): renombrado — la página sólo trae
-        // hallazgos (`buildFindingsV2`), sin funnel ni retención con
-        // estructura propia (eso es Bloque Visual 3). Ver
+        // DA-3 (Bloque 3 Funcional): renombrado — la página trae
+        // hallazgos (`buildFindingsV2`). R-09 (Bloque Visual 3): el
+        // funnel web ya se construye (bloque `funnel` en la sección
+        // "current-state" de arriba); la retención sigue sin resolver —
+        // el motor no expone un derivado estructurado para eso, ver
         // `docs/funcional/contrato-bloque-3.md` sección 7.
         title: "Hallazgos priorizados",
         blocks: [findings],

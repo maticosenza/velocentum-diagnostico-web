@@ -35,15 +35,15 @@ describe("escenariosDocumento", () => {
 
     expect(escenarios.map((e) => e.id)).toEqual(["conservador", "base", "potencial"]);
     for (const escenario of escenarios) {
-      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("calculado");
-      expect(escenario.contribucionIncremental.acumulado90d.estado).toBe("calculado");
+      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("disponible");
+      expect(escenario.contribucionIncremental.acumulado90d.estado).toBe("disponible");
       expect(escenario.mensual).toHaveLength(3);
       expect(escenario.supuestos.map((s) => s.id)).toContain(`rampa_escenario_${escenario.id}`);
       expect(escenario.supuestos.map((s) => s.id)).toContain(`rampa_ahorro_${escenario.id}`);
       // Nunca la misma cifra: facturación y contribución son magnitudes distintas.
       if (
-        escenario.facturacionIncremental.acumulado90d.estado === "calculado" &&
-        escenario.contribucionIncremental.acumulado90d.estado === "calculado"
+        escenario.facturacionIncremental.acumulado90d.estado === "disponible" &&
+        escenario.contribucionIncremental.acumulado90d.estado === "disponible"
       ) {
         expect(escenario.facturacionIncremental.acumulado90d.valor).not.toBe(
           escenario.contribucionIncremental.acumulado90d.valor,
@@ -65,33 +65,33 @@ describe("escenariosDocumento", () => {
       const supuestoFC = `rampa_escenario_${escenario.id}`;
       const supuestoAhorro = `rampa_ahorro_${escenario.id}`;
 
-      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("calculado");
-      if (escenario.facturacionIncremental.acumulado90d.estado === "calculado") {
+      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("disponible");
+      if (escenario.facturacionIncremental.acumulado90d.estado === "disponible") {
         expect(escenario.facturacionIncremental.acumulado90d.supuestos).toContain(supuestoFC);
         expect(escenario.facturacionIncremental.ritmoMensualDia90).toMatchObject({
-          estado: "calculado",
+          estado: "disponible",
           supuestos: [supuestoFC],
         });
       }
       for (const palanca of escenario.facturacionIncremental.palancas) {
-        expect(palanca.monto).toMatchObject({ estado: "calculado", supuestos: [supuestoFC] });
+        expect(palanca.monto).toMatchObject({ estado: "disponible", supuestos: [supuestoFC] });
       }
 
-      if (escenario.ahorroPublicitario.acumulado90d.estado === "calculado") {
+      if (escenario.ahorroPublicitario.acumulado90d.estado === "disponible") {
         expect(escenario.ahorroPublicitario.acumulado90d.supuestos).toContain(supuestoAhorro);
       }
       for (const palanca of escenario.ahorroPublicitario.palancas) {
-        expect(palanca.monto).toMatchObject({ estado: "calculado", supuestos: [supuestoAhorro] });
+        expect(palanca.monto).toMatchObject({ estado: "disponible", supuestos: [supuestoAhorro] });
       }
 
       for (const mes of escenario.mensual) {
-        if (mes.facturacionIncrementalHabilitada.estado === "calculado") {
+        if (mes.facturacionIncrementalHabilitada.estado === "disponible") {
           expect(mes.facturacionIncrementalHabilitada.supuestos).toContain(supuestoFC);
         }
-        if (mes.contribucionIncrementalHabilitada.estado === "calculado") {
+        if (mes.contribucionIncrementalHabilitada.estado === "disponible") {
           expect(mes.contribucionIncrementalHabilitada.supuestos).toContain(supuestoFC);
         }
-        if (mes.ahorroPublicitarioHabilitado.estado === "calculado") {
+        if (mes.ahorroPublicitarioHabilitado.estado === "disponible") {
           expect(mes.ahorroPublicitarioHabilitado.supuestos).toContain(supuestoAhorro);
         }
       }
@@ -146,7 +146,7 @@ describe("escenariosDocumento", () => {
 
     const escenarios = escenariosDocumento(datos, resultado, "media", envio);
     for (const escenario of escenarios) {
-      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("calculado");
+      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("disponible");
       expect(escenario.contribucionIncremental.acumulado90d.estado).toBe("retenido");
     }
   });
@@ -168,7 +168,7 @@ describe("escenariosDocumento", () => {
         expect(escenario.contribucionIncremental.acumulado90d.motivos[0]).toMatch(/contradice/);
       }
       // Facturación incremental no depende de margen: sigue publicada.
-      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("calculado");
+      expect(escenario.facturacionIncremental.acumulado90d.estado).toBe("disponible");
     }
   });
 

@@ -45,9 +45,9 @@ const METRIC_DEFINITIONS: Array<{
 const ORDEN_PRIORIDAD: Record<HallazgoV2["prioridad"], number> = { alta: 0, media: 1, baja: 2 };
 
 export function publicarV2(valor: ValorPublicable<number>, formato: FormatoValorV2): ValorV2 {
-  if (valor.estado === "calculado") {
+  if (valor.estado === "disponible") {
     return {
-      estado: "calculado",
+      estado: "disponible",
       valor: valor.valor,
       formato,
       confianza: valor.confianza,
@@ -134,6 +134,29 @@ export function buildFortalezasV2(context: DocumentContextV1): DocumentBlockV2 |
 }
 
 /**
+ * R-09 (Bloque Visual 3): funnel web de tienda propia, ya decidido en el
+ * dominio (`domain/build-context.ts`, `funnelWebDocumento`) — este
+ * bloque sólo traduce a `ValorV2`, sin agregar ni recalcular ninguna
+ * tasa. `null` cuando el dominio no expone funnel para este caso (no
+ * aplica, sin datos o error de coherencia).
+ */
+export function buildFunnelV2(context: DocumentContextV1): DocumentBlockV2 | null {
+  const f = context.funnelWeb;
+  if (f === null) return null;
+  return {
+    type: "funnel",
+    desglosado: f.desglosado,
+    etapas: f.etapas.map((e) => ({
+      id: e.id,
+      etiqueta: e.etiqueta,
+      valor: publicarV2(e.valor, "number"),
+      conversion: e.conversion === null ? null : publicarV2(e.conversion, "percent"),
+    })),
+    conversionGlobal: publicarV2(f.conversionGlobal, "percent"),
+  };
+}
+
+/**
  * Comparación entre canales (R-10): sólo cuando ambos MER son calculables
  * simultáneamente. `merTienda`/`merMarketplace` calculados por separado ya
  * viven en metric-grid; este bloque es adicional, no un reemplazo.
@@ -141,7 +164,7 @@ export function buildFortalezasV2(context: DocumentContextV1): DocumentBlockV2 |
 export function buildChannelComparisonV2(context: DocumentContextV1): DocumentBlockV2 | null {
   const tienda = context.actual.merTienda;
   const marketplace = context.actual.merMarketplace;
-  if (tienda.estado !== "calculado" || marketplace.estado !== "calculado") return null;
+  if (tienda.estado !== "disponible" || marketplace.estado !== "disponible") return null;
   return {
     type: "channel-comparison",
     tienda: { label: "MER tienda propia", value: publicarV2(tienda, "ratio") },
@@ -168,7 +191,7 @@ export function buildShippingV2(context: DocumentContextV1): DocumentBlockV2 | n
   if (context.envio.estado !== "si") return null;
   if (!debeMostrarEnvio(context.envio)) return null;
   const valor = publicarNumeroDesdeEvidencia("envio.costoNeto", context.envio.costoNeto);
-  if (valor.estado !== "calculado") return null;
+  if (valor.estado !== "disponible") return null;
   return {
     type: "shipping",
     label: "Costo neto absorbido por pedido",
@@ -202,8 +225,8 @@ export function buildFindingsV2(
   items.sort((a, b) => {
     const porPrioridad = ORDEN_PRIORIDAD[a.prioridad] - ORDEN_PRIORIDAD[b.prioridad];
     if (porPrioridad !== 0) return porPrioridad;
-    const montoA = a.monto?.estado === "calculado" ? a.monto.valor : -Infinity;
-    const montoB = b.monto?.estado === "calculado" ? b.monto.valor : -Infinity;
+    const montoA = a.monto?.estado === "disponible" ? a.monto.valor : -Infinity;
+    const montoB = b.monto?.estado === "disponible" ? b.monto.valor : -Infinity;
     return montoB - montoA;
   });
 
@@ -277,7 +300,7 @@ export function buildCommercialSummaryV2(context: DocumentContextV1): DocumentBl
   const headline = publicarV2(r.cifraPrincipal, "money");
   const conservador = context.escenarios90d.find((e) => e.id === r.escenarioComunicado);
   const assumptionsDetail =
-    headline.estado === "calculado" && headline.supuestos.length > 0 ? [...(conservador?.supuestos ?? [])] : [];
+    headline.estado === "disponible" && headline.supuestos.length > 0 ? [...(conservador?.supuestos ?? [])] : [];
   return {
     type: "commercial-summary",
     scenarioCommunicated: r.escenarioComunicado,
@@ -352,9 +375,9 @@ export function buildAlertaMargenNegativoV2(context: DocumentContextV1): Documen
  */
 export function buildBridgeNoteV2(context: DocumentContextV1): DocumentBlockV2 | null {
   if (!context.resumenComercial) return null;
-  if (context.resumenComercial.cifraPrincipal.estado !== "calculado") return null;
+  if (context.resumenComercial.cifraPrincipal.estado !== "disponible") return null;
   const montosServicio = context.hallazgos
-    .filter((h) => h.capa === "servicio" && h.monto?.estado === "calculado")
+    .filter((h) => h.capa === "servicio" && h.monto?.estado === "disponible")
     .map((h) => h.titulo);
   if (montosServicio.length === 0) return null;
   return {

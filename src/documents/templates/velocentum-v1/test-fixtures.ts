@@ -50,6 +50,7 @@ export function buildTitanContext(): DocumentContextV1 {
     ],
     margenBloqueado: false,
     fortalezas: [],
+    funnelWeb: null,
     escenarios90d: [
       {
         id: "base",
@@ -178,6 +179,7 @@ export function buildSnakeContext(): DocumentContextV1 {
     ],
     margenBloqueado: false,
     fortalezas: [],
+    funnelWeb: null,
     escenarios90d: [
       {
         id: "base",

@@ -131,8 +131,8 @@ describe("contrato v2 — modelo (sin renderizar)", () => {
           const actual = block.items[i]!;
           expect(orden[anterior.prioridad]).toBeLessThanOrEqual(orden[actual.prioridad]);
           if (orden[anterior.prioridad] === orden[actual.prioridad]) {
-            const montoAnterior = anterior.monto?.estado === "calculado" ? anterior.monto.valor : -Infinity;
-            const montoActual = actual.monto?.estado === "calculado" ? actual.monto.valor : -Infinity;
+            const montoAnterior = anterior.monto?.estado === "disponible" ? anterior.monto.valor : -Infinity;
+            const montoActual = actual.monto?.estado === "disponible" ? actual.monto.valor : -Infinity;
             expect(montoAnterior).toBeGreaterThanOrEqual(montoActual);
           }
         }
@@ -275,7 +275,7 @@ describe("contrato v2 — web real (renderToStaticMarkup)", () => {
     const scenarios = blocksOf(model, "scenarios")[0]!;
     const conservador = scenarios.items.find((i: EscenarioV2) => i.id === "conservador");
     expect(conservador).toBeDefined();
-    if (!conservador || conservador.contribucion90d.estado !== "calculado") throw new Error("fixture inesperado");
+    if (!conservador || conservador.contribucion90d.estado !== "disponible") throw new Error("fixture inesperado");
 
     const html = renderToStaticMarkup(React.createElement(DocumentWebRendererV2, { model }));
     const buffer = await renderToBuffer(createPdfDocumentElementV2(model, "pantalla"));

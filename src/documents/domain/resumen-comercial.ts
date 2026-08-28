@@ -120,22 +120,22 @@ export function construirResumenComercial(args: {
   // muestra (confianza alta); si no, cae a base. Nunca se comunica
   // "potencial" como número si el propio contrato lo mantiene oculto.
   const potencialVisible =
-    potencialDoc?.visible === true && potencialDoc.contribucionIncremental.acumulado90d.estado === "calculado";
+    potencialDoc?.visible === true && potencialDoc.contribucionIncremental.acumulado90d.estado === "disponible";
   const limiteSuperior: ValorPublicable<number> = potencialVisible
     ? potencialDoc!.contribucionIncremental.acumulado90d
     : (baseDoc?.contribucionIncremental.acumulado90d ?? valorRetenido(MOTIVO_SIN_LIMITE_SUPERIOR));
   const idEscenarioLimiteSuperior: "base" | "potencial" | null = potencialVisible
     ? "potencial"
-    : baseDoc?.contribucionIncremental.acumulado90d.estado === "calculado"
+    : baseDoc?.contribucionIncremental.acumulado90d.estado === "disponible"
       ? "base"
       : null;
 
   const ambosCalculados =
-    limiteInferior.estado === "calculado" && limiteSuperior.estado === "calculado";
+    limiteInferior.estado === "disponible" && limiteSuperior.estado === "disponible";
   const redaccion = ambosCalculados
     ? redaccionRangoContribucion(
-        (limiteInferior as Extract<ValorPublicable<number>, { estado: "calculado" }>).valor,
-        (limiteSuperior as Extract<ValorPublicable<number>, { estado: "calculado" }>).valor,
+        (limiteInferior as Extract<ValorPublicable<number>, { estado: "disponible" }>).valor,
+        (limiteSuperior as Extract<ValorPublicable<number>, { estado: "disponible" }>).valor,
       )
     : null;
 
@@ -143,7 +143,7 @@ export function construirResumenComercial(args: {
     conservadorDoc?.confianza === "bloqueada" ? "baja" : (conservadorDoc?.confianza ?? "baja");
 
   const cifraPrincipal: ValorPublicable<number> =
-    limiteInferior.estado !== "calculado"
+    limiteInferior.estado !== "disponible"
       ? limiteInferior
       : dispersion.alta
         ? valorRetenido(MOTIVO_DISPERSION_ALTA)

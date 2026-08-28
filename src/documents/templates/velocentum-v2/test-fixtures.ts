@@ -101,6 +101,7 @@ export function buildMulticanalContext(): DocumentContextV1 {
     ],
     margenBloqueado: false,
     fortalezas: [],
+    funnelWeb: null,
     escenarios90d: [
       {
         id: "conservador",
@@ -321,6 +322,7 @@ export function buildMargenNegativoContext(): DocumentContextV1 {
     ],
     margenBloqueado: false,
     fortalezas: [],
+    funnelWeb: null,
     escenarios90d: [
       {
         id: "conservador",

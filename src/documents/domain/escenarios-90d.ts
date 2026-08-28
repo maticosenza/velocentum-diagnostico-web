@@ -102,7 +102,7 @@ export function confianzaEscenario(
 ): ConfianzaDocumento {
   const confianzasCalculadas = lineas
     .map((linea) => linea.acumulado90d)
-    .filter((valor) => valor.estado === "calculado")
+    .filter((valor) => valor.estado === "disponible")
     .map((valor) => valor.confianza);
   if (confianzasCalculadas.length === 0) return "baja";
   const peor = confianzasCalculadas.reduce((min, actual) =>

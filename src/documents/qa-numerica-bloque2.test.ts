@@ -85,13 +85,13 @@ describe("1 · cada cifra publicada coincide exactamente con su derivado de orig
     const datos = conFacturacionYEnvioConfirmado(casoSnakeStoreCoberturaCompleta);
     const { resultado, contexto: ctx } = contexto(datos, "diagnostico");
 
-    expect(ctx.actual.facturacion.estado).toBe("calculado");
+    expect(ctx.actual.facturacion.estado).toBe("disponible");
     expect(ctx.actual.facturacion.valor).toBe(FACTURACION_BASE);
 
-    expect(ctx.actual.pedidos.estado).toBe("calculado");
+    expect(ctx.actual.pedidos.estado).toBe("disponible");
     expect(ctx.actual.pedidos.valor).toBe(resultado.derivados.pedidos_mensuales);
 
-    expect(ctx.actual.margenTotal.estado).toBe("calculado");
+    expect(ctx.actual.margenTotal.estado).toBe("disponible");
     expect(ctx.actual.margenTotal.valor).toBe(resultado.derivados.margen_contribucion);
 
     const model = buildDiagnosticoDocument(ctx);
@@ -112,7 +112,7 @@ describe("1 · cada cifra publicada coincide exactamente con su derivado de orig
       const fuga = fugasPorId.get(hallazgo.id);
       if (!fuga || fuga.monto === null || !fuga.calculable) continue;
       expect(hallazgo.monto).not.toBeNull();
-      if (hallazgo.monto!.estado === "calculado") {
+      if (hallazgo.monto!.estado === "disponible") {
         expect(hallazgo.monto!.valor).toBe(fuga.monto);
       }
     }
@@ -176,8 +176,8 @@ describe("2 · ninguna suma cruza magnitudes económicas", () => {
     for (const escenario of ctx.escenarios90d) {
       for (const mes of escenario.mensual) {
         if (
-          mes.facturacionProyectada.estado !== "calculado" ||
-          mes.contribucionIncrementalHabilitada.estado !== "calculado"
+          mes.facturacionProyectada.estado !== "disponible" ||
+          mes.contribucionIncrementalHabilitada.estado !== "disponible"
         ) {
           continue;
         }
@@ -188,7 +188,7 @@ describe("2 · ninguna suma cruza magnitudes económicas", () => {
           mes.facturacionProyectada.valor + mes.contribucionIncrementalHabilitada.valor;
         expect(mes.facturacionProyectada.valor).not.toBe(facturacionMasContribucion);
 
-        if (mes.ahorroPublicitarioHabilitado.estado === "calculado") {
+        if (mes.ahorroPublicitarioHabilitado.estado === "disponible") {
           mesesConAhorroComparado++;
           const facturacionMasAhorro =
             mes.facturacionProyectada.valor + mes.ahorroPublicitarioHabilitado.valor;
@@ -266,13 +266,13 @@ describe("4 · un cero real nunca se muestra como dato ausente", () => {
     expect(resultado.derivados.inversion_publicitaria_total).toBe(0);
     expect(resultado.derivados.hay_inversion_publicitaria).toBe(false);
 
-    expect(ctx.actual.inversionTotal.estado).toBe("calculado");
+    expect(ctx.actual.inversionTotal.estado).toBe("disponible");
     expect(ctx.actual.inversionTotal.valor).toBe(0);
 
     const model = buildDiagnosticoDocument(ctx);
     const metricas = blocksOf(model, "metric-grid").flatMap((b) => b.items);
     const inversionItem = metricas.find((m) => m.id === "inversionTotal");
-    // Presencia en metric-grid ya implica "calculado" (buildMetricGrid
+    // Presencia en metric-grid ya implica "disponible" (buildMetricGrid
     // filtra cualquier ValorPublicable que no lo esté: ver blocks.ts).
     expect(inversionItem).toBeDefined();
     expect(inversionItem!.value.value).toBe(0);
@@ -290,7 +290,7 @@ describe("5 · el margen total no aparece cuando la cobertura de productos es pa
 
     expect(completa.resultado.derivados.cobertura_productos).toBe(100);
     expect(completa.resultado.derivados.margen_contribucion).not.toBeNull();
-    expect(completa.contexto.actual.margenTotal.estado).toBe("calculado");
+    expect(completa.contexto.actual.margenTotal.estado).toBe("disponible");
   });
 });
 
@@ -346,7 +346,7 @@ describe("7 · los precios están vacíos salvo confirmación manual explícita"
         {
           ...seleccion.niveles[0]!,
           precio: {
-            estado: "calculado",
+            estado: "disponible",
             valor: 900_000,
             confianza: "alta",
             evidenciaIds: [],
