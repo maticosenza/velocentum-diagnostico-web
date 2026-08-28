@@ -48,6 +48,10 @@ const ARCHIVOS_PERMITIDOS = new Set([
   // mismos nueve casos para confirmar que ninguna página nueva colapsa
   // por debajo del piso absoluto — mismo criterio, decisión consciente.
   "fase-14-x1-x4-x5-x7.test.ts",
+  // Fase 14.1 (2026-08-28): Y1 (E-19 resuelto, umbral 50%) reutiliza los
+  // mismos nueve casos para confirmar que ninguna excepción documentada
+  // supera el umbral nuevo — mismo criterio, decisión consciente.
+  "fase-14-1-y1.test.ts",
 ]);
 
 function archivosFuente(dir: string, acc: string[] = []): string[] {

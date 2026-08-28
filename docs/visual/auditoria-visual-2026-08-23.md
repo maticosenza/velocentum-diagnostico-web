@@ -577,7 +577,21 @@ revisión de 380 páginas / 54 PDFs). Mismo criterio que la sección d): el
 apéndice original y la sección d) **no se reescriben** — esta es otra
 capa de corrección que se suma encima.
 
-### E-19 · NORMATIVO (nuevo) · El umbral de ocupación de página (R-01/5.1) no se cumple de forma sistemática
+### E-19 · RESUELTO (actualización 2026-08-28, Fase 14.1) · El umbral de ocupación de página (R-01/5.1) no se cumple de forma sistemática
+
+**Resuelto.** Decisión humana de Matías, Fase 14.1 (2026-08-28): vía
+(a) de la sección "Decisión pendiente" abajo — bajar el umbral general
+a **50% para pantalla e impresión** (antes 70%/65%, sección 5.1 de
+`contrato-composicion-v2.md`, ahora actualizada). El piso duro de 25%
+(E-20) se mantiene sin cambios de valor, pero cambia de naturaleza: ver
+E-20 abajo. Registrado además un hallazgo estructural nuevo, **E-21**
+(abajo), que documenta la causa raíz común a E-19 y E-20 — la
+auditoría externa acertó en identificar el patrón pero lo separó en
+dos hallazgos distintos cuando es, en el fondo, una única causa
+arquitectónica en dos manifestaciones. El análisis de distribución que
+sostiene esta decisión está en `docs/fase-14/analisis-e19.md`; el
+razonamiento original de este hallazgo se conserva sin editar abajo,
+como registro histórico de por qué se llegó a esta decisión.
 
 R-01 (`docs/visual/matriz-hallazgos.md`) ya había señalado, desde la
 auditoría original, que no existe ningún mecanismo de medición u
@@ -630,7 +644,27 @@ ronda correctiva — explícitamente fuera del alcance de Bloque Visual
 Fase 14 (criterio de entrada — ver `docs/plan-maestro-fases.md`
 sección 5.7).
 
-### E-20 · NORMATIVO (nuevo) · Páginas bajo 25% de ocupación: defecto confirmado, independiente del umbral general
+### E-20 · RECLASIFICADO (actualización 2026-08-28, Fase 14.1) · Páginas bajo 25% de ocupación: criterio de entrada de un futuro rediseño de paginación, no corrección obligatoria de fase 14
+
+**Reclasificado.** Deja de ser "corrección obligatoria" de la fase 14
+— las 16 páginas quedaron documentadas y justificadas individualmente
+(`docs/visual/contrato-composicion-v2.md` sección 5.8.1, ejecutado en
+Fase 14) y el piso de 25% se mantiene sin cambios de valor. Lo que
+cambia es el ENCUADRE: el argumento arquitectónico de Fase 14 (el
+modelo una-sección-por-página de react-pdf hace que ninguna técnica de
+reordenamiento resuelva una sección con contenido real escaso) se
+acepta como correcto — E-20 no es una categoría de defecto distinta de
+E-19, sino la manifestación más aguda de la misma causa estructural
+(ver **E-21**, nuevo, abajo). Separarlos en dos hallazgos, como hizo la
+auditoría externa original, sugería que E-20 era corregible por
+composición mientras E-19 era sólo una cuestión de umbral — la
+investigación de Fase 14 mostró que ninguno de los dos es corregible
+por composición sin un rediseño de fondo (fusionar secciones enteras).
+Por eso E-20 pasa a ser **criterio de entrada de un futuro rediseño de
+paginación** (la vía (b) que Fase 14 evaluó y descartó por alcance) —
+si ese rediseño se emprende alguna vez, las 16 páginas (y las que
+E-21 describe de forma más amplia) son el criterio de aceptación que
+debe cumplir.
 
 Distinto de E-19 (una pregunta de política abierta: ¿cuál debería ser
 el umbral general?), el subconjunto de páginas con ocupación por debajo
@@ -660,6 +694,51 @@ la fase 14, no de este registro.
 primera corrección obligatoria (criterio de entrada — ver
 `docs/plan-maestro-fases.md` sección 5.7).
 
+### E-21 · NORMATIVO (nuevo, 2026-08-28, Fase 14.1) · El modelo una-sección-por-página de react-pdf es la causa estructural común de E-19 y E-20
+
+**Hallazgo:** en `renderers/pdf-v2/document.tsx`, cada `contentSectionV2`
+del modelo se renderiza como su propio `<Page>` de `@react-pdf/renderer`
+(`model.sections.map(...)` → un `<Page>` por sección) — dos secciones
+NUNCA comparten página, sin importar el orden de sus bloques internos
+ni cuánto contenido real tenga cada una. Cuando el contenido real de
+una sección es escaso (2 hallazgos, 2 restricciones, un paquete
+comercial de un nivel, un grupo de escenario con una sola palanca),
+esa sección ocupa una página entera con vacío estructural — no porque
+el renderer falle en componer bien el contenido que tiene, sino porque
+el propio modelo de paginación no tiene ningún mecanismo para
+compartir una página entre dos secciones cortas.
+
+**Es la causa raíz común de E-19 y E-20 — no una tercera categoría
+independiente.** E-19 (el patrón sistémico, 124/380 páginas bajo el
+umbral general original) y E-20 (las 16 páginas bajo el piso duro de
+25%) son dos mediciones del MISMO fenómeno con dos umbrales distintos:
+en ambos casos, la técnica de reordenar bloques dentro de una sección
+(la que sí resolvió C-1 en Bloque Visual 3.1) no alcanza, porque el
+problema nunca está en el orden interno de una sección — está en que
+la sección, completa, tiene poco que decir. La auditoría externa
+original (2026-08-23) acertó en identificar el patrón pero lo separó
+en dos hallazgos (E-19 como cuestión de umbral, E-20 como defecto de
+composición corregible) cuando ambos comparten la misma causa
+estructural y ninguno es corregible por composición sin tocar el
+modelo de paginación en sí.
+
+**Resolución:** exige fusionar secciones ENTERAS (ej. combinar
+"Restricciones" y "Metodología" cuando ambas son cortas, o "Por qué
+ahora" con "Alcance") — un rediseño del modelo de paginación, no un
+ajuste de composición dentro de las secciones existentes. Evaluado en
+Fase 14 (`docs/fase-14/analisis-e19.md` sección 4, punto 2) y
+descartado por alcance: es un proyecto, no cabe en una ronda
+correctiva acotada. **Queda fuera de alcance hasta que se decida
+abordarlo** — ninguna fase futura está obligada a resolverlo, pero
+cualquier trabajo futuro de rediseño de paginación debe partir de este
+hallazgo como su criterio de entrada (junto con las 16 páginas
+puntuales de E-20 y el barrido más amplio de 35 páginas adicionales
+que documentó `docs/fase-14/analisis-e19.md` sección 5).
+
+**Capa:** arquitectura de renderizado (`renderers/pdf-v2/document.tsx`,
+modelo de paginación). **Bloque de corrección:** ninguno asignado —
+criterio de entrada de un futuro rediseño de paginación, sin fecha.
+
 ### Reconciliación de identificadores (actualización 2026-08-28)
 
 - **Antes de esta corrección:** 38 identificadores (E-01 a E-18 = 18;
@@ -676,3 +755,22 @@ primera corrección obligatoria (criterio de entrada — ver
 documental — sus 38 filas describen la auditoría original (2026-08-23);
 E-19/E-20 son hallazgos de una ronda posterior (Bloque Visual 3.1,
 2026-08-28), fuera del alcance de esa matriz.
+
+### Reconciliación de identificadores (actualización 2026-08-28, Fase 14.1)
+
+- **Antes de esta corrección:** 40 identificadores (E-01 a E-20 = 20;
+  C-01 a C-08 = 8; R-01 a R-12 = 12).
+- **Después de esta corrección:** 41 identificadores (E-01 a E-21 = 21;
+  C-01 a C-08 = 8, sin cambios; R-01 a R-12 = 12, sin cambios). E-19
+  pasa a RESUELTO (decisión humana tomada, umbral general en 50%); E-20
+  pasa a RECLASIFICADO (deja de ser corrección obligatoria de fase 14,
+  pasa a ser criterio de entrada de un futuro rediseño de paginación);
+  E-21 es nuevo — la causa estructural común que explica por qué ni
+  E-19 ni E-20 son corregibles por composición dentro del alcance de
+  una ronda correctiva. Ningún identificador se elimina: E-19/E-20
+  quedan con su texto histórico intacto más la nota de resolución al
+  principio de cada uno, siguiendo el mismo criterio de no reescritura
+  que ya usa este documento.
+
+`docs/visual/matriz-hallazgos.md` sigue sin actualizarse — E-19/E-20/E-21
+son hallazgos posteriores a su alcance original (misma nota de arriba).

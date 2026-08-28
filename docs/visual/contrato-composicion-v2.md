@@ -416,10 +416,50 @@ anteriores, las extiende donde corresponde.
 
 ### 5.1 Umbral de ocupación por perfil (sustituye el "≥70%" único de la sección 2.2)
 
-**≥70% del alto útil en pantalla, ≥65% en A4** (antes un solo umbral de
-70% sin distinguir perfil). Donde una sección no llegue sin inventar
-contenido, se documenta el caso puntual con motivo (ver 5.7) y se deja
-así — nunca se rellena con contenido inventado.
+**Histórico (Bloque Visual 2.1, 2026-08-23 → Fase 14, 2026-08-28):**
+≥70% del alto útil en pantalla, ≥65% en A4 (antes un solo umbral de 70%
+sin distinguir perfil). Superado por la corrección de Fase 14.1, abajo.
+
+**Vigente desde Fase 14.1 (2026-08-28) — decisión humana de Matías,
+E-19 (`docs/fase-14/analisis-e19.md`), vía (a):**
+
+**≥50% del alto útil, mismo umbral para pantalla e impresión** (deja de
+distinguir perfil — el análisis de distribución no encontró una razón
+real para que el mínimo aceptable difiera entre los dos, y un único
+número es más simple de verificar y de explicar).
+
+Justificación (no un ajuste arbitrario — ver el análisis completo en
+`docs/fase-14/analisis-e19.md`):
+
+- **La mediana real del universo evaluable (218 páginas de contenido,
+  excluyendo portadas y páginas de cierre a sangre completa) es 52,7%**
+  — un umbral en 50% deja que aproximadamente la mitad del contenido
+  real ya lo cumpla, y sigue siendo un gate genuino: páginas por debajo
+  de ese número, en un universo donde la mitad del contenido real ya lo
+  supera, sí son indicio de un problema real, no sólo de volumen de
+  datos.
+- **La distribución no tiene un quiebre natural marcado**, pero la
+  banda 50-60% es la más liviana del histograma (18 páginas de 218) —
+  el valle más cercano a un punto de corte natural en los datos
+  reales, no un número elegido para maximizar cuántas páginas pasan.
+- **45% se descartó por demasiado permisivo** (dejaría pasar 95 páginas
+  adicionales frente al piso de 50%, sin una razón de contenido real
+  que lo justifique) — la decisión humana fijó el número en 50%, no en
+  el punto medio del rango 45-50% que proponía la recomendación.
+- **Incompatibilidad estructural, no sólo de distribución:** en
+  react-pdf cada sección (`contentSectionV2`) es su propia `<Page>` —
+  dos secciones nunca comparten página sin importar el orden de sus
+  bloques internos (ver 5.8.1 y E-21 en `auditoria-visual-2026-08-23.md`).
+  Una sección con contenido real escaso (2 hallazgos, 2 restricciones, un
+  paquete comercial de un nivel) ocupa una página entera con vacío
+  estructural — ningún umbral general, alto o bajo, cambia esa realidad
+  para esos casos puntuales; por eso el piso duro de 25% (E-20) y la
+  lista cerrada de excepciones (5.8/5.8.1) siguen existiendo por debajo
+  de este umbral general.
+
+Donde una sección no llegue al 50% sin inventar contenido, se documenta
+el caso puntual con motivo (ver 5.7/5.8/5.8.1) y se deja así — nunca se
+rellena con contenido inventado.
 
 ### 5.2 C1 — Tabla mensual apilada en impresión (ataca E-01/R-12 residual)
 
@@ -554,6 +594,25 @@ ambos bloques), a nivel de plantilla, sin tocar el dominio. El
 componente de comparación en sí no se modifica.
 
 ### 5.8 C7 — Excepciones documentadas de ocupación
+
+**Reconciliación contra el umbral nuevo (Fase 14.1, 2026-08-28):**
+medí por segunda vez, con el mismo método declarado de posición de
+texto (`analisis-e19.md` sección 2), la ocupación real de cada página
+que sostiene una excepción de esta lista, contra el umbral nuevo del
+50%. **Ninguna de las excepciones documentadas abajo (ni las de 5.8 ni
+las 16 de 5.8.1) supera el 50%** — no sale ninguna de la lista. Las
+páginas de "Alcance" (`services`), en particular, resultaron más bajas
+de lo que sugería la descripción original de esta viñeta: entre 11,1%
+y 34,0% en los nueve casos de referencia, nunca cerca de un umbral de
+ningún tamaño razonable — consistente con que `context.servicios[].alcance`
+sale vacío (`[]`) de la construcción real del contexto
+(`build-context.ts` línea ~506) para todo caso derivado de un
+diagnóstico real (sólo los fixtures de prueba `mayorista`/`mixto`
+cargan `alcance` a mano). Esto no es un defecto nuevo de esta ronda —
+es la misma causa estructural que ya describe E-21
+(`auditoria-visual-2026-08-23.md`): una sección con contenido real
+escaso ocupa una página entera con vacío, sin relación con dónde se
+fije el umbral general.
 
 Ver sección 2.2 para el residuo ya documentado en Bloque Visual 2 (fila
 de continuación de `metric-grid` en pantalla, ahora medido contra el
