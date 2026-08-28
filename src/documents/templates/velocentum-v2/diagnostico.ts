@@ -56,11 +56,19 @@ export function buildDiagnosticoDocumentV2(context: DocumentContextV1) {
         id: "current-state",
         eyebrow: "Punto de partida",
         title: "Cobertura y foto actual: economía, canales y publicidad",
-        // Bloques cortos antes de la grilla de 9 métricas (corrección de
-        // auditoría, ronda 1): la grilla por sí sola ya ocupa la página
-        // completa, así que un bloque corto después de ella terminaba solo
-        // en la página de continuación.
-        blocks: [coverage, channelComparison, metrics, shipping, funnel, fortalezas],
+        // Bloques cortos ANTES de la grilla de 9 métricas (`metrics` al
+        // final, no al principio) — corrección de auditoría, ronda 1 y
+        // C-1 (Bloque Visual 3.1): la grilla por sí sola ya ocupa una
+        // página casi completa, así que cualquier bloque corto que la
+        // siguiera terminaba solo en la página de continuación (defecto
+        // real encontrado con `fortalezas`, un único ítem en el caso
+        // "1-marketplace-fuerte-tienda-floja": página de continuación con
+        // una sola tarjeta y ~78% en blanco). Con `metrics` al final, la
+        // fila de continuación que le corresponde a ELLA es el residuo ya
+        // documentado y aceptado (contrato de composición v2, sección 5.8,
+        // primera viñeta) — no un nuevo defecto. Sin inventar contenido,
+        // sólo reordenando bloques reales.
+        blocks: [coverage, channelComparison, fortalezas, shipping, funnel, metrics],
       }),
       transitionSectionV2("diagnostic-transition", "De los datos a las prioridades"),
       contentSectionV2({

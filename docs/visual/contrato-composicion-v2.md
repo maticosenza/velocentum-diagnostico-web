@@ -567,6 +567,21 @@ contenido inventado:
   ocupación — residuo ya documentado en Bloque Visual 2, sección 2.2,
   ahora con la cantidad de tarjetas actualizada tras C6 (dedup de MER:
   7 métricas en vez de 9, balanceadas 4+3 por `filasBalanceadas`).
+  Bloque Visual 3.1 (C-1, `diagnostico.ts`): al mover `metrics` al final
+  del orden de bloques de la sección "current-state" (para que
+  `fortalezas`/`shipping`/`funnel` no terminen aislados — ver sección 2.2
+  de `contrato-bloque-3.md`), el mismo residuo estructural pasó a
+  manifestarse TAMBIÉN como página propia en los casos de un solo canal
+  sin `channelComparison` (dedup C6 inactivo, MER tienda/MER marketplace/
+  ROAS Product Ads quedan como fila de 3 tarjetas): `2-margen-alto-volumen-bajo`,
+  `3-margen-fino-volumen-alto` y `5-todo-sano`, perfil pantalla. Antes de
+  la ronda 3.1 este mismo residuo existía pero no abría una página
+  propia (`metrics` iba primero, así que su fila de continuación quedaba
+  seguida por `shipping`/`funnel`/`fortalezas` en la misma página).
+  Verificado por inspección visual directa (idéntico patrón de 3
+  tarjetas al de s1, mismo contenido "MER tienda propia/MER marketplace/
+  ROAS Product Ads") — no es un residuo nuevo, es el mismo ya aceptado
+  arriba, ahora con más casos afectados.
 - **`propuesta`, sección "Alcance" (`services`)**: cuando los servicios
   no tienen `alcance` cargado (título de una línea, sin bullets), la
   página queda con baja ocupación incluso después de C8 (que ya evita

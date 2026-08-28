@@ -538,34 +538,47 @@ function StrengthsBlock({ block }: { block: Extract<DocumentBlockV2, { type: "st
 }
 
 /**
- * R-09 (Bloque Visual 3): funnel web de tienda propia. Reutiliza el
- * patrón de `vdoc2-metric-grid` ya aprobado (mismo usado en
- * `MetricGridBlock`) — sin gráfico nuevo, sin composición nueva.
+ * C-2 (Bloque Visual 3.1): el funnel es una cascada, no un grupo de
+ * métricas independientes — la versión anterior reutilizaba
+ * `vdoc2-metric-grid`, el mismo patrón de tarjetas de `MetricGridBlock`,
+ * así que un lector no podía distinguir una etapa del funnel de una
+ * tarjeta económica. Se reemplaza por la tabla simple ya aprobada
+ * (`vdoc2-table-wrap`/`vdoc2-monthly-table`, el mismo patrón que el
+ * detalle mensual de escenarios) — mismo patrón, sin gráfico nuevo, con
+ * encabezado propio que la separa visualmente del resto de la sección.
  */
 function FunnelBlock({ block }: { block: Extract<DocumentBlockV2, { type: "funnel" }> }) {
   return (
     <BlockFrame type="funnel">
-      <dl className="vdoc2-metric-grid">
-        {block.etapas.map((etapa) => (
-          <div className="vdoc2-metric" key={etapa.id}>
-            <dt>{etapa.etiqueta}</dt>
-            <dd>
-              <ValorV2View value={etapa.valor} />
-              {etapa.conversion ? (
-                <p className="vdoc2-muted">
-                  Conversión desde la etapa anterior: <ValorV2View value={etapa.conversion} />
-                </p>
-              ) : null}
-            </dd>
-          </div>
-        ))}
-        <div className="vdoc2-metric" key="conversion-global">
-          <dt>Conversión global</dt>
-          <dd>
-            <ValorV2View value={block.conversionGlobal} />
-          </dd>
-        </div>
-      </dl>
+      <h3>Funnel de conversión: tienda propia</h3>
+      <div className="vdoc2-table-wrap">
+        <table className="vdoc2-monthly-table">
+          <thead>
+            <tr>
+              <th scope="col">Etapa</th>
+              <th scope="col">Valor</th>
+              <th scope="col">Conversión desde la etapa anterior</th>
+            </tr>
+          </thead>
+          <tbody>
+            {block.etapas.map((etapa) => (
+              <tr key={etapa.id}>
+                <td>{etapa.etiqueta}</td>
+                <td>
+                  <ValorV2View value={etapa.valor} />
+                </td>
+                <td>{etapa.conversion ? <ValorV2View value={etapa.conversion} /> : "—"}</td>
+              </tr>
+            ))}
+            <tr key="conversion-global">
+              <td>Conversión global</td>
+              <td colSpan={2}>
+                <ValorV2View value={block.conversionGlobal} />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </BlockFrame>
   );
 }

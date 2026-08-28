@@ -902,7 +902,7 @@ juego generado desde el commit candidato (después), con `pdfinfo` sobre
 cada PDF.
 
 El delta completo está concentrado en cuatro documentos `diagnostico`
-— los únicos siete tipo/perfil que tienen la sección "Cobertura y foto
+— los únicos cuatro tipo/perfil que tienen la sección "Cobertura y foto
 actual" con la fila de fortalezas cerca del borde de página, donde el
 bloque `funnel` nuevo (R-09) empuja el contenido restante a una página
 adicional:
@@ -922,3 +922,109 @@ cortado, ni queda con encabezado sin contenido — verificado por
 inspección visual directa de los rásters y por la suite automatizada de
 composición (H1/H2/H2b/H3, `generar-pdfs-bloque-3.test.ts`), que corre
 sobre las 54 combinaciones y pasa en verde sobre el HEAD final.
+
+## 16 · Ronda correctiva Bloque Visual 3.1 (2026-08-28): C-1 a C-4
+
+Cuatro correcciones sobre el candidato auditado del Bloque Visual 3
+(`cb8b378`, APROBADO CON CORRECCIONES). Ninguna reabre R-01/R-09, ninguna
+toca el motor, ninguna relaja un umbral existente.
+
+**C-1 — fortalezas aislada en una página ~78% en blanco.** Causa real:
+`fortalezas` era el último bloque de la sección "current-state"
+(`diagnostico.ts`); en el caso con una sola fortaleza
+(`1-marketplace-fuerte-tienda-floja`, `channelComparison` presente → C6
+dedup activo → `metric-grid` cabe sin fila de continuación), no quedaba
+ningún bloque grande después para absorber su tarjeta si la sección
+completa no cabía en la página anterior. Corrección: `metrics` pasa al
+final del orden de bloques (`blocks: [coverage, channelComparison,
+fortalezas, shipping, funnel, metrics]`) — `fortalezas`/`shipping`/
+`funnel` quedan pegados al principio de la sección, donde siempre hay
+contenido previo y siguiente con qué fusionarse, y la fila de
+continuación que le toca a `metrics` quedar sola es el residuo YA
+documentado y aceptado (`contrato-composicion-v2.md` sección 5.8, C7,
+primera viñeta — ampliada en esta ronda, ver ahí). Sin inventar
+contenido, sólo reordenando bloques reales. Falseado: revertir el orden
+reproduce el defecto original exacto (167 caracteres en la página
+aislada) — ver `bloque-visual-3-1-verificacion.test.ts`, W1.
+
+**C-2 — el funnel se leía como cuatro tarjetas sueltas, no como
+cascada.** Causa real: `buildFunnelV2`/`renderBlock` reutilizaban
+literalmente el mismo `CardGrid` y las mismas `cols` que `metric-grid`,
+sin ningún título ni tratamiento visual propio. Corrección: el funnel
+pasa a la tabla simple ya aprobada (`monthlyTable*` en PDF, mismos
+estilos que el detalle mensual de escenarios; `vdoc2-table-wrap`/
+`vdoc2-monthly-table` en web), con encabezado propio ("Funnel de
+conversión: tienda propia") y columnas Etapa/Valor/Conversión desde la
+etapa anterior — mismo patrón de composición ya aprobado, sin gráfico
+nuevo. Cero derivación: los mismos cuatro valores y tres porcentajes que
+ya traía el bloque. Falseado: revertir el renderer reproduce el
+`vdoc2-metric-grid` compartido — ver W2.
+
+**C-3 — `web/` traía 27 renders en vez de 54.** Causa real (inferida —
+el script que generó el ZIP anterior no se incorporó al repositorio, no
+hay commit que lo pruebe directamente): 27 = 9 casos × 3 documentos × 1
+perfil — exactamente la mitad de 54, la firma exacta de haber iterado
+sólo el perfil "pantalla". A diferencia del renderer PDF, el renderer
+web es HTML continuo sin paginación real: "impresión" sólo cambia una
+clase CSS (`vdoc2--impresion`, ancho A4) y un par de custom properties
+de sombra/textura (`profile` en `document-renderer.tsx`), no la
+composición estructural — fácil de asumir "no agrega nada" y omitirlo,
+pero `c-08-perfil-a4.test.ts` ya probaba que los dos perfiles producen
+HTML distinto, y el ZIP original de Bloque Visual 3 prometía 54 (un
+render por PDF, sección 17). Corrección: nuevo generador incorporado al
+repo, `renderers/web-v2/generar-web-bloque-3.test.ts` (mismo criterio
+que el generador hermano de PDFs — sólo escribe a disco con
+`VELOCENTUM_BLOQUE3_WEB_QA_DIR`, siempre verifica los 54 en memoria),
+que itera los dos perfiles explícitamente y verifica que producen HTML
+distinto para cada caso/documento.
+
+**C-4 — desliz de redacción en la sección 15.** "los únicos siete
+tipo/perfil" → "los únicos **cuatro** tipo/perfil" (la tabla de arriba
+siempre tuvo cuatro filas; el texto decía "siete" desde la ronda
+anterior). Corregido en esta misma sección de arriba.
+
+### Reconciliación de páginas contra `cb8b378`
+
+54 PDFs regenerados desde un `git worktree` limpio en `cb8b378` (antes)
+y comparados contra el mismo juego generado desde el árbol con las
+cuatro correcciones (después), con `pdfinfo` sobre cada PDF. **380 → 380
+páginas totales, delta neto 0** — pero con movimiento real dentro de
+tres documentos, los tres explicados por el mismo mecanismo (C-1 mueve
+`metrics` al final; la tabla del funnel de C-2 es más compacta que el
+`CardGrid` que reemplaza):
+
+| Documento | Antes | Después | Delta |
+|---|---|---|---|
+| `2-margen-alto-volumen-bajo/diagnostico-pantalla` | 6 | 7 | +1 |
+| `2-margen-alto-volumen-bajo/diagnostico-impresion` | 6 | 5 | −1 |
+| `3-margen-fino-volumen-alto/diagnostico-pantalla` | 6 | 7 | +1 |
+| `3-margen-fino-volumen-alto/diagnostico-impresion` | 6 | 5 | −1 |
+| `5-todo-sano/diagnostico-pantalla` | 6 | 7 | +1 |
+| `5-todo-sano/diagnostico-impresion` | 6 | 5 | −1 |
+
+**Pantalla, +1 en los tres casos**: ninguno de los tres usa
+`channelComparison` (venden sólo por tienda propia, sin Mercado Libre),
+así que el dedup de C6 no aplica y `metric-grid` conserva sus 9 tarjetas
+— con `metrics` al final (C-1), su fila de continuación (MER tienda
+propia/MER marketplace/ROAS Product Ads, ~15-25% de ocupación) ahora
+abre página propia en vez de quedar seguida por `shipping`/`funnel` en
+la misma página, como pasaba con el orden anterior. Es el MISMO residuo
+ya aceptado en `contrato-composicion-v2.md` sección 5.8 (C7, antes sólo
+documentado para el caso multicanal s1) — no un defecto nuevo, ver la
+ampliación de esa sección. Verificado por inspección visual: contenido
+idéntico al de la excepción ya aceptada (mismas tres tarjetas, mismo
+motivo de "no aplica"/"evidencia_faltante").
+
+**Impresión, −1 en los mismos tres casos**: la tabla del funnel (C-2)
+ocupa menos alto que el `CardGrid` de cuatro tarjetas + tarjeta
+"Conversión global" que reemplaza, así que en el perfil que apila más
+agresivamente (impresión) ese ahorro alcanza para evitar una página que
+antes hacía falta.
+
+Las 48 combinaciones restantes (incluidas las 4 páginas nuevas de la
+ronda anterior, sección 15) no cambiaron de conteo. Ninguna página nueva
+ni desplazada tiene texto solapado, cortado, ni queda con encabezado sin
+contenido — verificado por inspección visual directa de los rásters y
+por la suite automatizada de composición (H1/H2/H2b/H3,
+`generar-pdfs-bloque-3.test.ts`), que corre sobre las 54 combinaciones y
+pasa en verde sobre el HEAD final.

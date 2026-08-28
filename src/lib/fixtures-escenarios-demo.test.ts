@@ -39,6 +39,11 @@ const ARCHIVOS_PERMITIDOS = new Set([
   // las verificaciones H1/H2/H3 de la ronda R-03 necesitan generar los
   // documentos reales para correr.
   "generar-pdfs-bloque-3.test.ts",
+  // Bloque Visual 3.1 (2026-08-28, ronda correctiva): generador hermano de
+  // renders web de los mismos nueve casos (C-3) y su prueba de
+  // verificación (W1-W3) — mismo criterio que arriba, decisión consciente.
+  "generar-web-bloque-3.test.ts",
+  "bloque-visual-3-1-verificacion.test.ts",
 ]);
 
 function archivosFuente(dir: string, acc: string[] = []): string[] {

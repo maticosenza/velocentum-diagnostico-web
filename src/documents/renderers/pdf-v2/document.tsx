@@ -1243,33 +1243,43 @@ function renderBlock(
         />
       );
     case "funnel":
+      // C-2 (Bloque Visual 3.1): el funnel es una cascada, no un grupo de
+      // métricas independientes — antes reutilizaba `CardGrid` con las
+      // mismas `cols`/tarjetas que `metric-grid`, así que un lector no
+      // podía distinguir una etapa del funnel de una tarjeta económica.
+      // Se reemplaza por la tabla simple ya aprobada (`monthlyTable*`,
+      // sección 2.4/D2 del contrato de composición, la misma que usa el
+      // detalle mensual de escenarios) — mismo patrón, sin gráfico nuevo,
+      // con encabezado propio ("Funnel de conversión") que la separa
+      // visualmente del resto de la sección. Bloque completo `wrap={false}`
+      // (máximo cinco filas), mismo criterio que `channel-comparison`/
+      // `shipping`.
       return (
-        <React.Fragment key="funnel">
-          <CardGrid
-            key="funnel-etapas"
-            items={block.etapas}
-            cols={p.colsMetricGrid}
-            styles={styles}
-            render={(raw, index) => {
-              const etapa = raw as (typeof block.etapas)[number];
-              return (
-                <View key={etapa.id ?? index} style={cardStyle} wrap={false}>
-                  <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>{etapa.etiqueta}</Text>
-                  <ValorTexto value={etapa.valor} dark={dark} styles={styles} />
-                  {etapa.conversion ? (
-                    <Text style={[styles.estadoDetalle, dark ? { color: theme.colors.surface } : {}]}>
-                      Conversión desde la etapa anterior: {textoEstadoV2(etapa.conversion).texto}
-                    </Text>
-                  ) : null}
-                </View>
-              );
-            }}
-          />
-          <View key="funnel-conversion-global" style={standaloneCardStyle} wrap={false}>
-            <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>Conversión global</Text>
-            <ValorTexto value={block.conversionGlobal} dark={dark} styles={styles} />
+        <View key="funnel" style={standaloneCardStyle} wrap={false}>
+          <Text style={[styles.blockTitle, dark ? styles.blockTitleDark : {}]}>
+            Funnel de conversión: tienda propia
+          </Text>
+          <View style={styles.monthlyTableHeaderRow}>
+            <Text style={styles.monthlyTableHeaderCell}>Etapa</Text>
+            <Text style={styles.monthlyTableHeaderCell}>Valor</Text>
+            <Text style={styles.monthlyTableHeaderCell}>Conversión desde la etapa anterior</Text>
           </View>
-        </React.Fragment>
+          {block.etapas.map((etapa) => (
+            <View key={etapa.id} style={styles.monthlyTableRow}>
+              <Text style={styles.monthlyTableMonthCell}>{etapa.etiqueta}</Text>
+              <Text style={styles.monthlyTableCell}>{textoEstadoV2(etapa.valor).texto}</Text>
+              <Text style={styles.monthlyTableCell}>
+                {etapa.conversion ? textoEstadoV2(etapa.conversion).texto : "—"}
+              </Text>
+            </View>
+          ))}
+          <View key="funnel-conversion-global" style={styles.monthlyTableRow}>
+            <Text style={styles.monthlyTableMonthCell}>Conversión global</Text>
+            <Text style={[styles.monthlyTableCell, { flex: 2 }]}>
+              {textoEstadoV2(block.conversionGlobal).texto}
+            </Text>
+          </View>
+        </View>
       );
     case "findings":
       return (
