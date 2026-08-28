@@ -14,15 +14,23 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
-  buildDocumentModelDesdeDiagnostico,
-  documentoPorSlug,
-  DOCUMENTOS_DISPONIBLES,
+  armarDocumentoActivo,
+  documentoActivoPorSlug,
+  documentosDisponiblesActivos,
+  type DocumentModelResuelto,
   type DocumentoSlug,
 } from "@/documents/build-document";
 import type { DiagnosticoAlmacenado } from "@/documents/domain/from-diagnostico";
 import { DocumentWebRenderer } from "@/documents/renderers/web";
+import { DocumentWebRendererV2 } from "@/documents/renderers/web-v2/document-renderer";
 import type { PdfProfile } from "@/documents/renderers/pdf/document";
 
+/**
+ * Fase 14: `PdfProfile` (v1) y `PdfProfileV2` son el mismo literal
+ * (`"pantalla" | "impresion"`) definido dos veces (aislamiento entre
+ * renderers, ver `contrato-composicion-v2.md` sección 1) — un único
+ * mapa de etiquetas sirve para los dos, sin importar cuál está activo.
+ */
 const ETIQUETA_PERFIL: Record<PdfProfile, string> = {
   pantalla: "Pantalla (16:9)",
   impresion: "Impresión (A4)",
@@ -37,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/documentos/$id/$slug")({
     ],
   }),
   beforeLoad: ({ params }) => {
-    const documento = documentoPorSlug(params.slug);
+    const documento = documentoActivoPorSlug(params.slug);
     if (!documento) throw notFound();
     return { documento };
   },
@@ -56,7 +64,6 @@ function volverAction(id: string) {
 
 function VistaPreviaDocumento() {
   const { id, slug } = Route.useParams();
-  const { documento } = Route.useRouteContext();
   const [descargando, setDescargando] = useState(false);
   const [errorDescarga, setErrorDescarga] = useState<string | null>(null);
 
@@ -103,9 +110,12 @@ function VistaPreviaDocumento() {
     );
   }
 
-  let model: ReturnType<typeof buildDocumentModelDesdeDiagnostico>;
+  let resuelto: DocumentModelResuelto;
   try {
-    model = buildDocumentModelDesdeDiagnostico(data, documento.id);
+    // `slug` ya se validó contra el catálogo activo en `beforeLoad`
+    // (`documentoActivoPorSlug`, que lanza `notFound()` si no existe) —
+    // acá siempre es uno de los slugs reales.
+    resuelto = armarDocumentoActivo(data, slug as DocumentoSlug);
   } catch (buildError) {
     return (
       <>
@@ -129,8 +139,13 @@ function VistaPreviaDocumento() {
     setErrorDescarga(null);
     setDescargando(true);
     try {
-      const { downloadDocumentModelPdf } = await import("@/documents/renderers/pdf/export-client");
-      await downloadDocumentModelPdf(model, profile);
+      if (resuelto.engine === "v2") {
+        const { downloadDocumentModelPdfV2 } = await import("@/documents/renderers/pdf-v2/export-client");
+        await downloadDocumentModelPdfV2(resuelto.model, profile);
+      } else {
+        const { downloadDocumentModelPdf } = await import("@/documents/renderers/pdf/export-client");
+        await downloadDocumentModelPdf(resuelto.model, profile);
+      }
     } catch (downloadError) {
       setErrorDescarga(
         downloadError instanceof Error
@@ -163,6 +178,8 @@ function VistaPreviaDocumento() {
     </div>
   );
 
+  const { model } = resuelto;
+
   return (
     <>
       <PageHeader
@@ -175,7 +192,7 @@ function VistaPreviaDocumento() {
         aria-label="Documentos disponibles"
         className="flex flex-wrap gap-2 border-b border-border bg-card px-8 py-4"
       >
-        {DOCUMENTOS_DISPONIBLES.map((opcion) => (
+        {documentosDisponiblesActivos().map((opcion) => (
           <TabDocumento
             key={opcion.slug}
             id={id}
@@ -197,7 +214,11 @@ function VistaPreviaDocumento() {
 
       <div className="bg-muted/30 px-8 py-10">
         <div className="mx-auto max-w-[1100px]">
-          <DocumentWebRenderer model={model} />
+          {resuelto.engine === "v2" ? (
+            <DocumentWebRendererV2 model={resuelto.model} />
+          ) : (
+            <DocumentWebRenderer model={resuelto.model} />
+          )}
         </div>
       </div>
     </>

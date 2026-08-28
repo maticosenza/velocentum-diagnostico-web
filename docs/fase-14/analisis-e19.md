@@ -151,3 +151,21 @@ número alcancen sin inventar contenido.
 `contrato-composicion-v2.md` sección 5.1 ni ningún umbral en código a
 partir de este análisis. Ítem 1 (E-20) sigue su curso en paralelo, sin
 depender de esta decisión.
+
+## 5 · Confirmación adicional durante el ítem 1 (E-20)
+
+Al construir la prueba X4 (`fase-14-x1-x4-x5-x7.test.ts`) se barrieron
+los nueve casos × tres documentos × dos perfiles completos (no sólo las
+16 páginas que reportó la auditoría externa) con el método declarado en
+la sección 2. Resultado: **35 páginas adicionales** por debajo de 30%
+en mi medición (mayormente en `propuesta`, secciones "Alcance"/
+"Paquete seleccionado"/"Qué falta validar" con poco contenido real por
+caso) — ninguna nueva CATEGORÍA de causa (mismo patrón: datos reales
+escasos, no composición rota), pero confirma que el problema es más
+amplio que las 16 puntualmente investigadas. Esto **refuerza**, no
+contradice, la recomendación de la sección 4: es exactamente la escala
+que ya describe el 124/380 de E-19. X4 se acotó deliberadamente a (a)
+confirmar que las 16 páginas investigadas siguen documentadas y (b) un
+piso absoluto de 10% (ninguna página observada baja de 11,1%) para no
+convertir un test de regresión en una resolución no autorizada de E-19
+por la puerta de atrás.

@@ -611,6 +611,111 @@ contenido inventado:
   página 3). Preexistente a D-5 (no es un residuo nuevo de esta
   ronda) — no se agrega contenido inventado para llenarla.
 
+### 5.8.1 · Fase 14, ítem 1 (E-20, 2026-08-28) — las 16 páginas bajo 25% de ocupación
+
+La auditoría externa de Bloque Visual 3.1 encontró 16 páginas de
+contenido bajo el 25% de ocupación (`docs/visual/auditoria-visual-2026-08-23.md`
+sección e), E-20). Inspección página por página en
+`docs/fase-14/inventario-paso1.md` sección d) — se agrupan en seis
+causas reales, no dieciséis defectos independientes: la misma causa se
+repite en documentos y perfiles distintos del mismo caso porque las
+secciones afectadas (`restrictions-grouped`, `methodology`) se
+construyen una vez por caso y se incluyen sin cambios en cada tipo de
+documento que las usa.
+
+**Técnicas evaluadas para las tres que ofrece el prompt (fusionar
+secciones, reordenar bloques, expandir componentes) — por qué ninguna
+se aplicó:**
+
+- **Reordenar bloques DENTRO de una sección** (la técnica que resolvió
+  C-1 en la ronda 3.1) no alcanza acá porque cada `contentSectionV2` es
+  su propia `<Page>` de `@react-pdf/renderer` (`document.tsx`,
+  `model.sections.map(...)` → un `<Page>` por sección, confirmado
+  leyendo el código) — dos secciones NUNCA comparten página sin importar
+  el orden de sus bloques internos. Los seis grupos de abajo son, en su
+  mayoría, secciones enteras con poco contenido real, no bloques mal
+  ubicados dentro de una sección más grande.
+- **Fusionar secciones** (unir dos secciones en una) sí es
+  arquitectónicamente posible, pero se evaluó y se descartó para estos
+  16 casos: la sección con la que cada una podría fusionarse (ej.
+  "Paquete seleccionado" con "Qué falta validar", que la siguen de
+  inmediato en `propuesta.ts`) tiene un registro temático distinto —
+  una es una oferta comercial en tono de cierre, la otra es un aviso de
+  qué falta confirmar — combinarlas bajo un único título arriesga
+  confundir el mensaje en los casos con contenido normal (no sólo en
+  los cuatro casos de prueba con datos escasos), y una regla de
+  composición que cambia según cuánto contenido real tenga el caso (a
+  veces separadas, a veces juntas) es en sí misma una inconsistencia
+  visual nueva. Se prefirió no introducirla sin aprobación de producto.
+- **Expandir componentes con datos reales ya disponibles**: se revisó
+  cada tipo (`HallazgoV2`, `RestriccionAgrupadaV2`, `NivelComercialV2`,
+  metodología) buscando campos reales no renderizados todavía — no hay
+  ninguno. `HallazgoV2` ya muestra los seis campos con copy (capa,
+  confianza, prioridad, magnitud, monto, título); `RestriccionAgrupadaV2`
+  ya muestra motivo y las etiquetas agrupadas completas;
+  `NivelComercialV2.servicios[].descripcion` ya se renderiza cuando
+  existe (es `null` en el caso real usado, "confirmada" —
+  `ESCALERA_CONFIRMADA_SNAKE_STORE`, no hay descripción que agregar sin
+  inventarla).
+
+**Las seis excepciones nuevas** (16 páginas, ninguna con texto
+solapado, cortado, ni un bloque vacío con encabezado — confirmado por
+inspección visual de las 16):
+
+1. **Fila de continuación de `metric-grid` (3 tarjetas: MER tienda
+   propia/MER marketplace/ROAS Product Ads), perfil pantalla, casos sin
+   `channelComparison`** — MISMA excepción que la primera viñeta de
+   esta sección (5.8), sólo que ahora también evaluada contra el piso
+   duro de 25% (antes sólo contra 70%/65%): `2-margen-alto-volumen-bajo`,
+   `3-margen-fino-volumen-alto`, `5-todo-sano`, `confirmada`
+   (`diagnostico-pantalla`, todas ~21,9%).
+2. **`findings`, 2 hallazgos reales** — misma excepción que la viñeta
+   de arriba ("Por qué ahora... con pocos hallazgos de capa servicio"),
+   ampliada a más casos y también al documento `diagnostico` (no sólo
+   `propuesta`): `4-roas-bueno-margen-negativo/diagnostico-impresion`
+   p4 (17,1%), `mayorista/propuesta-impresion` p3 (19,8%),
+   `mixto/propuesta-impresion` p3 (19,8%).
+3. **`restrictions-grouped`, 2 restricciones reales** (excepción
+   nueva) — caso "confirmada" tiene exactamente 2 restricciones reales
+   (`cobertura_productos_parcial`, `politica_envio_no_confirmada`); la
+   sección se incluye sin cambios en los tres documentos que la usan:
+   `confirmada/diagnostico-impresion` p5, `confirmada/propuesta-impresion`
+   p7, `confirmada/proyeccion_90d-impresion` p4 (las tres, 21,5%).
+4. **`methodology`, 2 entradas reales** (excepción nueva) — caso
+   "mixto" tiene exactamente 2 entradas de metodología reales
+   ("Modalidad comercial", "Perímetro de atribución"), incluidas sin
+   cambios en los documentos que la usan:
+   `mixto/diagnostico-impresion` p5, `mixto/proyeccion_90d-impresion`
+   p7 (ambas, 21,7%).
+5. **`commercial-offer` confirmado, paquete real de un nivel** (excepción
+   nueva, distinta de la ya documentada para el caso PENDIENTE arriba)
+   — caso "confirmada" tiene una escalera real con un único nivel
+   (IMPULSO, dos servicios) confirmada por el fixture de prueba
+   (`ESCALERA_CONFIRMADA_SNAKE_STORE`): `confirmada/propuesta-impresion`
+   p6 (14,8%), `confirmada/propuesta-pantalla` p6 (24,4%).
+6. **Continuación de tarjeta de escenario, grupo "Ahorro publicitario"
+   + Supuestos, perfil impresión** (excepción nueva) — con la tabla
+   mensual apilada (5.2, C1) más los grupos "Facturación incremental" y
+   "Contribución incremental" del escenario "conservador" ya llenando la
+   página anterior, el grupo "Ahorro publicitario" (una sola palanca
+   real, `sobrefragmentacion`) y las Supuestos quedan en su propia
+   página de continuación — mecanismo de paginación medida en dos
+   pasadas (Bloque Visual 2.2.3, sección 7), fuera del alcance acotado
+   de esta fase (4.2 EXCLUIDO: "Rediseño visual"): tocar el orden de
+   `grupos` (`document.tsx`/`document-renderer.tsx`) sólo reubicaría
+   cuál grupo queda aislado, no eliminaría el aislamiento en sí,
+   mientras la tabla apilada siga siendo más alta que la horizontal.
+   `mayorista/proyeccion_90d-impresion` p6, `mixto/proyeccion_90d-impresion`
+   p6 (ambas, 15,0%).
+
+**Nota sobre el objetivo de que la lista no crezca de forma
+significativa** (criterio de esta misma sección): se agregan seis
+entradas conceptuales nuevas (no dieciséis), cada una cubriendo un
+patrón real que se repite por caso/documento, no dieciséis defectos
+independientes. Se reporta como una decisión de ingeniería razonada, no
+un atajo — el detalle de qué técnica se evaluó y por qué no alcanzó
+está documentado arriba para que se pueda revisar.
+
 ### 5.9 C8 — Ninguna tarjeta reserva espacio vacío
 
 `cardRow` (PDF) y `.vdoc2-card-grid`/`.vdoc2-findings`/
