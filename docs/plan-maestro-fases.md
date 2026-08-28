@@ -1005,6 +1005,8 @@ roles falló: el mismo agente auditó y escribió en el remoto.
   ejecuta comandos `git` que muten el repositorio (`commit`, `push`,
   `merge`, `reset`) salvo que la tarea delegada sea explícita y
   únicamente eso.
+- El primer paso de cada bloque, antes de empezar a trabajar, es
+  guardar su prompt verbatim en `docs/prompts/`.
 
 ---
 
