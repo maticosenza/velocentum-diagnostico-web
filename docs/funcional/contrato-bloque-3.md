@@ -886,3 +886,39 @@ forma debería tener ese derivado en el motor.
 
 **Estado final de R-09: PARCIALMENTE RESUELTO.** Funnel: sí. Retención:
 no, con la razón documentada arriba — no "resuelto" a secas.
+
+## 15 · Reconciliación de páginas contra el Bloque 3 (criterio de aceptación 16)
+
+Corrección aplicada tras la primera ronda de auditoría interna sobre el
+commit candidato (veredicto APROBADO CON CORRECCIONES): el criterio 16
+exige reconciliar el conteo de páginas contra el ZIP del Bloque 3 con
+"toda diferencia explicada", y esa explicación no estaba escrita en
+ningún documento del candidato. Se agrega acá.
+
+**376 → 380 páginas, delta +4, las 54 combinaciones (9 casos × 3
+documentos × 2 perfiles).** Verificado regenerando los 54 PDFs desde un
+`git worktree` limpio en `82bb66e` (antes) y comparando contra el mismo
+juego generado desde el commit candidato (después), con `pdfinfo` sobre
+cada PDF.
+
+El delta completo está concentrado en cuatro documentos `diagnostico`
+— los únicos siete tipo/perfil que tienen la sección "Cobertura y foto
+actual" con la fila de fortalezas cerca del borde de página, donde el
+bloque `funnel` nuevo (R-09) empuja el contenido restante a una página
+adicional:
+
+| Documento | Antes | Después | Delta |
+|---|---|---|---|
+| `1-marketplace-fuerte-tienda-floja/diagnostico-pantalla` | 6 | 7 | +1 |
+| `2-margen-alto-volumen-bajo/diagnostico-impresion` | 5 | 6 | +1 |
+| `3-margen-fino-volumen-alto/diagnostico-impresion` | 5 | 6 | +1 |
+| `5-todo-sano/diagnostico-impresion` | 5 | 6 | +1 |
+
+Las 50 combinaciones restantes (incluida `5-todo-sano/diagnostico-pantalla`,
+la usada como comparativa visual en el ZIP de revisión) no cambiaron de
+conteo — el funnel entró en el espacio disponible de la página existente
+en esos casos. Ninguna de las cuatro páginas nuevas tiene texto solapado,
+cortado, ni queda con encabezado sin contenido — verificado por
+inspección visual directa de los rásters y por la suite automatizada de
+composición (H1/H2/H2b/H3, `generar-pdfs-bloque-3.test.ts`), que corre
+sobre las 54 combinaciones y pasa en verde sobre el HEAD final.
