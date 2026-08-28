@@ -896,6 +896,8 @@ cerrar un bloque.
 | Visual 2.2.2 | `5e2edc9a88d57c9c49071b67c2c5b7acf0cdc592` | Cierre de Corrección A (propuesta perdía su página principal); Corrección B investigada, no resuelta de forma segura, revertida | `docs/visual/handoff-ronda-2.2.2.md` |
 | Visual 2.2.3 | `7caa9bbb3025bb195689f67331f915f9cdb59434` | Marca de continuación medida en dos pasadas — Corrección B resuelta | `docs/visual/handoff-ronda-2.2.3.md`, `velocentum-bloque-visual-2-2-3-revision.zip` |
 | **3 Funcional** | *(este bloque, ver sección 5.5)* | Contrato de estados de dos ejes (D4), DHB-1/2/3, DA-1-4, bloqueo real de exportación | `docs/funcional/contrato-bloque-3.md`, `docs/visual/handoff-bloque-3.md`, `velocentum-bloque-3-funcional-revision.zip` |
+| **Visual 3** | `cb8b378` | Renombrado `calculado`→`disponible` (R-1), carpeta `roadmap/` en el ZIP (R-2), funnel web construido (R-09, parcial — retención sigue sin resolver) | `docs/funcional/contrato-bloque-3.md` secciones 14-15, `docs/visual/handoff-bloque-visual-3.md`, `velocentum-bloque-visual-3-revision.zip` |
+| **Visual 3.1** (ronda correctiva) | `822d8e9` (candidato auditado y pusheado: `f18ff1f`) | C-1 (fortalezas fusionada, ya no aislada), C-2 (funnel como tabla/cascada, no CardGrid), C-3 (`web/` con 54 renders, no 27), C-4 (typo). Auditoría interna: APROBADO (una ronda). Auditoría EXTERNA: **APROBADO CON RESERVA** — ver sección 5.7 | `docs/funcional/contrato-bloque-3.md` sección 16, `docs/visual/contrato-composicion-v2.md` sección 5.8 (ampliada), `docs/visual/handoff-bloque-visual-3-1.md`, `docs/visual/auditoria-visual-2026-08-23.md` sección e) (E-19/E-20), `velocentum-bloque-visual-3-1-revision.zip` |
 
 ### 5.2 · Decisiones humanas cerradas (entrada de este bloque, no en discusión)
 
@@ -927,14 +929,22 @@ detalle.
 
 ### 5.4 · Dependencias y secuencia restante (no se altera en este bloque)
 
-1. **Bloque 3 Funcional** (este bloque) — contrato de estados, DHB-1/2/3,
-   DA-1 a DA-4, bloqueo de exportación.
-2. **Bloque Visual 3** — pendiente, no empieza en este bloque.
+1. **Bloque 3 Funcional** — cerrado (ver 5.1). Contrato de estados,
+   DHB-1/2/3, DA-1 a DA-4, bloqueo de exportación.
+2. **Bloque Visual 3** y su ronda correctiva **Visual 3.1** — cerrados
+   (ver 5.1 y 5.7). Auditoría externa de 3.1: APROBADO CON RESERVA — el
+   hallazgo de ocupación sistémica (E-19/E-20,
+   `docs/visual/auditoria-visual-2026-08-23.md` sección e) queda como
+   **criterio de entrada** de la fase 14 (ver 5.7), no bloquea el cierre
+   de 3.1 en sí.
 3. **Fase 14** ("QA final, integración y publicación", sección 2 de este
-   documento) — pendiente; sus criterios de entrada (fases 3, 6, 7, 8, 9,
-   11, 12, 13 avanzadas) ya se cumplen sobre v1; la promoción de v2 es un
-   criterio ADICIONAL, propio de esta rama de trabajo, no sustituye a los
-   de fase 14.
+   documento) — pendiente, **siguiente etapa**; sus criterios de entrada
+   originales (fases 3, 6, 7, 8, 9, 11, 12, 13 avanzadas) ya se cumplen
+   sobre v1; la promoción de v2 es un criterio ADICIONAL, propio de esta
+   rama de trabajo, no sustituye a los de fase 14; el hallazgo de
+   ocupación (E-19/E-20) es un TERCER criterio de entrada, nuevo desde
+   2026-08-28 — ver el detalle completo en 5.7. No se avanza a fase 14
+   desde este documento (sólo se registra como siguiente etapa).
 4. Staging/Lovable y QA completo.
 5. Candidato de publicación.
 6. Aprobación humana explícita.
@@ -1007,6 +1017,57 @@ roles falló: el mismo agente auditó y escribió en el remoto.
   únicamente eso.
 - El primer paso de cada bloque, antes de empezar a trabajar, es
   guardar su prompt verbatim en `docs/prompts/`.
+
+### 5.7 · Cierre de Bloque Visual 3 y 3.1; entrada a fase 14 (2026-08-28)
+
+**Bloque Visual 3 — cerrado en `cb8b378`.** Ítem 1 (renombrado
+`calculado`→`disponible`, R-1) y ítem 2 (carpeta `roadmap/` en el ZIP,
+R-2) resueltos; R-09 (funnel/retención) parcialmente resuelto — funnel
+web construido, retención documentada sin resolver (el motor no expone
+un derivado estructurado, ver `docs/funcional/contrato-bloque-3.md`
+sección 14). Auditoría interna: dos rondas, veredicto final APROBADO.
+
+**Bloque Visual 3.1 (ronda correctiva) — cerrado en `822d8e9`
+(candidato auditado y pusheado: `f18ff1f`).** Cuatro correcciones sobre
+la auditoría externa del cierre de Bloque Visual 3 ("APROBADO CON
+CORRECCIONES"): C-1 (fortalezas ya no queda aislada en una página casi
+en blanco — se fusiona con la sección anterior, reordenando bloques
+reales, sin inventar contenido), C-2 (el funnel pasa de un `CardGrid`
+compartido con `metric-grid` a la tabla simple ya aprobada, con título
+propio — se lee como cascada, no como tarjetas sueltas), C-3 (el
+generador de renders web ahora itera los dos perfiles, `web/` trae 54
+en vez de 27), C-4 (typo de redacción corregido). Auditoría interna:
+una ronda, veredicto APROBADO, con los 12 criterios verificados contra
+artefactos reales (no lectura de código) — detalle completo en
+`docs/visual/handoff-bloque-visual-3-1.md`.
+
+**Auditoría EXTERNA de Bloque Visual 3.1: APROBADO CON RESERVA.** Las
+cuatro correcciones se confirmaron sin regresiones. La reserva es de
+alcance mayor y **no se corrigió en esa ronda** (estaba fuera de su
+mandato, acotado a C-1 a C-4): la auditoría externa midió la ocupación
+real de las 380 páginas del artefacto de revisión y encontró **124
+páginas de contenido bajo el umbral del contrato de composición**
+(≥70% pantalla / ≥65% impresión, `contrato-composicion-v2.md` sección
+5.1) — no introducidas por la ronda 3.1, arrastrándose desde el Bloque
+Visual 2.1, corregidas caso por caso en vez de tratarse como un patrón
+sistémico. Registrado como **E-19** (decisión pendiente: bajar el
+umbral a un valor alcanzable, o rediseñar la paginación — fase 14, no
+antes) y **E-20** (el subconjunto bajo 25% de ocupación es un defecto
+confirmado bajo cualquier decisión sobre el umbral general, corrección
+obligatoria, no una pregunta de política) en
+`docs/visual/auditoria-visual-2026-08-23.md`, sección e).
+
+**Fase 14 — siguiente etapa, con un tercer criterio de entrada nuevo.**
+Sus criterios de entrada originales (fases de producto avanzadas sobre
+v1, sección 2 de este documento) y la promoción de v2 (criterio propio
+de esta rama de trabajo, sección 14 de `contrato-bloque-3.md`) siguen
+vigentes sin cambios. Se agrega un tercero, específico de la rama
+visual: **E-19/E-20 resueltos** (al menos E-20, la corrección
+obligatoria de páginas bajo 25%, junto con la decisión de producto de
+E-19 sobre el umbral general) antes de dar por cerrada la composición
+visual de v2. Ninguno de los tres criterios se evalúa ni se resuelve en
+este documento — este documento sólo los registra como pendientes de
+la fase 14. **No se avanza a fase 14 desde acá.**
 
 ---
 

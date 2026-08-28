@@ -568,3 +568,111 @@ alteren cuánto texto entra en cada celda).
 
 Ver `docs/visual/matriz-hallazgos.md` para las 38 filas completas, con
 estado de verificación y bloque de corrección asignado a cada una.
+
+## e) Corrección post-Bloque Visual 3.1 (2026-08-28)
+
+Dos hallazgos nuevos, encontrados por la auditoría externa de la ronda
+correctiva Bloque Visual 3.1 (commit candidato `f18ff1f`, artefacto de
+revisión de 380 páginas / 54 PDFs). Mismo criterio que la sección d): el
+apéndice original y la sección d) **no se reescriben** — esta es otra
+capa de corrección que se suma encima.
+
+### E-19 · NORMATIVO (nuevo) · El umbral de ocupación de página (R-01/5.1) no se cumple de forma sistemática
+
+R-01 (`docs/visual/matriz-hallazgos.md`) ya había señalado, desde la
+auditoría original, que no existe ningún mecanismo de medición u
+ocupación mínima en el renderer. El contrato de composición v2
+(`docs/visual/contrato-composicion-v2.md`, sección 5.1) adoptó
+después un umbral formal — **≥70% del alto útil en pantalla, ≥65% en
+A4** — con una lista cerrada de excepciones documentadas caso por caso
+(sección 5.8, C7) cada vez que una ronda encontraba una página real por
+debajo del umbral.
+
+La auditoría externa de Bloque Visual 3.1 midió la ocupación real de las
+380 páginas del artefacto de revisión (54 PDFs, 9 casos × 3 documentos ×
+2 perfiles, commit `f18ff1f`) y encontró **124 páginas de contenido bajo
+el umbral del contrato** — muy por encima del puñado de casos que la
+lista cerrada de excepciones (5.8) documenta hasta ahora. No es una
+regresión introducida por la ronda 3.1: el patrón viene arrastrándose
+desde el Bloque Visual 2.1 (primera vez que se formalizó el umbral),
+corrigiéndose caso por caso — cada ronda resolvía la página puntual que
+tenía delante y sumaba, cuando no podía resolverla sin inventar
+contenido, una nueva excepción a la lista cerrada — sin que ninguna
+ronda tratara el patrón de forma sistémica. La ronda 3.1 corrigió los
+tres casos puntuales que tenía en su propio alcance (C-1) y documentó
+transparentemente su propio efecto colateral (contrato de composición,
+sección 5.8, ampliada); no midió ni corrigió las 380 páginas completas
+porque estaba fuera de su mandato (limitado a C-1 a C-4).
+
+**Causa raíz estructural:** el contrato fija un umbral global único sin
+ningún mecanismo que garantice que las páginas lo cumplan — los bloques
+de contenido se dimensionan por los datos reales que exponen (nunca se
+infla contenido para llenar una página, regla dura de todo este
+prototipo), así que cualquier combinación caso/documento cuyo contenido
+real sea menor a lo que llena una página completa queda,
+legítimamente, por debajo del umbral, sin importar en qué orden se
+acomoden los bloques. Reordenar bloques (como hizo C-1 en la ronda 3.1)
+puede mover EN QUÉ página cae el déficit, pero no lo elimina
+estructuralmente cuando el contenido real de un caso es, de por sí,
+poco.
+
+**Decisión pendiente, diferida a la fase 14 — no se resuelve acá:**
+bajar el umbral a un valor que el contenido real pueda cumplir de forma
+sistemática, o rediseñar la paginación (tamaño de página variable,
+fusión de secciones delgadas entre documentos, u otra estrategia de
+densidad visual) para que el ≥70%/65% actual se vuelva alcanzable. Es
+una decisión de producto/diseño, no algo para resolver dentro de una
+ronda correctiva — explícitamente fuera del alcance de Bloque Visual
+3.1 (mandato acotado a C-1 a C-4, ver
+`docs/visual/handoff-bloque-visual-3-1.md`).
+
+**Capa:** contrato de composición / producto. **Bloque de corrección:**
+Fase 14 (criterio de entrada — ver `docs/plan-maestro-fases.md`
+sección 5.7).
+
+### E-20 · NORMATIVO (nuevo) · Páginas bajo 25% de ocupación: defecto confirmado, independiente del umbral general
+
+Distinto de E-19 (una pregunta de política abierta: ¿cuál debería ser
+el umbral general?), el subconjunto de páginas con ocupación por debajo
+del 25% es un defecto real bajo **cualquier** decisión plausible sobre
+el umbral general — incluso una versión del umbral considerablemente
+más relajada que el 70%/65% actual seguiría considerando ese nivel de
+vacío un defecto de composición, no una variación aceptable de
+contenido corto. No es la misma categoría que las excepciones ya
+documentadas en la sección 5.8 del contrato de composición (que
+describen residuos de 15-25%, con motivo puntual y sin contenido para
+llenarlos, todavía discutibles); una página bajo el 25% desde una
+lectura ejecutiva es, directamente, una página que no cumple su
+función.
+
+**Corrección obligatoria, no una decisión de producto:** estas páginas
+van como corrección al INICIO de la fase 14, sin esperar a que se
+resuelva la decisión de umbral general de E-19 — el subconjunto exacto
+de páginas bajo 25% y su recuento no se re-verificó de forma
+independiente en esta sesión documental (la cifra viene del relevamiento
+de la auditoría externa, no de una medición propia); confirmarlo con
+una medición real de ocupación (no sólo longitud de texto extraído,
+que es el proxy que usan las pruebas automatizadas hoy — ver
+`generar-pdfs-bloque-3.test.ts`, H2) es parte del trabajo de entrada a
+la fase 14, no de este registro.
+
+**Capa:** contrato de composición. **Bloque de corrección:** Fase 14,
+primera corrección obligatoria (criterio de entrada — ver
+`docs/plan-maestro-fases.md` sección 5.7).
+
+### Reconciliación de identificadores (actualización 2026-08-28)
+
+- **Antes de esta corrección:** 38 identificadores (E-01 a E-18 = 18;
+  C-01 a C-08 = 8; R-01 a R-12 = 12).
+- **Después de esta corrección:** 40 identificadores (E-01 a E-20 = 20;
+  C-01 a C-08 = 8, sin cambios; R-01 a R-12 = 12, sin cambios). E-19/E-20
+  no reemplazan a R-01 (que sigue siendo la recomendación original de
+  ocupación, ya adoptada en el contrato de composición) — la registran
+  como incumplida en la práctica, con magnitud medida (124/380) y una
+  segunda categoría (E-20) que no depende de cómo se resuelva la
+  primera.
+
+`docs/visual/matriz-hallazgos.md` no se actualiza en esta corrección
+documental — sus 38 filas describen la auditoría original (2026-08-23);
+E-19/E-20 son hallazgos de una ronda posterior (Bloque Visual 3.1,
+2026-08-28), fuera del alcance de esa matriz.
