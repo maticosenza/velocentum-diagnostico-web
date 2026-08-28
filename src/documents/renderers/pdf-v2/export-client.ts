@@ -22,13 +22,19 @@
  * en `src/lib/paquetes.functions.ts`) para recuperar el pipeline
  * completo también en el botón de descarga.
  *
- * El gate de exportación (`verificarExportacionPermitidaV2`,
- * `exportacion.ts`) se reutiliza tal cual, sin reimplementarlo — es el
- * mismo chequeo, sin importar qué pipeline de render se use después.
+ * El gate de exportación (`verificarExportacionPermitidaV2`) se importa
+ * de `./gate-exportacion` — NUNCA de `./exportacion`, que arrastra
+ * `./paginacion` (Node, `createRequire`) a este bundle de navegador; ese
+ * import equivocado fue exactamente el bug real que encontró la
+ * validación por el flujo de la interfaz (ítem 5): "Module 'node:module'
+ * has been externalized for browser compatibility" al hacer click en
+ * "Descargar PDF" con v2 activo. Mismo chequeo que usa
+ * `exportacion.ts` — un solo lugar declara la lógica
+ * (`gate-exportacion.ts`), los dos la importan.
  */
 import type { DocumentModelV2 } from "../../templates/velocentum-v2/types";
 import { slugifyPdfSegment } from "../pdf/filename";
-import { verificarExportacionPermitidaV2 } from "./exportacion";
+import { verificarExportacionPermitidaV2 } from "./gate-exportacion";
 import type { PdfProfileV2 } from "./document";
 
 const KIND_LABELS_V2: Record<DocumentModelV2["kind"], string> = {
