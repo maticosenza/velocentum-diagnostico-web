@@ -9,28 +9,28 @@ indica desde qué HEAD se ejecutó y en qué commit se cerró (ver sección
 
 - `bloque-3-funcional.md` — ejecutado desde `7caa9bbb`, cerrado en
   `318c2ac`.
+- `bloque-visual-2.md` — ejecutado desde `e5080e2`, cerrado en
+  `490d3e8`.
+- `bloque-visual-2-1.md` — ejecutado desde `490d3e8`, cerrado en
+  `89b2b7b`.
+- `bloque-visual-2-2.md` — ejecutado desde `89b2b7b`, cerrado en
+  `8d685ed`.
+- `bloque-visual-2-2-1.md` — ejecutado desde `8d685ed`, cerrado en
+  `84f4109`.
+- `bloque-visual-2-2-3.md` — ejecutado desde `5e2edc9`, cerrado en
+  `7caa9bb`.
 
-## Faltantes (no reconstruidos)
+Los cinco anteriores fueron reconstruidos el 2026-08-28 a partir de
+archivos fuente aportados por el usuario en `~/Downloads/files/`,
+verificados byte a byte contra el original con `diff` antes de
+guardarse.
 
-Los prompts de los siguientes bloques, anteriores al Bloque 3
-Funcional, NO están preservados verbatim en el historial de sesión
-disponible al momento de crear esta carpeta (2026-08-28). No se
-reconstruyeron de memoria porque esta regla (guardar el prompt en
-`docs/prompts/`) no existía cuando se ejecutaron:
+## Faltantes (nunca existieron como archivo)
 
 - Bloque Visual 1
-- Bloque Visual 2
-- Bloque Visual 2.1
-- Bloque Visual 2.2
-- Bloque Visual 2.2.1
 - Bloque Visual 2.2.2
-- Bloque Visual 2.2.3
 
-Los handoffs de estos bloques (con el resultado de cada ronda, no el
-prompt de entrada) siguen disponibles en `docs/visual/`:
+Los handoffs de los bloques presentes (con el resultado de cada ronda,
+no el prompt de entrada) siguen disponibles en `docs/visual/`:
 `handoff-bloque-visual-2.md`, `handoff-ronda-2.2.1.md`,
-`handoff-ronda-2.2.2.md`, `handoff-ronda-2.2.3.md`. Si el texto
-original de alguno de estos prompts existe en otro lugar (por ejemplo,
-en el historial de una sesión de chat distinta), hay que pegarlo acá
-manualmente con la misma línea de encabezado — no reconstruirlo por
-aproximación desde el handoff.
+`handoff-ronda-2.2.2.md`, `handoff-ronda-2.2.3.md`.
