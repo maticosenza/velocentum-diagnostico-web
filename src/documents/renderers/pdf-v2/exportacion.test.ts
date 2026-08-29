@@ -48,6 +48,6 @@ describe("D1/C-04: bloqueo de exportación v2 (S10, testeable sin UI)", () => {
     const resultado = await exportarDocumentModelV2(model, "pantalla");
     expect(resultado.buffer.length).toBeGreaterThan(0);
     // Firma de un PDF real (%PDF-), no un buffer vacío o basura.
-    expect(resultado.buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    expect(Buffer.from(resultado.buffer.subarray(0, 5)).toString("latin1")).toBe("%PDF-");
   }, 20_000);
 });

@@ -33,7 +33,7 @@ function blocksOf<T extends DocumentBlockV2["type"]>(
 const require = createRequire(import.meta.url);
 GlobalWorkerOptions.workerSrc = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
 
-async function textoPorPagina(buffer: Buffer): Promise<string[]> {
+async function textoPorPagina(buffer: Uint8Array): Promise<string[]> {
   const documento = await getDocument({ data: new Uint8Array(buffer) }).promise;
   const paginas: string[] = [];
   for (let pagina = 1; pagina <= documento.numPages; pagina++) {

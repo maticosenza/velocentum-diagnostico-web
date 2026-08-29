@@ -6,14 +6,13 @@
  *
  *  - Sólo dentro de `velocentum-v2` (este archivo vive en
  *    `renderers/pdf-v2/`, junto al componente que consume su resultado).
- *  - La pasada 1 (`renderToBuffer` con un mapa de marcadores vacío o con
- *    el mapa de un intento anterior) es la que MIDE: se parsea con
- *    `pdfjs` la salida real ya renderizada — nunca se estima una altura
- *    ni se consulta `subPageNumber` u otro mecanismo interno no
- *    documentado de `@react-pdf/renderer`. Esas dos vías se probaron y
- *    se descartaron en la ronda 2.2.2 (ver
- *    docs/visual/handoff-ronda-2.2.2.md, sección 7) — no se vuelven a
- *    intentar acá.
+ *  - La pasada 1 (medida con un mapa de marcadores vacío o con el mapa
+ *    de un intento anterior) es la que MIDE: se parsea con `pdfjs` la
+ *    salida real ya renderizada — nunca se estima una altura ni se
+ *    consulta `subPageNumber` u otro mecanismo interno no documentado de
+ *    `@react-pdf/renderer`. Esas dos vías se probaron y se descartaron
+ *    en la ronda 2.2.2 (ver docs/visual/handoff-ronda-2.2.2.md, sección
+ *    7) — no se vuelven a intentar acá.
  *  - La pasada 2 renderiza el documento definitivo consumiendo ese mapa;
  *    es siempre la que se entrega.
  *  - Insertar el marcador cambia el alto de la tarjeta y puede desplazar
@@ -27,10 +26,41 @@
  *    converge y es el que se entrega). Acotado a `MAX_INTENTOS` — nunca
  *    itera indefinidamente; si no converge, el llamador decide (cláusula
  *    de corte del prompt).
+ *
+ * Fase 14.1 (ítem C-3, 2026-08-28): este archivo pasó a ser universal
+ * (Node Y navegador), no sólo Node. Dos cambios lo permiten:
+ *
+ *  1. El render en sí usa `pdf(...).toBlob()` (ya usado hoy por
+ *     `export-client.ts` para la pasada única) en vez de
+ *     `renderToBuffer` — el build para navegador de `@react-pdf/renderer`
+ *     stubea `renderToBuffer` (lanza "environment error"), pero
+ *     `toBlob()` es la MISMA función interna en los dos builds:
+ *     `renderToStream`/`renderToBuffer` (Node) y `toBlob()` consumen el
+ *     mismo `fileStream` de `render()` — mismos bytes, confirmado
+ *     leyendo `@react-pdf/renderer/lib/react-pdf.js` (`renderToStream`
+ *     llama `pdf(element).toBuffer()` internamente, la misma llamada
+ *     que hace `toBlob()` antes de envolver en `Blob`). El determinismo
+ *     de los bytes (independiente de CUÁNDO se renderiza) ya está
+ *     garantizado por `FECHA_CREACION_FIJA_V2` en `document.tsx` — sin
+ *     eso, cada render llevaría una fecha de creación distinta y nunca
+ *     podría dar el mismo hash dos veces, sea cual sea el método usado.
+ *  2. El worker de `pdfjs` (medición, `getDocument`) se importa de forma
+ *     ESTÁTICA (`pdfjs-dist/legacy/build/pdf.worker.mjs`) y se asigna a
+ *     `globalThis.pdfjsWorker` — mismo principio que ya aplicó
+ *     `theme/fuentes/registrar-fuentes.ts` con las fuentes (embeber el
+ *     recurso en el bundle en vez de leerlo por ruta en tiempo de
+ *     ejecución): `pdfjs` internamente (`PDFWorker#initialize`, ver
+ *     `node_modules/pdfjs-dist/legacy/build/pdf.mjs`) usa
+ *     `globalThis.pdfjsWorker.WorkerMessageHandler` directo cuando está
+ *     presente, sin pasar nunca por `GlobalWorkerOptions.workerSrc` ni
+ *     por ningún `import()` con una ruta calculada en runtime (lo que
+ *     antes exigía `createRequire`/`require.resolve`, Node puro, y lo
+ *     que rompía la descarga desde el navegador con v2 activo — ítem 5
+ *     de Fase 14: "Module 'node:module' has been externalized").
  */
-import { createRequire } from "node:module";
-import { renderToBuffer } from "@react-pdf/renderer";
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { pdf } from "@react-pdf/renderer";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { WorkerMessageHandler } from "pdfjs-dist/legacy/build/pdf.worker.mjs";
 import { LABELS_ESCENARIO, LABELS_MAGNITUD, TITULO_SUPUESTOS_CON_DAGA } from "../../semantica-v2/etiquetas";
 import type { DocumentModelV2, EscenarioV2 } from "../../templates/velocentum-v2/types";
 import {
@@ -44,8 +74,9 @@ import {
 
 export type { LimiteContinuacionV2Bloque, MapaPaginacionV2, TipoPalancaV2 } from "./document";
 
-const require = createRequire(import.meta.url);
-GlobalWorkerOptions.workerSrc = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
+(globalThis as unknown as { pdfjsWorker?: { WorkerMessageHandler: typeof WorkerMessageHandler } }).pdfjsWorker = {
+  WorkerMessageHandler,
+};
 
 const GRUPOS_ORDEN: readonly TipoPalancaV2[] = ["facturacion_incremental", "contribucion_incremental", "ahorro_publicitario"];
 
@@ -68,7 +99,14 @@ function buscarDesde(paginas: string[], cursor: Cursor, patron: RegExp): Cursor 
   return null;
 }
 
-async function textoPorPagina(buffer: Buffer): Promise<string[]> {
+async function textoPorPagina(buffer: Uint8Array): Promise<string[]> {
+  // Copia defensiva (no una vista): `pdfjs` transfiere la ownership del
+  // ArrayBuffer que recibe a su "worker" (falso o real) — pasar el
+  // buffer original lo deja detached (`Cannot perform Construct on a
+  // detached ArrayBuffer`) para cualquier uso posterior (el hash, la
+  // descarga, un segundo intento de medición). `new Uint8Array(buffer)`
+  // sobre OTRO Uint8Array copia, no comparte memoria (a diferencia de
+  // `new Uint8Array(arrayBuffer)` sobre un ArrayBuffer, que sí comparte).
   const documento = await getDocument({ data: new Uint8Array(buffer) }).promise;
   const paginas: string[] = [];
   for (let pagina = 1; pagina <= documento.numPages; pagina++) {
@@ -89,7 +127,7 @@ async function textoPorPagina(buffer: Buffer): Promise<string[]> {
  * retrocede, así que dos tarjetas con las mismas etiquetas (p. ej. dos
  * documentos con "CONSERVADOR") nunca se confunden entre sí.
  */
-export async function medirPaginacionV2(model: DocumentModelV2, buffer: Buffer): Promise<MapaPaginacionV2> {
+export async function medirPaginacionV2(model: DocumentModelV2, buffer: Uint8Array): Promise<MapaPaginacionV2> {
   const paginas = await textoPorPagina(buffer);
   const mapa = new Map<EscenarioV2["id"], Set<LimiteContinuacionV2Bloque>>();
   let cursor: Cursor = { pagina: 0, offset: 0 };
@@ -218,7 +256,7 @@ function mapasIguales(a: MapaPaginacionV2, b: MapaPaginacionV2): boolean {
 }
 
 export type ResultadoDosPasadasV2 = {
-  buffer: Buffer;
+  buffer: Uint8Array;
   mapa: MapaPaginacionV2;
   intentos: number;
   convergio: boolean;
@@ -243,9 +281,10 @@ export async function renderPdfV2ConDosPasadas(
   profile: PdfProfileV2,
 ): Promise<ResultadoDosPasadasV2> {
   let mapaActual: MapaPaginacionV2 = MAPA_PAGINACION_VACIO_V2;
-  let bufferActual: Buffer | null = null;
+  let bufferActual: Uint8Array | null = null;
   for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
-    bufferActual = Buffer.from(await renderToBuffer(createPdfDocumentElementV2(model, profile, mapaActual)));
+    const blob = await pdf(createPdfDocumentElementV2(model, profile, mapaActual)).toBlob();
+    bufferActual = new Uint8Array(await blob.arrayBuffer());
     const mapaMedido = await medirPaginacionV2(model, bufferActual);
     if (mapasIguales(mapaMedido, mapaActual)) {
       return { buffer: bufferActual, mapa: mapaActual, intentos: intento, convergio: true };

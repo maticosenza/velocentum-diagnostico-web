@@ -72,7 +72,7 @@ type DocumentoGenerado = {
   caso: string;
   tipo: Tipo;
   perfil: PdfProfileV2;
-  buffer: Buffer;
+  buffer: Uint8Array;
   numPaginas: number;
 };
 
@@ -268,7 +268,7 @@ describe("PDFs de revisión de los nueve casos (Bloque 3 Funcional, v2)", () => 
   it("genera diagnóstico, proyección y propuesta en pantalla e impresión para los nueve casos (54 PDFs válidos)", () => {
     expect(documentos.length).toBe(9 * TIPOS.length * 2);
     for (const doc of documentos) {
-      expect(doc.buffer.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+      expect(Buffer.from(doc.buffer.subarray(0, 5)).toString("ascii")).toBe("%PDF-");
       expect(doc.buffer.byteLength).toBeGreaterThan(3_000);
     }
   });

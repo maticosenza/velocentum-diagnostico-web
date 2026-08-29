@@ -1,36 +1,25 @@
 /**
  * Fase 14 — descarga de PDF v2 desde el navegador. Hermano de
- * `renderers/pdf/export-client.ts` (v1), con una diferencia real: el
- * pipeline de dos pasadas (`renderPdfV2ConDosPasadas`, `paginacion.ts`)
- * usa `renderToBuffer` de `@react-pdf/renderer`, que en el build para
- * navegador es un stub que lanza (`react-pdf.browser.js`: "renderToBuffer
- * environment error") — es un mecanismo pensado para Node (generación de
- * artefactos, tests, medición de paginación en dos pasadas), no para
- * correr en el navegador.
+ * `renderers/pdf/export-client.ts` (v1).
  *
- * Acá se usa una única pasada — `pdf(...).toBlob()`, la misma función
- * browser-safe que ya usa v1 — sin el refinamiento de marcadores de
- * continuación medidos en dos pasadas (Bloque Visual 2.2.3). Diferencia
- * real, documentada en `docs/fase-14/plan-reversion.md`: en un escenario
- * que se parte entre páginas, el PDF descargado desde la interfaz podría
- * no repetir la identidad del escenario en la página de continuación
- * (el defecto que Bloque Visual 2.2.2/2.2.3 corrigió con dos pasadas);
- * los 54 PDFs de los ZIPs de revisión y auditoría siguen generándose con
- * el pipeline completo de dos pasadas (Node), sin este límite. Pendiente
- * antes de activar el interruptor en producción: mover el renderizado de
- * descarga a una función de servidor (patrón `createServerFn` ya usado
- * en `src/lib/paquetes.functions.ts`) para recuperar el pipeline
- * completo también en el botón de descarga.
+ * Fase 14.1 (ítem C-3, 2026-08-28, decisión humana de Matías — vía
+ * "cliente" de `docs/fase-14/investigacion-c3.md` sección 3): usa el
+ * pipeline COMPLETO de dos pasadas (`renderPdfV2ConDosPasadas`,
+ * `paginacion.ts`) — el mismo mecanismo con el que se generan los 54
+ * PDFs de los ZIPs de revisión, con el refinamiento de marcadores de
+ * continuación medidos en dos pasadas (Bloque Visual 2.2.3). Antes de
+ * esta ronda, la descarga usaba una sola pasada porque
+ * `renderPdfV2ConDosPasadas` dependía de `renderToBuffer` (stub que
+ * lanza en el build de navegador) y de `require.resolve` de Node (rompía
+ * el bundle: "Module 'node:module' has been externalized", ítem 5 de
+ * Fase 14) — las dos cosas se corrigieron en `paginacion.ts` (`pdf(...).toBlob()`
+ * en vez de `renderToBuffer`, import estático del worker de `pdfjs` en
+ * vez de `require.resolve`), así que ahora `paginacion.ts` es universal
+ * (Node y navegador) y esta función lo importa directo.
  *
  * El gate de exportación (`verificarExportacionPermitidaV2`) se importa
- * de `./gate-exportacion` — NUNCA de `./exportacion`, que arrastra
- * `./paginacion` (Node, `createRequire`) a este bundle de navegador; ese
- * import equivocado fue exactamente el bug real que encontró la
- * validación por el flujo de la interfaz (ítem 5): "Module 'node:module'
- * has been externalized for browser compatibility" al hacer click en
- * "Descargar PDF" con v2 activo. Mismo chequeo que usa
- * `exportacion.ts` — un solo lugar declara la lógica
- * (`gate-exportacion.ts`), los dos la importan.
+ * de `./gate-exportacion` — mismo chequeo que usa `exportacion.ts`, un
+ * solo lugar declara la lógica, los dos la importan.
  */
 import type { DocumentModelV2 } from "../../templates/velocentum-v2/types";
 import { slugifyPdfSegment } from "../pdf/filename";
@@ -54,11 +43,9 @@ export async function renderDocumentModelV2ToBlob(
   profile: PdfProfileV2 = "pantalla",
 ): Promise<Blob> {
   verificarExportacionPermitidaV2(model);
-  const [{ pdf }, { createPdfDocumentElementV2 }] = await Promise.all([
-    import("@react-pdf/renderer"),
-    import("./document"),
-  ]);
-  return pdf(createPdfDocumentElementV2(model, profile)).toBlob();
+  const { renderPdfV2ConDosPasadas } = await import("./paginacion");
+  const { buffer } = await renderPdfV2ConDosPasadas(model, profile);
+  return new Blob([buffer.slice()], { type: "application/pdf" });
 }
 
 export async function downloadDocumentModelPdfV2(

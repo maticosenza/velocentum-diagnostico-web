@@ -33,7 +33,7 @@ import type { DocumentContextV1 } from "../../domain";
 const require = createRequire(import.meta.url);
 GlobalWorkerOptions.workerSrc = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
 
-async function textoCompletoDelPdf(buffer: Buffer): Promise<string> {
+async function textoCompletoDelPdf(buffer: Uint8Array): Promise<string> {
   const documento = await getDocument({ data: new Uint8Array(buffer) }).promise;
   let texto = "";
   for (let pagina = 1; pagina <= documento.numPages; pagina++) {

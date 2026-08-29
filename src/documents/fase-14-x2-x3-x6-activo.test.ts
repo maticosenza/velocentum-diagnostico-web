@@ -140,7 +140,7 @@ describe("X6: determinismo por hash, dos corridas (con v2 activo)", () => {
     const { renderPdfV2ConDosPasadas } = await import("./renderers/pdf-v2/paginacion");
     const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
-    async function textoCompleto(buffer: Buffer): Promise<string> {
+    async function textoCompleto(buffer: Uint8Array): Promise<string> {
       const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
       let texto = "";
       for (let p = 1; p <= pdf.numPages; p++) {
@@ -155,10 +155,20 @@ describe("X6: determinismo por hash, dos corridas (con v2 activo)", () => {
     const r2 = await renderPdfV2ConDosPasadas(modeloDeterminismo, "pantalla");
     const [t1, t2] = await Promise.all([textoCompleto(r1.buffer), textoCompleto(r2.buffer)]);
     expect(t1).toBe(t2);
-    // Mismo criterio que las rondas anteriores (Bloque Visual 3/3.1): el
-    // hash SHA-256 crudo NO es determinista entre procesos por metadata
-    // de `@react-pdf/renderer` — se documenta acá para no reabrir esa
-    // discusión, y se deja como referencia informativa, no como aserción.
+    // Corrección (Fase 14.1, C-3): el comentario anterior acá decía que
+    // el hash SHA-256 crudo NO era determinista entre procesos — dejado
+    // sólo como referencia, nunca aserción. Verificado ahora que es
+    // FALSO desde que `document.tsx` fija `creationDate` con
+    // `FECHA_CREACION_FIJA_V2`: el ID de archivo de PDFKit
+    // (`PDFSecurity.generateFileID`) se deriva de `CreationDate.getTime()`
+    // más el resto de `info` (todos campos estáticos del modelo, no de
+    // reloj ni de azar) — sin una fecha variable, no queda ninguna
+    // fuente de no-determinismo en el hash. Confirmado empíricamente
+    // (dos procesos de Node separados, `shasum` sobre el archivo
+    // escrito a disco por cada uno: mismo SHA-256). Y2
+    // (`fase-14-1-y2-y3.test.ts`) es la prueba que exige esta igualdad
+    // como criterio de aceptación real (interfaz vs. pipeline); acá se
+    // deja como valor informativo, sin duplicar esa aserción.
     const h1 = crypto.createHash("sha256").update(r1.buffer).digest("hex");
     const h2 = crypto.createHash("sha256").update(r2.buffer).digest("hex");
     void h1;
