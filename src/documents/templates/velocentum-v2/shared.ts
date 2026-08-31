@@ -120,13 +120,23 @@ export function restrictionsGroupedSectionV2(items: RestriccionDocumento[]): Doc
   };
 }
 
+/**
+ * BV4 F2a ronda 2: con selección comercial v2, el plan se arma desde ELLA
+ * (`context.roadmapV2`), no desde la escalera legada. Si no, el plan
+ * describiría un paquete distinto del que el documento cotiza.
+ *
+ * `context.roadmap` queda como está y lo siguen renderizando las plantillas
+ * v1, cuya salida no cambia. `roadmapV2` es `null` exactamente cuando no hay
+ * selección v2, y entonces esta función se comporta igual que antes.
+ */
 export function roadmapSectionV2(context: DocumentContextV1): DocumentSectionV2 {
+  const items = context.roadmapV2 ?? context.roadmap;
   return {
     id: "roadmap",
     tone: "light",
     eyebrow: "Plan de acción",
     title: "Hoja de ruta",
-    blocks: context.roadmap.length > 0 ? [{ type: "roadmap", items: context.roadmap }] : [],
+    blocks: items.length > 0 ? [{ type: "roadmap", items }] : [],
   };
 }
 

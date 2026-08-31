@@ -3,7 +3,7 @@ import { inversionCanal, productosCargados } from "../../lib/calculo-diagnostico
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
 import { calcularEscenarios90d, umbralDispersionDe } from "../../lib/escenarios-90d";
 import { impactosDeFuga, type TipoImpactoClasificado } from "../../lib/impacto-economico";
-import { mapearHallazgos } from "../../lib/propuesta";
+import { mapearHallazgos, type HallazgoMapeado } from "../../lib/propuesta";
 import type { EscaleraPaquetesConfirmada } from "../../lib/paquetes";
 import { NOMBRES_NIVELES_DEFECTO, serviciosCanonicosDe } from "../../lib/paquetes";
 import {
@@ -13,7 +13,7 @@ import {
   totalDeLinea,
   type SobreComercialV2,
 } from "../../lib/seleccion-comercial-v2";
-import { lineaV2, type LineaId } from "../../lib/catalogo-v2";
+import { lineaV2, lineasSugeridasV2, type LineaId } from "../../lib/catalogo-v2";
 import { ETIQUETA_UNIDAD_V2 } from "../../lib/precargas-v2";
 import {
   LINEAS_CON_NOTA_DE_CONTENIDO,
@@ -420,7 +420,6 @@ export function roadmapDocumento(
 ): EtapaRoadmap[] {
   if (comercial === null) return [];
 
-  const hallazgosPorId = new Map(hallazgos.map((h) => [h.id, h]));
   const serviciosSeleccionados = new Map<string, { servicio: string; hallazgoIds: string[] }>();
   for (const nivel of comercial.niveles) {
     for (const servicio of nivel.servicios) {
@@ -436,11 +435,28 @@ export function roadmapDocumento(
     }
   }
 
+  return repartoRoadmap(hallazgos, [...serviciosSeleccionados.values()], restricciones);
+}
+
+/**
+ * El reparto 30/60/90 propiamente dicho, compartido por las dos fuentes de
+ * selección comercial. Se extrajo de `roadmapDocumento` en la ronda 2 de
+ * corrección de F2a **sin cambiar una sola regla**: mismo criterio de
+ * prioridad, mismo orden, mismos textos literales. Las pruebas de DHB-3 que
+ * ya existían lo fijan.
+ */
+function repartoRoadmap(
+  hallazgos: HallazgoDocumento[],
+  serviciosSeleccionados: { servicio: string; hallazgoIds: string[] }[],
+  restricciones: RestriccionDocumento[],
+): EtapaRoadmap[] {
+  const hallazgosPorId = new Map(hallazgos.map((h) => [h.id, h]));
+
   const acciones30: { accion: string; origen: string }[] = [];
   const acciones60: { accion: string; origen: string }[] = [];
   const serviciosConHallazgoAlta = new Set<string>();
 
-  for (const servicio of serviciosSeleccionados.values()) {
+  for (const servicio of serviciosSeleccionados) {
     for (const hallazgoId of servicio.hallazgoIds) {
       const hallazgo = hallazgosPorId.get(hallazgoId);
       if (!hallazgo) continue;
@@ -454,7 +470,7 @@ export function roadmapDocumento(
   }
 
   const acciones90: { accion: string; origen: string }[] = [];
-  for (const servicio of serviciosSeleccionados.values()) {
+  for (const servicio of serviciosSeleccionados) {
     if (!serviciosConHallazgoAlta.has(servicio.servicio)) {
       acciones90.push({ accion: servicio.servicio, origen: `el servicio "${servicio.servicio}"` });
     }
@@ -745,6 +761,53 @@ export function ofertaComercialDesdeSobreV2(
 }
 
 /**
+ * BV4 F2a, ronda 2 de corrección (2026-08-31) — roadmap 30/60/90 armado
+ * desde la **selección comercial v2**, para que el plan describa el mismo
+ * paquete que el documento cotiza. Antes se armaba siempre desde la escalera
+ * legada: con la v2 como voz comercial, el plan podía describir un paquete
+ * distinto del cotizado.
+ *
+ * Vive en un campo aparte (`contexto.roadmapV2`) y **no toca
+ * `contexto.roadmap`**: las plantillas v1 renderizan ese campo, así que
+ * pisarlo habría cambiado la salida v1 y violado la condición de F-2. Sólo
+ * `roadmapSectionV2` prefiere este cuando existe.
+ *
+ * Usa el mismo reparto que la escalera legada, sin una regla nueva. La
+ * justificación de cada línea se deriva de los mismos hallazgos y de la
+ * misma tabla de traducción v1→v2 que alimenta las sugerencias del panel: no
+ * se inventa ninguna. Una línea marcada a mano sin hallazgo detrás
+ * —influencer marketing, por ejemplo— cae en la etapa 90 por la regla que ya
+ * existía ("servicio seleccionado sin hallazgo de prioridad alta"), no por
+ * una excepción nueva.
+ *
+ * `null` cuando no hay selección v2, y `[]` cuando la hay pero sin ninguna
+ * línea marcada: sin selección no se propone un plan, igual que la escalera
+ * legada devuelve `[]` sin confirmación.
+ */
+export function roadmapDesdeSeleccionV2(args: {
+  hallazgos: HallazgoDocumento[];
+  hallazgosMapeados: HallazgoMapeado[];
+  sobre: SobreComercialV2 | null | undefined;
+  restricciones: RestriccionDocumento[];
+}): EtapaRoadmap[] | null {
+  if (!args.sobre) return null;
+
+  const seleccionadas = args.sobre.seleccion.lineas.filter((linea) => linea.seleccionada);
+  if (seleccionadas.length === 0) return [];
+
+  const justificacion = new Map(
+    lineasSugeridasV2(args.hallazgosMapeados).map((s) => [s.lineaId, s.hallazgoIds]),
+  );
+
+  const serviciosSeleccionados = seleccionadas.map((linea) => ({
+    servicio: lineaV2(linea.lineaId).nombre,
+    hallazgoIds: [...(justificacion.get(linea.lineaId) ?? [])],
+  }));
+
+  return repartoRoadmap(args.hallazgos, serviciosSeleccionados, args.restricciones);
+}
+
+/**
  * Traduce el diagnóstico ya calculado al contrato común de documentos.
  * No recalcula el negocio, no genera escenarios y no completa ausencias con cero.
  */
@@ -756,6 +819,12 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
   const envio = politicaEnvioDocumento(datos, resultado);
   const comercial = comercialDesdeEscalera(args.paquetesConfirmados);
   const comercialV2 = ofertaComercialDesdeSobreV2(args.sobreComercialV2);
+  const hallazgosMapeados = mapearHallazgos(
+    datos,
+    resultado.derivados,
+    resultado.estados_bloque,
+    resultado.fugas,
+  );
   const restricciones = restriccionesDocumento({
     resultado,
     envio,
@@ -986,6 +1055,12 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
       tipoDocumento,
     }),
     roadmap: roadmapDocumento(salidaHallazgos.hallazgos, comercial, restricciones),
+    roadmapV2: roadmapDesdeSeleccionV2({
+      hallazgos: salidaHallazgos.hallazgos,
+      hallazgosMapeados,
+      sobre: args.sobreComercialV2,
+      restricciones,
+    }),
     servicios: salidaHallazgos.servicios,
     comercial,
     comercialV2,

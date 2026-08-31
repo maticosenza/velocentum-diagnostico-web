@@ -40,6 +40,7 @@ function contextoValido(): DocumentContextV1 {
     escenarios90d: [],
     resumenComercial: null,
     roadmap: [],
+    roadmapV2: null,
     servicios: [],
     comercial: null,
     comercialV2: null,

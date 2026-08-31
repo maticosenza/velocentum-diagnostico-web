@@ -314,7 +314,7 @@ describe("REGRESIÓN F-2: la salida v1 no cambia al envolver en el sobre v2", ()
     );
   });
 
-  it("2 · el contrato documental es idéntico salvo el campo NUEVO `comercialV2`", () => {
+  it("2 · el contrato documental es idéntico salvo los campos NUEVOS `comercialV2` y `roadmapV2`", () => {
     // La selección v2 agrega un campo que antes no existía; eso no es un
     // cambio de la salida v1, es información nueva que ninguna plantilla v1
     // lee. Lo que hay que probar es que NINGÚN otro campo se movió — y que
@@ -326,12 +326,18 @@ describe("REGRESIÓN F-2: la salida v1 no cambia al envolver en el sobre v2", ()
         tipoDocumento,
       });
 
-      const { comercialV2: v2Antes, ...restoAntes } = contextoAntes;
-      const { comercialV2: v2Despues, ...restoDespues } = contextoDespues;
+      const { comercialV2: v2Antes, roadmapV2: rmAntes, ...restoAntes } = contextoAntes;
+      const { comercialV2: v2Despues, roadmapV2: rmDespues, ...restoDespues } = contextoDespues;
 
       expect(restoDespues).toEqual(restoAntes);
       expect(v2Antes).toBeNull();
       expect(v2Despues).not.toBeNull();
+      // Ronda 2: `roadmapV2` es el segundo campo nuevo. Lo que importa es que
+      // `roadmap` —el que renderizan las plantillas v1— quedó DENTRO del
+      // resto comparado y por lo tanto es idéntico.
+      expect(rmAntes).toBeNull();
+      expect(rmDespues).not.toBeNull();
+      expect(contextoDespues.roadmap).toEqual(contextoAntes.roadmap);
       // La escalera legada sigue siendo la misma en los dos.
       expect(contextoDespues.comercial).toEqual(contextoAntes.comercial);
       // Y la moneda del CLIENTE no se contagia de la propuesta en USD.

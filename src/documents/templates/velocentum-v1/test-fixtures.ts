@@ -124,6 +124,7 @@ export function buildTitanContext(): DocumentContextV1 {
         resultadoEsperado: "Margen verificable",
       },
     ],
+    roadmapV2: null,
     servicios: [
       {
         id: "auditoria-marketplace",
@@ -245,6 +246,7 @@ export function buildSnakeContext(): DocumentContextV1 {
         resultadoEsperado: "Datos comparables",
       },
     ],
+    roadmapV2: null,
     servicios: [{ id: "medicion", nombre: "Medición", alcance: ["GA4", "Ads"] }],
     comercial: {
       niveles: [

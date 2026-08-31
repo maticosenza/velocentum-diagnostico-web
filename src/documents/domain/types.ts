@@ -459,6 +459,14 @@ export type DocumentContextV1 = {
    */
   resumenComercial: ResumenComercial90d | null;
   roadmap: EtapaRoadmap[];
+  /**
+   * BV4 F2a ronda 2: roadmap armado desde la selección comercial v2, para
+   * que el plan describa el mismo paquete que el documento cotiza. `null`
+   * cuando no hay selección v2. **Sólo lo consumen las plantillas v2**:
+   * `roadmap` queda intacto porque es el que renderizan las v1, y pisarlo
+   * habría cambiado la salida v1.
+   */
+  roadmapV2: EtapaRoadmap[] | null;
   servicios: ServicioDocumento[];
   comercial: SeleccionComercial | null;
   /**

@@ -250,6 +250,7 @@ export function buildMulticanalContext(): DocumentContextV1 {
         "Con los datos disponibles y bajo estos supuestos, existe un rango de contribución incremental potencial de $5.761.835 a $9.026.875 durante los próximos 90 días.",
     },
     roadmap: [],
+    roadmapV2: null,
     servicios: [
       { id: "meta-ads", nombre: "Meta Ads", alcance: ["Prospecting", "Retargeting"] },
       { id: "web", nombre: "Desarrollo y optimización web", alcance: ["Checkout", "Velocidad"] },
@@ -511,6 +512,7 @@ export function buildMargenNegativoContext(): DocumentContextV1 {
       redaccion: null,
     },
     roadmap: [],
+    roadmapV2: null,
     servicios: [],
     comercial: null,
     comercialV2: null,

@@ -66,20 +66,27 @@ function bloqueSeleccionComercial(
 export function verificarExportacionPermitidaV2(model: DocumentModelV2): void {
   if (model.kind !== "propuesta") return;
 
-  // BV4 F2a: dos caminos legítimos a una propuesta exportable, un solo
-  // candado. La escalera legada (Fase 13) sigue habilitando la exportación
-  // como siempre; la selección comercial v2 la habilita cuando está
-  // confirmada Y su configuración fiscal también (Q9). Alcanza con que uno
-  // de los dos esté completo; si ninguno lo está, no se exporta.
+  // BV4 F2a, ronda 2 de corrección de la auditoría (2026-08-31, decisión de
+  // Matías): **con selección comercial v2 presente, decide SÓLO ella**. Una
+  // v2 sin confirmar —falte la selección de líneas o falte la configuración
+  // fiscal— bloquea la exportación AUNQUE exista una escalera legada
+  // confirmada.
+  //
+  // El cambio de comportamiento es deliberado. Antes, un diagnóstico con
+  // escalera vieja confirmada podía exportar una propuesta con precios sin
+  // configuración fiscal confirmada, entrando por ese camino: eso vaciaba
+  // Q9, que exige confirmación fiscal explícita antes de exportar.
+  //
+  // Sin selección v2, nada cambia: la escalera legada habilita la
+  // exportación exactamente como antes de F2a.
   const seleccion = bloqueSeleccionComercial(model);
-  if (seleccion !== null && seleccion.pendiente === false) return;
+  if (seleccion !== null) {
+    if (seleccion.pendiente) throw new Error(MENSAJE_EXPORTACION_BLOQUEADA_FISCAL_V2);
+    return;
+  }
 
   const bloque = bloqueOfertaComercial(model);
   if (bloque === null || bloque.pendiente === true) {
-    throw new Error(
-      seleccion !== null
-        ? MENSAJE_EXPORTACION_BLOQUEADA_FISCAL_V2
-        : MENSAJE_EXPORTACION_BLOQUEADA_V2,
-    );
+    throw new Error(MENSAJE_EXPORTACION_BLOQUEADA_V2);
   }
 }

@@ -432,21 +432,27 @@ describe("CORRECCIÓN de auditoría: una sola voz comercial por documento", () =
     expect(bloqueEscaleraV1(sinNada)!.pendiente).toBe(true);
   });
 
-  it("con selección v2 SIN confirmar, la escalera v1 se sigue imprimiendo", () => {
-    // El alcance exacto de la regla: sólo la selección v2 CONFIRMADA
-    // silencia a la v1. Sin confirmar, la v2 no puede ser la voz comercial
-    // del documento, así que la v1 conserva su lugar.
+  it("CASO ESPEJO: con selección v2 SIN confirmar, la escalera v1 tampoco se imprime", () => {
+    // Ronda 2: la regla es "v2 presente, confirmada o no". Antes de esta
+    // ronda, este caso imprimía la escalera legada cotizada y, después, la
+    // v2 diciendo "pendiente" — el mismo defecto al revés.
     const model = modelo(sobre({ fiscal: { ...FISCAL_OK, confirmado: false } }), ESCALERA_LEGADA);
     expect(bloqueSeleccion(model)!.pendiente).toBe(true);
-    expect(bloqueEscaleraV1(model)).not.toBeNull();
+    expect(bloqueEscaleraV1(model)).toBeNull();
+
+    const html = renderToStaticMarkup(<DocumentWebRendererV2 model={model} />);
+    expect(html).not.toContain("Paquete seleccionado");
+    expect(html).not.toContain("IMPULSO");
+    // Y no cotiza nada: el bloque v2 está pendiente.
+    expect(html).toContain("Falta confirmar la selección de líneas o la configuración fiscal");
+    expect(html).not.toContain("Inversión mensual");
   });
 
-  it("el candado sigue decidiendo igual en los tres casos", () => {
-    expect(() => verificarExportacionPermitidaV2(modelo(sobre()))).not.toThrow();
-    expect(() => verificarExportacionPermitidaV2(modelo(null, ESCALERA_LEGADA))).not.toThrow();
-    expect(() => verificarExportacionPermitidaV2(modelo(null))).toThrow(
-      MENSAJE_EXPORTACION_BLOQUEADA_V2,
-    );
+  it("CASO ESPEJO: sin ninguna línea marcada tampoco habla la v1", () => {
+    const vacia = seleccionInicialV2({ nivel: "impulso", sugeridas: [] });
+    const model = modelo(sobre({ seleccion: vacia }), ESCALERA_LEGADA);
+    expect(bloqueEscaleraV1(model)).toBeNull();
+    expect(bloqueSeleccion(model)!.pendiente).toBe(true);
   });
 
   it("la plantilla v1 no se tocó: sigue armando su propia oferta comercial", async () => {
@@ -454,5 +460,112 @@ describe("CORRECCIÓN de auditoría: una sola voz comercial por documento", () =
     const model = buildPropuestaDocument(contexto(sobre(), ESCALERA_LEGADA));
     const tiposV1 = model.sections.flatMap((s) => s.blocks).map((b) => b.type);
     expect(tiposV1).toContain("commercial-offer");
+  });
+});
+
+describe("RONDA 2: con selección v2 presente, el candado decide sólo ella", () => {
+  it("v2 confirmada: exporta", () => {
+    expect(() => verificarExportacionPermitidaV2(modelo(sobre()))).not.toThrow();
+    expect(() => verificarExportacionPermitidaV2(modelo(sobre(), ESCALERA_LEGADA))).not.toThrow();
+  });
+
+  it("v2 pendiente por fiscal SIN confirmar + escalera legada confirmada: BLOQUEA", () => {
+    // El caso que vaciaba Q9: antes se exportaba una propuesta con precios
+    // sin configuración fiscal confirmada, entrando por la escalera vieja.
+    const model = modelo(sobre({ fiscal: { ...FISCAL_OK, confirmado: false } }), ESCALERA_LEGADA);
+    expect(() => verificarExportacionPermitidaV2(model)).toThrow(
+      MENSAJE_EXPORTACION_BLOQUEADA_FISCAL_V2,
+    );
+  });
+
+  it("v2 pendiente por falta de líneas + escalera legada confirmada: BLOQUEA", () => {
+    const vacia = seleccionInicialV2({ nivel: "impulso", sugeridas: [] });
+    const model = modelo(sobre({ seleccion: vacia }), ESCALERA_LEGADA);
+    expect(() => verificarExportacionPermitidaV2(model)).toThrow(
+      MENSAJE_EXPORTACION_BLOQUEADA_FISCAL_V2,
+    );
+  });
+
+  it("la exportación real también se bloquea, no sólo el chequeo suelto", async () => {
+    const model = modelo(sobre({ fiscal: { ...FISCAL_OK, confirmado: false } }), ESCALERA_LEGADA);
+    await expect(exportarDocumentModelV2(model, "pantalla")).rejects.toThrow(
+      MENSAJE_EXPORTACION_BLOQUEADA_FISCAL_V2,
+    );
+  });
+
+  it("SIN selección v2, nada cambia: la escalera legada habilita como antes de F2a", () => {
+    expect(() => verificarExportacionPermitidaV2(modelo(null, ESCALERA_LEGADA))).not.toThrow();
+    expect(() => verificarExportacionPermitidaV2(modelo(null))).toThrow(
+      MENSAJE_EXPORTACION_BLOQUEADA_V2,
+    );
+  });
+});
+
+describe("RONDA 2: el roadmap describe el paquete que el documento cotiza", () => {
+  function roadmapDelModelo(model: DocumentModelV2) {
+    for (const seccion of model.sections) {
+      for (const bloque of seccion.blocks) {
+        if (bloque.type === "roadmap") return bloque.items;
+      }
+    }
+    return null;
+  }
+
+  it("con selección v2, el contexto trae `roadmapV2` y `roadmap` queda intacto", () => {
+    const ctx = contexto(sobre(), ESCALERA_LEGADA);
+    expect(ctx.roadmapV2).not.toBeNull();
+    // El roadmap legado sigue existiendo, sin tocar: lo renderizan las v1.
+    const ctxSoloLegada = contexto(null, ESCALERA_LEGADA);
+    expect(ctx.roadmap).toEqual(ctxSoloLegada.roadmap);
+  });
+
+  it("el plan del documento v2 nombra las líneas cotizadas, no los servicios de la escalera", () => {
+    const model = modelo(sobre(), ESCALERA_LEGADA);
+    const items = roadmapDelModelo(model);
+    expect(items).not.toBeNull();
+    const texto = JSON.stringify(items);
+    // Las tres líneas cotizadas de `seleccionCargada()`.
+    expect(texto).toContain("Diseño web");
+    expect(texto).toContain("Contenido audiovisual");
+    // El servicio v1 de la escalera legada, que NO se cotiza, no aparece.
+    expect(texto).not.toContain("Desarrollo y optimización web");
+  });
+
+  it("una línea marcada a mano sin hallazgo detrás cae en la etapa 90, sin regla nueva", () => {
+    const conManual = seleccionCargada();
+    const i = conManual.lineas.findIndex((l) => l.lineaId === "influencer_marketing");
+    conManual.lineas[i] = {
+      ...conManual.lineas[i]!,
+      seleccionada: true,
+      precio: { modo: "unitario", cantidad: 2, precioUnitario: 50_000 },
+    };
+    const items = roadmapDelModelo(modelo(sobre({ seleccion: conManual })));
+    const etapa90 = items!.find((e) => e.id === "etapa_90");
+    expect(etapa90).toBeDefined();
+    expect(etapa90!.acciones).toContain("Influencer marketing");
+  });
+
+  it("sin ninguna línea marcada no se propone plan, igual que sin escalera confirmada", () => {
+    const vacia = seleccionInicialV2({ nivel: "impulso", sugeridas: [] });
+    const ctx = contexto(sobre({ seleccion: vacia }), ESCALERA_LEGADA);
+    expect(ctx.roadmapV2).toEqual([]);
+    expect(roadmapDelModelo(modelo(sobre({ seleccion: vacia }), ESCALERA_LEGADA))).toBeNull();
+  });
+
+  it("sin selección v2, el plan del documento v2 sigue saliendo de la escalera legada", () => {
+    const ctx = contexto(null, ESCALERA_LEGADA);
+    expect(ctx.roadmapV2).toBeNull();
+    const items = roadmapDelModelo(modelo(null, ESCALERA_LEGADA));
+    expect(JSON.stringify(items)).toContain("Meta Ads");
+  });
+
+  it("la plantilla v1 sigue armando su plan desde `roadmap`, sin enterarse de la v2", async () => {
+    const { buildPropuestaDocument } = await import("../velocentum-v1/propuesta");
+    const ctx = contexto(sobre(), ESCALERA_LEGADA);
+    const conV2 = buildPropuestaDocument(ctx);
+    const sinV2 = buildPropuestaDocument(contexto(null, ESCALERA_LEGADA));
+    const roadmapDe = (m: ReturnType<typeof buildPropuestaDocument>) =>
+      m.sections.flatMap((s) => s.blocks).find((b) => b.type === "roadmap");
+    expect(roadmapDe(conV2)).toEqual(roadmapDe(sinV2));
   });
 });
