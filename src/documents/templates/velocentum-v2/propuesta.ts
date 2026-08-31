@@ -38,8 +38,21 @@ const TEMPLATE_ID = "velocentum-propuesta/v2";
 export function buildPropuestaDocumentV2(context: DocumentContextV1) {
   const esCualitativa = esPropuestaCualitativaV2(context);
   const findings = buildFindingsV2(context, "propuesta");
-  const commercial = buildCommercialOfferV2(context);
   const seleccionV2 = buildCommercialSelectionV2(context);
+  // Regla de PRESENTACIÓN (auditoría externa de F2a, 2026-08-31): con una
+  // selección comercial v2 confirmada, la escalera v1 no se imprime. El
+  // documento no puede decir "Selección comercial pendiente · No hay una
+  // escalera de paquetes confirmada" en una página y mostrar la propuesta
+  // cotizada completa en la siguiente; un prospecto leería las dos cosas.
+  //
+  // No es un borrado y no toca la cadena v1: `buildCommercialOfferV2` sigue
+  // igual, el bloque sigue existiendo, y sigue siendo la voz comercial de
+  // todo diagnóstico SIN selección v2 —incluida la plantilla v1, que no se
+  // modificó—. Lo único que cambia es cuál de las dos habla cuando las dos
+  // podrían.
+  const seleccionV2Confirmada =
+    seleccionV2 !== null && seleccionV2.type === "commercial-selection" && !seleccionV2.pendiente;
+  const commercial = seleccionV2Confirmada ? null : buildCommercialOfferV2(context);
   const summary = esCualitativa ? null : buildCommercialSummaryV2(context);
   const bridge = esCualitativa ? buildAlertaMargenNegativoV2(context) : buildBridgeNoteV2(context);
 

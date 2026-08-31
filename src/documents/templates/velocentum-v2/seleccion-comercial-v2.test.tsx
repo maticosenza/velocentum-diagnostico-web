@@ -21,6 +21,7 @@ import { DocumentWebRendererV2 } from "../../renderers/web-v2/document-renderer"
 import { calcularDiagnostico } from "../../../lib/calculo-diagnostico";
 import { casoSnakeStore, configuracionRegresionFase2 } from "../../../lib/fixtures-casos";
 import { LINEAS_V2_IDS, type LineaId } from "../../../lib/catalogo-v2";
+import type { EscaleraPaquetesConfirmada } from "../../../lib/paquetes";
 import { seleccionInicialV2 } from "../../../lib/precargas-v2";
 import {
   lineaVaciaV2,
@@ -75,7 +76,32 @@ function sobre(cambios: Partial<SobreComercialV2> = {}): SobreComercialV2 {
   };
 }
 
-function contexto(sobreV2: SobreComercialV2 | null) {
+/** Una escalera de la Fase 13 ya confirmada, con precio cargado. */
+const ESCALERA_LEGADA: EscaleraPaquetesConfirmada = {
+  confirmado: true,
+  niveles: [
+    {
+      id: "impulso",
+      nombre: "IMPULSO",
+      servicios: [
+        {
+          servicio: "Meta Ads",
+          unidad: "campañas_activas",
+          cantidad: 1,
+          descripcion: null,
+          hallazgoIds: ["H-legado"],
+          propuestoPorSistema: true,
+        },
+      ],
+      precio: 250_000,
+    },
+  ],
+};
+
+function contexto(
+  sobreV2: SobreComercialV2 | null,
+  legada: EscaleraPaquetesConfirmada | null = null,
+) {
   const resultado = calcularDiagnostico(casoSnakeStore, configuracionRegresionFase2);
   return buildDocumentContext({
     datos: casoSnakeStore,
@@ -83,11 +109,26 @@ function contexto(sobreV2: SobreComercialV2 | null) {
     diagnostico: { id: "d-f2a", version: 1, fecha: "2026-08-20" },
     tipoDocumento: "propuesta",
     ...(sobreV2 ? { sobreComercialV2: sobreV2 } : {}),
+    ...(legada ? { paquetesConfirmados: legada } : {}),
   });
 }
 
-function modelo(sobreV2: SobreComercialV2 | null): DocumentModelV2 {
-  return buildPropuestaDocumentV2(contexto(sobreV2));
+function modelo(
+  sobreV2: SobreComercialV2 | null,
+  legada: EscaleraPaquetesConfirmada | null = null,
+): DocumentModelV2 {
+  return buildPropuestaDocumentV2(contexto(sobreV2, legada));
+}
+
+function bloqueEscaleraV1(
+  model: DocumentModelV2,
+): Extract<DocumentBlockV2, { type: "commercial-offer" }> | null {
+  for (const seccion of model.sections) {
+    for (const bloque of seccion.blocks) {
+      if (bloque.type === "commercial-offer") return bloque;
+    }
+  }
+  return null;
 }
 
 function bloqueSeleccion(
@@ -337,5 +378,81 @@ describe("INVARIANTE §h: Semana 0 va sólo en proyección", () => {
     const oferta = ofertaComercialDesdeSobreV2(conIntruso)!;
     expect(JSON.stringify(oferta).toLowerCase()).not.toContain("semana 0");
     expect(JSON.stringify(oferta).toLowerCase()).not.toContain("semana0");
+  });
+});
+
+describe("CORRECCIÓN de auditoría: una sola voz comercial por documento", () => {
+  const TEXTO_PENDIENTE_V1 = "No hay una escalera de paquetes confirmada";
+
+  it("con selección v2 confirmada, la escalera v1 NO se imprime", () => {
+    const model = modelo(sobre());
+    expect(bloqueSeleccion(model)!.pendiente).toBe(false);
+    expect(bloqueEscaleraV1(model)).toBeNull();
+    expect(model.sections.some((s) => s.id === "commercial-offer")).toBe(false);
+  });
+
+  it("tampoco se imprime cuando la escalera legada SÍ tiene contenido y precio", () => {
+    // El caso fuerte: las dos podrían hablar. Habla la v2, que es la
+    // confirmada para este documento.
+    const model = modelo(sobre(), ESCALERA_LEGADA);
+    expect(bloqueEscaleraV1(model)).toBeNull();
+    expect(bloqueSeleccion(model)!.pendiente).toBe(false);
+    const html = renderToStaticMarkup(<DocumentWebRendererV2 model={model} />);
+    expect(html).not.toContain("Paquete seleccionado");
+    expect(html).not.toContain("IMPULSO");
+    expect(html).toContain("Selección comercial");
+  });
+
+  it("el documento renderizado no dice 'pendiente' y cotiza al mismo tiempo", () => {
+    const html = renderToStaticMarkup(<DocumentWebRendererV2 model={modelo(sobre())} />);
+    expect(html).not.toContain(TEXTO_PENDIENTE_V1);
+    expect(html).not.toContain("Selección comercial pendiente");
+    // Y sí muestra la propuesta cotizada.
+    expect(html).toContain("Inversión mensual");
+  });
+
+  it("la escalera legada sigue viva en el contrato: es presentación, no borrado", () => {
+    const ctx = contexto(sobre(), ESCALERA_LEGADA);
+    expect(ctx.comercial).not.toBeNull();
+    expect(ctx.comercial!.niveles).toHaveLength(1);
+    expect(ctx.comercial!.niveles[0]!.precio).toMatchObject({
+      estado: "disponible",
+      valor: 250_000,
+    });
+  });
+
+  it("sin selección v2, la escalera v1 se imprime como siempre", () => {
+    const conLegada = modelo(null, ESCALERA_LEGADA);
+    expect(bloqueEscaleraV1(conLegada)).not.toBeNull();
+    expect(bloqueEscaleraV1(conLegada)!.pendiente).toBe(false);
+    expect(bloqueSeleccion(conLegada)).toBeNull();
+
+    const sinNada = modelo(null);
+    expect(bloqueEscaleraV1(sinNada)).not.toBeNull();
+    expect(bloqueEscaleraV1(sinNada)!.pendiente).toBe(true);
+  });
+
+  it("con selección v2 SIN confirmar, la escalera v1 se sigue imprimiendo", () => {
+    // El alcance exacto de la regla: sólo la selección v2 CONFIRMADA
+    // silencia a la v1. Sin confirmar, la v2 no puede ser la voz comercial
+    // del documento, así que la v1 conserva su lugar.
+    const model = modelo(sobre({ fiscal: { ...FISCAL_OK, confirmado: false } }), ESCALERA_LEGADA);
+    expect(bloqueSeleccion(model)!.pendiente).toBe(true);
+    expect(bloqueEscaleraV1(model)).not.toBeNull();
+  });
+
+  it("el candado sigue decidiendo igual en los tres casos", () => {
+    expect(() => verificarExportacionPermitidaV2(modelo(sobre()))).not.toThrow();
+    expect(() => verificarExportacionPermitidaV2(modelo(null, ESCALERA_LEGADA))).not.toThrow();
+    expect(() => verificarExportacionPermitidaV2(modelo(null))).toThrow(
+      MENSAJE_EXPORTACION_BLOQUEADA_V2,
+    );
+  });
+
+  it("la plantilla v1 no se tocó: sigue armando su propia oferta comercial", async () => {
+    const { buildPropuestaDocument } = await import("../velocentum-v1/propuesta");
+    const model = buildPropuestaDocument(contexto(sobre(), ESCALERA_LEGADA));
+    const tiposV1 = model.sections.flatMap((s) => s.blocks).map((b) => b.type);
+    expect(tiposV1).toContain("commercial-offer");
   });
 });
