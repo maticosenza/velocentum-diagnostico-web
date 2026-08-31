@@ -545,6 +545,37 @@ describe("RONDA 2: el roadmap describe el paquete que el documento cotiza", () =
     expect(etapa90!.acciones).toContain("Influencer marketing");
   });
 
+  it("Q1: un hallazgo que justifica tres líneas no imprime tres veces el mismo renglón", () => {
+    // "Planificación y creación de contenido" sugiere las tres líneas de
+    // contenido; sin deduplicar, cada una empujaba la misma acción y el plan
+    // repetía el renglón. Se descartan sólo los repetidos literales.
+    const seleccion = seleccionCargada();
+    for (const id of ["contenido_estatico", "planificacion_contenido"] as const) {
+      const i = seleccion.lineas.findIndex((l) => l.lineaId === id);
+      seleccion.lineas[i] = {
+        ...seleccion.lineas[i]!,
+        seleccionada: true,
+        precio:
+          seleccion.lineas[i]!.precio.modo === "unitario"
+            ? { modo: "unitario", cantidad: 10, precioUnitario: 5_000 }
+            : { modo: "total", precioLinea: 50_000 },
+      };
+    }
+    const items = roadmapDelModelo(modelo(sobre({ seleccion })));
+    expect(items).not.toBeNull();
+    for (const etapa of items!) {
+      expect(new Set(etapa.acciones).size).toBe(etapa.acciones.length);
+    }
+  });
+
+  it("el camino v1 NO deduplica: su salida queda idéntica", () => {
+    // La deduplicación es exclusiva del camino v2. `roadmapDocumento` se
+    // sigue comportando igual, y las pruebas de DHB-3 lo fijan aparte.
+    const ctx = contexto(null, ESCALERA_LEGADA);
+    const ctxConV2 = contexto(sobre(), ESCALERA_LEGADA);
+    expect(ctxConV2.roadmap).toEqual(ctx.roadmap);
+  });
+
   it("sin ninguna línea marcada no se propone plan, igual que sin escalera confirmada", () => {
     const vacia = seleccionInicialV2({ nivel: "impulso", sugeridas: [] });
     const ctx = contexto(sobre({ seleccion: vacia }), ESCALERA_LEGADA);

@@ -449,6 +449,18 @@ function repartoRoadmap(
   hallazgos: HallazgoDocumento[],
   serviciosSeleccionados: { servicio: string; hallazgoIds: string[] }[],
   restricciones: RestriccionDocumento[],
+  /**
+   * Sólo el camino v2 (ronda 2 de corrección de F2a). Con el catálogo v2, un
+   * mismo hallazgo v1 puede justificar VARIAS líneas —Q1: "Planificación y
+   * creación de contenido" sugiere las tres líneas de contenido—, y entonces
+   * cada una empuja la misma acción y el plan imprime el mismo renglón tres
+   * veces. Se descartan los renglones literalmente repetidos dentro de una
+   * etapa; no se agrega, quita ni reordena nada más.
+   *
+   * El camino v1 NO deduplica, a propósito: su salida tiene que seguir
+   * siendo idéntica byte a byte.
+   */
+  deduplicarAcciones = false,
 ): EtapaRoadmap[] {
   const hallazgosPorId = new Map(hallazgos.map((h) => [h.id, h]));
 
@@ -500,9 +512,15 @@ function repartoRoadmap(
       resultadoEsperado: `Avance sobre ${items.map((i) => i.origen).join(", ")}.`,
     });
   };
-  agregarEtapa("etapa_30", "Días 1 a 30", 0, 30, acciones30);
-  agregarEtapa("etapa_60", "Días 31 a 60", 31, 60, acciones60);
-  agregarEtapa("etapa_90", "Días 61 a 90", 61, 90, acciones90);
+  const sinRepetidos = (items: { accion: string; origen: string }[]) => {
+    if (!deduplicarAcciones) return items;
+    const vistas = new Set<string>();
+    return items.filter((i) => (vistas.has(i.accion) ? false : (vistas.add(i.accion), true)));
+  };
+
+  agregarEtapa("etapa_30", "Días 1 a 30", 0, 30, sinRepetidos(acciones30));
+  agregarEtapa("etapa_60", "Días 31 a 60", 31, 60, sinRepetidos(acciones60));
+  agregarEtapa("etapa_90", "Días 61 a 90", 61, 90, sinRepetidos(acciones90));
   return etapas;
 }
 
@@ -804,7 +822,7 @@ export function roadmapDesdeSeleccionV2(args: {
     hallazgoIds: [...(justificacion.get(linea.lineaId) ?? [])],
   }));
 
-  return repartoRoadmap(args.hallazgos, serviciosSeleccionados, args.restricciones);
+  return repartoRoadmap(args.hallazgos, serviciosSeleccionados, args.restricciones, true);
 }
 
 /**
