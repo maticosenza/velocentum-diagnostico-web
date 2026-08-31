@@ -30,11 +30,8 @@ import { PropuestaSeccion } from "@/components/propuesta-seccion";
 import { ConfirmacionPaquetes } from "@/components/confirmacion-paquetes";
 import { mapearHallazgos, normalizarPropuesta } from "@/lib/propuesta";
 import { separarContenidoGuardado } from "@/lib/contenido-propuesta";
-import {
-  generarEscaleraPaquetes,
-  normalizarEscaleraConfirmada,
-  type EscaleraPaquetesConfirmada,
-} from "@/lib/paquetes";
+import { generarEscaleraPaquetes, type EscaleraPaquetesConfirmada } from "@/lib/paquetes";
+import { escaleraConfirmadaDesdeColumna } from "@/lib/seleccion-comercial-v2";
 import { confirmarPaquetes } from "@/lib/paquetes.functions";
 import { DOCUMENTOS_DISPONIBLES } from "@/documents/build-document";
 import type { Derivados, EstadoBloque, EstadosBloque, Fuga } from "@/lib/calculo-diagnostico";
@@ -272,7 +269,7 @@ function DetalleDiagnostico() {
                 derivados={d}
                 estados={estados}
                 fugas={fugas}
-                paquetesGuardados={normalizarEscaleraConfirmada(paquetesCrudo)}
+                paquetesGuardados={escaleraConfirmadaDesdeColumna(paquetesCrudo)}
               />
             </>
           );

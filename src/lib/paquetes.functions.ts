@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { combinarContenidoGuardado, separarContenidoGuardado } from "./contenido-propuesta";
 import type { EscaleraPaquetesConfirmada } from "./paquetes";
+import { paquetesConEscaleraV1 } from "./seleccion-comercial-v2";
 
 /**
  * Persiste la selección de paquetes confirmada manualmente (decisión 9,
@@ -9,6 +10,12 @@ import type { EscaleraPaquetesConfirmada } from "./paquetes";
  * columna `diagnostico.propuesta` (JSONB, ya existente): lee el valor
  * actual primero para no pisar la propuesta redactada por el modelo que
  * pueda ya estar guardada ahí.
+ *
+ * BV4 F2a etapa 3: tampoco pisa un sobre comercial v2 que ya estuviera en la
+ * clave `paquetes`. `paquetesConEscaleraV1` decide la forma a escribir — si
+ * hay sobre v2, la escalera entra como su `legado`; si no, se escribe tal
+ * cual, exactamente como antes de F2a. Los dos escritores conviven sin
+ * destruirse.
  */
 export const confirmarPaquetes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -36,8 +43,13 @@ export const confirmarPaquetes = createServerFn({ method: "POST" })
     if (error) throw new Error("No pudimos leer el diagnóstico.");
     if (!fila) throw new Error("No encontramos el diagnóstico.");
 
-    const { propuestaCruda } = separarContenidoGuardado((fila as { propuesta?: unknown }).propuesta);
-    const aGuardar = combinarContenidoGuardado({ propuestaCruda, paquetesCrudo: data.escalera });
+    const { propuestaCruda, paquetesCrudo } = separarContenidoGuardado(
+      (fila as { propuesta?: unknown }).propuesta,
+    );
+    const aGuardar = combinarContenidoGuardado({
+      propuestaCruda,
+      paquetesCrudo: paquetesConEscaleraV1(paquetesCrudo, data.escalera),
+    });
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error: errorGuardar } = await supabaseAdmin

@@ -498,3 +498,55 @@ export function escaleraConfirmadaDesdeColumna(
   if (sobre) return sobre.legado;
   return normalizarEscaleraConfirmada(paquetesCrudo);
 }
+
+// ---------------------------------------------------------------- escritura
+
+/**
+ * Arma el valor a escribir en la clave `paquetes` de `diagnostico.propuesta`
+ * al confirmar la selección v2. **Cero migraciones**: es más JSON en una
+ * columna JSONB que ya existe.
+ *
+ * La escalera legada se lee del valor actual y se conserva: si el
+ * diagnóstico ya tenía una, viaja al sobre nuevo; si ya tenía un sobre v2,
+ * viaja la que ese sobre preservaba. Nunca se pierde ni se pisa (F-2).
+ */
+export function paquetesConSobreV2(
+  paquetesCrudo: unknown,
+  datos: { moneda: MonedaV2; fiscal: ConfiguracionFiscalV2; seleccion: SeleccionComercialV2 },
+): SobreComercialV2 {
+  return {
+    version: VERSION_CATALOGO_V2,
+    moneda: datos.moneda,
+    fiscal: datos.fiscal,
+    seleccion: datos.seleccion,
+    legado: escaleraConfirmadaDesdeColumna(paquetesCrudo),
+  };
+}
+
+/**
+ * Espejo del anterior para el escritor v1 (`confirmarPaquetes`): guarda la
+ * escalera confirmada SIN destruir un sobre v2 que ya estuviera ahí. Si lo
+ * hay, la escalera entra como su `legado`; si no, se guarda tal cual, que es
+ * exactamente lo que se guardaba antes de F2a.
+ *
+ * Los dos escritores conviven sin pisarse: cada uno actualiza su parte.
+ */
+export function paquetesConEscaleraV1(
+  paquetesCrudo: unknown,
+  escalera: EscaleraPaquetesConfirmada,
+): SobreComercialV2 | EscaleraPaquetesConfirmada {
+  const sobre = normalizarSobreComercialV2(paquetesCrudo);
+  return sobre ? { ...sobre, legado: escalera } : escalera;
+}
+
+/**
+ * Q9 + candado existente: la exportación se bloquea sin selección comercial
+ * confirmada Y sin configuración fiscal confirmada. No es un mecanismo nuevo
+ * — es la condición que alimenta el `pendiente` del bloque `commercial-offer`
+ * que `verificarExportacionPermitidaV2` ya hace cumplir en un solo lugar.
+ */
+export function seleccionV2Exportable(sobre: SobreComercialV2 | null): boolean {
+  if (!sobre) return false;
+  if (!sobre.fiscal.confirmado) return false;
+  return sobre.seleccion.lineas.some((l) => l.seleccionada);
+}

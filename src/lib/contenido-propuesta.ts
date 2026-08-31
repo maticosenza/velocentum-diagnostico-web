@@ -18,10 +18,21 @@
  */
 import type { PropuestaGenerada } from "./propuesta";
 import type { EscaleraPaquetesConfirmada } from "./paquetes";
+import type { SobreComercialV2 } from "./seleccion-comercial-v2";
+
+/**
+ * BV4 F2a etapa 3: la clave `paquetes` admite dos formas. La legada
+ * (`EscaleraPaquetesConfirmada`, Fase 13) y el sobre comercial v2, que se
+ * distinguen por `version === 2`. Quien lee no elige: usa
+ * `escaleraConfirmadaDesdeColumna` o `normalizarSobreComercialV2`, según qué
+ * necesite. La raíz de la columna NO cambia: sigue siendo
+ * `{ propuesta, paquetes }`.
+ */
+export type PaquetesGuardado = EscaleraPaquetesConfirmada | SobreComercialV2;
 
 export type ContenidoPropuestaGuardado = {
   propuesta: PropuestaGenerada | null;
-  paquetes: EscaleraPaquetesConfirmada | null;
+  paquetes: PaquetesGuardado | null;
 };
 
 /**
@@ -54,6 +65,6 @@ export function combinarContenidoGuardado(args: {
 }): ContenidoPropuestaGuardado {
   return {
     propuesta: (args.propuestaCruda as PropuestaGenerada | null) ?? null,
-    paquetes: (args.paquetesCrudo as EscaleraPaquetesConfirmada | null) ?? null,
+    paquetes: (args.paquetesCrudo as PaquetesGuardado | null) ?? null,
   };
 }
