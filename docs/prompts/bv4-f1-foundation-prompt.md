@@ -1,4 +1,4 @@
-<!-- Ejecutado desde 831ef34. Texto original sin modificar. -->
+<!-- Ejecutado desde 831ef34. Texto original sin modificar. Actualizado al 2026-08-31: fuente de assets y DH-6/DH-7/DH-8. -->
 # BV4 · F1 Foundation — Prompt de ejecución (versión final)
 
 Ejecutás únicamente la fase F1 del Bloque Visual 4 · Rebranding, más su
@@ -164,18 +164,50 @@ Commit propio (local).
 
 ## Etapa 4 · Assets de marca al repo + gate del isotipo
 
-4.1 Los assets están en
-`/Users/maticosenza/Desktop/Velocentum_DIAGNOSTICO_Rebrand/Velocentum_Brand_Assets_V2_Board_Exact/`.
-Copiá al repo (ubicación coherente con la estructura existente, p. ej.
-`src/documents/theme/marca/`) únicamente los **SVG** de `svg/`:
-`crystal-v-short-b`, `prism-board`, `bars-board`, `target-board`,
-`lightning-board`, `fragment-cluster-board`, `scroll-axis-board`, las 6
-`pill-*` y los 4 `treatment-*`. Agregá una nota de procedencia (paquete "V2
-Board Exact", fecha). Los PNG no entran al repo: son solo referencia de QA
-local. Anotá junto al Prisma la excepción DH-7: su espectro multicolor queda
-encapsulado en el asset y no genera tokens.
+4.1 **FUENTE DE ASSETS ACTUALIZADA (2026-08-31).** Los assets están en
+`~/Desktop/BV4_BRANDING_CONFIRMADO/assets/`. Es la biblioteca oficial
+aprobada (manifiestos del 2026-08-30 incluidos en esa carpeta). El paquete
+anterior "Velocentum_Brand_Assets_V2_Board_Exact" **queda retirado y no se
+usa**: sus versiones de `bars` y `target` eran más pobres (845 vs 3289 bytes
+y 624 vs 1180 respectivamente).
 
-4.2 **Test del isotipo (gate DH-6):** rasterizá `crystal-v-short-b.svg` a
+Copiá al repo (ubicación coherente con la estructura existente, p. ej.
+`src/documents/theme/marca/`) únicamente los **SVG**:
+
+- `isotipo-approved.svg` — identidad
+- `objects/prism.svg` · `bars.svg` · `target.svg` · `lightning.svg`
+- `fragments/fragment-cluster-system.svg`
+- `scroll/scroll-axis.svg`
+- `pills/*.svg` (6: strategy, acquisition, content, analysis, web, design)
+- `treatments/*.svg` (4: solid, outline, graded, translucent)
+
+Los PNG **no entran al repo**: son preview y QA. Agregá nota de procedencia
+("biblioteca oficial aprobada, 2026-08-30"). Reglas heredadas de sus
+manifiestos, que respetás: los archivos no se modifican para pruebas, y **el
+isotipo es identidad y no se fragmenta**.
+
+Anotá junto al Prisma la excepción DH-7: conserva el espectro multicolor
+(#7C5CFF, #7DFF6A, #50C9FF, #FFE76D), encapsulado en el asset, sin generar
+tokens.
+
+4.1 bis **Verificaciones obligatorias sobre los assets, a reportar en el
+handoff:**
+
+(a) **Filtros SVG en cinco assets.** `isotipo-approved`, `prism`, `bars`,
+`target` y `lightning` contienen `feGaussianBlur`. react-pdf soporta filtros
+SVG de forma limitada. **Verificá el render en PDF contra el del navegador**
+para los cinco. Si alguno no coincide, reportalo y proponé variante sin
+filtro — **no lo decidas vos**, es parada.
+
+(b) **Encuadre del isotipo.** Su `viewBox` es 220×210, **no cuadrado**.
+Definí y documentá cómo se encuadra para favicon y avatar (padding centrado,
+sin recortar el glifo ni deformarlo).
+
+(c) **Colores fuera de paleta.** El isotipo usa 35 tonos propios de facetado
+y `bars` usa 16; ninguno de la paleta vinculante. Se aplica la excepción de
+encapsulamiento de DH-7: material interno del asset, no genera tokens.
+
+4.2 **Test del isotipo (gate DH-6):** rasterizá `isotipo-approved.svg` a
 16, 24 y 32 px, en color, monocromo sobre claro y monocromo sobre oscuro, más
 una composición tipo avatar (círculo y cuadrado redondeado). Generá una única
 lámina comparativa (`docs/bv4-f1-isotipo-test.png` o PDF) para el veredicto de

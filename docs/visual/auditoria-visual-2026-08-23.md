@@ -774,3 +774,283 @@ E-19/E-20 son hallazgos de una ronda posterior (Bloque Visual 3.1,
 
 `docs/visual/matriz-hallazgos.md` sigue sin actualizarse — E-19/E-20/E-21
 son hallazgos posteriores a su alcance original (misma nota de arriba).
+
+## f) Registro BV4 · F1-preflight (2026-08-31)
+
+Hallazgos levantados durante el preflight del Bloque Visual 4 (rebranding),
+sobre HEAD `831ef34`, rama local `feat/bv4-rebranding`. Se registran con el
+formato de E-21. Ninguno de ellos se corrige en F1 salvo E-22, que ya está
+aplicado. Aclaración vinculante heredada del prompt de F1: la observación de
+ligaduras fi/fl fue descartada **antes** de recibir identificador (era
+artefacto de extracción de texto, no del render) — no existe ningún "E-26
+ligaduras" y no ocupa lugar en la serie.
+
+### E-22 · RESUELTO (nuevo, 2026-08-31, BV4 F1-preflight) · El script `dev` no era la causa del arranque colgado; la causa real es que el árbol de trabajo está desalojado a iCloud
+
+**Hallazgo:** el script era `"dev": "vite dev"` y `npm run dev` no llegaba
+nunca a servir. La causa registrada en el prompt de F1 —que `vite dev` no
+existe en Vite 8 y que el CLI toma `dev` como directorio raíz— **no se
+verifica**: en `vite@8.2.0`, `node_modules/vite/dist/node/cli.js:704`
+declara `cli.command("[root]", "start dev server").alias("serve").alias("dev")`,
+y el despacho de `cac` (`cli.js:522-533`) descarta el token que hizo
+`match` antes de pasar el resto como argumentos, así que la raíz sigue
+siendo el cwd. `vite dev` es una invocación válida en esta versión.
+
+La causa real es del entorno, no del repositorio. El repo vive en
+`~/Documents/`, sincronizado por iCloud Drive, y con 14 GiB libres de 228 el
+sistema desalojó su contenido: `ls -lO` muestra la marca `compressed,dataless`
+en ~98% de `node_modules` (muestra de 400 archivos: 391 dataless) y en 158 de
+los 256 archivos de `src/`. Cada primera lectura de un archivo dispara una
+descarga bajo demanda a través de `fileproviderd`, serializada globalmente en
+**~1 a 3,5 archivos por segundo**, con paralelismo nulo (43 archivos con
+`xargs -P 32` tardaron 12,2 s; 86 archivos de `@babel/types/lib` tardaron
+27,9 s en frío y 3 ms en la segunda corrida, ya materializados).
+
+Medición decisiva: importar uno por uno los cinco plugins que carga el
+wrapper `@lovable.dev/vite-tanstack-config` dio
+`@tanstack/devtools-vite` 54 ms · `@tailwindcss/vite` 80 ms ·
+`vite-tsconfig-paths` 6 ms · `@vitejs/plugin-react` 13 ms (los cuatro ya
+tibios de una prueba previa) y
+**`@tanstack/react-start/plugin/vite` 848 601 ms — 14 min 8 s en frío.**
+Eso, y no el script, es el "cuelgue". El mismo mecanismo explica el
+`tsc --noEmit` de ~14 minutos observado el 2026-08-30 con sólo ~2 s de CPU
+consumida.
+
+**Resolución:** el script se reemplazó por
+`"dev": "vite --port 8080 --strictPort"` (commit `8d00078`). Se mantiene
+aunque la premisa original no se verifique: es explícito y determinista,
+coincide con el puerto por defecto que el propio wrapper fija
+(`@lovable.dev/vite-tanstack-config/dist/index.js:750-762`) y con la
+invocación que ya usaba Matías. La verificación de que `npm run dev` levanta
+y responde queda **condicionada a materializar el árbol**: no es un defecto
+del repositorio y no se corrige desde él. Acción que corresponde a Matías:
+liberar espacio en disco y/o desactivar "Optimizar almacenamiento del Mac"
+para iCloud Drive, o mover el repositorio fuera de `~/Documents` (p. ej. a
+`~/Developer`). Mientras el árbol siga desalojado, cualquier corrida en frío
+—`npm test`, typecheck, build, generación de PDFs— paga el mismo peaje.
+
+**Capa:** entorno de desarrollo (`package.json`, sistema de archivos del
+equipo). **Bloque de corrección:** BV4 F1-preflight (script, hecho) +
+acción de entorno de Matías (materialización, pendiente).
+
+### E-23 · NORMATIVO (nuevo, 2026-08-31, BV4 F1-preflight) · El panel de confirmación de la selección comercial SÍ existe y persiste; la observación original queda registrada con su discrepancia anotada
+
+**Hallazgo tal como se levantó:** no existe pantalla ni panel para confirmar
+la selección comercial; el candado de exportación de la propuesta existe
+pero la llave no.
+
+**Realidad verificada en el repositorio (2026-08-31), que contradice la
+observación:** la cadena completa existe y funciona de punta a punta.
+
+- `src/components/confirmacion-paquetes.tsx:220` — botón "Confirmar
+  propuesta", `onClick={() => onConfirmar({ niveles, confirmado: true })}`.
+- `src/lib/paquetes.functions.ts:13-49` — `confirmarPaquetes`,
+  `createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])`,
+  rechaza `escalera.confirmado !== true` y persiste con
+  `supabaseAdmin.from("diagnostico").update({ propuesta: aGuardar })`.
+- `src/documents/domain/from-diagnostico.ts:120-130` lee esa propuesta
+  persistida.
+- `src/documents/domain/build-context.ts:605` (`comercialDesdeEscalera`)
+  arma el bloque `commercial-offer` con `pendiente: false`.
+- `src/documents/renderers/pdf-v2/gate-exportacion.ts`
+  (`verificarExportacionPermitidaV2`) deja pasar la exportación.
+
+La llave existe. El comentario de cabecera de `confirmacion-paquetes.tsx`
+("Sólo estado local en memoria") quedó desactualizado y es, con alta
+probabilidad, el origen de la observación.
+
+**Resolución:** el hallazgo se conserva con su texto original más esta
+discrepancia anotada —mismo criterio de no reescritura que ya usa este
+documento para E-19/E-20—, y **no** se corrige en F1. Consecuencia de
+alcance, que es decisión de Matías y queda asentada acá: el alcance de F2a
+deja de ser "construir el panel" y pasa a ser "revisar y extender el panel
+existente", incluida la actualización del comentario de cabecera engañoso.
+
+**Capa:** contrato funcional (selección comercial y gate de exportación).
+**Bloque de corrección:** F2a, con alcance corregido a revisión/extensión.
+
+### E-24 · NORMATIVO (nuevo, 2026-08-31, BV4 F1-preflight) · `factor_costo_evento_intermedio` en 20% sin respaldo de datos reales — alcance documental verificado: NO llega a documento de cliente
+
+**Hallazgo:** `src/lib/calculo-diagnostico.ts:115` define
+`FACTOR_COSTO_EVENTO_INTERMEDIO_DEFECTO = 0.2`, con el comentario "sin dato
+de configuración, el costo de un evento intermedio se estima en un 20% del
+CPA objetivo". Se usa en la línea 1025 cuando `cfg.factor_costo_evento_intermedio`
+no viene cargado. El propio código lo declara: "nunca se verifica con datos
+reales de este cliente, así que el resultado nunca se muestra como cifra
+única" (comentario en 1018-1021). No hay fuente ni benchmark que lo respalde.
+
+**Alcance documental, que el prompt de F1 dejaba pendiente de verificar:
+verificado y cerrado — no llega.** El valor alimenta exclusivamente
+`derivados.presupuesto_arranque` (`calculo-diagnostico.ts:1057`, `1134`), y
+el único consumidor de ese campo en toda la aplicación fuera de sus tests es
+`src/routes/_authenticated/diagnosticos.$id.tsx:763`, una pantalla interna
+autenticada. Ningún archivo bajo `src/documents/` lo referencia: no entra al
+modelo de documento, no se imprime en PDF ni en web, no llega al cliente.
+
+**Resolución:** queda como decisión de negocio de Matías —reemplazar el 20%
+por un benchmark con fuente, o dejarlo explícitamente como supuesto interno—,
+sin urgencia visual ni documental, porque su alcance está confinado a
+pantalla interna. No se toca en F1.
+
+**Capa:** motor de cálculo (`src/lib/calculo-diagnostico.ts`), superficie
+interna. **Bloque de corrección:** ninguno asignado — decisión de negocio.
+
+### E-25 · NORMATIVO (nuevo, 2026-08-31, BV4 F1-preflight) · `COMISIONES_PLATAFORMA_DEFECTO`: son 11 entradas, no 9, y a diferencia de E-24 sus valores SÍ llegan a documento de cliente
+
+**Hallazgo:** `src/lib/canales.ts:146` define `COMISIONES_PLATAFORMA_DEFECTO`
+con **11 entradas** —no 9, como decía la observación original—:
+`tiendanube_inicial`, `tiendanube_esencial`, `tiendanube_impulso`,
+`shopify_basic`, `shopify_grow`, `shopify_advanced`, `shopify_plus`,
+`woocommerce`, `empretienda`, `tiendanube_escala`, `tiendanube_evolucion`.
+Las 11 llevan `verificado: false` y `provisional: true`, con
+`fuente: "benchmark_provisional_pendiente_verificacion"`. Dos de ellas
+(`tiendanube_escala`, `tiendanube_evolucion`) tienen además `comision: null`
+por negociarse comercio por comercio, y el código las retiene en vez de
+sumarlas como cero (guard explícito en `comisionEfectivaCanal`).
+
+**Alcance documental, que el prompt de F1 dejaba pendiente de verificar:
+verificado — SÍ llega, y es la diferencia sustantiva con E-24.**
+`entradaPlataforma(cfg, d)` arma su tabla como
+`{ ...COMISIONES_PLATAFORMA_DEFECTO, ...(cfg.comision_plataforma ?? {}) }`:
+si la configuración en base no trae override, el benchmark sin verificar es
+el que se usa. Para `tienda_propia` sin `comision_pct` declarada por el
+cliente, `comisionEfectivaCanal` devuelve ese valor marcado
+`provisional: true`, y de ahí entra al margen por producto
+(`calculo-diagnostico.ts:714`, `755`, `margenesExactos`), que alimenta las
+fugas marcadas `usa_margen: true` y, a través de ellas,
+`oportunidad_total` / `oportunidad_conservadora`
+(`calculo-diagnostico.ts:1686-1687`) — las cifras que el documento de
+cliente publica como titular. La resolución sí queda etiquetada como
+provisional en el objeto, pero el número viaja.
+
+**Resolución:** queda como decisión de negocio de Matías —verificar las 11
+comisiones contra liquidaciones reales y cargarlas en `configuracion`, o
+decidir que el documento explicite su carácter provisional donde hoy no lo
+hace—. No se toca en F1. Se registra aparte del caso E-24 justamente porque
+el alcance verificado es distinto: aquel se queda en pantalla interna, este
+llega al cliente.
+
+**Capa:** motor de cálculo (`src/lib/canales.ts`,
+`src/lib/calculo-diagnostico.ts`) con superficie documental.
+**Bloque de corrección:** ninguno asignado — decisión de negocio.
+
+### E-26 · NORMATIVO (nuevo, 2026-08-31, BV4 F1-preflight) · Planitud tipográfica en los artefactos del 2026-08-28: confirmada en pdf-v2 como escala de rango corto y sin jerarquía dentro de `metric-grid`
+
+**Hallazgo:** en los PDFs auditados el 2026-08-28 (generados con el motor
+**v2** activo, portadas marcadas "v2") once métricas aparecen con el mismo
+peso visual. Verificado contra `src/documents/renderers/pdf-v2/document.tsx`
+—no contra v1, como advertía el prompt de F1—, la observación se confirma,
+con los números reales de pdf-v2:
+
+- `PROFILES_V2.pantalla.escala` (línea 127): `titulo: 22`, `subtitulo: 10`,
+  `label: 9`, `valor: 17`, `valorGrande: 30`, `badge: 8`, `nota: 8.5`,
+  `pie: 8`.
+- `PROFILES_V2.impresion.escala` (línea 145): `titulo: 18`, `subtitulo: 9.5`,
+  `label: 9.5`, `valor: 15`, `valorGrande: 24`, `badge: 8`, `nota: 9`,
+  `pie: 8`.
+- El bloque `metric-grid` (líneas 1161-1183) renderiza **todos** sus ítems
+  como `cardLabel` + `ValorTexto`, es decir el mismo `e.valor` para cada
+  uno: no hay ninguna variante de destaque dentro del bloque.
+- `valorGrande` existe pero sólo se usa en tres lugares, ninguno de ellos
+  `metric-grid`: `commercialSummaryNumber` (469),
+  `commercialSummaryRange` (470, `-6`) y
+  `scenarioMetricValuePrimary` (452, `-12`).
+
+Los valores de puntos citados en la primera versión de la auditoría de
+rebranding (título 25 pt, cuerpo 7,5–14 pt) provenían de v1 y quedan
+reemplazados por los de arriba.
+
+**Resolución:** es un hallazgo de diseño tipográfico del motor v2, no un
+defecto funcional. Su corrección —ampliar el rango de la escala y dar al
+`metric-grid` una jerarquía interna (métrica principal vs. secundarias)—
+pertenece a F3, la migración visual de pdf-v2 al tema nuevo. No se toca en
+F1, que sólo lee pdf-v2 para inventariarlo.
+
+**Capa:** escala tipográfica de `renderers/pdf-v2/document.tsx`.
+**Bloque de corrección:** F3.
+
+### E-27 · CONTRADICHO (nuevo, 2026-08-31, BV4 F1-preflight) · "Ausencia de iconografía": pdf-v2 sí tiene iconografía vectorial; el hallazgo se conserva con la discrepancia anotada
+
+**Hallazgo tal como se levantó:** cero iconografía en los artefactos del
+2026-08-28.
+
+**Realidad verificada en pdf-v2, que contradice la observación:**
+`src/documents/renderers/pdf-v2/document.tsx` tiene iconografía vectorial
+real, dibujada con `@react-pdf/renderer`:
+
+- `IconCircle` (líneas 700-735) dibuja cinco íconos en `<Svg width={12}
+  height={12} viewBox="0 0 12 12">` con `<Circle>` y `<Path>`, uno por
+  cada `kind`: `conservador`, `base`, `potencial`, `tienda`, `marketplace`.
+  Se consume en las líneas 956 (escenarios), 1195 (tienda) y 1203
+  (marketplace).
+- `PrioridadBadge` (753-760) imprime
+  `{ICONOS_PRIORIDAD[prioridad]} {LABELS_PRIORIDAD[prioridad]}`, con los
+  glifos `▲` / `●` / `▽` definidos en
+  `src/documents/semantica-v2/etiquetas.ts:21`.
+- Hay además tres capas `<Svg>` de gradiente y acento en portada y
+  transiciones (1570, 1622, 1687).
+
+**Resolución:** la evidencia del artefacto se conserva —a 12 pt sobre una
+página de 960×540 los íconos son, en la práctica, casi invisibles, y esa
+lectura del auditor es legítima—, pero la causa registrada es incorrecta: no
+es ausencia de iconografía sino iconografía subdimensionada y sin peso
+gráfico. La corrección pertenece a F3, y su punto de partida es el existente,
+no un sistema desde cero. El sistema de objetos de marca (prisma, barras,
+diana, rayo) que F1 incorpora al repositorio en su etapa 4 es el material
+previsto para esa corrección.
+
+**Capa:** iconografía de `renderers/pdf-v2/document.tsx`.
+**Bloque de corrección:** F3.
+
+### E-28 · PARCIALMENTE CONTRADICHO (nuevo, 2026-08-31, BV4 F1-preflight) · "Columna única en apaisado": el perfil `pantalla` usa 2 y 3 columnas; la columna única es real pero acotada a cinco bloques y al perfil `impresion`
+
+**Hallazgo tal como se levantó:** columna única en apaisado, observada en los
+artefactos del 2026-08-28.
+
+**Realidad verificada en pdf-v2:** el perfil apaisado **sí** usa multicolumna
+en los bloques principales. `PROFILES_V2.pantalla` (líneas 133-136) declara
+`colsMetricGrid: 3`, `colsFindings: 2`, `colsScenarios: 3`,
+`colsServices: 2`, con `monthlyStacked: false`. El que colapsa a una columna
+es `impresion` (líneas 175-181): `colsMetricGrid: 2`, `colsFindings: 1`,
+`colsScenarios: 1`, `colsServices: 1`, `monthlyStacked: true` — decisión
+documentada en el propio archivo, tomada en la ronda 2.1 (C2) porque tres
+tarjetas de escenario no entran en una fila de A4 sin colisionar.
+
+Lo que sí es columna única **en ambos perfiles**, por construcción y no por
+perfil, son cinco bloques que no pasan por la grilla de columnas: `roadmap`
+(1423), `restrictions` (1496) y `restrictions-grouped` (1507), armados como
+`View` apilados; y `commercial-offer` (1461) y `methodology` (1518), hijos
+directos de `cardGrid`, que es `{ flexDirection: "column", gap: 10 }`
+(línea 310).
+
+**Resolución:** el hallazgo se conserva con la evidencia del artefacto y esta
+acotación. Su alcance real es "cinco bloques sin grilla, en los dos perfiles"
+más "el perfil `impresion` colapsado a una columna por restricción de ancho
+de A4", no "el apaisado es de columna única". La revisión pertenece a F3, y
+debe respetar la razón registrada de la decisión C2 en `impresion`.
+
+**Capa:** estructura de página de `renderers/pdf-v2/document.tsx`.
+**Bloque de corrección:** F3.
+
+### Reconciliación de identificadores (actualización 2026-08-31, BV4 F1-preflight)
+
+- **Antes de esta corrección:** 41 identificadores (E-01 a E-21 = 21;
+  C-01 a C-08 = 8; R-01 a R-12 = 12). Último ID registrado verificado en el
+  archivo vivo: **E-21, línea 697** — coincide con lo que preveía el prompt
+  de F1, así que la serie E-22..E-28 se escribe sin correrse.
+- **Después de esta corrección:** 48 identificadores (E-01 a E-28 = 28;
+  C-01 a C-08 = 8, sin cambios; R-01 a R-12 = 12, sin cambios). E-22 nace y
+  cierra en el mismo preflight (script corregido; la verificación de arranque
+  queda condicionada a una acción de entorno que no es del repositorio).
+  E-23 y E-27 se registran **contradichos** por la verificación contra el
+  código, y E-28 **parcialmente contradicho**: los tres conservan la
+  observación original y la evidencia del artefacto, con la discrepancia
+  anotada, siguiendo el mismo criterio de no reescritura que este documento
+  ya aplicó a E-19/E-20. E-24 y E-25 quedan como decisiones de negocio de
+  Matías, con su alcance documental ahora verificado y distinto entre sí.
+  Ningún identificador se elimina. No existe ningún "E-26 ligaduras": esa
+  observación se descartó antes de recibir ID y no ocupa lugar en la serie.
+
+`docs/visual/matriz-hallazgos.md` sigue sin actualizarse — E-22 a E-28 son
+hallazgos muy posteriores a su alcance original (2026-08-23), igual que
+E-19/E-20/E-21.

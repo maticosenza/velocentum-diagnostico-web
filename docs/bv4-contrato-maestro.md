@@ -67,9 +67,9 @@ contradicciones internas ni preguntas abiertas. El prompt de F2a se redacta
 | DH-3 | UI **híbrida**: superficies de trabajo/formularios/tablas/diagnóstico/lectura prolongada claras; navegación/acceso/portadas/cierres/transiciones/momentos de marca en ink/surface; pink como energía controlada, nunca baño general |
 | DH-4 | Neutros aprobados: surfaceSoft `#F5F5F7`, borderLight `#E9E9EE`, borderDark `#2A2A35`, muted `#6E6E7A`. Foundation verifica contraste automáticamente; si un par no alcanza AA, se ajusta el neutro dentro de la misma familia sin cambiar dirección visual |
 | DH-5 | `#D92F6E` para texto acentuado sobre claro. `#FF4B8D` para CTA/display/actividad/gráfica, **nunca** texto chico sobre blanco. Success/warning/error conservan color propio |
-| DH-6 | Gate de F1: `crystal-v-short-b.svg` se prueba a 16/24/32 px, monocromo claro, monocromo oscuro y avatar. **El veredicto es humano, de Matías; Claude Code no puede autoadjudicárselo.** Si pasa, queda aprobado como isotipo de la herramienta. Si falla, se detiene **solo** el lockup definitivo y se pide asset corregido; el resto de F1 continúa |
-| DH-7 | El espectro multicolor del Prisma se conserva como excepción semántica deliberada, **encapsulada en el asset**: sus violetas/verdes/cyan/amarillo no se convierten en tokens ni reaparecen en otros componentes |
-| DH-8 | Para la herramienta alcanzan `crystal-v-short-b.svg` + lockup tipográfico en Satoshi. Las variantes Simple/Brand/Object y el lockup horizontal son entregables futuros del rebranding institucional de Velocentum.com; no bloquean BV4 |
+| DH-6 | **ACTUALIZADA 2026-08-31.** El isotipo es **`isotipo-approved.svg`**, aportado por Matías; reemplaza a `crystal-v-short-b.svg` en todo uso. Gate de F1: se prueba a 16/24/32 px, monocromo claro, monocromo oscuro y avatar. **El veredicto es humano, de Matías; Claude Code no puede autoadjudicárselo.** Si pasa, queda aprobado como isotipo de la herramienta. Si falla a tamaños chicos, se detiene **solo** el lockup definitivo y el favicon, y se resuelve con variante simplificada (ver DH-8); el resto de F1 continúa |
+| DH-7 | El espectro multicolor del Prisma se conserva como excepción semántica deliberada, **encapsulada en el asset**: sus violetas/verdes/cyan/amarillo no se convierten en tokens ni reaparecen en otros componentes. **Extensión 2026-08-31:** `isotipo-approved.svg` usa 35 tonos propios de facetado, ninguno de la paleta vinculante; se aplica el mismo criterio de encapsulamiento — el material interno del asset no genera tokens |
+| DH-8 | **ACTUALIZADA 2026-08-31.** Para la herramienta alcanzan `isotipo-approved.svg` + lockup tipográfico en Satoshi. `crystal-v-short-b.svg` queda **retirado del uso principal** y se conserva únicamente como posible variante simplificada para tamaños ≤24 px si el test DH-6 muestra que el nuevo no lee — decisión de Matías tras ver la lámina. Las variantes Simple/Brand/Object y el lockup horizontal siguen siendo entregables futuros del rebranding institucional; no bloquean BV4 |
 | DH-9 | Geist Mono entra para labels, estados, identificadores y microcopy técnico. Se obtiene **exclusivamente de fuente oficial**, con licencia incluida, archivos estáticos locales, sin CDN. Satoshi e Inter quedan como están (repo, `registrar-fuentes.ts`, data URI, licencias documentadas, consumidas por pdf-v2) |
 | DH-10 | El tema nuevo se llama **`velocentum-crystal/v1`**. "v2" queda reservado al motor documental. El tema vive junto al existente, reversible, sin modificar `velocentum-light-v1` ni su test |
 | DH-11 | "Velocentum · Equipo de crecimiento": acceso, navegación principal, lockup y portadas. "Estamos en el negocio de hacer crecer negocios": acceso, portada institucional y cierre. No se repite en headers/footers/páginas interiores. No se reescriben hallazgos, cifras, conclusiones ni recomendaciones para insertar el posicionamiento |
@@ -115,10 +115,12 @@ de la secuencia de cierre de F1).
 1. `bv4-f1-foundation-prompt.md` — el prompt ejecutable (se guarda en
    `docs/prompts/`).
 2. `bv4-contrato-maestro.md` — este documento (guardarlo en `docs/`).
-3. Assets de marca, ya descomprimidos, en:
-   `/Users/maticosenza/Desktop/Velocentum_DIAGNOSTICO_Rebrand/Velocentum_Brand_Assets_V2_Board_Exact/`
-   — de ahí F1 usa `svg/` (producción) y `reference/` + `png_exact_dark/`
-   (solo QA visual).
+3. **ACTUALIZADO 2026-08-31.** Todo el material vive en una única carpeta:
+   `~/Desktop/BV4_BRANDING_CONFIRMADO/` — `assets/` (biblioteca oficial
+   aprobada, lo que se copia al repo), `docs/` (contrato, prompts,
+   auditorías) y `referencia/` (boards, solo QA). El paquete
+   "Velocentum_Brand_Assets_V2_Board_Exact" **queda retirado**: traía
+   versiones más pobres de `bars` y `target`.
 4. `actualizacion-vinculante-rebranding.txt` — directiva original.
 5. `Plan_Maestro_Velocentum_2026.pdf` — secciones 03–05 (dirección visual,
    sistema de marca, biblioteca de objetos).
@@ -148,7 +150,8 @@ Iniciamos Bloque Visual 4 · Rebranding — SOLO fase F1 Foundation.
    src/documents/motor-activo.ts a "v1" y verificá árbol limpio.
 4. Rama de trabajo: feat/bv4-rebranding creada desde 831ef34, solo local.
 5. Los assets de marca están en:
-   /Users/maticosenza/Desktop/Velocentum_DIAGNOSTICO_Rebrand/Velocentum_Brand_Assets_V2_Board_Exact/
+   ~/Desktop/BV4_BRANDING_CONFIRMADO/assets/  (biblioteca oficial aprobada;
+   el paquete V2 Board Exact queda retirado y no se usa)
 6. Al terminar: commit candidato LOCAL, handoff de máximo 10 líneas + ZIP de
    artefactos desde worktree limpio de ese commit, y te detenés por completo.
 7. NO pushees hasta autorización posterior: el push llega recién después de
