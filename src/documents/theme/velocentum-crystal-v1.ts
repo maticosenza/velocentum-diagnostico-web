@@ -159,6 +159,13 @@ export const VELOCENTUM_CRYSTAL_V1 = {
   typography: {
     heading: "Satoshi",
     body: "Inter",
+    // BV4 F1 etapa 3: Geist Mono, bajada de la fuente oficial (repositorio
+    // de Vercel, release v1.7.2) y registrada como data URI en
+    // `fuentes/registrar-fuentes.ts` con los pesos 400/500/600/700 romanos.
+    // Sin CDN en ningún punto del render. F1 DEFINE el rol; aplicarlo a
+    // navegación, documentos o UI es alcance de F2/F3.
+    mono: "Geist Mono",
+    monoRoles: ["labels", "estados", "identificadores", "microcopy-tecnico"],
     weightLight: 300,
     weightRegular: 400,
     weightMedium: 500,

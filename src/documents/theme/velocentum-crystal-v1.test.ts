@@ -151,10 +151,25 @@ describe("tema de marca velocentum-crystal/v1", () => {
     expect(print?.accent).not.toBe(VELOCENTUM_CRYSTAL_V1.colors.action);
   });
 
-  it("hereda tipografía, espaciado y radios de v1 sin cambios (nada de eso es vinculante en BV4)", () => {
-    expect(VELOCENTUM_CRYSTAL_V1.typography).toEqual(VELOCENTUM_LIGHT_V1.typography);
+  it("hereda de v1 familias, pesos, espaciado y radios (nada de eso es vinculante en BV4)", () => {
+    const { mono, monoRoles, ...heredado } = VELOCENTUM_CRYSTAL_V1.typography;
+    expect(heredado).toEqual(VELOCENTUM_LIGHT_V1.typography);
     expect(VELOCENTUM_CRYSTAL_V1.spacing).toEqual(VELOCENTUM_LIGHT_V1.spacing);
     expect(VELOCENTUM_CRYSTAL_V1.radius).toEqual(VELOCENTUM_LIGHT_V1.radius);
+    // Lo único que crystal suma a la tipografía es el rol mono (etapa 3).
+    expect(mono).toBe("Geist Mono");
+    expect(monoRoles).toEqual(["labels", "estados", "identificadores", "microcopy-tecnico"]);
+  });
+
+  it("v1 sigue sin declarar mono: la extensión de tipografía es aditiva", () => {
+    expect(VELOCENTUM_LIGHT_V1.typography).not.toHaveProperty("mono");
+  });
+
+  it("los pesos que el rol mono puede pedir están declarados en el tema", () => {
+    const { weightRegular, weightMedium, weightSemiBold, weightBold } = VELOCENTUM_CRYSTAL_V1.typography;
+    // Son exactamente los cuatro que `registrar-fuentes.ts` registra para
+    // "Geist Mono". react-pdf no degrada: pedir otro peso rompe el render.
+    expect([weightRegular, weightMedium, weightSemiBold, weightBold]).toEqual([400, 500, 600, 700]);
   });
 
   it("no modifica el tema v1: sigue siendo el ancla de rollback", () => {

@@ -102,6 +102,17 @@ export type DocumentTheme = {
   typography: {
     heading: string;
     body: string;
+    /**
+     * Monoespaciada. Extensión aditiva BV4 F1 etapa 3 (2026-08-31):
+     * opcional, `velocentum-light/v1` no la declara y sigue siendo válido.
+     */
+    mono?: string;
+    /**
+     * Los roles que le corresponden a `mono`, declarados como dato y no
+     * como comentario para que se puedan verificar. F1 los DEFINE; aplicarlos
+     * a superficies es alcance de F2/F3.
+     */
+    monoRoles?: readonly string[];
     weightLight: number;
     weightRegular: number;
     weightMedium: number;
