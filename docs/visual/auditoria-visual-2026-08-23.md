@@ -785,7 +785,7 @@ ligaduras fi/fl fue descartada **antes** de recibir identificador (era
 artefacto de extracción de texto, no del render) — no existe ningún "E-26
 ligaduras" y no ocupa lugar en la serie.
 
-### E-22 · RESUELTO (nuevo, 2026-08-31, BV4 F1-preflight) · El script `dev` no era la causa del arranque colgado; la causa real es que el árbol de trabajo está desalojado a iCloud
+### E-22 · RESUELTO Y VERIFICADO (nuevo, 2026-08-31, BV4 F1-preflight) · El script `dev` no era la causa del arranque colgado; la causa real es que el árbol de trabajo está desalojado a iCloud
 
 **Hallazgo:** el script era `"dev": "vite dev"` y `npm run dev` no llegaba
 nunca a servir. La causa registrada en el prompt de F1 —que `vite dev` no
@@ -821,17 +821,43 @@ consumida.
 aunque la premisa original no se verifique: es explícito y determinista,
 coincide con el puerto por defecto que el propio wrapper fija
 (`@lovable.dev/vite-tanstack-config/dist/index.js:750-762`) y con la
-invocación que ya usaba Matías. La verificación de que `npm run dev` levanta
-y responde queda **condicionada a materializar el árbol**: no es un defecto
-del repositorio y no se corrige desde él. Acción que corresponde a Matías:
-liberar espacio en disco y/o desactivar "Optimizar almacenamiento del Mac"
-para iCloud Drive, o mover el repositorio fuera de `~/Documents` (p. ej. a
-`~/Developer`). Mientras el árbol siga desalojado, cualquier corrida en frío
-—`npm test`, typecheck, build, generación de PDFs— paga el mismo peaje.
+invocación que ya usaba Matías. `npm run dev` **levanta y responde**, ver el
+addendum de abajo. Lo que queda no es un defecto del repositorio y no se
+corrige desde él. Acción que corresponde a Matías: liberar espacio en disco
+y/o desactivar "Optimizar almacenamiento del Mac" para iCloud Drive, o mover
+el repositorio fuera de `~/Documents` (p. ej. a `~/Developer`). Mientras el
+árbol siga desalojado, cualquier corrida en frío —`npm test`, typecheck,
+build, generación de PDFs, el propio `dev`— paga el mismo peaje una vez por
+archivo.
+
+**Addendum del cierre de F1 (2026-08-31): verificado y cerrado.**
+Materializar el árbol resuelve el síntoma sin tocar el repositorio, y queda
+medido. Tras leer una vez `src/`, `docs/` y los subárboles de `node_modules`
+que la cadena usa —typescript, vitest, vite, los plugins, `@babel`,
+`@react-pdf` y `pdfjs-dist`—, la suite completa corre en **138,8 s** (72
+archivos, 903 pruebas), `tsc --noEmit` en unos tres minutos y `vite build`
+en unos doce, todos con exit 0. Antes de materializar, sólo importar
+`@tanstack/react-start/plugin/vite` tardaba 848 s. La diferencia es
+íntegramente el costo de la primera lectura de cada archivo.
+
+**`npm run dev` fue verificado y funciona.** Con el árbol materializado
+arranca en **324 ms** y `GET http://localhost:8080/` devuelve **200 en
+0,55 s** con el HTML real de la aplicación (`<title>Diagnósticos ·
+Velocentum · Diagnóstico e-commerce</title>`). El script corregido en 0.5 es
+correcto.
+
+Queda registrado además el modo exacto de falla en frío, que refina el
+diagnóstico: **el servidor sí arrancaba**; lo que moría era el render del
+lado servidor, con `transport invoke timed out after 60000ms` pidiendo
+`/src/routes/__root.tsx`. Es el timeout de transporte de módulos de Vite
+—60 s— agotado por una sola lectura en frío de iCloud. No es un cuelgue del
+CLI ni del script: es una lectura de archivo que tarda más que el timeout.
 
 **Capa:** entorno de desarrollo (`package.json`, sistema de archivos del
-equipo). **Bloque de corrección:** BV4 F1-preflight (script, hecho) +
-acción de entorno de Matías (materialización, pendiente).
+equipo). **Bloque de corrección:** BV4 F1-preflight — script corregido y
+arranque verificado, cerrado. Queda como recomendación de entorno para
+Matías, no como corrección pendiente de ninguna fase: liberar disco o sacar
+el repositorio de `~/Documents` evita volver a pagar el peaje en frío.
 
 ### E-23 · NORMATIVO (nuevo, 2026-08-31, BV4 F1-preflight) · El panel de confirmación de la selección comercial SÍ existe y persiste; la observación original queda registrada con su discrepancia anotada
 
