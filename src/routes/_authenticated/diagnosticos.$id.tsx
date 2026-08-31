@@ -31,7 +31,17 @@ import { ConfirmacionPaquetes } from "@/components/confirmacion-paquetes";
 import { mapearHallazgos, normalizarPropuesta } from "@/lib/propuesta";
 import { separarContenidoGuardado } from "@/lib/contenido-propuesta";
 import { generarEscaleraPaquetes, type EscaleraPaquetesConfirmada } from "@/lib/paquetes";
-import { escaleraConfirmadaDesdeColumna } from "@/lib/seleccion-comercial-v2";
+import {
+  escaleraConfirmadaDesdeColumna,
+  normalizarSobreComercialV2,
+  type ConfiguracionFiscalV2,
+  type MonedaV2,
+  type SeleccionComercialV2,
+  type SobreComercialV2,
+} from "@/lib/seleccion-comercial-v2";
+import { lineasSugeridasV2 } from "@/lib/catalogo-v2";
+import { PanelSeleccionComercial } from "@/components/panel-seleccion-comercial";
+import { confirmarSeleccionComercialV2 } from "@/lib/seleccion-comercial-v2.functions";
 import { confirmarPaquetes } from "@/lib/paquetes.functions";
 import { DOCUMENTOS_DISPONIBLES } from "@/documents/build-document";
 import type { Derivados, EstadoBloque, EstadosBloque, Fuga } from "@/lib/calculo-diagnostico";
@@ -263,6 +273,15 @@ function DetalleDiagnostico() {
                 fugas={fugas}
               />
 
+              <SeccionSeleccionComercial
+                diagnosticoId={data.id}
+                datos={datos}
+                derivados={d}
+                estados={estados}
+                fugas={fugas}
+                sobreGuardado={normalizarSobreComercialV2(paquetesCrudo)}
+              />
+
               <SeccionPaquetes
                 diagnosticoId={data.id}
                 datos={datos}
@@ -276,6 +295,78 @@ function DetalleDiagnostico() {
         })()}
       </div>
     </>
+  );
+}
+
+/**
+ * BV4 F2a etapa 4 — selección comercial v2: las diez líneas facturables,
+ * moneda, configuración fiscal y los dos grupos de totales en vivo. Persiste
+ * en la misma columna JSON, dentro de la clave `paquetes`, junto a la
+ * escalera legada que la sección de abajo sigue alimentando.
+ */
+function SeccionSeleccionComercial({
+  diagnosticoId,
+  datos,
+  derivados,
+  estados,
+  fugas,
+  sobreGuardado,
+}: {
+  diagnosticoId: string;
+  datos: DatosDiagnostico;
+  derivados: Derivados;
+  estados: Partial<EstadosBloque>;
+  fugas: Fuga[];
+  sobreGuardado: SobreComercialV2 | null;
+}) {
+  const [guardado, setGuardado] = useState<SobreComercialV2 | null>(sobreGuardado);
+  const confirmar = useServerFn(confirmarSeleccionComercialV2);
+  const mutacion = useMutation({
+    mutationFn: async (sobre: {
+      moneda: MonedaV2;
+      fiscal: ConfiguracionFiscalV2;
+      seleccion: SeleccionComercialV2;
+    }) =>
+      confirmar({
+        data: { diagnosticoId, sobre: { version: 2, ...sobre, legado: null } },
+      }),
+    onSuccess: (r) => setGuardado(r.sobre),
+  });
+
+  const sugeridas = lineasSugeridasV2(mapearHallazgos(datos, derivados, estados, fugas));
+
+  return (
+    <section className="rounded-lg border border-border bg-card">
+      <header className="border-b border-border px-7 py-5">
+        <h2 className="text-[17px] font-medium text-foreground">Selección comercial</h2>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          Las diez líneas facturables, siempre visibles. Las sugeridas por el diagnóstico llegan
+          marcadas; el precio se carga a mano y los totales se calculan solos, separados en
+          inversión mensual e inversión inicial.
+        </p>
+      </header>
+
+      <div className="px-7 py-7">
+        {mutacion.isError && (
+          <p className="mb-4 text-[13px] text-destructive">{(mutacion.error as Error).message}</p>
+        )}
+        {guardado && !mutacion.isPending && (
+          <p className="mb-4 text-[13px] text-muted-foreground" role="status">
+            Selección guardada en {guardado.moneda}
+            {guardado.fiscal.confirmado
+              ? ", con configuración fiscal confirmada."
+              : ". Falta confirmar la configuración fiscal para poder exportar."}
+          </p>
+        )}
+        <PanelSeleccionComercial
+          key={guardado ? "guardada" : "inicial"}
+          sugeridas={sugeridas}
+          sobreGuardado={guardado}
+          guardando={mutacion.isPending}
+          onConfirmar={(sobre) => mutacion.mutate(sobre)}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -302,7 +393,9 @@ function SeccionPaquetes({
   fugas: Fuga[];
   paquetesGuardados: EscaleraPaquetesConfirmada | null;
 }) {
-  const [confirmada, setConfirmada] = useState<EscaleraPaquetesConfirmada | null>(paquetesGuardados);
+  const [confirmada, setConfirmada] = useState<EscaleraPaquetesConfirmada | null>(
+    paquetesGuardados,
+  );
   const [editando, setEditando] = useState(!paquetesGuardados);
   const confirmar = useServerFn(confirmarPaquetes);
   const mutacion = useMutation({
@@ -322,18 +415,20 @@ function SeccionPaquetes({
   return (
     <section className="rounded-lg border border-border bg-card">
       <header className="border-b border-border px-7 py-5">
-        <h2 className="text-[17px] font-medium text-foreground">Paquetes propuestos</h2>
+        <h2 className="text-[17px] font-medium text-foreground">
+          Paquetes propuestos (escalera v1)
+        </h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
           Escalera de hasta tres niveles, cada servicio ligado a un hallazgo concreto. Los precios
-          quedan vacíos hasta que los cargues acá.
+          quedan vacíos hasta que los cargues acá. Alimenta los documentos del motor v1 y se
+          conserva como ancla de reversión: es independiente de la selección comercial de arriba y
+          ninguna de las dos pisa a la otra.
         </p>
       </header>
 
       <div className="px-7 py-7">
         {mutacion.isError && (
-          <p className="mb-4 text-[13px] text-destructive">
-            {(mutacion.error as Error).message}
-          </p>
+          <p className="mb-4 text-[13px] text-destructive">{(mutacion.error as Error).message}</p>
         )}
         {!editando && confirmada ? (
           <div className="space-y-3">
