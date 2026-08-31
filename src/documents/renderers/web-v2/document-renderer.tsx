@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { formatDocumentDate } from "../web/format";
-import { textoEstadoV2, textoOrigenV2, esSupuesto } from "../../semantica-v2/estado";
+import { textoEstadoV2, textoMonedaV2, textoOrigenV2, esSupuesto } from "../../semantica-v2/estado";
 import {
   ICONOS_PRIORIDAD,
   LABELS_CAPA,
@@ -96,10 +96,21 @@ function HeadingRule() {
 }
 
 /** D-5, contrato 6.4: ícono lineal en círculo — sólo escenario y canales. */
-function IconCircle({ kind }: { kind: "conservador" | "base" | "potencial" | "tienda" | "marketplace" }) {
+function IconCircle({
+  kind,
+}: {
+  kind: "conservador" | "base" | "potencial" | "tienda" | "marketplace";
+}) {
   return (
     <span className={`vdoc2-icon-circle vdoc2-icon-circle--${kind}`} aria-hidden="true">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.2}>
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.2}
+      >
         {kind === "conservador" ? <circle cx="6" cy="6" r="3.5" /> : null}
         {kind === "base" ? (
           <>
@@ -225,18 +236,30 @@ function ChannelComparisonBlock({
       <h3>Comparación entre canales</h3>
       <div className="vdoc2-channel">
         <div className="vdoc2-channel__row">
-          <span className="vdoc2-channel__label"><IconCircle kind="tienda" />{block.tienda.label}</span>
+          <span className="vdoc2-channel__label">
+            <IconCircle kind="tienda" />
+            {block.tienda.label}
+          </span>
           <ValorV2View value={block.tienda.value} />
         </div>
         <div className="vdoc2-channel__bar">
-          <div className="vdoc2-channel__fill" style={{ width: `${Math.max(4, (tVal / max) * 100)}%` }} />
+          <div
+            className="vdoc2-channel__fill"
+            style={{ width: `${Math.max(4, (tVal / max) * 100)}%` }}
+          />
         </div>
         <div className="vdoc2-channel__row">
-          <span className="vdoc2-channel__label"><IconCircle kind="marketplace" />{block.marketplace.label}</span>
+          <span className="vdoc2-channel__label">
+            <IconCircle kind="marketplace" />
+            {block.marketplace.label}
+          </span>
           <ValorV2View value={block.marketplace.value} />
         </div>
         <div className="vdoc2-channel__bar">
-          <div className="vdoc2-channel__fill" style={{ width: `${Math.max(4, (mVal / max) * 100)}%` }} />
+          <div
+            className="vdoc2-channel__fill"
+            style={{ width: `${Math.max(4, (mVal / max) * 100)}%` }}
+          />
         </div>
       </div>
     </BlockFrame>
@@ -263,7 +286,10 @@ function FindingsBlock({ block }: { block: Extract<DocumentBlockV2, { type: "fin
       <ol className="vdoc2-findings">
         {block.items.map((item, index) => (
           <li
-            className={classNames("vdoc2-finding", item.esMargenNegativo && "vdoc2-finding--alerta")}
+            className={classNames(
+              "vdoc2-finding",
+              item.esMargenNegativo && "vdoc2-finding--alerta",
+            )}
             key={item.id}
           >
             <div className="vdoc2-finding__index" aria-hidden="true">
@@ -272,14 +298,18 @@ function FindingsBlock({ block }: { block: Extract<DocumentBlockV2, { type: "fin
             <div className="vdoc2-finding__body">
               <div className="vdoc2-tags">
                 {item.esMargenNegativo ? (
-                  <span className="vdoc2-tag vdoc2-tag--alta">▲ ALERTA CRÍTICA · MARGEN NEGATIVO</span>
+                  <span className="vdoc2-tag vdoc2-tag--alta">
+                    ▲ ALERTA CRÍTICA · MARGEN NEGATIVO
+                  </span>
                 ) : (
                   <span className={`vdoc2-tag vdoc2-tag--${item.prioridad}`}>
                     {ICONOS_PRIORIDAD[item.prioridad]} {LABELS_PRIORIDAD[item.prioridad]}
                   </span>
                 )}
                 <span className="vdoc2-tag">{LABELS_CAPA[item.capa]}</span>
-                {item.magnitud ? <span className="vdoc2-tag">{LABELS_MAGNITUD[item.magnitud]}</span> : null}
+                {item.magnitud ? (
+                  <span className="vdoc2-tag">{LABELS_MAGNITUD[item.magnitud]}</span>
+                ) : null}
               </div>
               <h3>{item.titulo}</h3>
               {item.monto ? (
@@ -305,7 +335,9 @@ function CommercialSummaryBlock({
       <div className="vdoc2-commercial-summary">
         {block.headline ? (
           <div className="vdoc2-commercial-summary__headline">
-            <p className="vdoc2-kicker">Contribución incremental a 90 días · Escenario conservador</p>
+            <p className="vdoc2-kicker">
+              Contribución incremental a 90 días · Escenario conservador
+            </p>
             <p className="vdoc2-commercial-summary__number">
               <ValorV2View value={block.headline} />
             </p>
@@ -318,10 +350,14 @@ function CommercialSummaryBlock({
               {" – "}
               {block.range.upper ? <ValorV2View value={block.range.upper} /> : null}
             </p>
-            {block.dispersion.dataToCloseIt.length > 0 ? <List items={block.dispersion.dataToCloseIt} /> : null}
+            {block.dispersion.dataToCloseIt.length > 0 ? (
+              <List items={block.dispersion.dataToCloseIt} />
+            ) : null}
           </div>
         )}
-        {block.statement ? <p className="vdoc2-commercial-summary__statement">{block.statement}</p> : null}
+        {block.statement ? (
+          <p className="vdoc2-commercial-summary__statement">{block.statement}</p>
+        ) : null}
         {block.assumptionsDetail.length > 0 ? (
           <div className="vdoc2-subsection">
             <h4>{TITULO_SUPUESTOS_CON_DAGA}</h4>
@@ -342,9 +378,19 @@ function BridgeNoteBlock({ block }: { block: Extract<DocumentBlockV2, { type: "b
 }
 
 function ScenarioCard({ item }: { item: EscenarioV2 }) {
-  const grupos = ["facturacion_incremental", "contribucion_incremental", "ahorro_publicitario"] as const;
+  const grupos = [
+    "facturacion_incremental",
+    "contribucion_incremental",
+    "ahorro_publicitario",
+  ] as const;
   return (
-    <article className={classNames("vdoc2-scenario", `vdoc2-scenario--${item.id}`, !item.esCorta && "vdoc2-scenario--larga")}>
+    <article
+      className={classNames(
+        "vdoc2-scenario",
+        `vdoc2-scenario--${item.id}`,
+        !item.esCorta && "vdoc2-scenario--larga",
+      )}
+    >
       <div className="vdoc2-block__header">
         <div className="vdoc2-scenario__title">
           <IconCircle kind={item.id} />
@@ -377,8 +423,9 @@ function ScenarioCard({ item }: { item: EscenarioV2 }) {
           retenido/no_aplica/evidencia_faltante. */}
       {item.ahorroPublicitario90d.estado === "disponible" ? (
         <p className="vdoc2-scenario__note">
-          El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre, el efecto sería
-          mayor al proyectado. Esta versión trata el ahorro de forma conservadora y no asume esa reinversión.
+          El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre, el
+          efecto sería mayor al proyectado. Esta versión trata el ahorro de forma conservadora y no
+          asume esa reinversión.
         </p>
       ) : null}
       {item.mensual.length > 0 ? (
@@ -605,6 +652,107 @@ function ServicioNivelList({
   );
 }
 
+/**
+ * BV4 F2a etapa 5 — la selección comercial v2 en el renderer web (perfil
+ * pantalla). Espejo exacto del bloque del PDF: mismos textos, mismos dos
+ * grupos, misma ausencia de total combinado.
+ */
+function CommercialSelectionBlock({
+  block,
+}: {
+  block: Extract<DocumentBlockV2, { type: "commercial-selection" }>;
+}) {
+  if (block.pendiente) {
+    return (
+      <BlockFrame type="commercial-selection">
+        <div className="vdoc2-finding--alerta vdoc2-card">
+          <h3>Selección comercial pendiente</h3>
+          <p className="vdoc2-muted">
+            Falta confirmar la selección de líneas o la configuración fiscal de la propuesta.
+          </p>
+        </div>
+      </BlockFrame>
+    );
+  }
+
+  const money = (valor: ValorV2) => textoMonedaV2(valor, block.moneda);
+
+  return (
+    <BlockFrame type="commercial-selection">
+      <p className="vdoc2-muted">Nivel: {block.nivel}</p>
+
+      <div className="vdoc2-scenario-grid">
+        {block.lineas.map((linea) => (
+          <article className="vdoc2-scenario" key={linea.lineaId}>
+            <div className="vdoc2-block__header">
+              <h3>
+                {linea.nombre}
+                {linea.ruta ? ` — ${linea.ruta}` : ""}
+              </h3>
+            </div>
+            {linea.textoPendiente ? (
+              <p className="vdoc2-muted">Texto de servicio pendiente de confirmación.</p>
+            ) : (
+              <p>{linea.descripcion}</p>
+            )}
+            <ul className="vdoc2-list">
+              {linea.entregables.map((entregable, i) => (
+                <li key={`${linea.lineaId}-${i}`}>{entregable}</li>
+              ))}
+            </ul>
+            {linea.exclusion ? <p className="vdoc2-muted">{linea.exclusion}</p> : null}
+            {linea.notaContenido ? <p className="vdoc2-muted">{linea.notaContenido}</p> : null}
+            <p className="vdoc2-muted">
+              {linea.cantidad === null ? "" : `${linea.cantidad} ${linea.unidad} · `}
+              {linea.precioUnitario ? `unitario ${money(linea.precioUnitario)} · ` : ""}
+              {linea.recurrencia === "mensual" ? "mensual" : "pago único"}
+            </p>
+            <p className="vdoc2-value">{money(linea.totalLinea)}</p>
+          </article>
+        ))}
+      </div>
+
+      {block.agregados.length > 0 ? (
+        <div className="vdoc2-card">
+          <h3>Agregados incluidos</h3>
+          <ul className="vdoc2-list">
+            {block.agregados.map((a) => (
+              <li key={a.nombre}>{a.alcance ? `${a.nombre} — ${a.alcance}` : a.nombre}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {/* Q10: dos grupos independientes. No hay ningún total que los sume. */}
+      <div className="vdoc2-scenario-grid">
+        {block.grupos.map((grupo) => (
+          <article className="vdoc2-scenario" key={grupo.id}>
+            <div className="vdoc2-block__header">
+              <h3>{grupo.titulo}</h3>
+            </div>
+            <p className="vdoc2-muted">Subtotal neto: {money(grupo.subtotalNeto)}</p>
+            {grupo.impuesto ? (
+              <p className="vdoc2-muted">
+                Impuesto ({grupo.porcentajeImpuesto} %): {money(grupo.impuesto)}
+              </p>
+            ) : null}
+            <p className="vdoc2-value">{money(grupo.total)}</p>
+          </article>
+        ))}
+      </div>
+
+      {block.lineasSinPrecio.length > 0 ? (
+        <div className="vdoc2-finding--alerta vdoc2-card">
+          <h3>Subtotales parciales</h3>
+          <p className="vdoc2-muted">
+            Sin precio cargado: {block.lineasSinPrecio.join(", ")}. No se cuentan como cero.
+          </p>
+        </div>
+      ) : null}
+    </BlockFrame>
+  );
+}
+
 function CommercialOfferBlock({
   block,
 }: {
@@ -714,6 +862,8 @@ export function DocumentBlockViewV2({ block }: { block: DocumentBlockV2 }) {
       return <ServicesBlock block={block} />;
     case "commercial-offer":
       return <CommercialOfferBlock block={block} />;
+    case "commercial-selection":
+      return <CommercialSelectionBlock block={block} />;
     case "restrictions":
       return (
         <BlockFrame type="restrictions">
@@ -749,7 +899,13 @@ export function DocumentBlockViewV2({ block }: { block: DocumentBlockV2 }) {
   }
 }
 
-export function DocumentSectionViewV2({ section, kind }: { section: DocumentSectionV2; kind: DocumentKindV2 }) {
+export function DocumentSectionViewV2({
+  section,
+  kind,
+}: {
+  section: DocumentSectionV2;
+  kind: DocumentKindV2;
+}) {
   const headingId = section.title ? `vdoc2-section-${section.id}` : undefined;
   return (
     <section
@@ -779,7 +935,11 @@ export function DocumentSectionViewV2({ section, kind }: { section: DocumentSect
   );
 }
 
-export function DocumentWebRendererV2({ model, className, profile = "pantalla" }: DocumentWebRendererV2Props) {
+export function DocumentWebRendererV2({
+  model,
+  className,
+  profile = "pantalla",
+}: DocumentWebRendererV2Props) {
   // D-5, contrato 6.1/6.3: variables CSS calculadas a partir del MISMO
   // módulo compartido que usa el renderer PDF — ningún valor decorativo
   // se define por separado en este renderer (Q6). C-08: ahora sigue el

@@ -5,7 +5,21 @@ import { calcularEscenarios90d, umbralDispersionDe } from "../../lib/escenarios-
 import { impactosDeFuga, type TipoImpactoClasificado } from "../../lib/impacto-economico";
 import { mapearHallazgos } from "../../lib/propuesta";
 import type { EscaleraPaquetesConfirmada } from "../../lib/paquetes";
-import { serviciosCanonicosDe } from "../../lib/paquetes";
+import { NOMBRES_NIVELES_DEFECTO, serviciosCanonicosDe } from "../../lib/paquetes";
+import {
+  calcularTotalesV2,
+  agregadosEfectivosV2,
+  seleccionV2Exportable,
+  totalDeLinea,
+  type SobreComercialV2,
+} from "../../lib/seleccion-comercial-v2";
+import { lineaV2, type LineaId } from "../../lib/catalogo-v2";
+import { ETIQUETA_UNIDAD_V2 } from "../../lib/precargas-v2";
+import {
+  LINEAS_CON_NOTA_DE_CONTENIDO,
+  NOTA_AL_PIE_CONTENIDO,
+  textoDeLinea,
+} from "../../lib/textos-servicios-v2";
 import { escenariosDocumento } from "./escenarios-90d";
 import { construirResumenComercial } from "./resumen-comercial";
 import {
@@ -28,6 +42,9 @@ import type {
   PoliticaEnvio,
   RestriccionDocumento,
   SeleccionComercial,
+  GrupoInversionDocumento,
+  LineaComercialDocumento,
+  OfertaComercialV2Documento,
   ServicioDocumento,
   TipoDocumento,
   ValorPublicable,
@@ -50,6 +67,12 @@ export type BuildDocumentContextArgs = {
    * queda en `null` en ese caso, nunca se completa con un paquete inventado.
    */
   paquetesConfirmados?: EscaleraPaquetesConfirmada | null;
+  /**
+   * BV4 F2a: el sobre comercial v2 leído de `diagnostico.propuesta`.
+   * `null`/ausente mientras no haya una selección v2 confirmada; en ese caso
+   * `comercialV2` queda en `null` y el documento no cambia en nada.
+   */
+  sobreComercialV2?: SobreComercialV2 | null;
   configHallazgos?: ConfigHallazgos;
 };
 
@@ -291,7 +314,11 @@ function fortalezasDocumento(resultado: ResultadoCalculo): FortalezaDocumento[] 
   const fortalezas: FortalezaDocumento[] = [];
   const d = resultado.derivados;
 
-  if (resultado.estados_bloque.economia === "verde" && finito(d.mer_actual) && finito(d.breakeven_roas)) {
+  if (
+    resultado.estados_bloque.economia === "verde" &&
+    finito(d.mer_actual) &&
+    finito(d.breakeven_roas)
+  ) {
     fortalezas.push({
       id: "economia",
       etiqueta: "Economía",
@@ -342,9 +369,15 @@ function funnelWebDocumento(resultado: ResultadoCalculo): FunnelWebDocumento | n
       ? valorCalculado({ valor: v, confianza: "alta", evidenciaIds: [] })
       : valorNoAplica("Este cálculo no corresponde a este caso");
   const conteo = (v: number | null): ValorPublicable<number> =>
-    finito(v) ? valorCalculado({ valor: v, confianza: "alta", evidenciaIds: [] }) : valorEvidenciaFaltante("Falta este dato para completar la etapa.");
+    finito(v)
+      ? valorCalculado({ valor: v, confianza: "alta", evidenciaIds: [] })
+      : valorEvidenciaFaltante("Falta este dato para completar la etapa.");
 
-  const etapa = (id: EtapaFunnelWebDocumento["id"], valor: number | null, conversion: ValorPublicable<number> | null): EtapaFunnelWebDocumento => ({
+  const etapa = (
+    id: EtapaFunnelWebDocumento["id"],
+    valor: number | null,
+    conversion: ValorPublicable<number> | null,
+  ): EtapaFunnelWebDocumento => ({
     id,
     etiqueta: ETIQUETA_ETAPA_FUNNEL[id],
     valor: conteo(valor),
@@ -427,7 +460,10 @@ export function roadmapDocumento(
     }
   }
   for (const restriccion of restricciones) {
-    acciones90.push({ accion: restriccion.etiqueta, origen: `la restricción "${restriccion.etiqueta}"` });
+    acciones90.push({
+      accion: restriccion.etiqueta,
+      origen: `la restricción "${restriccion.etiqueta}"`,
+    });
   }
 
   const etapas: EtapaRoadmap[] = [];
@@ -555,7 +591,12 @@ function resumenComercialDocumento(args: {
   if (args.tipoDocumento === "diagnostico") return null;
   return construirResumenComercial({
     escenariosCalculados: calcularEscenarios90d(args.datos, args.resultado),
-    escenariosDocumento: escenariosDocumento(args.datos, args.resultado, args.confianza, args.envio),
+    escenariosDocumento: escenariosDocumento(
+      args.datos,
+      args.resultado,
+      args.confianza,
+      args.envio,
+    ),
     umbralDispersion: umbralDispersionDe({}),
   });
 }
@@ -592,6 +633,117 @@ export function comercialDesdeEscalera(
   };
 }
 
+const NOMBRE_NIVEL_V2: Record<string, string> = {
+  impulso: NOMBRES_NIVELES_DEFECTO[0],
+  traccion: NOMBRES_NIVELES_DEFECTO[1],
+  escala: NOMBRES_NIVELES_DEFECTO[2],
+};
+
+const ETIQUETA_RUTA_V2: Record<string, string> = {
+  b2c: "B2C",
+  b2b: "B2B",
+  ambas: "B2C y B2B",
+};
+
+const TITULO_GRUPO_V2 = {
+  mensual: "Inversión mensual",
+  unica: "Inversión inicial / pago único",
+} as const;
+
+/**
+ * BV4 F2a etapa 5 — traduce el sobre comercial v2 al contrato documental.
+ *
+ * Los textos de servicio salen VERBATIM de `textos-servicios-v2.ts`; una
+ * línea sin texto confirmado viaja con `textoPendiente: true` y sin
+ * descripción, para que el renderer diga que falta en vez de rellenarla.
+ *
+ * Los precios sin cargar viajan como `evidencia_faltante`, igual que
+ * cualquier otro dato ausente del contrato: nunca como cero.
+ *
+ * Q10: se emiten SIEMPRE los dos grupos y nunca uno que los combine. Q9: la
+ * estructura fiscal es idéntica en ARS y en USD, y `pendiente` incorpora la
+ * confirmación fiscal al mismo candado de exportación que ya existía.
+ */
+export function ofertaComercialDesdeSobreV2(
+  sobre: SobreComercialV2 | null | undefined,
+): OfertaComercialV2Documento | null {
+  if (!sobre) return null;
+
+  const totales = calcularTotalesV2(sobre.seleccion, sobre.fiscal);
+  const seleccionadas = sobre.seleccion.lineas.filter((linea) => linea.seleccionada);
+
+  const lineas: LineaComercialDocumento[] = seleccionadas.map((linea) => {
+    const delCatalogo = lineaV2(linea.lineaId);
+    const texto = textoDeLinea(linea.lineaId);
+    const total = totalDeLinea(linea);
+    const cantidad = linea.precio.modo === "unitario" ? linea.precio.cantidad : null;
+    const unitario = linea.precio.modo === "unitario" ? linea.precio.precioUnitario : null;
+
+    return {
+      lineaId: linea.lineaId,
+      nombre: delCatalogo.nombre,
+      unidad: ETIQUETA_UNIDAD_V2[delCatalogo.unidad],
+      cantidad,
+      precioUnitario:
+        linea.precio.modo === "unitario"
+          ? publicarNumeroOFaltante({
+              valor: unitario,
+              evidenciaIds: [],
+              datoFaltante: `el precio unitario de ${delCatalogo.nombre}`,
+              confianza: "alta",
+            })
+          : null,
+      totalLinea: publicarNumeroOFaltante({
+        valor: total,
+        evidenciaIds: [],
+        datoFaltante: `el precio de ${delCatalogo.nombre}`,
+        confianza: "alta",
+      }),
+      recurrencia: linea.recurrencia,
+      ruta: linea.ruta ? (ETIQUETA_RUTA_V2[linea.ruta] ?? null) : null,
+      descripcion: texto?.descripcion ?? null,
+      entregables: texto ? [...texto.entregables] : [],
+      exclusion: texto?.exclusion ?? null,
+      notaContenido: LINEAS_CON_NOTA_DE_CONTENIDO.includes(linea.lineaId as LineaId)
+        ? NOTA_AL_PIE_CONTENIDO
+        : null,
+      textoPendiente: texto === null,
+    };
+  });
+
+  const grupos: GrupoInversionDocumento[] = (["mensual", "unica"] as const).map((id) => {
+    const grupo = id === "mensual" ? totales.mensual : totales.unica;
+    return {
+      id,
+      titulo: TITULO_GRUPO_V2[id],
+      subtotalNeto: valorCalculado({
+        valor: grupo.subtotalNeto,
+        confianza: "alta",
+        evidenciaIds: [],
+      }),
+      impuesto:
+        grupo.impuesto === null
+          ? null
+          : valorCalculado({ valor: grupo.impuesto, confianza: "alta", evidenciaIds: [] }),
+      porcentajeImpuesto: grupo.impuesto === null ? null : sobre.fiscal.porcentaje,
+      total: valorCalculado({ valor: grupo.total, confianza: "alta", evidenciaIds: [] }),
+    };
+  });
+
+  return {
+    pendiente: !seleccionV2Exportable(sobre),
+    moneda: sobre.moneda,
+    nivel: NOMBRE_NIVEL_V2[sobre.seleccion.nivel] ?? sobre.seleccion.nivel,
+    lineas,
+    grupos,
+    agregados: agregadosEfectivosV2(sobre.seleccion).map((a) => ({
+      nombre: a.nombre,
+      alcance: a.alcance,
+    })),
+    lineasSinPrecio: totales.lineasSinPrecio.map((id) => lineaV2(id).nombre),
+  };
+}
+
 /**
  * Traduce el diagnóstico ya calculado al contrato común de documentos.
  * No recalcula el negocio, no genera escenarios y no completa ausencias con cero.
@@ -603,6 +755,7 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
   const general = Math.min(coberturaCanales, productos);
   const envio = politicaEnvioDocumento(datos, resultado);
   const comercial = comercialDesdeEscalera(args.paquetesConfirmados);
+  const comercialV2 = ofertaComercialDesdeSobreV2(args.sobreComercialV2);
   const restricciones = restriccionesDocumento({
     resultado,
     envio,
@@ -747,6 +900,10 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
     cliente: {
       nombre: datos.nombre_tienda,
       vertical: datos.vertical.trim() || null,
+      // Q4: esta es la moneda de OPERACIÓN del cliente, la del diagnóstico,
+      // y sigue siendo ARS. La moneda de la PROPUESTA es otra cosa y vive en
+      // `comercialV2.moneda`: mezclarlas rotularía en dólares las cifras de
+      // facturación, ticket y margen, que el motor calcula en pesos.
       moneda: "ARS",
       periodo: "mensual",
     },
@@ -789,7 +946,8 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
               denominadorInversion: inversionCanal(datos, "tienda_propia"),
               evidenciaIds: ["mix_canales", "inversion_meta", "inversion_google"],
               datoFaltante: "la facturación o la inversión del perímetro de tienda propia",
-              motivoNoAplica: "La inversión declarada de tienda propia es $0: el ratio no es formable.",
+              motivoNoAplica:
+                "La inversión declarada de tienda propia es $0: el ratio no es formable.",
             }),
       merMarketplace:
         datos.canal_ml_no_aplica === true || datos.vende_mercado_libre === false
@@ -799,7 +957,8 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
               denominadorInversion: inversionCanal(datos, "mercado_libre"),
               evidenciaIds: ["mix_canales", "inversion_product_ads"],
               datoFaltante: "la facturación o la inversión del perímetro de marketplace",
-              motivoNoAplica: "La inversión declarada de Mercado Libre es $0: el ratio no es formable.",
+              motivoNoAplica:
+                "La inversión declarada de Mercado Libre es $0: el ratio no es formable.",
             }),
       roasProductAds:
         datos.ml_product_ads === false
@@ -809,7 +968,8 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
               denominadorInversion: inversionCanal(datos, "mercado_libre"),
               evidenciaIds: ["ventas_product_ads", "inversion_product_ads"],
               datoFaltante: "las ventas atribuidas o la inversión de Product Ads",
-              motivoNoAplica: "La inversión declarada de Product Ads es $0: el ratio no es formable.",
+              motivoNoAplica:
+                "La inversión declarada de Product Ads es $0: el ratio no es formable.",
             }),
     },
     envio,
@@ -818,10 +978,17 @@ export function buildDocumentContext(args: BuildDocumentContextArgs): DocumentCo
     fortalezas: fortalezasDocumento(resultado),
     funnelWeb: funnelWebDocumento(resultado),
     escenarios90d: escenariosDocumento(datos, resultado, confianza, envio),
-    resumenComercial: resumenComercialDocumento({ datos, resultado, confianza, envio, tipoDocumento }),
+    resumenComercial: resumenComercialDocumento({
+      datos,
+      resultado,
+      confianza,
+      envio,
+      tipoDocumento,
+    }),
     roadmap: roadmapDocumento(salidaHallazgos.hallazgos, comercial, restricciones),
     servicios: salidaHallazgos.servicios,
     comercial,
+    comercialV2,
     restricciones,
     metodologia: [],
   };

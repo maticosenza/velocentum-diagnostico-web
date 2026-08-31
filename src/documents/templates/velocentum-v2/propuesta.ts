@@ -3,6 +3,7 @@ import {
   buildAlertaMargenNegativoV2,
   buildBridgeNoteV2,
   buildCommercialOfferV2,
+  buildCommercialSelectionV2,
   buildCommercialSummaryV2,
   buildFindingsV2,
   esPropuestaCualitativaV2,
@@ -38,6 +39,7 @@ export function buildPropuestaDocumentV2(context: DocumentContextV1) {
   const esCualitativa = esPropuestaCualitativaV2(context);
   const findings = buildFindingsV2(context, "propuesta");
   const commercial = buildCommercialOfferV2(context);
+  const seleccionV2 = buildCommercialSelectionV2(context);
   const summary = esCualitativa ? null : buildCommercialSummaryV2(context);
   const bridge = esCualitativa ? buildAlertaMargenNegativoV2(context) : buildBridgeNoteV2(context);
 
@@ -81,6 +83,15 @@ export function buildPropuestaDocumentV2(context: DocumentContextV1) {
         eyebrow: "Propuesta comercial",
         title: "Paquete seleccionado",
         blocks: [commercial],
+        tone: "soft",
+      }),
+      // BV4 F2a: la sección aparece SÓLO si hay una selección comercial v2.
+      // Sin ella, la propuesta queda exactamente como antes de F2a.
+      contentSectionV2({
+        id: "commercial-selection",
+        eyebrow: "Alcance y precio",
+        title: "Selección comercial",
+        blocks: [seleccionV2],
         tone: "soft",
       }),
       restrictionsGroupedSectionV2(context.restricciones),

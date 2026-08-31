@@ -314,11 +314,28 @@ describe("REGRESIÓN F-2: la salida v1 no cambia al envolver en el sobre v2", ()
     );
   });
 
-  it("2 · el contrato documental completo es idéntico, campo por campo", () => {
+  it("2 · el contrato documental es idéntico salvo el campo NUEVO `comercialV2`", () => {
+    // La selección v2 agrega un campo que antes no existía; eso no es un
+    // cambio de la salida v1, es información nueva que ninguna plantilla v1
+    // lee. Lo que hay que probar es que NINGÚN otro campo se movió — y que
+    // el campo nuevo aparece sólo del lado que tiene selección v2.
     for (const tipoDocumento of ["diagnostico", "proyeccion_90d", "propuesta"] as const) {
-      expect(buildDocumentContextDesdeDiagnostico({ fila: despues, tipoDocumento })).toEqual(
-        buildDocumentContextDesdeDiagnostico({ fila: antes, tipoDocumento }),
-      );
+      const contextoAntes = buildDocumentContextDesdeDiagnostico({ fila: antes, tipoDocumento });
+      const contextoDespues = buildDocumentContextDesdeDiagnostico({
+        fila: despues,
+        tipoDocumento,
+      });
+
+      const { comercialV2: v2Antes, ...restoAntes } = contextoAntes;
+      const { comercialV2: v2Despues, ...restoDespues } = contextoDespues;
+
+      expect(restoDespues).toEqual(restoAntes);
+      expect(v2Antes).toBeNull();
+      expect(v2Despues).not.toBeNull();
+      // La escalera legada sigue siendo la misma en los dos.
+      expect(contextoDespues.comercial).toEqual(contextoAntes.comercial);
+      // Y la moneda del CLIENTE no se contagia de la propuesta en USD.
+      expect(contextoDespues.cliente.moneda).toBe("ARS");
     }
   });
 

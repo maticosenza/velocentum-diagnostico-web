@@ -103,8 +103,12 @@ export function buildTitanContext(): DocumentContextV1 {
     // el resumen comercial queda retenido, tal como lo estaría en un caso real.
     resumenComercial: {
       escenarioComunicado: "conservador",
-      cifraPrincipal: valorRetenido("El escenario conservador no es calculable con los datos actuales."),
-      limiteInferior: valorRetenido("El escenario conservador no es calculable con los datos actuales."),
+      cifraPrincipal: valorRetenido(
+        "El escenario conservador no es calculable con los datos actuales.",
+      ),
+      limiteInferior: valorRetenido(
+        "El escenario conservador no es calculable con los datos actuales.",
+      ),
       limiteSuperior: metric(5_000_000),
       idEscenarioLimiteSuperior: "potencial",
       dispersion: { ratio: null, umbral: 2.5, alta: false, datosParaCerrarla: [] },
@@ -128,6 +132,7 @@ export function buildTitanContext(): DocumentContextV1 {
       },
     ],
     comercial: null,
+    comercialV2: null,
     restricciones: [],
     metodologia: [
       {
@@ -259,6 +264,7 @@ export function buildSnakeContext(): DocumentContextV1 {
         },
       ],
     },
+    comercialV2: null,
     restricciones: [],
     metodologia: [],
   };

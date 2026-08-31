@@ -22,12 +22,31 @@ import type { DocumentBlockV2, DocumentModelV2 } from "../../templates/velocentu
 export const MENSAJE_EXPORTACION_BLOQUEADA_V2 =
   "Selección comercial pendiente: no se puede exportar una propuesta sin selección comercial confirmada.";
 
+/**
+ * BV4 F2a (Q9): la configuración fiscal se suma a ESTE candado, no crea uno
+ * nuevo. `commercial-selection` llega con `pendiente: true` cuando falta la
+ * selección o falta confirmarla fiscalmente, y el mensaje lo dice.
+ */
+export const MENSAJE_EXPORTACION_BLOQUEADA_FISCAL_V2 =
+  "Selección comercial pendiente: falta confirmar la selección de líneas y la configuración fiscal de la propuesta.";
+
 function bloqueOfertaComercial(
   model: DocumentModelV2,
 ): Extract<DocumentBlockV2, { type: "commercial-offer" }> | null {
   for (const section of model.sections) {
     for (const block of section.blocks) {
       if (block.type === "commercial-offer") return block;
+    }
+  }
+  return null;
+}
+
+function bloqueSeleccionComercial(
+  model: DocumentModelV2,
+): Extract<DocumentBlockV2, { type: "commercial-selection" }> | null {
+  for (const section of model.sections) {
+    for (const block of section.blocks) {
+      if (block.type === "commercial-selection") return block;
     }
   }
   return null;
@@ -46,8 +65,21 @@ function bloqueOfertaComercial(
  */
 export function verificarExportacionPermitidaV2(model: DocumentModelV2): void {
   if (model.kind !== "propuesta") return;
+
+  // BV4 F2a: dos caminos legítimos a una propuesta exportable, un solo
+  // candado. La escalera legada (Fase 13) sigue habilitando la exportación
+  // como siempre; la selección comercial v2 la habilita cuando está
+  // confirmada Y su configuración fiscal también (Q9). Alcanza con que uno
+  // de los dos esté completo; si ninguno lo está, no se exporta.
+  const seleccion = bloqueSeleccionComercial(model);
+  if (seleccion !== null && seleccion.pendiente === false) return;
+
   const bloque = bloqueOfertaComercial(model);
   if (bloque === null || bloque.pendiente === true) {
-    throw new Error(MENSAJE_EXPORTACION_BLOQUEADA_V2);
+    throw new Error(
+      seleccion !== null
+        ? MENSAJE_EXPORTACION_BLOQUEADA_FISCAL_V2
+        : MENSAJE_EXPORTACION_BLOQUEADA_V2,
+    );
   }
 }

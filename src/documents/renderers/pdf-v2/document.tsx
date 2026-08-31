@@ -21,7 +21,7 @@ import { VELOCENTUM_LIGHT_V1 } from "../../theme";
 import { registrarFuentesVelocentum } from "../../theme/fuentes/registrar-fuentes";
 import { SimboloVelocentum } from "../pdf/marca";
 import { filasBalanceadas } from "../../semantica-v2/balanceo";
-import { textoEstadoV2, textoOrigenV2 } from "../../semantica-v2/estado";
+import { textoEstadoV2, textoMonedaV2, textoOrigenV2 } from "../../semantica-v2/estado";
 import {
   ICONOS_PRIORIDAD,
   LABELS_CAPA,
@@ -34,7 +34,10 @@ import {
   LABELS_UNIDAD_COMERCIAL,
   TITULO_SUPUESTOS_CON_DAGA,
 } from "../../semantica-v2/etiquetas";
-import { PERSONALIDAD_POR_DOCUMENTO, colorProfundidadTarjeta } from "../../semantica-v2/direccion-arte";
+import {
+  PERSONALIDAD_POR_DOCUMENTO,
+  colorProfundidadTarjeta,
+} from "../../semantica-v2/direccion-arte";
 import type {
   DocumentBlockV2,
   DocumentKindV2,
@@ -124,7 +127,16 @@ export const PROFILES_V2: Record<PdfProfileV2, ProfileTokensV2> = {
     pagePaddingH: 54,
     pagePaddingTop: 84,
     pagePaddingBottom: 48,
-    escala: { titulo: 22, subtitulo: 10, label: 9, valor: 17, valorGrande: 30, badge: 8, nota: 8.5, pie: 8 },
+    escala: {
+      titulo: 22,
+      subtitulo: 10,
+      label: 9,
+      valor: 17,
+      valorGrande: 30,
+      badge: 8,
+      nota: 8.5,
+      pie: 8,
+    },
     coverPadding: 64,
     coverTitleFontSize: 46,
     coverTitleWidth: 500,
@@ -142,7 +154,16 @@ export const PROFILES_V2: Record<PdfProfileV2, ProfileTokensV2> = {
     pagePaddingH: 48,
     pagePaddingTop: 78,
     pagePaddingBottom: 46,
-    escala: { titulo: 18, subtitulo: 9.5, label: 9.5, valor: 15, valorGrande: 24, badge: 8, nota: 9, pie: 8 },
+    escala: {
+      titulo: 18,
+      subtitulo: 9.5,
+      label: 9.5,
+      valor: 15,
+      valorGrande: 24,
+      badge: 8,
+      nota: 9,
+      pie: 8,
+    },
     coverPadding: 48,
     coverTitleFontSize: 30,
     // 260 (antes 300): con el acento contenido de C3
@@ -260,7 +281,12 @@ function makeStylesV2(profile: PdfProfileV2) {
       lineHeight: 1.02,
       marginBottom: 18,
     },
-    coverSubtitle: { width: p.coverTitleWidth - 10, fontSize: 15, lineHeight: 1.45, color: "#DEDCEA" },
+    coverSubtitle: {
+      width: p.coverTitleWidth - 10,
+      fontSize: 15,
+      lineHeight: 1.45,
+      color: "#DEDCEA",
+    },
     // C10, ronda 2.1: columna en vez de fila con `justify-content:
     // space-between` — con 4 campos (antes 2) un nombre de cliente largo
     // rompería el espaciado de una fila; en columna cada campo tiene su
@@ -283,7 +309,12 @@ function makeStylesV2(profile: PdfProfileV2) {
     // C9, ronda 2.1: un solo tratamiento del wordmark ("Velocentum", caja
     // mixta) en portada y pie, en vez del logotipo SVG en minúscula que
     // sólo usaba la portada.
-    coverWordmarkText: { fontFamily: HEADING, fontWeight: W.bold, fontSize: 22, letterSpacing: 0.4 },
+    coverWordmarkText: {
+      fontFamily: HEADING,
+      fontWeight: W.bold,
+      fontSize: 22,
+      letterSpacing: 0.4,
+    },
     transitionPage: {
       padding: p.coverPadding,
       justifyContent: "center",
@@ -362,7 +393,12 @@ function makeStylesV2(profile: PdfProfileV2) {
     },
     cardLabel: { fontSize: e.label, color: theme.colors.muted, marginBottom: 7 },
     cardLabelDark: { color: "#C8C4D5" },
-    cardValue: { fontFamily: HEADING, fontWeight: W.bold, fontSize: e.valor, color: theme.colors.ink },
+    cardValue: {
+      fontFamily: HEADING,
+      fontWeight: W.bold,
+      fontSize: e.valor,
+      color: theme.colors.ink,
+    },
     cardValueDark: { color: theme.colors.surface },
     // C4(b), ronda 2.1: el texto de estado (retenido/no_aplica) es una
     // oración completa — el ámbar (`warning`) no cumple 4,5:1 sobre fondo
@@ -401,7 +437,10 @@ function makeStylesV2(profile: PdfProfileV2) {
     // badge (8pt, no califica como texto grande). "#992D2D" sobre el
     // mismo fondo da 6,52:1. El borde/fondo de `cardAlerta` no cambia
     // (no son texto, no están sujetos al mismo umbral).
-    badgeAlta: { color: V2_CONTRAST_TOKENS.altaBadgeText, backgroundColor: V2_CONTRAST_TOKENS.altaBadgeBackground },
+    badgeAlta: {
+      color: V2_CONTRAST_TOKENS.altaBadgeText,
+      backgroundColor: V2_CONTRAST_TOKENS.altaBadgeBackground,
+    },
     badgeMedia: { color: "#8A6417", backgroundColor: "#FEF3D6" },
     badgeBaja: { color: theme.colors.muted, backgroundColor: theme.colors.surfaceSoft },
     // C4, ronda 2.1: `theme.colors.accent` (#7A6BFF) sobre tarjeta clara
@@ -426,11 +465,22 @@ function makeStylesV2(profile: PdfProfileV2) {
     },
     itemBody: { fontSize: e.nota, lineHeight: 1.35, color: theme.colors.muted },
     itemBodyDark: { color: "#D5D1E0" },
-    amount: { fontFamily: HEADING, fontWeight: W.bold, fontSize: e.valor - 4, color: theme.colors.primary, marginTop: 7 },
+    amount: {
+      fontFamily: HEADING,
+      fontWeight: W.bold,
+      fontSize: e.valor - 4,
+      color: theme.colors.primary,
+      marginTop: 7,
+    },
     amountDark: { color: "#CEC9FF" },
     progressRow: { marginBottom: 12 },
     progressHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
-    progressTrack: { height: 7, borderRadius: 4, backgroundColor: theme.colors.border, overflow: "hidden" },
+    progressTrack: {
+      height: 7,
+      borderRadius: 4,
+      backgroundColor: theme.colors.border,
+      overflow: "hidden",
+    },
     progressBar: { height: 7, borderRadius: 4, backgroundColor: theme.colors.accent },
     sectionNote: {
       padding: 12,
@@ -442,14 +492,25 @@ function makeStylesV2(profile: PdfProfileV2) {
     listItem: { flexDirection: "row", marginBottom: 5 },
     listDash: { width: 12, color: theme.colors.primary, fontFamily: HEADING, fontWeight: W.bold },
     listText: { flex: 1, fontSize: e.nota, lineHeight: 1.35 },
-    blockTitle: { fontFamily: HEADING, fontWeight: W.bold, fontSize: e.label + 3, marginBottom: 9, color: theme.colors.ink },
+    blockTitle: {
+      fontFamily: HEADING,
+      fontWeight: W.bold,
+      fontSize: e.label + 3,
+      marginBottom: 9,
+      color: theme.colors.ink,
+    },
     blockTitleDark: { color: theme.colors.surface },
     scenarioHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 9 },
     scenarioMetrics: { flexDirection: "row", gap: 8, marginBottom: 9 },
     scenarioMetric: { flex: 1 },
     scenarioMetricLabel: { fontSize: e.nota - 1, color: theme.colors.muted, marginBottom: 3 },
     scenarioMetricValue: { fontSize: e.valor - 3, fontFamily: HEADING, fontWeight: W.bold },
-    scenarioMetricValuePrimary: { fontSize: e.valorGrande - 12, fontFamily: HEADING, fontWeight: W.black, color: theme.colors.primary },
+    scenarioMetricValuePrimary: {
+      fontSize: e.valorGrande - 12,
+      fontFamily: HEADING,
+      fontWeight: W.black,
+      color: theme.colors.primary,
+    },
     scenarioNote: { fontSize: e.nota, color: theme.colors.muted, marginTop: 4, lineHeight: 1.3 },
     // C3/C4, ronda 2.1: antes fijo en `accent` (pensado sólo para la
     // tarjeta oscura de siempre). Ahora que en impresión las secciones
@@ -467,15 +528,31 @@ function makeStylesV2(profile: PdfProfileV2) {
     },
     commercialSummaryKickerDark: { color: V2_CONTRAST_TOKENS.onDarkCard },
     commercialSummaryNumber: { fontSize: e.valorGrande, fontFamily: HEADING, fontWeight: W.black },
-    commercialSummaryRange: { fontSize: e.valorGrande - 6, fontFamily: HEADING, fontWeight: W.black },
+    commercialSummaryRange: {
+      fontSize: e.valorGrande - 6,
+      fontFamily: HEADING,
+      fontWeight: W.black,
+    },
     // C4(a), ronda 2.1: `theme.colors.muted` sobre `cardDark`
     // ("#1C173E") da 2,31:1 (calculado) — exactamente el defecto
     // reportado ("gris apagado sobre fondo navy"). Ahora depende del
     // modo: `muted` sobre superficie clara (7,33:1),
     // `commercialSummaryStatementDark` ("#D5D1E0", 11,30:1) en oscuro.
-    commercialSummaryStatement: { maxWidth: 480, marginTop: 10, fontSize: e.nota, color: theme.colors.muted, lineHeight: 1.4 },
+    commercialSummaryStatement: {
+      maxWidth: 480,
+      marginTop: 10,
+      fontSize: e.nota,
+      color: theme.colors.muted,
+      lineHeight: 1.4,
+    },
     commercialSummaryStatementDark: { color: V2_CONTRAST_TOKENS.onDarkCardBody },
-    bridgeNote: { fontSize: e.nota, color: theme.colors.muted, lineHeight: 1.4, marginTop: 10, maxWidth: 480 },
+    bridgeNote: {
+      fontSize: e.nota,
+      color: theme.colors.muted,
+      lineHeight: 1.4,
+      marginTop: 10,
+      maxWidth: 480,
+    },
     bridgeNoteDark: { color: V2_CONTRAST_TOKENS.onDarkCardBodyAlt },
     // H1.5 (AJUSTES a R-03, 2026-08-27, aprobado con condiciones): la
     // única pieza de la sección "commercial-summary" cualitativa (DHB-2)
@@ -521,7 +598,12 @@ function makeStylesV2(profile: PdfProfileV2) {
     },
     monthlyStackedLabel: { flex: 1, fontSize: e.nota, color: theme.colors.muted },
     monthlyStackedLabelDark: { color: V2_CONTRAST_TOKENS.onDarkCardBody },
-    monthlyStackedValue: { fontSize: e.nota, fontFamily: HEADING, fontWeight: W.bold, color: theme.colors.ink },
+    monthlyStackedValue: {
+      fontSize: e.nota,
+      fontFamily: HEADING,
+      fontWeight: W.bold,
+      color: theme.colors.ink,
+    },
     monthlyStackedValueDark: { color: theme.colors.surface },
     // C5, ronda 2.1: identidad del escenario repetida antes de cada
     // subsección que podría quedar sola al inicio de una página nueva si
@@ -611,20 +693,55 @@ function makeStylesV2(profile: PdfProfileV2) {
       fontWeight: W.bold,
       textTransform: "uppercase",
     },
-    monthlyTableMonthCell: { minWidth: p.monthlyColMinWidth, flex: 1, fontSize: e.nota, fontFamily: BODY, fontWeight: W.bold },
+    monthlyTableMonthCell: {
+      minWidth: p.monthlyColMinWidth,
+      flex: 1,
+      fontSize: e.nota,
+      fontFamily: BODY,
+      fontWeight: W.bold,
+    },
     monthlyTableCell: { minWidth: p.monthlyColMinWidth, flex: 1, fontSize: e.nota },
     palancaGroup: { marginTop: 6 },
-    palancaGroupTitle: { fontSize: e.label, fontFamily: HEADING, fontWeight: W.bold, marginBottom: 3, color: theme.colors.ink },
+    palancaGroupTitle: {
+      fontSize: e.label,
+      fontFamily: HEADING,
+      fontWeight: W.bold,
+      marginBottom: 3,
+      color: theme.colors.ink,
+    },
     roadmapCard: { flexDirection: "row", gap: 13, paddingVertical: 10 },
-    roadmapDays: { width: 84, fontFamily: HEADING, fontWeight: W.bold, color: theme.colors.primary, fontSize: e.label },
+    roadmapDays: {
+      width: 84,
+      fontFamily: HEADING,
+      fontWeight: W.bold,
+      color: theme.colors.primary,
+      fontSize: e.label,
+    },
     roadmapBody: { flex: 1 },
-    channelBar: { height: 10, borderRadius: 5, backgroundColor: theme.colors.border, overflow: "hidden", marginTop: 4 },
+    channelBar: {
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: theme.colors.border,
+      overflow: "hidden",
+      marginTop: 4,
+    },
     channelBarFill: { height: 10, borderRadius: 5, backgroundColor: theme.colors.primary },
     // D-5, contrato 6.7: motivo de línea + puntos bajo un título/subtítulo,
     // fiel a la referencia. Contribuye a D-1 (ocupa espacio con intención)
     // y D-3 (portada A4 menos vacía entre subtítulo y pie).
-    headingRuleRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4, marginBottom: 12 },
-    headingRuleLine: { width: 28, height: 2, backgroundColor: theme.colors.primary, borderRadius: 1 },
+    headingRuleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      marginTop: 4,
+      marginBottom: 12,
+    },
+    headingRuleLine: {
+      width: 28,
+      height: 2,
+      backgroundColor: theme.colors.primary,
+      borderRadius: 1,
+    },
     headingRuleDots: { fontSize: e.label, color: theme.colors.primary, letterSpacing: 2 },
     // Corrección 3, ronda 2.2.1: variante clara de HeadingRule para la
     // transición en pantalla (fondo `theme.colors.primary`, ver
@@ -697,12 +814,20 @@ function PersonalityGlyph({ kind, styles }: { kind: DocumentKindV2; styles: Styl
 }
 
 /** D-5, contrato 6.4: ícono lineal en círculo — sólo escenario y canales. */
-function IconCircle({ kind, styles }: { kind: "conservador" | "base" | "potencial" | "tienda" | "marketplace"; styles: Styles }) {
+function IconCircle({
+  kind,
+  styles,
+}: {
+  kind: "conservador" | "base" | "potencial" | "tienda" | "marketplace";
+  styles: Styles;
+}) {
   const color = theme.colors.primary;
   return (
     <View style={styles.iconCircle}>
       <Svg width={12} height={12} viewBox="0 0 12 12">
-        {kind === "conservador" ? <Circle cx={6} cy={6} r={3.5} stroke={color} strokeWidth={1.2} fill="none" /> : null}
+        {kind === "conservador" ? (
+          <Circle cx={6} cy={6} r={3.5} stroke={color} strokeWidth={1.2} fill="none" />
+        ) : null}
         {kind === "base" ? (
           <>
             <Line x1={2} y1={6} x2={10} y2={6} stroke={color} strokeWidth={1.2} />
@@ -738,21 +863,37 @@ function IconCircle({ kind, styles }: { kind: "conservador" | "base" | "potencia
 function ValorTexto({ value, dark, styles }: { value: ValorV2; dark: boolean; styles: Styles }) {
   const resultado = textoEstadoV2(value);
   if (resultado.esNumero) {
-    return <Text style={[styles.cardValue, dark ? styles.cardValueDark : {}]}>{resultado.texto}</Text>;
+    return (
+      <Text style={[styles.cardValue, dark ? styles.cardValueDark : {}]}>{resultado.texto}</Text>
+    );
   }
   return (
     <View style={styles.estadoBox}>
-      <Text style={[styles.estadoTexto, dark ? styles.estadoTextoDark : {}]}>{resultado.texto}</Text>
+      <Text style={[styles.estadoTexto, dark ? styles.estadoTextoDark : {}]}>
+        {resultado.texto}
+      </Text>
       {resultado.detalle ? (
-        <Text style={[styles.estadoDetalle, dark ? styles.estadoDetalleDark : {}]}>{resultado.detalle}</Text>
+        <Text style={[styles.estadoDetalle, dark ? styles.estadoDetalleDark : {}]}>
+          {resultado.detalle}
+        </Text>
       ) : null}
     </View>
   );
 }
 
-function PrioridadBadge({ prioridad, styles }: { prioridad: "alta" | "media" | "baja"; styles: Styles }) {
+function PrioridadBadge({
+  prioridad,
+  styles,
+}: {
+  prioridad: "alta" | "media" | "baja";
+  styles: Styles;
+}) {
   const estilo =
-    prioridad === "alta" ? styles.badgeAlta : prioridad === "media" ? styles.badgeMedia : styles.badgeBaja;
+    prioridad === "alta"
+      ? styles.badgeAlta
+      : prioridad === "media"
+        ? styles.badgeMedia
+        : styles.badgeBaja;
   return (
     <Text style={[styles.badge, estilo]}>
       {ICONOS_PRIORIDAD[prioridad]} {LABELS_PRIORIDAD[prioridad]}
@@ -837,7 +978,11 @@ const MonthlyTableHeader = ({ styles }: { styles: Styles }) => (
 );
 
 const MONTHLY_STACKED_ROWS: Array<{
-  key: "contribucionIncrementalHabilitada" | "facturacionProyectada" | "facturacionIncrementalHabilitada" | "ahorroPublicitarioHabilitado";
+  key:
+    | "contribucionIncrementalHabilitada"
+    | "facturacionProyectada"
+    | "facturacionIncrementalHabilitada"
+    | "ahorroPublicitarioHabilitado";
   label: string;
 }> = [
   { key: "contribucionIncrementalHabilitada", label: "Contribución incremental" },
@@ -869,15 +1014,24 @@ function MonthlyTableStacked({
       {mensual.map((mes) => (
         <View key={mes.mes} style={styles.monthlyStackedMonth} wrap={false}>
           {marcadorParaMes(mes.mes)}
-          <Text style={[styles.monthlyStackedMonthLabel, dark ? styles.monthlyStackedMonthLabelDark : {}]}>
+          <Text
+            style={[
+              styles.monthlyStackedMonthLabel,
+              dark ? styles.monthlyStackedMonthLabelDark : {},
+            ]}
+          >
             Mes {mes.mes}
           </Text>
           {MONTHLY_STACKED_ROWS.map((row) => (
             <View key={row.key} style={styles.monthlyStackedRow}>
-              <Text style={[styles.monthlyStackedLabel, dark ? styles.monthlyStackedLabelDark : {}]}>
+              <Text
+                style={[styles.monthlyStackedLabel, dark ? styles.monthlyStackedLabelDark : {}]}
+              >
                 {row.label}
               </Text>
-              <Text style={[styles.monthlyStackedValue, dark ? styles.monthlyStackedValueDark : {}]}>
+              <Text
+                style={[styles.monthlyStackedValue, dark ? styles.monthlyStackedValueDark : {}]}
+              >
                 {textoEstadoV2(mes[row.key]).texto}
               </Text>
             </View>
@@ -888,7 +1042,8 @@ function MonthlyTableStacked({
   );
 }
 
-export type TipoPalancaV2 = "facturacion_incremental" | "contribucion_incremental" | "ahorro_publicitario";
+export type TipoPalancaV2 =
+  "facturacion_incremental" | "contribucion_incremental" | "ahorro_publicitario";
 
 /**
  * Bloque de una tarjeta de escenario que puede abrir una página de
@@ -901,15 +1056,13 @@ export type TipoPalancaV2 = "facturacion_incremental" | "contribucion_incrementa
  * pinta el marcador donde el mapa dice que hace falta.
  */
 export type LimiteContinuacionV2Bloque =
-  | "metricas"
-  | "nota"
-  | "tabla"
-  | `mes:${number}`
-  | `grupo:${TipoPalancaV2}`
-  | "supuestos";
+  "metricas" | "nota" | "tabla" | `mes:${number}` | `grupo:${TipoPalancaV2}` | "supuestos";
 
 /** Por tarjeta (`EscenarioV2.id`), el conjunto de bloques que efectivamente abren una página nueva. */
-export type MapaPaginacionV2 = ReadonlyMap<EscenarioV2["id"], ReadonlySet<LimiteContinuacionV2Bloque>>;
+export type MapaPaginacionV2 = ReadonlyMap<
+  EscenarioV2["id"],
+  ReadonlySet<LimiteContinuacionV2Bloque>
+>;
 
 const SIN_MARCADORES: ReadonlySet<LimiteContinuacionV2Bloque> = new Set();
 /** Mapa vacío: pasada 1 sin ninguna marca (L2) y valor por defecto de `createPdfDocumentElementV2`. */
@@ -942,12 +1095,18 @@ function ScenarioCard({
    */
   marcadores: ReadonlySet<LimiteContinuacionV2Bloque>;
 }) {
-  const grupos = ["facturacion_incremental", "contribucion_incremental", "ahorro_publicitario"] as const;
+  const grupos = [
+    "facturacion_incremental",
+    "contribucion_incremental",
+    "ahorro_publicitario",
+  ] as const;
   const stacked = PROFILES_V2[profile].monthlyStacked;
   const nombreEscenario = LABELS_ESCENARIO[item.id];
   const Marcador = ({ bloque }: { bloque: LimiteContinuacionV2Bloque }) =>
     marcadores.has(bloque) ? (
-      <Text style={[styles.scenarioKicker, dark ? styles.scenarioKickerDark : {}]}>{nombreEscenario} (continuación)</Text>
+      <Text style={[styles.scenarioKicker, dark ? styles.scenarioKickerDark : {}]}>
+        {nombreEscenario} (continuación)
+      </Text>
     ) : null;
   return (
     <View style={[...cardStyle, full ? styles.cardFull : {}]} wrap={full}>
@@ -996,9 +1155,9 @@ function ScenarioCard({
         <View wrap={false}>
           <Marcador bloque="nota" />
           <Text style={styles.scenarioNote}>
-            El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre, el efecto
-            sería mayor al proyectado. Esta versión trata el ahorro de forma conservadora y no asume esa
-            reinversión.
+            El presupuesto liberado por consolidación de pauta puede reinvertirse; si eso ocurre, el
+            efecto sería mayor al proyectado. Esta versión trata el ahorro de forma conservadora y
+            no asume esa reinversión.
           </Text>
         </View>
       ) : null}
@@ -1028,7 +1187,11 @@ function ScenarioCard({
               dark={dark}
               styles={styles}
               marcadorParaMes={(mes) =>
-                mes === item.mensual[0]?.mes ? <Marcador bloque="tabla" /> : <Marcador bloque={`mes:${mes}`} />
+                mes === item.mensual[0]?.mes ? (
+                  <Marcador bloque="tabla" />
+                ) : (
+                  <Marcador bloque={`mes:${mes}`} />
+                )
               }
             />
           ) : (
@@ -1054,10 +1217,18 @@ function ScenarioCard({
                   {index > 0 ? <Marcador bloque={`mes:${mes.mes}`} /> : null}
                   <View style={styles.monthlyTableRow}>
                     <Text style={styles.monthlyTableMonthCell}>Mes {mes.mes}</Text>
-                    <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.contribucionIncrementalHabilitada).texto}</Text>
-                    <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.facturacionProyectada).texto}</Text>
-                    <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.facturacionIncrementalHabilitada).texto}</Text>
-                    <Text style={styles.monthlyTableCell}>{textoEstadoV2(mes.ahorroPublicitarioHabilitado).texto}</Text>
+                    <Text style={styles.monthlyTableCell}>
+                      {textoEstadoV2(mes.contribucionIncrementalHabilitada).texto}
+                    </Text>
+                    <Text style={styles.monthlyTableCell}>
+                      {textoEstadoV2(mes.facturacionProyectada).texto}
+                    </Text>
+                    <Text style={styles.monthlyTableCell}>
+                      {textoEstadoV2(mes.facturacionIncrementalHabilitada).texto}
+                    </Text>
+                    <Text style={styles.monthlyTableCell}>
+                      {textoEstadoV2(mes.ahorroPublicitarioHabilitado).texto}
+                    </Text>
                   </View>
                 </View>
               ))}
@@ -1076,7 +1247,8 @@ function ScenarioCard({
             <Text style={styles.palancaGroupTitle}>{LABELS_MAGNITUD[tipo]}</Text>
             {palancasDelGrupo.map((palanca) => (
               <Text key={palanca.id} style={bodyStyle}>
-                {palanca.nombre}: {textoEstadoV2(palanca.monto).texto} ({LABELS_PERIODO[palanca.periodo]})
+                {palanca.nombre}: {textoEstadoV2(palanca.monto).texto} (
+                {LABELS_PERIODO[palanca.periodo]})
               </Text>
             ))}
             {/* D-4: mismo criterio que en la tabla mensual — la nota vive
@@ -1146,7 +1318,12 @@ function renderBlock(
                 </Text>
               </View>
               <View style={styles.progressTrack}>
-                <View style={[styles.progressBar, { width: `${Math.max(0, Math.min(100, item.value))}%` }]} />
+                <View
+                  style={[
+                    styles.progressBar,
+                    { width: `${Math.max(0, Math.min(100, item.value))}%` },
+                  ]}
+                />
               </View>
               {/* DA-1 (Bloque 3 Funcional): chip de Eje 1, sólo cuando hay origen inequívoco. */}
               {item.origen ? (
@@ -1169,7 +1346,9 @@ function renderBlock(
             const item = raw as (typeof block.items)[number];
             return (
               <View key={item.id ?? index} style={cardStyle} wrap={false}>
-                <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>{item.label}</Text>
+                <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>
+                  {item.label}
+                </Text>
                 <ValorTexto value={item.value} dark={dark} styles={styles} />
                 {/* DA-1: chip de Eje 1, sólo cuando hay origen inequívoco. */}
                 {item.origen ? (
@@ -1186,18 +1365,23 @@ function renderBlock(
       const t = textoEstadoV2(block.tienda.value);
       const m = textoEstadoV2(block.marketplace.value);
       const tVal = block.tienda.value.estado === "disponible" ? block.tienda.value.valor : 0;
-      const mVal = block.marketplace.value.estado === "disponible" ? block.marketplace.value.valor : 0;
+      const mVal =
+        block.marketplace.value.estado === "disponible" ? block.marketplace.value.valor : 0;
       const max = Math.max(tVal, mVal, 0.001);
       return (
         <View key="channel-comparison" style={standaloneCardStyle} wrap={false}>
           <Text style={styles.blockTitle}>Comparación entre canales</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <IconCircle kind="tienda" styles={styles} />
-            <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>{block.tienda.label}</Text>
+            <Text style={[styles.cardLabel, dark ? styles.cardLabelDark : {}]}>
+              {block.tienda.label}
+            </Text>
           </View>
           <Text style={[styles.cardValue, dark ? styles.cardValueDark : {}]}>{t.texto}</Text>
           <View style={styles.channelBar}>
-            <View style={[styles.channelBarFill, { width: `${Math.max(4, (tVal / max) * 100)}%` }]} />
+            <View
+              style={[styles.channelBarFill, { width: `${Math.max(4, (tVal / max) * 100)}%` }]}
+            />
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
             <IconCircle kind="marketplace" styles={styles} />
@@ -1207,7 +1391,9 @@ function renderBlock(
           </View>
           <Text style={[styles.cardValue, dark ? styles.cardValueDark : {}]}>{m.texto}</Text>
           <View style={styles.channelBar}>
-            <View style={[styles.channelBarFill, { width: `${Math.max(4, (mVal / max) * 100)}%` }]} />
+            <View
+              style={[styles.channelBarFill, { width: `${Math.max(4, (mVal / max) * 100)}%` }]}
+            />
           </View>
         </View>
       );
@@ -1301,7 +1487,9 @@ function renderBlock(
                   {String(index + 1).padStart(2, "0")}
                 </Text>
                 {alerta ? (
-                  <Text style={[styles.badge, styles.badgeAlta]}>▲ ALERTA CRÍTICA · MARGEN NEGATIVO</Text>
+                  <Text style={[styles.badge, styles.badgeAlta]}>
+                    ▲ ALERTA CRÍTICA · MARGEN NEGATIVO
+                  </Text>
                 ) : (
                   <PrioridadBadge prioridad={item.prioridad} styles={styles} />
                 )}
@@ -1321,7 +1509,10 @@ function renderBlock(
         />
       );
     case "commercial-summary": {
-      const kickerStyle = [styles.commercialSummaryKicker, dark ? styles.commercialSummaryKickerDark : {}];
+      const kickerStyle = [
+        styles.commercialSummaryKicker,
+        dark ? styles.commercialSummaryKickerDark : {},
+      ];
       const statementStyle = [
         styles.commercialSummaryStatement,
         dark ? styles.commercialSummaryStatementDark : {},
@@ -1330,12 +1521,16 @@ function renderBlock(
         const t = textoEstadoV2(block.headline);
         return (
           <View key="commercial-summary" style={standaloneCardStyle} wrap={false}>
-            <Text style={kickerStyle}>Contribución incremental a 90 días · Escenario conservador</Text>
+            <Text style={kickerStyle}>
+              Contribución incremental a 90 días · Escenario conservador
+            </Text>
             <Text style={styles.commercialSummaryNumber}>{t.texto}</Text>
             {block.statement ? <Text style={statementStyle}>{block.statement}</Text> : null}
             {block.assumptionsDetail.length > 0 ? (
               <View style={styles.palancaGroup} wrap={false}>
-                <Text style={[styles.palancaGroupTitle, dark ? { color: theme.colors.surface } : {}]}>
+                <Text
+                  style={[styles.palancaGroupTitle, dark ? { color: theme.colors.surface } : {}]}
+                >
                   {TITULO_SUPUESTOS_CON_DAGA}
                 </Text>
                 <BulletList items={block.assumptionsDetail.map((s) => s.valor)} styles={styles} />
@@ -1461,7 +1656,11 @@ function renderBlock(
     case "commercial-offer":
       if (block.pendiente) {
         return (
-          <View key="commercial-offer" style={[standaloneCardStyle, styles.cardAlerta]} wrap={false}>
+          <View
+            key="commercial-offer"
+            style={[standaloneCardStyle, styles.cardAlerta]}
+            wrap={false}
+          >
             <Text style={styles.itemTitle}>Selección comercial pendiente</Text>
             <Text style={styles.itemBody}>
               No hay una escalera de paquetes confirmada para este cliente todavía.
@@ -1493,6 +1692,95 @@ function renderBlock(
           ))}
         </View>
       );
+    case "commercial-selection": {
+      if (block.pendiente) {
+        return (
+          <View
+            key="commercial-selection"
+            style={[standaloneCardStyle, styles.cardAlerta]}
+            wrap={false}
+          >
+            <Text style={styles.itemTitle}>Selección comercial pendiente</Text>
+            <Text style={styles.itemBody}>
+              Falta confirmar la selección de líneas o la configuración fiscal de la propuesta.
+            </Text>
+          </View>
+        );
+      }
+      const money = (valor: ValorV2) => textoMonedaV2(valor, block.moneda);
+      return (
+        <View key="commercial-selection">
+          <Text style={bodyStyle}>Nivel: {block.nivel}</Text>
+
+          {block.lineas.map((linea) => (
+            <View key={linea.lineaId} style={standaloneCardStyle} wrap={false}>
+              <Text style={styles.itemTitle}>
+                {linea.nombre}
+                {linea.ruta ? ` — ${linea.ruta}` : ""}
+              </Text>
+              {linea.textoPendiente ? (
+                <Text style={styles.estadoTexto}>Texto de servicio pendiente de confirmación.</Text>
+              ) : (
+                <Text style={bodyStyle}>{linea.descripcion}</Text>
+              )}
+              <BulletList items={linea.entregables} styles={styles} />
+              {linea.exclusion ? <Text style={styles.estadoTexto}>{linea.exclusion}</Text> : null}
+              {linea.notaContenido ? (
+                <Text style={styles.estadoTexto}>{linea.notaContenido}</Text>
+              ) : null}
+              <Text style={bodyStyle}>
+                {linea.cantidad === null ? "" : `${linea.cantidad} ${linea.unidad} · `}
+                {linea.precioUnitario ? `unitario ${money(linea.precioUnitario)} · ` : ""}
+                {linea.recurrencia === "mensual" ? "mensual" : "pago único"}
+              </Text>
+              <Text style={[styles.cardValue, dark ? styles.cardValueDark : {}]}>
+                {money(linea.totalLinea)}
+              </Text>
+            </View>
+          ))}
+
+          {block.agregados.length > 0 ? (
+            <View style={styles.sectionNote} wrap={false}>
+              <Text style={styles.itemTitle}>Agregados incluidos</Text>
+              <BulletList
+                items={block.agregados.map((a) =>
+                  a.alcance ? `${a.nombre} — ${a.alcance}` : a.nombre,
+                )}
+                styles={styles}
+              />
+            </View>
+          ) : null}
+
+          {/* Q10: dos grupos, cada uno cerrado por su cuenta. No existe un
+              total que los combine, y por eso no se imprime ninguno. */}
+          <View style={styles.cardGrid}>
+            {block.grupos.map((grupo) => (
+              <View key={grupo.id} style={standaloneCardStyle} wrap={false}>
+                <Text style={styles.itemTitle}>{grupo.titulo}</Text>
+                <Text style={bodyStyle}>Subtotal neto: {money(grupo.subtotalNeto)}</Text>
+                {grupo.impuesto ? (
+                  <Text style={bodyStyle}>
+                    Impuesto ({grupo.porcentajeImpuesto} %): {money(grupo.impuesto)}
+                  </Text>
+                ) : null}
+                <Text style={[styles.cardValue, dark ? styles.cardValueDark : {}]}>
+                  {money(grupo.total)}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {block.lineasSinPrecio.length > 0 ? (
+            <View style={[styles.sectionNote, styles.cardAlerta]} wrap={false}>
+              <Text style={styles.itemTitle}>Subtotales parciales</Text>
+              <Text style={styles.itemBody}>
+                Sin precio cargado: {block.lineasSinPrecio.join(", ")}. No se cuentan como cero.
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      );
+    }
     case "restrictions":
       return (
         <View key="restrictions">
@@ -1538,10 +1826,17 @@ function Footer({ dark, styles }: { dark: boolean; styles: Styles }) {
   return (
     <View style={[styles.footer, dark ? styles.footerDark : {}]} fixed>
       <View style={styles.footerRow}>
-        <SimboloVelocentum color={dark ? theme.colors.surface : theme.colors.muted} width={12} height={12} />
+        <SimboloVelocentum
+          color={dark ? theme.colors.surface : theme.colors.muted}
+          width={12}
+          height={12}
+        />
         <Text style={[styles.wordmark, { marginLeft: 6 }]}>Velocentum</Text>
       </View>
-      <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+      <Text
+        style={styles.pageNumber}
+        render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
+      />
     </View>
   );
 }
@@ -1604,7 +1899,9 @@ function CoverPage({
             texto que ya usa el pie de página, sin tocar `marca.tsx` (v1,
             compartido). */}
         <View style={styles.coverWordmark}>
-          <Text style={[styles.coverWordmarkText, { color: theme.colors.primary }]}>Velocentum</Text>
+          <Text style={[styles.coverWordmarkText, { color: theme.colors.primary }]}>
+            Velocentum
+          </Text>
         </View>
         {/* C10: cliente, tipo de documento, fecha y versión — los cuatro campos. */}
         <View style={[styles.coverMeta, styles.coverMetaLight]}>
@@ -1790,7 +2087,9 @@ function ContentPage({
         ) : null}
       </View>
       <View style={[styles.content, esAlertaHero ? styles.contentHeroAlerta : {}]}>
-        {section.blocks.map((block) => renderBlock(block, dark, styles, profile, mapaPaginacion, esAlertaHero))}
+        {section.blocks.map((block) =>
+          renderBlock(block, dark, styles, profile, mapaPaginacion, esAlertaHero),
+        )}
       </View>
       <Footer dark={dark} styles={styles} />
     </Page>
@@ -1830,9 +2129,14 @@ function VelocentumPdfDocumentV2({
         const cover = section.blocks.find(
           (block): block is Extract<DocumentBlockV2, { type: "cover" }> => block.type === "cover",
         );
-        if (cover) return <CoverPage key={section.id} block={cover} profile={profile} styles={styles} />;
-        if (section.blocks.some((block) => block.type === "transition" || block.type === "next-step")) {
-          return <TransitionPage key={section.id} section={section} profile={profile} styles={styles} />;
+        if (cover)
+          return <CoverPage key={section.id} block={cover} profile={profile} styles={styles} />;
+        if (
+          section.blocks.some((block) => block.type === "transition" || block.type === "next-step")
+        ) {
+          return (
+            <TransitionPage key={section.id} section={section} profile={profile} styles={styles} />
+          );
         }
         return (
           <ContentPage
@@ -1854,5 +2158,7 @@ export function createPdfDocumentElementV2(
   profile: PdfProfileV2 = "pantalla",
   mapaPaginacion: MapaPaginacionV2 = MAPA_PAGINACION_VACIO_V2,
 ): React.ReactElement<DocumentProps> {
-  return <VelocentumPdfDocumentV2 model={model} profile={profile} mapaPaginacion={mapaPaginacion} />;
+  return (
+    <VelocentumPdfDocumentV2 model={model} profile={profile} mapaPaginacion={mapaPaginacion} />
+  );
 }

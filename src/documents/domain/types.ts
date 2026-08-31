@@ -9,11 +9,7 @@
 import type { TipoImpactoClasificado } from "../../lib/impacto-economico";
 
 export type EstadoEvidencia =
-  | "verificado"
-  | "declarado"
-  | "estimado_configuracion"
-  | "no_disponible"
-  | "no_aplica";
+  "verificado" | "declarado" | "estimado_configuracion" | "no_disponible" | "no_aplica";
 
 export type Evidencia<T> =
   | {
@@ -102,7 +98,13 @@ export type PoliticaEnvio =
     };
 
 export type TipoDocumento = "diagnostico" | "proyeccion_90d" | "propuesta";
-export type MonedaDocumento = "ARS";
+/**
+ * BV4 F2a etapa 5 (Q4, y F-4 aprobado por Matías): ampliación ADITIVA. "ARS"
+ * sigue siendo el valor de todo lo que existía, así que la salida v1 no
+ * cambia; "USD" sólo aparece cuando la propuesta lo elige explícitamente. La
+ * moneda nunca se infiere: se persiste y se lee.
+ */
+export type MonedaDocumento = "ARS" | "USD";
 
 export type HallazgoDocumento = {
   id: string;
@@ -298,7 +300,8 @@ export type ResumenComercial90d = {
 };
 
 /** Mismas cuatro unidades que `UnidadServicio` en `src/lib/paquetes.ts`. */
-export type UnidadServicioComercial = "campañas_activas" | "piezas_por_mes" | "campañas" | "alcance_descrito";
+export type UnidadServicioComercial =
+  "campañas_activas" | "piezas_por_mes" | "campañas" | "alcance_descrito";
 
 export type ServicioNivelComercial = {
   servicio: string;
@@ -330,6 +333,64 @@ export type NivelComercial = {
  */
 export type SeleccionComercial = {
   niveles: NivelComercial[];
+};
+
+/** Q10: los dos grupos de recurrencia. No existe un tercero que los sume. */
+export type RecurrenciaDocumento = "mensual" | "unica";
+
+/** Una línea facturable ya seleccionada, lista para imprimir. */
+export type LineaComercialDocumento = {
+  lineaId: string;
+  nombre: string;
+  /** Etiqueta de la unidad ("campañas", "piezas por mes", …). */
+  unidad: string;
+  cantidad: number | null;
+  /** Sólo en las líneas cuantificables; `null` en las que llevan total directo. */
+  precioUnitario: ValorPublicable<number> | null;
+  totalLinea: ValorPublicable<number>;
+  recurrencia: RecurrenciaDocumento;
+  /** Q8: "B2C", "B2B" o "B2C y B2B". Sólo Diseño web. */
+  ruta: string | null;
+  /** Textos VERBATIM de `textos-servicios-v2.ts`. `null` = pendiente. */
+  descripcion: string | null;
+  entregables: string[];
+  exclusion: string | null;
+  /** Nota al pie de contenido, sólo en las dos líneas que la llevan. */
+  notaContenido: string | null;
+  /** `true` cuando no hay texto confirmado: se imprime pendiente, no relleno. */
+  textoPendiente: boolean;
+};
+
+/**
+ * Un grupo de inversión cerrado: subtotal neto, impuesto si la configuración
+ * fiscal aplica, y total del grupo. Q10: se emiten dos, y **jamás** se
+ * imprime un total que los combine — no existe el campo donde ponerlo.
+ */
+export type GrupoInversionDocumento = {
+  id: RecurrenciaDocumento;
+  titulo: string;
+  subtotalNeto: ValorPublicable<number>;
+  impuesto: ValorPublicable<number> | null;
+  porcentajeImpuesto: number | null;
+  total: ValorPublicable<number>;
+};
+
+/**
+ * La selección comercial v2 lista para el documento. `pendiente: true`
+ * cuando falta la selección o la confirmación fiscal (Q9): en ese caso el
+ * renderer imprime el aviso y nada más, y el candado de exportación —el
+ * único que hay, en `gate-exportacion.ts`— lo hace cumplir.
+ */
+export type OfertaComercialV2Documento = {
+  pendiente: boolean;
+  moneda: MonedaDocumento;
+  nivel: string;
+  lineas: LineaComercialDocumento[];
+  /** Exactamente dos, en orden: mensual y única. */
+  grupos: GrupoInversionDocumento[];
+  agregados: { nombre: string; alcance: string | null }[];
+  /** Nombres de las líneas seleccionadas sin precio: el subtotal es parcial. */
+  lineasSinPrecio: string[];
 };
 
 export type MetricasActualesDocumento = {
@@ -400,6 +461,12 @@ export type DocumentContextV1 = {
   roadmap: EtapaRoadmap[];
   servicios: ServicioDocumento[];
   comercial: SeleccionComercial | null;
+  /**
+   * BV4 F2a: la selección comercial v2 (diez líneas, dos grupos de totales).
+   * Convive con `comercial`, que es la escalera legada de la Fase 13 y sigue
+   * alimentando toda la salida v1 sin cambios.
+   */
+  comercialV2: OfertaComercialV2Documento | null;
   restricciones: RestriccionDocumento[];
   metodologia: SupuestoDocumento[];
 };

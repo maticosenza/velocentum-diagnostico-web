@@ -18,7 +18,10 @@ import type {
 } from "../../lib/calculo-diagnostico";
 import type { DatosDiagnostico } from "../../lib/diagnostico-form";
 import { separarContenidoGuardado } from "../../lib/contenido-propuesta";
-import { escaleraConfirmadaDesdeColumna } from "../../lib/seleccion-comercial-v2";
+import {
+  escaleraConfirmadaDesdeColumna,
+  normalizarSobreComercialV2,
+} from "../../lib/seleccion-comercial-v2";
 import { buildDocumentContext } from "./build-context";
 import type { DocumentContextV1, TipoDocumento } from "./types";
 
@@ -128,6 +131,7 @@ export function buildDocumentContextDesdeDiagnostico(
       fecha: typeof fila.fecha === "string" ? fila.fecha : "",
     },
     paquetesConfirmados: escaleraConfirmadaDesdeColumna(paquetesCrudo),
+    sobreComercialV2: normalizarSobreComercialV2(paquetesCrudo),
     ...(args.tipoDocumento ? { tipoDocumento: args.tipoDocumento } : {}),
     ...(args.templateVersion ? { templateVersion: args.templateVersion } : {}),
     ...(args.rulesetVersion ? { rulesetVersion: args.rulesetVersion } : {}),

@@ -42,6 +42,7 @@ function contextoValido(): DocumentContextV1 {
     roadmap: [],
     servicios: [],
     comercial: null,
+    comercialV2: null,
     restricciones: [],
     metodologia: [],
   };

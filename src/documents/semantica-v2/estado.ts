@@ -9,6 +9,7 @@
  * a mano — todo texto de estado sale de acá.
  */
 import { formatearNumeroConSupuesto } from "./formato";
+import { formatMoneda, type MonedaFormato } from "../../lib/format";
 import type { ValorV2 } from "../templates/velocentum-v2/types";
 import type { EstadoEvidencia } from "../domain";
 
@@ -79,4 +80,21 @@ const COPY_ORIGEN: Record<EstadoEvidencia, string> = {
  */
 export function textoOrigenV2(estado: EstadoEvidencia): string {
   return COPY_ORIGEN[estado];
+}
+
+/**
+ * BV4 F2a etapa 5 (Q4) — el mismo texto de estado, pero con la moneda de la
+ * propuesta. `formatearNumero` imprime "$" fijo porque toda la cadena
+ * anterior es en pesos; los importes de la selección comercial v2 se emiten
+ * en la moneda que la propuesta eligió, y por eso pasan por acá.
+ *
+ * Los estados no numéricos (retenido, evidencia faltante, no aplica) se
+ * delegan tal cual a `textoEstadoV2`: la moneda no cambia lo que dicen.
+ */
+export function textoMonedaV2(valor: ValorV2, moneda: MonedaFormato): string {
+  if (valor.estado === "disponible") {
+    const base = formatMoneda(valor.valor, moneda);
+    return valor.supuestos.length > 0 ? `${base} †` : base;
+  }
+  return textoEstadoV2(valor).texto;
 }

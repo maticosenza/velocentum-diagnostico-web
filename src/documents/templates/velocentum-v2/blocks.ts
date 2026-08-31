@@ -395,6 +395,52 @@ export function buildBridgeNoteV2(context: DocumentContextV1): DocumentBlockV2 |
  * comportamiento de UI/descarga, fuera de alcance de este prototipo
  * (sin conexión a ningún botón de descarga).
  */
+/**
+ * BV4 F2a etapa 5 — la selección comercial v2 lista para imprimir.
+ *
+ * `null` cuando el diagnóstico no tiene selección v2: la propuesta queda
+ * exactamente como antes de F2a. El contrato documental ya trae los valores
+ * publicables y los textos verbatim resueltos
+ * (`ofertaComercialDesdeSobreV2`, `domain/build-context.ts`); acá sólo se
+ * traducen a `ValorV2`, sin volver a decidir nada.
+ */
+export function buildCommercialSelectionV2(context: DocumentContextV1): DocumentBlockV2 | null {
+  const oferta = context.comercialV2;
+  if (!oferta) return null;
+
+  return {
+    type: "commercial-selection",
+    pendiente: oferta.pendiente,
+    moneda: oferta.moneda,
+    nivel: oferta.nivel,
+    lineas: oferta.lineas.map((linea) => ({
+      lineaId: linea.lineaId,
+      nombre: linea.nombre,
+      unidad: linea.unidad,
+      cantidad: linea.cantidad,
+      precioUnitario: linea.precioUnitario ? publicarV2(linea.precioUnitario, "money") : null,
+      totalLinea: publicarV2(linea.totalLinea, "money"),
+      recurrencia: linea.recurrencia,
+      ruta: linea.ruta,
+      descripcion: linea.descripcion,
+      entregables: [...linea.entregables],
+      exclusion: linea.exclusion,
+      notaContenido: linea.notaContenido,
+      textoPendiente: linea.textoPendiente,
+    })),
+    grupos: oferta.grupos.map((grupo) => ({
+      id: grupo.id,
+      titulo: grupo.titulo,
+      subtotalNeto: publicarV2(grupo.subtotalNeto, "money"),
+      impuesto: grupo.impuesto ? publicarV2(grupo.impuesto, "money") : null,
+      porcentajeImpuesto: grupo.porcentajeImpuesto,
+      total: publicarV2(grupo.total, "money"),
+    })),
+    agregados: oferta.agregados.map((a) => ({ nombre: a.nombre, alcance: a.alcance })),
+    lineasSinPrecio: [...oferta.lineasSinPrecio],
+  };
+}
+
 export function buildCommercialOfferV2(context: DocumentContextV1): DocumentBlockV2 {
   const commercial = context.comercial;
   if (!commercial || commercial.niveles.length === 0) {

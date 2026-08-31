@@ -47,7 +47,12 @@ export function buildMulticanalContext(): DocumentContextV1 {
     rulesetVersion: "fixture/manual",
     tipoDocumento: "proyeccion_90d",
     diagnostico: { id: "multicanal-fixture", version: 1, fecha: "2026-08-23" },
-    cliente: { nombre: "Multicanal Demo", vertical: "E-commerce", moneda: "ARS", periodo: "mensual" },
+    cliente: {
+      nombre: "Multicanal Demo",
+      vertical: "E-commerce",
+      moneda: "ARS",
+      periodo: "mensual",
+    },
     modalidad: { minorista: true, mayorista: false },
     cobertura: { general: 100, canales: 100, productos: 100, confianza: "alta" },
     evidencia: {},
@@ -111,15 +116,27 @@ export function buildMulticanalContext(): DocumentContextV1 {
           acumulado90d: metric(15_488_804, ["fixture"], ["rampa_conservador"]),
           ritmoMensualDia90: metric(7_744_402, ["fixture"], ["rampa_conservador"]),
           palancas: [
-            { id: "nav", nombre: "Fuga por navegación", monto: metric(3_567_928, ["fixture"], ["rampa_conservador"]) },
-            { id: "carrito", nombre: "Fuga por carrito", monto: metric(3_539_385, ["fixture"], ["rampa_conservador"]) },
+            {
+              id: "nav",
+              nombre: "Fuga por navegación",
+              monto: metric(3_567_928, ["fixture"], ["rampa_conservador"]),
+            },
+            {
+              id: "carrito",
+              nombre: "Fuga por carrito",
+              monto: metric(3_539_385, ["fixture"], ["rampa_conservador"]),
+            },
           ],
         },
         contribucionIncremental: {
           acumulado90d: metric(5_761_835, ["fixture"], ["rampa_conservador"]),
           ritmoMensualDia90: metric(2_880_917, ["fixture"], ["rampa_conservador"]),
           palancas: [
-            { id: "nav2", nombre: "Fuga por navegación", monto: metric(1_327_269, ["fixture"], ["rampa_conservador"]) },
+            {
+              id: "nav2",
+              nombre: "Fuga por navegación",
+              monto: metric(1_327_269, ["fixture"], ["rampa_conservador"]),
+            },
           ],
         },
         ahorroPublicitario: {
@@ -145,14 +162,22 @@ export function buildMulticanalContext(): DocumentContextV1 {
             mes: 2,
             facturacionProyectada: metric(15_162_935, ["fixture"], ["rampa_conservador"]),
             facturacionIncrementalHabilitada: metric(5_162_935, ["fixture"], ["rampa_conservador"]),
-            contribucionIncrementalHabilitada: metric(1_920_612, ["fixture"], ["rampa_conservador"]),
+            contribucionIncrementalHabilitada: metric(
+              1_920_612,
+              ["fixture"],
+              ["rampa_conservador"],
+            ),
             ahorroPublicitarioHabilitado: metric(119_083, ["fixture"], ["rampa_ahorro"]),
           },
           {
             mes: 3,
             facturacionProyectada: metric(17_744_402, ["fixture"], ["rampa_conservador"]),
             facturacionIncrementalHabilitada: metric(7_744_402, ["fixture"], ["rampa_conservador"]),
-            contribucionIncrementalHabilitada: metric(2_880_917, ["fixture"], ["rampa_conservador"]),
+            contribucionIncrementalHabilitada: metric(
+              2_880_917,
+              ["fixture"],
+              ["rampa_conservador"],
+            ),
             ahorroPublicitarioHabilitado: metric(158_777, ["fixture"], ["rampa_ahorro"]),
           },
         ],
@@ -171,9 +196,21 @@ export function buildMulticanalContext(): DocumentContextV1 {
         id: "base",
         visible: true,
         confianza: "media",
-        facturacionIncremental: { acumulado90d: metric(21_684_325), ritmoMensualDia90: metric(10_325_869), palancas: [] },
-        contribucionIncremental: { acumulado90d: metric(8_066_568), ritmoMensualDia90: metric(3_841_223), palancas: [] },
-        ahorroPublicitario: { acumulado90d: metric(436_637), ritmoMensualDia90: metric(158_777), palancas: [] },
+        facturacionIncremental: {
+          acumulado90d: metric(21_684_325),
+          ritmoMensualDia90: metric(10_325_869),
+          palancas: [],
+        },
+        contribucionIncremental: {
+          acumulado90d: metric(8_066_568),
+          ritmoMensualDia90: metric(3_841_223),
+          palancas: [],
+        },
+        ahorroPublicitario: {
+          acumulado90d: metric(436_637),
+          ritmoMensualDia90: metric(158_777),
+          palancas: [],
+        },
         mensual: [],
         supuestos: [],
         restriccionesAplicadas: [],
@@ -182,9 +219,21 @@ export function buildMulticanalContext(): DocumentContextV1 {
         id: "potencial",
         visible: true,
         confianza: "alta",
-        facturacionIncremental: { acumulado90d: metric(24_265_793), ritmoMensualDia90: metric(10_325_869), palancas: [] },
-        contribucionIncremental: { acumulado90d: metric(9_026_875), ritmoMensualDia90: metric(3_841_223), palancas: [] },
-        ahorroPublicitario: { acumulado90d: metric(452_514), ritmoMensualDia90: metric(158_777), palancas: [] },
+        facturacionIncremental: {
+          acumulado90d: metric(24_265_793),
+          ritmoMensualDia90: metric(10_325_869),
+          palancas: [],
+        },
+        contribucionIncremental: {
+          acumulado90d: metric(9_026_875),
+          ritmoMensualDia90: metric(3_841_223),
+          palancas: [],
+        },
+        ahorroPublicitario: {
+          acumulado90d: metric(452_514),
+          ritmoMensualDia90: metric(158_777),
+          palancas: [],
+        },
         mensual: [],
         supuestos: [],
         restriccionesAplicadas: [],
@@ -223,6 +272,7 @@ export function buildMulticanalContext(): DocumentContextV1 {
         },
       ],
     },
+    comercialV2: null,
     restricciones: [],
     metodologia: [
       {
@@ -253,18 +303,28 @@ export function buildTresEscenariosLargosContext(): DocumentContextV1 {
     id,
     facturacionIncremental: {
       ...conservador.facturacionIncremental,
-      palancas: conservador.facturacionIncremental.palancas.map((p) => ({ ...p, id: `${p.id}_${id}` })),
+      palancas: conservador.facturacionIncremental.palancas.map((p) => ({
+        ...p,
+        id: `${p.id}_${id}`,
+      })),
     },
     contribucionIncremental: {
       ...conservador.contribucionIncremental,
-      palancas: conservador.contribucionIncremental.palancas.map((p) => ({ ...p, id: `${p.id}_${id}` })),
+      palancas: conservador.contribucionIncremental.palancas.map((p) => ({
+        ...p,
+        id: `${p.id}_${id}`,
+      })),
     },
     ahorroPublicitario: {
       ...conservador.ahorroPublicitario,
       palancas: conservador.ahorroPublicitario.palancas.map((p) => ({ ...p, id: `${p.id}_${id}` })),
     },
     mensual: conservador.mensual,
-    supuestos: conservador.supuestos.map((s) => ({ ...s, id: `${s.id}_${id}`, etiqueta: `${s.etiqueta} (${id})` })),
+    supuestos: conservador.supuestos.map((s) => ({
+      ...s,
+      id: `${s.id}_${id}`,
+      etiqueta: `${s.etiqueta} (${id})`,
+    })),
   });
   return {
     ...base,
@@ -280,7 +340,12 @@ export function buildMargenNegativoContext(): DocumentContextV1 {
     rulesetVersion: "fixture/manual",
     tipoDocumento: "proyeccion_90d",
     diagnostico: { id: "margen-negativo-fixture", version: 1, fecha: "2026-08-23" },
-    cliente: { nombre: "Margen Negativo Demo", vertical: "E-commerce", moneda: "ARS", periodo: "mensual" },
+    cliente: {
+      nombre: "Margen Negativo Demo",
+      vertical: "E-commerce",
+      moneda: "ARS",
+      periodo: "mensual",
+    },
     modalidad: { minorista: true, mayorista: false },
     cobertura: { general: 100, canales: 100, productos: 100, confianza: "alta" },
     evidencia: {},
@@ -329,18 +394,30 @@ export function buildMargenNegativoContext(): DocumentContextV1 {
         visible: true,
         confianza: "alta",
         facturacionIncremental: {
-          acumulado90d: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
-          ritmoMensualDia90: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
+          acumulado90d: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
+          ritmoMensualDia90: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
           palancas: [],
         },
         contribucionIncremental: {
-          acumulado90d: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
-          ritmoMensualDia90: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
+          acumulado90d: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
+          ritmoMensualDia90: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
           palancas: [],
         },
         ahorroPublicitario: {
-          acumulado90d: valorRetenido("No hay ahorro publicitario calculable con los datos actuales."),
-          ritmoMensualDia90: valorRetenido("No hay ahorro publicitario calculable con los datos actuales."),
+          acumulado90d: valorRetenido(
+            "No hay ahorro publicitario calculable con los datos actuales.",
+          ),
+          ritmoMensualDia90: valorRetenido(
+            "No hay ahorro publicitario calculable con los datos actuales.",
+          ),
           palancas: [],
         },
         mensual: [],
@@ -352,18 +429,30 @@ export function buildMargenNegativoContext(): DocumentContextV1 {
         visible: true,
         confianza: "alta",
         facturacionIncremental: {
-          acumulado90d: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
-          ritmoMensualDia90: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
+          acumulado90d: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
+          ritmoMensualDia90: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
           palancas: [],
         },
         contribucionIncremental: {
-          acumulado90d: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
-          ritmoMensualDia90: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
+          acumulado90d: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
+          ritmoMensualDia90: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
           palancas: [],
         },
         ahorroPublicitario: {
-          acumulado90d: valorRetenido("No hay ahorro publicitario calculable con los datos actuales."),
-          ritmoMensualDia90: valorRetenido("No hay ahorro publicitario calculable con los datos actuales."),
+          acumulado90d: valorRetenido(
+            "No hay ahorro publicitario calculable con los datos actuales.",
+          ),
+          ritmoMensualDia90: valorRetenido(
+            "No hay ahorro publicitario calculable con los datos actuales.",
+          ),
           palancas: [],
         },
         mensual: [],
@@ -375,18 +464,30 @@ export function buildMargenNegativoContext(): DocumentContextV1 {
         visible: true,
         confianza: "alta",
         facturacionIncremental: {
-          acumulado90d: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
-          ritmoMensualDia90: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
+          acumulado90d: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
+          ritmoMensualDia90: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
           palancas: [],
         },
         contribucionIncremental: {
-          acumulado90d: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
-          ritmoMensualDia90: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
+          acumulado90d: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
+          ritmoMensualDia90: valorRetenido(
+            "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+          ),
           palancas: [],
         },
         ahorroPublicitario: {
-          acumulado90d: valorRetenido("No hay ahorro publicitario calculable con los datos actuales."),
-          ritmoMensualDia90: valorRetenido("No hay ahorro publicitario calculable con los datos actuales."),
+          acumulado90d: valorRetenido(
+            "No hay ahorro publicitario calculable con los datos actuales.",
+          ),
+          ritmoMensualDia90: valorRetenido(
+            "No hay ahorro publicitario calculable con los datos actuales.",
+          ),
           palancas: [],
         },
         mensual: [],
@@ -396,9 +497,15 @@ export function buildMargenNegativoContext(): DocumentContextV1 {
     ],
     resumenComercial: {
       escenarioComunicado: "conservador",
-      cifraPrincipal: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
-      limiteInferior: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
-      limiteSuperior: valorRetenido("No hay oportunidad de esta magnitud detectada con los datos actuales."),
+      cifraPrincipal: valorRetenido(
+        "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+      ),
+      limiteInferior: valorRetenido(
+        "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+      ),
+      limiteSuperior: valorRetenido(
+        "No hay oportunidad de esta magnitud detectada con los datos actuales.",
+      ),
       idEscenarioLimiteSuperior: null,
       dispersion: { ratio: null, umbral: 2.5, alta: false, datosParaCerrarla: [] },
       redaccion: null,
@@ -406,6 +513,7 @@ export function buildMargenNegativoContext(): DocumentContextV1 {
     roadmap: [],
     servicios: [],
     comercial: null,
+    comercialV2: null,
     restricciones: [],
     metodologia: [],
   };

@@ -136,6 +136,32 @@ export type NivelComercialV2 = {
   precio: ValorV2 | null;
 };
 
+export type LineaComercialV2 = {
+  lineaId: string;
+  nombre: string;
+  unidad: string;
+  cantidad: number | null;
+  precioUnitario: ValorV2 | null;
+  totalLinea: ValorV2;
+  recurrencia: "mensual" | "unica";
+  ruta: string | null;
+  /** Textos verbatim; `null` con `textoPendiente: true` cuando falta. */
+  descripcion: string | null;
+  entregables: string[];
+  exclusion: string | null;
+  notaContenido: string | null;
+  textoPendiente: boolean;
+};
+
+export type GrupoInversionV2 = {
+  id: "mensual" | "unica";
+  titulo: string;
+  subtotalNeto: ValorV2;
+  impuesto: ValorV2 | null;
+  porcentajeImpuesto: number | null;
+  total: ValorV2;
+};
+
 export type DocumentBlockV2 =
   | {
       type: "cover";
@@ -182,11 +208,20 @@ export type DocumentBlockV2 =
       type: "commercial-summary";
       scenarioCommunicated: "conservador";
       headline: ValorV2 | null;
-      range: { lower: ValorV2 | null; upper: ValorV2 | null; upperScenarioId: "base" | "potencial" | null };
+      range: {
+        lower: ValorV2 | null;
+        upper: ValorV2 | null;
+        upperScenarioId: "base" | "potencial" | null;
+      };
       statement: string | null;
       /** Nota resuelta de la marca † del headline (E-13) — vacío si el headline no depende de un supuesto. */
       assumptionsDetail: SupuestoDocumento[];
-      dispersion: { ratio: number | null; threshold: number; high: boolean; dataToCloseIt: string[] };
+      dispersion: {
+        ratio: number | null;
+        threshold: number;
+        high: boolean;
+        dataToCloseIt: string[];
+      };
     }
   | { type: "bridge-note"; text: string }
   | { type: "roadmap"; items: EtapaRoadmap[] }
@@ -195,6 +230,20 @@ export type DocumentBlockV2 =
   // confirmada — `niveles` vacío y el renderer debe mostrar el texto
   // literal "Selección comercial pendiente", nunca omitir la sección.
   | { type: "commercial-offer"; pendiente: boolean; niveles: NivelComercialV2[] }
+  // BV4 F2a etapa 5: la selección comercial v2 — diez líneas facturables con
+  // sus textos verbatim, y DOS grupos de inversión. No hay campo para un
+  // total combinado: Q10 es una propiedad del tipo, no una regla a recordar.
+  | {
+      type: "commercial-selection";
+      /** Q9: sin selección o sin fiscal confirmada, el renderer imprime el aviso y nada más. */
+      pendiente: boolean;
+      moneda: "ARS" | "USD";
+      nivel: string;
+      lineas: LineaComercialV2[];
+      grupos: GrupoInversionV2[];
+      agregados: { nombre: string; alcance: string | null }[];
+      lineasSinPrecio: string[];
+    }
   | { type: "restrictions"; items: RestriccionDocumento[] }
   | { type: "restrictions-grouped"; items: RestriccionAgrupadaV2[] }
   | { type: "methodology"; items: SupuestoDocumento[] }
