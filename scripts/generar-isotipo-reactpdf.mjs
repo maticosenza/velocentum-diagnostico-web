@@ -105,8 +105,11 @@ ${descartes.map((d) => ` *   - ${d}`).join("\n")}
  * resuelve \`stroke="url(#gradiente)"\`, así que los filetes que usan
  * \`#iso-edge\` no salen con su degradado. Está documentado en
  * \`PROCEDENCIA.md\` (4.1 bis a) y comparado en
- * \`docs/bv4-f1-assets-pdf-vs-navegador.png\`. **Uso provisional hasta el
- * veredicto humano del gate DH-6.**
+ * \`docs/bv4-f1-assets-pdf-vs-navegador.png\`.
+ *
+ * GATE DH-6 RESUELTO (veredicto humano de Matías, 2026-08-31): el isotipo
+ * PASA y queda aprobado como isotipo de la herramienta. Deja de ser
+ * provisional.
  */
 
 export type ParadaGradienteIsotipo = {
@@ -137,11 +140,30 @@ export const ISOTIPO_RELACION = ${(() => { const [, , w, h] = svg.attrs.viewBox.
 
 /** Encuadres cuadrados medidos en la etapa 4.1 bis (b). */
 export const ISOTIPO_ENCUADRES = {
-  /** Favicon y avatar cuadrado: centrado en la tinta, 8% de aire por lado. */
+  /** Centrado en la tinta, 8% de aire por lado. El glifo ocupa el 86% del lado. */
   cuadrado: "-4.1 -5.4 226 226",
-  /** Avatar circular: el círculo inscripto contiene toda la tinta. */
+  /** El círculo inscripto contiene toda la tinta. El glifo ocupa el 70% del lado. */
   circular: "-31.1 -32.4 280 280",
 } as const;
+
+/**
+ * Qué encuadre le toca a cada superficie. **Veredicto humano de Matías,
+ * 2026-08-31**, sobre la lámina \`docs/bv4-f1-isotipo-test.png\`: encuadre B
+ * (\`circular\`) para el avatar circular; encuadre A (\`cuadrado\`) para el
+ * avatar cuadrado y para el favicon.
+ *
+ * Declarado como dato y no como comentario, para que se pueda verificar.
+ *
+ * El favicon lleva además la **variante monocroma**, no el asset a color: a
+ * 16 px el color se empasta y se pierde la V. Eso no se resuelve acá —
+ * generar el favicon y cablearlo toca una superficie de producción y es
+ * alcance de F2/F3. Ver \`PROCEDENCIA.md\`, "Gate DH-6 — RESUELTO".
+ */
+export const ISOTIPO_USO = {
+  favicon: "cuadrado",
+  avatarCuadrado: "cuadrado",
+  avatarCircular: "circular",
+} as const satisfies Record<string, keyof typeof ISOTIPO_ENCUADRES>;
 
 export const ISOTIPO_GRADIENTES: GradienteIsotipo[] = ${json(gradientes)};
 

@@ -7,6 +7,7 @@ import {
   ISOTIPO_ENCUADRES,
   ISOTIPO_GRADIENTES,
   ISOTIPO_NODOS,
+  ISOTIPO_USO,
   ISOTIPO_VIEWBOX,
   type NodoIsotipo,
 } from "./isotipo.generated";
@@ -80,6 +81,21 @@ describe("isotipo.generated.ts: transcripción exacta del SVG aprobado", () => {
   it("expone los dos encuadres medidos en la etapa 4.1 bis (b)", () => {
     expect(ISOTIPO_ENCUADRES.cuadrado).toBe("-4.1 -5.4 226 226");
     expect(ISOTIPO_ENCUADRES.circular).toBe("-31.1 -32.4 280 280");
+  });
+
+  it("fija el veredicto humano sobre qué encuadre va en cada superficie", () => {
+    // Matías, 2026-08-31, sobre docs/bv4-f1-isotipo-test.png: encuadre B
+    // (circular) para el avatar circular; encuadre A (cuadrado) para el
+    // avatar cuadrado y para el favicon.
+    expect(ISOTIPO_USO).toEqual({
+      favicon: "cuadrado",
+      avatarCuadrado: "cuadrado",
+      avatarCircular: "circular",
+    });
+    // Cada uso apunta a un encuadre que existe de verdad.
+    for (const encuadre of Object.values(ISOTIPO_USO)) {
+      expect(Object.keys(ISOTIPO_ENCUADRES)).toContain(encuadre);
+    }
   });
 
   it("no introduce ningún color de la paleta vinculante: DH-7 encapsula el asset", () => {

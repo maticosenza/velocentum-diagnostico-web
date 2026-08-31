@@ -6,8 +6,9 @@
  * Mismo criterio que `src/documents/renderers/pdf/marca.tsx`, que es el
  * precedente del repositorio para llevar un SVG de marca a PDF.
  *
- * **Uso provisional hasta el veredicto humano del gate DH-6.** F1 construye
- * el componente y NO lo aplica a ninguna superficie: navegación, portadas y
+ * **Gate DH-6 resuelto** (veredicto humano de Matías, 2026-08-31): el isotipo
+ * pasa y queda aprobado como isotipo de la herramienta. F1 construye el
+ * componente y NO lo aplica a ninguna superficie: navegación, portadas y
  * documentos son alcance de F2/F3.
  *
  * Limitaciones heredadas de react-pdf, documentadas en `PROCEDENCIA.md`
@@ -31,6 +32,10 @@ import {
  * cuadrado). `cuadrado` y `circular` son los dos encuadres medidos en la
  * etapa 4.1 bis (b): centran el cuadrado en la caja de TINTA, no en el
  * `viewBox`, y nunca deforman el glifo.
+ *
+ * Cuál corresponde a cada superficie no se decide acá: está en
+ * `ISOTIPO_USO` (`isotipo.generated.ts`), por veredicto humano —`circular`
+ * para el avatar circular, `cuadrado` para el avatar cuadrado y el favicon.
  */
 export type EncuadreIsotipo = "natural" | "cuadrado" | "circular";
 

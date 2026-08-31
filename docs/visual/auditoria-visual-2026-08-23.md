@@ -1080,3 +1080,36 @@ debe respetar la razón registrada de la decisión C2 en `impresion`.
 `docs/visual/matriz-hallazgos.md` sigue sin actualizarse — E-22 a E-28 son
 hallazgos muy posteriores a su alcance original (2026-08-23), igual que
 E-19/E-20/E-21.
+
+### Cierre de BV4 · F1 Foundation (2026-08-31)
+
+F1 quedó **APROBADA**: la auditoría externa cerró sin observaciones
+bloqueantes y Matías tomó los cuatro veredictos humanos que el bloque tenía
+reservados. Se asientan acá porque cierran gates del contrato, no porque
+sean hallazgos nuevos — ninguno abre ni modifica un identificador de la
+serie E.
+
+1. **DH-6 — el isotipo PASA.** `isotipo-approved.svg` queda aprobado como
+   isotipo de la herramienta, sobre la lámina `docs/bv4-f1-isotipo-test.png`.
+   Deja de estar marcado provisional.
+2. **Favicon: variante monocroma, no el asset a color** — a 16 px el color
+   se empasta y se pierde la V.
+3. **Encuadre:** B (`circular`, `viewBox="-31.1 -32.4 280 280"`) para el
+   avatar circular; A (`cuadrado`, `viewBox="-4.1 -5.4 226 226"`) para el
+   avatar cuadrado y para el favicon.
+4. **Muestra visual aprobada** (`docs/bv4-f1-muestra-visual.html`), que
+   cierra el gate de aprobación visual.
+
+Registro: los cuatro están en `src/documents/theme/marca/PROCEDENCIA.md`,
+sección "Gate DH-6 — RESUELTO"; el tercero además como dato verificable en
+`ISOTIPO_USO` (`isotipo.generated.ts`), con su prueba. El segundo **no está
+aplicado**: generar el favicon monocromo y cablearlo en `__root.tsx` toca
+una superficie de producción y es alcance de F2/F3.
+
+`docs/bv4-f1-isotipo-test.png` y `docs/bv4-f1-muestra-visual.html` se
+conservan byte a byte tal como fueron aprobados —siguen diciendo "el
+veredicto es humano"— porque son la evidencia sobre la que se decidió y no
+se reescriben después del hecho.
+
+La rama `feat/bv4-rebranding` se publicó en `origin` con autorización
+expresa de Matías, posterior a la aprobación. `main` sigue intacto.

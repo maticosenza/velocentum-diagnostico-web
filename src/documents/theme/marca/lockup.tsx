@@ -1,8 +1,8 @@
 /**
  * Lockup tipográfico de la herramienta — BV4 F1, etapa 5.
  *
- * Isotipo (provisional, gate DH-6 pendiente) + "Velocentum" en Satoshi +
- * descriptor "Equipo de crecimiento" según DH-11.
+ * Isotipo (aprobado: gate DH-6 resuelto el 2026-08-31) + "Velocentum" en
+ * Satoshi + descriptor "Equipo de crecimiento" según DH-11.
  *
  * F1 construye el componente y sus variantes, y **no lo aplica a ninguna
  * superficie**: navegación, portadas y documentos son alcance de F2/F3.

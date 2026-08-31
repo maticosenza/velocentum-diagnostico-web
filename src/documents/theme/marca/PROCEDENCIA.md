@@ -163,10 +163,51 @@ Se aplica la excepción de encapsulamiento de DH-7, igual que con el espectro
 del Prisma: **material interno del asset, no genera tokens.** Ninguno de esos
 tonos entra a `velocentum-crystal/v1` ni reaparece en ningún componente.
 
-## Gate DH-6 — estado
+## Gate DH-6 — RESUELTO
 
-**Pendiente de veredicto humano.** La lámina comparativa está en
-`docs/bv4-f1-isotipo-test.png`: 16/24/32 px en color, monocromo sobre claro y
+**El isotipo PASA.** Veredicto humano de Matías, 2026-08-31, sobre la lámina
+`docs/bv4-f1-isotipo-test.png` (16/24/32 px en color, monocromo sobre claro y
 monocromo sobre oscuro, cada uno a tamaño real y ampliado 7× píxel a píxel,
-más las composiciones tipo avatar. **F1 no declara el resultado.** Hasta el
-veredicto de Matías, todo uso del isotipo queda marcado provisional.
+más las composiciones tipo avatar). `isotipo-approved.svg` queda **aprobado
+como isotipo de la herramienta**. Deja de estar marcado provisional.
+
+La auditoría externa cerró **sin observaciones bloqueantes**, y la muestra
+visual `docs/bv4-f1-muestra-visual.html` quedó **aprobada** en la misma
+instancia.
+
+### Los cuatro veredictos, tal como se tomaron
+
+| # | Decisión | Alcance |
+|---|---|---|
+| 1 | **DH-6: el isotipo pasa.** `isotipo-approved.svg` es el isotipo de la herramienta | cierra el gate |
+| 2 | **El favicon usa la variante monocroma, no el asset a color** — a 16 px el color se empasta y se pierde la V | define cómo se construye el favicon |
+| 3 | **Encuadre B para avatar circular; encuadre A para cuadrado y favicon** | fija el uso de los dos encuadres medidos en 4.1 bis (b) |
+| 4 | **Muestra visual aprobada** | cierra el gate de aprobación visual |
+
+### Cómo se traducen a código
+
+El veredicto 3 está declarado como **dato verificable**, no como comentario,
+en `isotipo.generated.ts`:
+
+```ts
+ISOTIPO_ENCUADRES = { cuadrado: "-4.1 -5.4 226 226", circular: "-31.1 -32.4 280 280" }
+ISOTIPO_USO       = { favicon: "cuadrado", avatarCuadrado: "cuadrado", avatarCircular: "circular" }
+```
+
+El veredicto 2 **no está aplicado**: generar el favicon monocromo y cablearlo
+en `src/routes/__root.tsx` toca una superficie de producción y es alcance de
+F2/F3, no de Foundation. Queda registrado cómo se construye, para que quien lo
+implemente no tenga que volver a decidirlo: la silueta se obtiene rasterizando
+el asset con el encuadre **A** y colapsando el color a un tono plano
+—`filter: brightness(0)` sobre claro, `brightness(0) invert(1)` sobre
+oscuro—, exactamente el procedimiento que usó `scripts/lamina-isotipo.mjs`
+para las filas monocromas de la lámina. **El asset no se modifica**: la
+variante monocroma se produce en el render, no editando el SVG.
+
+### Nota sobre los dos artefactos de evidencia
+
+`docs/bv4-f1-isotipo-test.png` y `docs/bv4-f1-muestra-visual.html` **se
+conservan byte a byte** tal como fueron aprobados, así que siguen diciendo
+"el veredicto es humano" y "provisional". Es a propósito: son la evidencia
+sobre la que se tomó la decisión y no se reescriben después del hecho. El
+estado vigente es el de este documento.
