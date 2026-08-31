@@ -78,7 +78,7 @@ describe("tema de marca velocentum-crystal/v1", () => {
 
   it("no pinta ningún estado funcional en acento", () => {
     const { colors } = VELOCENTUM_CRYSTAL_V1;
-    const acentos = new Set([colors.action, colors.accentSoft, colors.accentDeep]);
+    const acentos = new Set<string>([colors.action, colors.accentSoft, colors.accentDeep]);
     const estados = [
       colors.success,
       colors.warning,
@@ -92,7 +92,7 @@ describe("tema de marca velocentum-crystal/v1", () => {
       colors.info,
     ];
     for (const estado of estados) {
-      expect(acentos.has(estado as string)).toBe(false);
+      expect(acentos.has(estado)).toBe(false);
     }
   });
 

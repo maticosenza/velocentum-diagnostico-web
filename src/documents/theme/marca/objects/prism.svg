@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 260">
+<defs>
+ <linearGradient id="glass" x1="190" y1="30" x2="300" y2="220" gradientUnits="userSpaceOnUse"><stop stop-color="#fff" stop-opacity=".16"/><stop offset=".5" stop-color="#FF9BC0" stop-opacity=".12"/><stop offset="1" stop-color="#FF4B8D" stop-opacity=".18"/></linearGradient>
+ <linearGradient id="beam" x1="250" y1="0" x2="500" y2="0" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset=".18" stop-color="#ffe76d"/><stop offset=".38" stop-color="#7dff6a"/><stop offset=".60" stop-color="#50c9ff"/><stop offset=".82" stop-color="#7c5cff"/><stop offset="1" stop-color="#FF4B8D" stop-opacity="0"/></linearGradient>
+ <filter id="g"><feGaussianBlur stdDeviation="5"/></filter>
+</defs>
+<path d="M16 136H170" stroke="#FF4B8D" stroke-opacity=".20" stroke-width="16" filter="url(#g)"/><path d="M16 136H170" stroke="#FF4B8D" stroke-opacity=".45" stroke-width="3"/>
+<polygon points="250,28 164,218 337,218" fill="url(#glass)" stroke="#FFB1CC" stroke-opacity=".82" stroke-width="2"/>
+<path d="M250 28L250 218M164 218L250 122 337 218" stroke="#fff" stroke-opacity=".18"/>
+<path d="M250 136L500 136" stroke="url(#beam)" stroke-width="13" filter="url(#g)"/><path d="M250 136L500 136" stroke="url(#beam)" stroke-width="5"/>
+</svg>

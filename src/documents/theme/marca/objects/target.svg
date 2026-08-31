@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260" role="img" aria-labelledby="title">
+  <title id="title">Mira de enfoque Velocentum</title>
+  <defs>
+    <radialGradient id="core" cx="38%" cy="30%" r="76%">
+      <stop stop-color="#fff"/>
+      <stop offset=".2" stop-color="#ffb6d0"/>
+      <stop offset=".55" stop-color="#ff4b8d"/>
+      <stop offset="1" stop-color="#bd245b"/>
+    </radialGradient>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke="#fff" stroke-linecap="round">
+    <circle cx="130" cy="130" r="68" stroke-opacity=".86" stroke-width="1.35"/>
+    <circle cx="130" cy="130" r="32" stroke-opacity=".48" stroke-width="1"/>
+    <path d="M130 27v67M130 166v67M27 130h67M166 130h67" stroke-opacity=".76" stroke-width="1.15"/>
+    <path d="M130 16v11M130 233v11M16 130h11M233 130h11" stroke-opacity=".32" stroke-width=".8"/>
+  </g>
+  <circle cx="130" cy="130" r="22" fill="#ff4b8d" opacity=".24" filter="url(#glow)"/>
+  <circle cx="130" cy="130" r="12" fill="url(#core)"/>
+  <circle cx="126.5" cy="126.5" r="3" fill="#fff" opacity=".48"/>
+</svg>

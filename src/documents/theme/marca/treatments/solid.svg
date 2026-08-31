@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 180">
+<defs>
+ <linearGradient id="a" x1="15" y1="10" x2="108" y2="168" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF" stop-opacity=".92"/><stop offset=".24" stop-color="#FF9BC0"/><stop offset=".58" stop-color="#FF4B8D"/><stop offset="1" stop-color="#861842"/></linearGradient>
+ <linearGradient id="b" x1="205" y1="14" x2="110" y2="168" gradientUnits="userSpaceOnUse"><stop stop-color="#FF9BC0"/><stop offset=".48" stop-color="#FF4B8D"/><stop offset="1" stop-color="#6A1738"/></linearGradient>
+ <linearGradient id="shine" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+ <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g filter="url(#glow)" stroke="#fff" stroke-opacity=".30" stroke-width="1.2" stroke-linejoin="round">
+ <polygon points="18,18 86,43 112,166 42,121" fill="url(#a)"/>
+ <polygon points="202,17 135,44 112,166 179,117" fill="url(#b)"/>
+ <polygon points="18,18 75,31 86,43 42,121" fill="#FFB3CE" fill-opacity=".75"/>
+ <polygon points="86,43 112,79 112,166 42,121" fill="#D72D6B" fill-opacity=".82"/>
+ <polygon points="202,17 148,31 135,44 179,117" fill="#FF8DB5" fill-opacity=".64"/>
+ <polygon points="135,44 112,79 112,166 179,117" fill="#A61F52" fill-opacity=".70"/>
+ <polygon points="75,31 112,79 86,43" fill="url(#shine)"/>
+ <polygon points="148,31 112,79 135,44" fill="#fff" fill-opacity=".20"/>
+ <path d="M18 18L112 166 202 17M75 31L112 79 148 31M42 121L112 79 179 117M86 43L112 166M135 44L112 166" fill="none"/>
+</g></svg>

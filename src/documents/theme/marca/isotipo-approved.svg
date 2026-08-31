@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1955" viewBox="0 0 220 210" fill="none">
+  <defs>
+    <linearGradient id="iso-left-light" x1="20" y1="18" x2="85" y2="151" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF1F7"/>
+      <stop offset="0.24" stop-color="#FFB5CE"/>
+      <stop offset="0.68" stop-color="#F05A91"/>
+      <stop offset="1" stop-color="#9D274F"/>
+    </linearGradient>
+    <linearGradient id="iso-left-hot" x1="38" y1="32" x2="112" y2="124" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF8DB4"/>
+      <stop offset="0.5" stop-color="#FF5C94"/>
+      <stop offset="1" stop-color="#B7285A"/>
+    </linearGradient>
+    <linearGradient id="iso-right-light" x1="201" y1="28" x2="128" y2="198" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3F8"/>
+      <stop offset="0.22" stop-color="#F6A7C4"/>
+      <stop offset="0.64" stop-color="#D64D7D"/>
+      <stop offset="1" stop-color="#8A2348"/>
+    </linearGradient>
+    <linearGradient id="iso-right-hot" x1="169" y1="55" x2="124" y2="198" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF6CA0"/>
+      <stop offset="0.48" stop-color="#E73773"/>
+      <stop offset="1" stop-color="#A31F4E"/>
+    </linearGradient>
+    <linearGradient id="iso-deep" x1="67" y1="64" x2="135" y2="196" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#463746"/>
+      <stop offset="0.58" stop-color="#302431"/>
+      <stop offset="1" stop-color="#6F1D3C"/>
+    </linearGradient>
+    <linearGradient id="iso-edge" x1="16" y1="18" x2="203" y2="198" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8FB" stop-opacity="0.96"/>
+      <stop offset="0.48" stop-color="#F3B2C9" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#FF6D9E" stop-opacity="0.78"/>
+    </linearGradient>
+    <filter id="iso-glow" x="-35%" y="-30%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="4.8"/>
+    </filter>
+  </defs>
+
+  <path d="M13 18L65 27L91 66L114 121L151 49L205 28L169 142L129 199L58 142Z" fill="#D8326C" opacity="0.2" filter="url(#iso-glow)"/>
+
+  <g stroke-linejoin="round">
+    <path d="M16 18L66 27L92 66L114 121L151 50L203 29L170 142L129 198L59 142Z" fill="url(#iso-deep)" stroke="url(#iso-edge)" stroke-width="1.35"/>
+
+    <path d="M16 18L34 31L59 142Z" fill="url(#iso-left-light)"/>
+    <path d="M16 18L66 27L92 66Z" fill="#3A303D"/>
+    <path d="M16 18L92 66L34 31Z" fill="#6B5366" fill-opacity="0.74"/>
+    <path d="M34 31L80 73L59 142Z" fill="url(#iso-left-hot)"/>
+    <path d="M34 31L92 66L80 73Z" fill="#F78FB2" fill-opacity="0.88"/>
+    <path d="M80 73L72 111L59 142Z" fill="#C92D62"/>
+    <path d="M80 73L92 66L114 121L72 111Z" fill="#3A303D"/>
+    <path d="M59 142L72 111L114 121Z" fill="#4B3447"/>
+    <path d="M59 142L114 121L129 198Z" fill="#6E2647"/>
+    <path d="M59 142L96 136L129 198Z" fill="#8E2D54" fill-opacity="0.7"/>
+
+    <path d="M203 29L151 50L173 72Z" fill="#685265"/>
+    <path d="M203 29L173 72L170 142Z" fill="url(#iso-right-light)"/>
+    <path d="M151 50L173 72L137 94Z" fill="#332A37"/>
+    <path d="M151 50L137 94L114 121Z" fill="#B42A59"/>
+    <path d="M173 72L145 111L137 94Z" fill="#E13B73"/>
+    <path d="M173 72L170 142L145 111Z" fill="#C3547B"/>
+    <path d="M137 94L145 111L114 121Z" fill="url(#iso-right-hot)"/>
+    <path d="M145 111L170 142L129 198Z" fill="#8E3155"/>
+    <path d="M114 121L145 111L129 198Z" fill="url(#iso-right-hot)"/>
+    <path d="M114 121L125 139L129 198Z" fill="#FF4D89" fill-opacity="0.74"/>
+
+    <g fill="none" stroke="url(#iso-edge)" stroke-width="0.9" stroke-opacity="0.76">
+      <path d="M16 18L92 66L114 121L151 50L203 29"/>
+      <path d="M34 31L80 73L72 111L59 142L129 198L170 142L173 72"/>
+      <path d="M59 142L114 121L129 198"/>
+      <path d="M151 50L137 94L145 111L114 121"/>
+      <path d="M92 66L72 111L96 136"/>
+      <path d="M173 72L137 94"/>
+    </g>
+
+    <g fill="none" stroke="#FFF8FB" stroke-width="0.48" stroke-opacity="0.34">
+      <path d="M19 20L65 29L89 66"/>
+      <path d="M201 31L153 52L116 121"/>
+      <path d="M61 141L128 195L168 141"/>
+    </g>
+  </g>
+</svg>
