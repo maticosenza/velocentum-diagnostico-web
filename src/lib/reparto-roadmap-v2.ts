@@ -35,11 +35,14 @@
  * markdown fuente.
  *
  * Una línea puede repetir un entregable en dos etapas cuando el trabajo es
- * cíclico —`planificacion_contenido` en 31-60 y 61-90, el "ídem, cíclico" de
- * la tabla confirmada—, y puede no tener entregable para una etapa cuando el
- * texto fuente no lo tiene: ver H-4 en `docs/bv4-f2a-hallazgos-diferidos.md`
- * para el único caso, `google_ads` en 61-90. Inventar la frase que falta
- * estaba explícitamente prohibido.
+ * cíclico: `planificacion_contenido` en 31-60 y 61-90, el "ídem, cíclico" de
+ * la tabla confirmada. Y puede no tener entregable para una etapa cuando esa
+ * etapa no le corresponde —`diseno_web` y `branding` van completas en 1-30
+ * por R1—, pero **nunca porque falte la frase**: cuando faltó, se frenó y la
+ * frase la aportó Matías al documento fuente. Fue el caso de la escala de
+ * Google Ads (H-4, resuelto el 2026-09-01 con una sexta viñeta); el hallazgo
+ * queda en `docs/bv4-f2a-hallazgos-diferidos.md` como registro de cómo se
+ * resolvió, no como pendiente.
  */
 
 import { lineaV2, LINEAS_V2_IDS, type LineaId } from "./catalogo-v2";
@@ -64,10 +67,10 @@ export const REPARTO_ROADMAP_V2: Readonly<Record<LineaId, RepartoDeLinea>> = {
   // optimizar (validación creativa) → escalar (retargeting progresivo).
   meta_ads: { etapa_30: [0, 1, 2], etapa_60: [3], etapa_90: [4] },
   // R3 · activar (cuenta y Google Tag; estructura; palabras clave; feed) →
-  // optimizar (pujas y presupuesto). La etapa de escala queda SIN renglón:
-  // el texto verbatim de Google Ads no tiene una viñeta de escala y ninguna
-  // se inventa. H-4.
-  google_ads: { etapa_30: [0, 1, 2, 3], etapa_60: [4], etapa_90: [] },
+  // optimizar (pujas y presupuesto) → escalar (campañas y palabras clave con
+  // mejor rendimiento). La viñeta de escala es la sexta, aportada por Matías
+  // al resolver H-4: la ronda 3 se frenó antes que inventarla.
+  google_ads: { etapa_30: [0, 1, 2, 3], etapa_60: [4], etapa_90: [5] },
   // R3 · activar (campañas por publicación y catálogo; selección según
   // rotación y margen) → optimizar (ACOS y presupuesto) → escalar
   // (participación de mercado y lectura contra la liquidación).

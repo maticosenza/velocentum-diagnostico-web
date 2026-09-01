@@ -60,6 +60,7 @@ const TEXTOS: Readonly<Record<LineaId, TextoServicioV2>> = {
       "Investigación de palabras clave y negativas",
       "Feed de productos conectado a Merchant Center",
       "Optimización de pujas y presupuesto según resultados",
+      "Escala de las campañas y palabras clave con mejor rendimiento",
     ],
     exclusion: null,
   },

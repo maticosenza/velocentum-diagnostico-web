@@ -102,10 +102,10 @@ En "Hoja de ruta", antes de descargar, mirar tres cosas:
   Ads: Configuración inicial de cuenta, píxel y CAPI · …".
 - **Diseño web aparece completo en 1-30 y no vuelve a aparecer** (R1: la
   infraestructura va antes que la pauta).
-
-Google Ads no tiene renglón en 61-90 y eso es **deliberado**: su texto
-verbatim no tiene ninguna viñeta de escala y no se inventa una. Está
-registrado como H-4 en `docs/bv4-f2a-hallazgos-diferidos.md`.
+- Las tres líneas de pauta **escalan en 61-90**. En Google Ads el renglón es
+  "Escala de las campañas y palabras clave con mejor rendimiento": es la sexta
+  viñeta que aportaste al resolver H-4, y antes de tenerla la etapa quedaba
+  sin ese renglón a propósito.
 
 ## 5 · Repetir con Titan Web B1
 

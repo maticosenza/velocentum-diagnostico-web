@@ -7,12 +7,12 @@
  * una frase nueva en el plan, la suite lo frena; si el documento cambia,
  * también, y ahí la decisión vuelve a ser humana.
  *
- * Fija además las tres reglas confirmadas por Matías (R1, R2, R3) y el único
- * lugar donde el texto fuente no alcanza para cumplirlas: `google_ads` no
- * tiene viñeta de escala, y por eso no tiene renglón en 61-90 (H-4 de
- * `docs/bv4-f2a-hallazgos-diferidos.md`). Ese hueco es una decisión
- * registrada, no un olvido: la prueba lo fija para que no se tape inventando
- * una frase.
+ * Fija además las tres reglas confirmadas por Matías (R1, R2, R3), R3
+ * incluida **para las tres líneas de pauta**: la escala de Google Ads existe
+ * desde que Matías aportó la sexta viñeta al documento fuente, resolviendo
+ * H-4 (`docs/bv4-f2a-hallazgos-diferidos.md`). El camino importa: la ronda 3
+ * se frenó antes que inventar esa frase, y la prueba de acá abajo la exige
+ * viniendo del markdown, no del código.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -130,32 +130,34 @@ describe("ronda 3 · las tres reglas confirmadas", () => {
     }
   });
 
-  it("R3: la pauta progresa activar → optimizar, y escala donde el texto lo permite", () => {
+  it("R3: las tres líneas de pauta progresan activar → optimizar → escalar", () => {
     for (const id of PAUTA) {
-      expect(renglonDePlan(id, "etapa_30")).not.toBeNull();
-      expect(renglonDePlan(id, "etapa_60")).not.toBeNull();
+      for (const etapa of ETAPAS_ROADMAP_V2) {
+        expect(renglonDePlan(id, etapa)).not.toBeNull();
+      }
     }
-    expect(renglonDePlan("meta_ads", "etapa_90")).not.toBeNull();
-    expect(renglonDePlan("product_ads", "etapa_90")).not.toBeNull();
   });
 
-  it("H-4: google ads no tiene renglón de escala, porque el texto fuente no tiene la viñeta", () => {
-    // Decisión registrada, no olvido: R3 pide escalar y el texto verbatim de
-    // Google Ads no tiene ninguna viñeta de escala. Antes que inventar la
-    // frase, la etapa queda sin renglón para esta línea y el hueco se
-    // registra como hallazgo. La etapa 61-90 no queda vacía: la llenan las
-    // otras líneas seleccionadas y las restricciones.
-    expect(renglonDePlan("google_ads", "etapa_90")).toBeNull();
-    expect(VINETAS_DEL_DOCUMENTO.has("Optimización de pujas y presupuesto según resultados")).toBe(
-      true,
-    );
+  it("H-4 RESUELTO: la escala de google ads sale del documento, no del código", () => {
+    // La ronda 3 se frenó acá: R3 pedía escalar y el texto verbatim de Google
+    // Ads no tenía ninguna viñeta de escala. La frase la aportó Matías al
+    // documento fuente el 2026-09-01 —sexta viñeta— y recién entonces el
+    // reparto la tomó. La prueba exige las dos cosas a la vez: que el renglón
+    // exista y que su frase esté en el markdown.
+    const escala = "Escala de las campañas y palabras clave con mejor rendimiento";
+    expect(VINETAS_DEL_DOCUMENTO.has(escala)).toBe(true);
+    expect(entregablesDeEtapa("google_ads", "etapa_90")).toEqual([escala]);
+    expect(renglonDePlan("google_ads", "etapa_90")).toBe(`Google Ads: ${escala}`);
   });
 
   it("los únicos huecos del reparto son los declarados", () => {
+    // Los únicos huecos que quedan son de R1: diseño web y branding van
+    // completos en 1-30 y no reaparecen. Ninguna línea se queda sin renglón
+    // por falta de texto.
     const huecos: Record<EtapaRoadmapV2, LineaId[]> = {
       etapa_30: [],
       etapa_60: ["diseno_web", "branding"],
-      etapa_90: ["google_ads", "diseno_web", "branding"],
+      etapa_90: ["diseno_web", "branding"],
     };
     for (const etapa of ETAPAS_ROADMAP_V2) {
       expect(lineasSinRenglon(etapa).sort()).toEqual([...huecos[etapa]].sort());

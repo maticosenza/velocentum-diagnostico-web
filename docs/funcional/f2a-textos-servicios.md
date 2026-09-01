@@ -4,6 +4,11 @@ Fuente: §7 de `paso-1-panel-seleccion-comercial.md`, confirmados uno por uno
 por Matías el 2026-08-30. Van al PDF de propuesta como descripción + card de
 entregables. **Verbatim: no se reescriben, no se resumen, no se completan.**
 
+Agregado por Matías el 2026-09-01, al resolver H-4 de la ronda 3 de F2a: la
+sexta viñeta de Google Ads ("Escala de las campañas y palabras clave con mejor
+rendimiento"). Faltaba la frase de escala, y el reparto 30/60/90 no podía
+inventarla; ahora existe en la fuente y la etapa 61-90 la toma.
+
 ## Meta Ads
 *Generar demanda y captar clientes nuevos con campañas segmentadas hacia la tienda.*
 - Configuración inicial de cuenta, píxel y CAPI
@@ -19,6 +24,7 @@ entregables. **Verbatim: no se reescriben, no se resumen, no se completan.**
 - Investigación de palabras clave y negativas
 - Feed de productos conectado a Merchant Center
 - Optimización de pujas y presupuesto según resultados
+- Escala de las campañas y palabras clave con mejor rendimiento
 
 ## Product Ads
 *Ganar visibilidad dentro de Mercado Libre y mejorar el rendimiento de las publicaciones que ya venden.*
