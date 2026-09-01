@@ -20,7 +20,7 @@ import { exportarDocumentModelV2 } from "../../renderers/pdf-v2/exportacion";
 import { DocumentWebRendererV2 } from "../../renderers/web-v2/document-renderer";
 import { calcularDiagnostico } from "../../../lib/calculo-diagnostico";
 import { casoSnakeStore, configuracionRegresionFase2 } from "../../../lib/fixtures-casos";
-import { LINEAS_V2_IDS, type LineaId } from "../../../lib/catalogo-v2";
+import { LINEAS_V2_IDS, lineaV2, type LineaId } from "../../../lib/catalogo-v2";
 import type { EscaleraPaquetesConfirmada } from "../../../lib/paquetes";
 import { seleccionInicialV2 } from "../../../lib/precargas-v2";
 import {
@@ -30,6 +30,11 @@ import {
   type SobreComercialV2,
 } from "../../../lib/seleccion-comercial-v2";
 import { TEXTOS_SERVICIOS_V2, NOTA_AL_PIE_CONTENIDO } from "../../../lib/textos-servicios-v2";
+import {
+  ETAPAS_ROADMAP_V2,
+  entregablesDeEtapa,
+  renglonDePlan,
+} from "../../../lib/reparto-roadmap-v2";
 
 const FISCAL_OK: ConfiguracionFiscalV2 = { aplicaImpuesto: true, porcentaje: 21, confirmado: true };
 
@@ -531,7 +536,12 @@ describe("RONDA 2: el roadmap describe el paquete que el documento cotiza", () =
     expect(texto).not.toContain("Desarrollo y optimización web");
   });
 
-  it("una línea marcada a mano sin hallazgo detrás cae en la etapa 90, sin regla nueva", () => {
+  it("RONDA 3: una línea marcada a mano ya no cae entera en la etapa 90", () => {
+    // Hasta la ronda 2, una línea sin hallazgo detrás —influencer marketing,
+    // que por Q2 nunca se sugiere sola— caía entera en la etapa 90 con el
+    // nombre del servicio como única acción. Esa regla se escribió para el
+    // camino v1 y con la selección v2 mandaba a la etapa 90 casi todo. Ahora
+    // la línea reparte sus entregables entre las tres etapas.
     const conManual = seleccionCargada();
     const i = conManual.lineas.findIndex((l) => l.lineaId === "influencer_marketing");
     conManual.lineas[i] = {
@@ -539,10 +549,13 @@ describe("RONDA 2: el roadmap describe el paquete que el documento cotiza", () =
       seleccionada: true,
       precio: { modo: "unitario", cantidad: 2, precioUnitario: 50_000 },
     };
-    const items = roadmapDelModelo(modelo(sobre({ seleccion: conManual })));
-    const etapa90 = items!.find((e) => e.id === "etapa_90");
-    expect(etapa90).toBeDefined();
-    expect(etapa90!.acciones).toContain("Influencer marketing");
+    const items = roadmapDelModelo(modelo(sobre({ seleccion: conManual })))!;
+    for (const etapa of ETAPAS_ROADMAP_V2) {
+      const acciones = items.find((e) => e.id === etapa)!.acciones;
+      expect(acciones).toContain(renglonDePlan("influencer_marketing", etapa));
+      // Nunca el nombre pelado del servicio: el plan dice QUÉ se hace.
+      expect(acciones).not.toContain("Influencer marketing");
+    }
   });
 
   it("Q1: un hallazgo que justifica tres líneas no imprime tres veces el mismo renglón", () => {
@@ -598,5 +611,111 @@ describe("RONDA 2: el roadmap describe el paquete que el documento cotiza", () =
     const roadmapDe = (m: ReturnType<typeof buildPropuestaDocument>) =>
       m.sections.flatMap((s) => s.blocks).find((b) => b.type === "roadmap");
     expect(roadmapDe(conV2)).toEqual(roadmapDe(sinV2));
+  });
+});
+
+describe("RONDA 3: el plan reparte las líneas cotizadas entre las tres etapas", () => {
+  function planV2(seleccion: SeleccionComercialV2 = seleccionCargada()) {
+    const ctx = contexto(sobre({ seleccion }), ESCALERA_LEGADA);
+    return ctx.roadmapV2!;
+  }
+
+  it("EL DEFECTO CORREGIDO: existe la etapa 1-30 y ninguna etapa queda vacía", () => {
+    // Antes de la ronda 3, la selección cargada no producía etapa 1-30: toda
+    // línea sin hallazgo de prioridad alta detrás caía en la etapa 90.
+    const items = planV2();
+    expect(items.map((e) => e.id)).toEqual([...ETAPAS_ROADMAP_V2]);
+    for (const etapa of items) expect(etapa.acciones.length).toBeGreaterThan(0);
+  });
+
+  it("cada línea cotizada aparece con SUS entregables, no con el nombre pelado", () => {
+    const items = planV2();
+    for (const lineaId of ["meta_ads", "contenido_audiovisual", "diseno_web"] as const) {
+      for (const etapa of ETAPAS_ROADMAP_V2) {
+        const renglon = renglonDePlan(lineaId, etapa);
+        const acciones = items.find((e) => e.id === etapa)!.acciones;
+        if (renglon === null) expect(acciones.join(" ")).not.toContain(lineaV2(lineaId).nombre);
+        else expect(acciones).toContain(renglon);
+      }
+    }
+  });
+
+  it("R1: diseño web va completo en 1-30 y no reaparece en 31-60 ni en 61-90", () => {
+    const items = planV2();
+    const en = (id: string) => items.find((e) => e.id === id)!.acciones.join(" ");
+    for (const entregable of entregablesDeEtapa("diseno_web", "etapa_30")) {
+      expect(en("etapa_30")).toContain(entregable);
+    }
+    expect(en("etapa_60")).not.toContain("Diseño web");
+    expect(en("etapa_90")).not.toContain("Diseño web");
+  });
+
+  it("R2: las tres líneas de contenido aparecen en las tres etapas", () => {
+    const seleccion = seleccionCargada();
+    for (const id of ["contenido_estatico", "planificacion_contenido"] as const) {
+      const i = seleccion.lineas.findIndex((l) => l.lineaId === id);
+      seleccion.lineas[i] = {
+        ...seleccion.lineas[i]!,
+        seleccionada: true,
+        precio: { modo: "total", precioLinea: 50_000 },
+      } as (typeof seleccion.lineas)[number];
+    }
+    const items = planV2(seleccion);
+    for (const id of [
+      "contenido_audiovisual",
+      "contenido_estatico",
+      "planificacion_contenido",
+    ] as const) {
+      for (const etapa of ETAPAS_ROADMAP_V2) {
+        expect(items.find((e) => e.id === etapa)!.acciones).toContain(renglonDePlan(id, etapa));
+      }
+    }
+  });
+
+  it("los hallazgos SIGUEN alimentando el plan: la regla se suma, no los reemplaza", () => {
+    const ctx = contexto(sobre(), ESCALERA_LEGADA);
+    const titulos = new Set(ctx.hallazgos.map((h) => h.titulo));
+    const delPlan = ctx.roadmapV2!.flatMap((e) => e.acciones).filter((a) => titulos.has(a));
+    expect(delPlan.length).toBeGreaterThan(0);
+    // Y cada uno está en la etapa que le toca por prioridad, como siempre.
+    for (const etapa of ctx.roadmapV2!) {
+      for (const accion of etapa.acciones) {
+        const hallazgo = ctx.hallazgos.find((h) => h.titulo === accion);
+        if (!hallazgo) continue;
+        expect(etapa.id).toBe(hallazgo.prioridad === "alta" ? "etapa_30" : "etapa_60");
+      }
+    }
+  });
+
+  it("nada inventado: toda acción es un hallazgo, una restricción o un renglón verbatim", () => {
+    const ctx = contexto(sobre(), ESCALERA_LEGADA);
+    const permitidas = new Set<string>([
+      ...ctx.hallazgos.map((h) => h.titulo),
+      ...ctx.restricciones.map((r) => r.etiqueta),
+    ]);
+    for (const id of LINEAS_V2_IDS) {
+      for (const etapa of ETAPAS_ROADMAP_V2) {
+        const renglon = renglonDePlan(id as LineaId, etapa);
+        if (renglon !== null) permitidas.add(renglon);
+      }
+    }
+    for (const etapa of ctx.roadmapV2!) {
+      for (const accion of etapa.acciones) expect(permitidas.has(accion)).toBe(true);
+    }
+  });
+
+  it("el camino v1 conserva su regla vieja: el servicio pelado, en la etapa 90", () => {
+    // La escalera legada propone "Meta Ads" sin hallazgo de prioridad alta
+    // detrás. En v1 eso sigue cayendo entero en la etapa 90 con el nombre del
+    // servicio como acción: la ronda 3 no tocó ese camino.
+    const ctx = contexto(null, ESCALERA_LEGADA);
+    const etapa90 = ctx.roadmap.find((e) => e.id === "etapa_90");
+    expect(etapa90!.acciones).toContain("Meta Ads");
+  });
+
+  it("y `context.roadmap` sigue siendo idéntico con y sin selección v2", () => {
+    expect(contexto(sobre(), ESCALERA_LEGADA).roadmap).toEqual(
+      contexto(null, ESCALERA_LEGADA).roadmap,
+    );
   });
 });

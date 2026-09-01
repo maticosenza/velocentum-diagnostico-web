@@ -20,6 +20,11 @@ import {
   NOTA_AL_PIE_CONTENIDO,
   textoDeLinea,
 } from "../../lib/textos-servicios-v2";
+import {
+  ETAPAS_ROADMAP_V2,
+  renglonDePlan,
+  type EtapaRoadmapV2,
+} from "../../lib/reparto-roadmap-v2";
 import { escenariosDocumento } from "./escenarios-90d";
 import { construirResumenComercial } from "./resumen-comercial";
 import {
@@ -439,15 +444,27 @@ export function roadmapDocumento(
 }
 
 /**
+ * Un servicio que alimenta el plan. `lineaId` viaja **sólo por el camino
+ * v2**: es lo que habilita el reparto de la ronda 3. Sin él —camino v1— esta
+ * función se comporta exactamente como antes.
+ */
+type ServicioParaRoadmap = { servicio: string; hallazgoIds: string[]; lineaId?: LineaId };
+
+/**
  * El reparto 30/60/90 propiamente dicho, compartido por las dos fuentes de
  * selección comercial. Se extrajo de `roadmapDocumento` en la ronda 2 de
  * corrección de F2a **sin cambiar una sola regla**: mismo criterio de
  * prioridad, mismo orden, mismos textos literales. Las pruebas de DHB-3 que
  * ya existían lo fijan.
+ *
+ * La ronda 3 le suma una sola cosa, y sólo para el camino v2: las líneas de
+ * la selección comercial reparten sus entregables verbatim entre las tres
+ * etapas (`reparto-roadmap-v2.ts`). Los hallazgos siguen alimentando el plan
+ * igual que antes — la regla se suma, no los reemplaza.
  */
 function repartoRoadmap(
   hallazgos: HallazgoDocumento[],
-  serviciosSeleccionados: { servicio: string; hallazgoIds: string[] }[],
+  serviciosSeleccionados: ServicioParaRoadmap[],
   restricciones: RestriccionDocumento[],
   /**
    * Sólo el camino v2 (ronda 2 de corrección de F2a). Con el catálogo v2, un
@@ -483,10 +500,36 @@ function repartoRoadmap(
 
   const acciones90: { accion: string; origen: string }[] = [];
   for (const servicio of serviciosSeleccionados) {
+    // RONDA 3: la regla vieja —línea seleccionada sin hallazgo de prioridad
+    // alta, entera a la etapa 90— rige sólo el camino v1, donde las líneas
+    // del plan salen del mapeo de hallazgos. En el v2 salen de la selección
+    // comercial, y ahí manda el reparto de abajo.
+    if (servicio.lineaId) continue;
     if (!serviciosConHallazgoAlta.has(servicio.servicio)) {
       acciones90.push({ accion: servicio.servicio, origen: `el servicio "${servicio.servicio}"` });
     }
   }
+
+  // RONDA 3, sólo camino v2: cada línea cotizada reparte SUS entregables
+  // verbatim entre las tres etapas (R1 infraestructura antes que pauta, R2
+  // contenido en los tres meses, R3 pauta activar → optimizar → escalar). Va
+  // después de los hallazgos y antes de las restricciones: el plan abre con
+  // lo que el diagnóstico exige, sigue con lo que el documento cotiza y
+  // cierra con lo que falta validar.
+  const porEtapa: Record<EtapaRoadmapV2, { accion: string; origen: string }[]> = {
+    etapa_30: acciones30,
+    etapa_60: acciones60,
+    etapa_90: acciones90,
+  };
+  for (const servicio of serviciosSeleccionados) {
+    if (!servicio.lineaId) continue;
+    for (const etapa of ETAPAS_ROADMAP_V2) {
+      const renglon = renglonDePlan(servicio.lineaId, etapa);
+      if (renglon === null) continue;
+      porEtapa[etapa].push({ accion: renglon, origen: `el servicio "${servicio.servicio}"` });
+    }
+  }
+
   for (const restriccion of restricciones) {
     acciones90.push({
       accion: restriccion.etiqueta,
@@ -790,13 +833,16 @@ export function ofertaComercialDesdeSobreV2(
  * pisarlo habría cambiado la salida v1 y violado la condición de F-2. Sólo
  * `roadmapSectionV2` prefiere este cuando existe.
  *
- * Usa el mismo reparto que la escalera legada, sin una regla nueva. La
- * justificación de cada línea se deriva de los mismos hallazgos y de la
+ * La justificación de cada línea se deriva de los mismos hallazgos y de la
  * misma tabla de traducción v1→v2 que alimenta las sugerencias del panel: no
- * se inventa ninguna. Una línea marcada a mano sin hallazgo detrás
- * —influencer marketing, por ejemplo— cae en la etapa 90 por la regla que ya
- * existía ("servicio seleccionado sin hallazgo de prioridad alta"), no por
- * una excepción nueva.
+ * se inventa ninguna.
+ *
+ * **Ronda 3 (2026-09-01):** cada línea seleccionada reparte además sus
+ * entregables verbatim entre las tres etapas, según la tabla confirmada de
+ * `reparto-roadmap-v2.ts`. Antes, toda línea sin hallazgo de prioridad alta
+ * detrás caía entera en la etapa 90 —regla escrita para el camino v1, donde
+ * las líneas del plan salen del mapeo de hallazgos—, y con la v2 eso dejaba
+ * a Titan Web con una sola etapa y a Snake Store sin la etapa 1-30.
  *
  * `null` cuando no hay selección v2, y `[]` cuando la hay pero sin ninguna
  * línea marcada: sin selección no se propone un plan, igual que la escalera
@@ -817,9 +863,10 @@ export function roadmapDesdeSeleccionV2(args: {
     lineasSugeridasV2(args.hallazgosMapeados).map((s) => [s.lineaId, s.hallazgoIds]),
   );
 
-  const serviciosSeleccionados = seleccionadas.map((linea) => ({
+  const serviciosSeleccionados: ServicioParaRoadmap[] = seleccionadas.map((linea) => ({
     servicio: lineaV2(linea.lineaId).nombre,
     hallazgoIds: [...(justificacion.get(linea.lineaId) ?? [])],
+    lineaId: linea.lineaId,
   }));
 
   return repartoRoadmap(args.hallazgos, serviciosSeleccionados, args.restricciones, true);

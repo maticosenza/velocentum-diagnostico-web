@@ -27,7 +27,9 @@
  */
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { join } from "node:path";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
 import { buildPropuestaDocumentV2 } from "../../templates/velocentum-v2";
 import { buildDocumentContext } from "../../domain";
@@ -40,13 +42,33 @@ import {
   configuracionRegresionFase2,
 } from "../../../lib/fixtures-casos";
 import type { DatosDiagnostico } from "../../../lib/diagnostico-form";
-import { LINEAS_V2_IDS, type LineaId } from "../../../lib/catalogo-v2";
+import { LINEAS_V2_IDS, lineaV2, type LineaId } from "../../../lib/catalogo-v2";
 import {
   lineaVaciaV2,
   type LineaSeleccionadaV2,
   type SeleccionComercialV2,
   type SobreComercialV2,
 } from "../../../lib/seleccion-comercial-v2";
+import { ETAPAS_ROADMAP_V2, renglonDePlan } from "../../../lib/reparto-roadmap-v2";
+
+const require = createRequire(import.meta.url);
+GlobalWorkerOptions.workerSrc = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
+
+/**
+ * El texto real de un PDF, página por página. El contenido viaja comprimido,
+ * así que buscar sobre el buffer crudo no encuentra nada: hace falta
+ * `getTextContent()`. Mismo extractor que usa la QA de la Fase 14.
+ */
+async function textoDelPdf(buffer: Uint8Array): Promise<string> {
+  const pdf = await getDocument({ data: buffer }).promise;
+  let texto = "";
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const contenido = await pdf.getPage(p).then((pagina) => pagina.getTextContent());
+    texto += contenido.items.map((i) => ("str" in i ? (i as { str: string }).str : "")).join(" ");
+    texto += " ";
+  }
+  return texto.replace(/\s+/g, " ").trim();
+}
 
 const PERFILES: PdfProfileV2[] = ["pantalla", "impresion"];
 
@@ -152,17 +174,19 @@ const CASOS: { id: string; datos: DatosDiagnostico; sobre: SobreComercialV2 }[] 
   { id: "titan-web-b1", datos: casoTitanWebB1, sobre: SOBRE_TITAN },
 ];
 
-function modeloDe(datos: DatosDiagnostico, sobre: SobreComercialV2) {
+function contextoDe(datos: DatosDiagnostico, sobre: SobreComercialV2) {
   const resultado = calcularDiagnostico(datos, configuracionRegresionFase2);
-  return buildPropuestaDocumentV2(
-    buildDocumentContext({
-      datos,
-      resultado,
-      diagnostico: { id: `f2a-${datos.nombre_tienda}`, version: 1, fecha: "2026-08-31" },
-      tipoDocumento: "propuesta",
-      sobreComercialV2: sobre,
-    }),
-  );
+  return buildDocumentContext({
+    datos,
+    resultado,
+    diagnostico: { id: `f2a-${datos.nombre_tienda}`, version: 1, fecha: "2026-08-31" },
+    tipoDocumento: "propuesta",
+    sobreComercialV2: sobre,
+  });
+}
+
+function modeloDe(datos: DatosDiagnostico, sobre: SobreComercialV2) {
+  return buildPropuestaDocumentV2(contextoDe(datos, sobre));
 }
 
 const sha256 = (buffer: Uint8Array) => createHash("sha256").update(buffer).digest("hex");
@@ -227,5 +251,78 @@ describe("BV4 F2a — propuestas del gate, dos casos × dos perfiles", () => {
   it("las dos monedas quedan cubiertas por los artefactos", () => {
     expect(SOBRE_SNAKE.moneda).toBe("ARS");
     expect(SOBRE_TITAN.moneda).toBe("USD");
+  });
+});
+
+/**
+ * BV4 · F2a ronda 3 — el gate del reparto 30/60/90, verificado sobre el
+ * TEXTO EXTRAÍDO de los cuatro PDFs, no sobre el modelo. Los cuatro puntos
+ * son los del prompt de la ronda: existe la etapa 1-30 en los dos clientes;
+ * ninguna etapa con servicios seleccionados queda vacía; el plan nombra QUÉ
+ * SE HACE y no sólo el servicio; y ninguna frase del plan está fuera de
+ * `docs/funcional/f2a-textos-servicios.md`.
+ *
+ * El defecto que corrigió la ronda: en los PDFs del commit anterior, Titan
+ * Web tenía una sola etapa —"DÍAS 61-90"— y Snake Store no tenía la 1-30.
+ */
+describe("RONDA 3 · el plan 30/60/90 impreso en los cuatro PDFs", () => {
+  const ETIQUETAS = ["Días 1 a 30", "Días 31 a 60", "Días 61 a 90"] as const;
+
+  it("los dos clientes tienen las tres etapas, y ninguna vacía", async () => {
+    for (const caso of CASOS) {
+      const ctx = contextoDe(caso.datos, caso.sobre);
+      const plan = ctx.roadmapV2!;
+      expect(plan.map((e) => e.etiqueta)).toEqual([...ETIQUETAS]);
+      for (const etapa of plan) expect(etapa.acciones.length).toBeGreaterThan(0);
+
+      for (const perfil of PERFILES) {
+        const { buffer } = await exportarDocumentModelV2(modeloDe(caso.datos, caso.sobre), perfil);
+        const texto = await textoDelPdf(buffer);
+        for (const etiqueta of ETIQUETAS) expect(texto).toContain(etiqueta);
+        // Y cada acción del plan, impresa tal cual.
+        for (const etapa of plan) {
+          for (const accion of etapa.acciones) expect(texto).toContain(accion);
+        }
+      }
+    }
+  }, 600_000);
+
+  it("el plan nombra QUÉ SE HACE, y nada de lo que dice está fuera del texto fuente", () => {
+    for (const caso of CASOS) {
+      const ctx = contextoDe(caso.datos, caso.sobre);
+      const seleccionadas = caso.sobre.seleccion.lineas.filter((l) => l.seleccionada);
+
+      const permitidas = new Set<string>([
+        ...ctx.hallazgos.map((h) => h.titulo),
+        ...ctx.restricciones.map((r) => r.etiqueta),
+      ]);
+      for (const linea of seleccionadas) {
+        for (const etapa of ETAPAS_ROADMAP_V2) {
+          const renglon = renglonDePlan(linea.lineaId, etapa);
+          if (renglon !== null) permitidas.add(renglon);
+        }
+      }
+
+      for (const etapa of ctx.roadmapV2!) {
+        for (const accion of etapa.acciones) {
+          expect(permitidas.has(accion)).toBe(true);
+          // Ninguna acción es el nombre pelado de una línea cotizada.
+          expect(seleccionadas.some((l) => lineaV2(l.lineaId).nombre === accion)).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("cada línea cotizada aparece en las etapas que le tocan, con sus entregables", () => {
+    for (const caso of CASOS) {
+      const plan = contextoDe(caso.datos, caso.sobre).roadmapV2!;
+      for (const linea of caso.sobre.seleccion.lineas.filter((l) => l.seleccionada)) {
+        for (const etapa of ETAPAS_ROADMAP_V2) {
+          const renglon = renglonDePlan(linea.lineaId, etapa);
+          if (renglon === null) continue;
+          expect(plan.find((e) => e.id === etapa)!.acciones).toContain(renglon);
+        }
+      }
+    }
   });
 });

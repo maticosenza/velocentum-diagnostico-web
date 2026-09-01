@@ -95,7 +95,13 @@ vinculantes no se modifican sin decisión humana.
 - Prompt de cada fase guardado verbatim en `docs/prompts/` antes de empezar.
 - Artefactos de auditoría generados desde worktree limpio del commit candidato.
 - Máximo dos rondas de corrección por fase; handoff final ≤10 líneas (commit,
-  pruebas, qué cambió, qué se encontró, qué queda).
+  pruebas, qué cambió, qué se encontró, qué queda). **Excepción registrada
+  (F2a, 2026-09-01):** Matías autorizó una tercera ronda con motivo explícito
+  —el reparto 30/60/90 es lógica de negocio, no presentación, y diferirlo a
+  F3b habría dejado que una fase de arte rediseñara el render sobre un
+  reparto incorrecto—. La excepción es de esa ronda y ese motivo; el límite
+  sigue siendo dos. Prompt verbatim en
+  `docs/prompts/bv4-f2a-ronda3-roadmap-prompt.md`.
 - El auditor (este chat) no ejecuta `git push` ni escribe en el repo; Claude
   Code ejecuta, este chat audita contra artefactos crudos.
 - Toda contradicción real entre branding, contrato funcional, accesibilidad,

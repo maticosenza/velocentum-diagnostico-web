@@ -46,6 +46,10 @@ const ARTEFACTOS = [
   "docs/bv4-f2a-handoff.md",
   "docs/bv4-contrato-maestro.md",
   "docs/prompts/bv4-f2a-panel-comercial-prompt.md",
+  // Ronda 3: el prompt verbatim de la excepción autorizada y lo que la ronda
+  // encontró sin corregir, con ID.
+  "docs/prompts/bv4-f2a-ronda3-roadmap-prompt.md",
+  "docs/bv4-f2a-hallazgos-diferidos.md",
   "docs/funcional/f2a-panel-comercial-reconciliado.md",
   "docs/funcional/f2a-textos-servicios.md",
 ];
@@ -70,17 +74,21 @@ try {
   if (faltan.length) throw new Error(`Faltan artefactos en el commit ${corto}:\n  ${faltan.join("\n  ")}`);
 
   const copiarDir = (origen, nombre) => {
-    if (!origen || !existsSync(origen)) return 0;
+    if (!origen || !existsSync(origen)) return [];
     const destino = join(raizZip, nombre);
     mkdirSync(destino, { recursive: true });
-    let n = 0;
+    const copiados = [];
     for (const f of readdirSync(origen)) {
-      if (statSync(join(origen, f)).isFile()) { cpSync(join(origen, f), join(destino, f)); n++; }
+      if (statSync(join(origen, f)).isFile()) { cpSync(join(origen, f), join(destino, f)); copiados.push(f); }
     }
-    return n;
+    return copiados.sort();
   };
-  const nLogs = copiarDir(dirLogs, "qa");
-  const nPdfs = copiarDir(dirPdfs, "pdfs");
+  // El LEEME nombra los archivos que EFECTIVAMENTE entraron, uno por uno.
+  // Antes describía de memoria lo que solía haber ("candidato y base"), y en
+  // la ronda 3 esa descripción ya no era cierta: el ZIP no lleva logs del
+  // base. Un índice que no coincide con el contenido es peor que no tenerlo.
+  const logs = copiarDir(dirLogs, "qa");
+  const pdfs = copiarDir(dirPdfs, "pdfs");
 
   writeFileSync(join(raizZip, "LEEME.txt"), [
     "BV4 · F2a Panel de selección comercial — artefactos para auditoría externa",
@@ -95,8 +103,10 @@ try {
     "",
     "Contenido:",
     ...ARTEFACTOS.map((a) => `  ${a}`),
-    `  qa/*    — ${nLogs} archivos: npm test, typecheck, build (candidato y base)`,
-    `  pdfs/*  — ${nPdfs} archivos: propuestas de los dos casos × dos perfiles, con sha256.txt`,
+    `  qa/     — ${logs.length} archivos, salida cruda de las corridas:`,
+    ...logs.map((f) => `    qa/${f}`),
+    `  pdfs/   — ${pdfs.length} archivos, propuestas de los dos casos × dos perfiles:`,
+    ...pdfs.map((f) => `    pdfs/${f}`),
     "",
     "El gate en navegador lo ejecuta Matías; los pasos exactos están en",
     "docs/bv4-f2a-gate-navegador.md.",

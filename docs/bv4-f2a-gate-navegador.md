@@ -91,6 +91,22 @@ activar crystal para nada de esto.
 18. Descargar con **"Descargar PDF" → "Pantalla (16:9)"**.
 19. Descargar con **"Descargar PDF" → "Impresión (A4)"**.
 
+### 4.1 · El plan 30/60/90 (ronda 3)
+
+En "Hoja de ruta", antes de descargar, mirar tres cosas:
+
+- Están las **tres etapas**: "Días 1 a 30", "Días 31 a 60" y "Días 61 a 90".
+  Antes de la ronda 3, Titan Web tenía sólo la de 61-90 y Snake Store no tenía
+  la de 1-30.
+- Cada renglón dice **qué se hace**, no sólo el nombre del servicio: "Meta
+  Ads: Configuración inicial de cuenta, píxel y CAPI · …".
+- **Diseño web aparece completo en 1-30 y no vuelve a aparecer** (R1: la
+  infraestructura va antes que la pauta).
+
+Google Ads no tiene renglón en 61-90 y eso es **deliberado**: su texto
+verbatim no tiene ninguna viñeta de escala y no se inventa una. Está
+registrado como H-4 en `docs/bv4-f2a-hallazgos-diferidos.md`.
+
 ## 5 · Repetir con Titan Web B1
 
 20. Repetir los pasos 1 a 19 con `casoTitanWebB1`, esta vez en **nivel
