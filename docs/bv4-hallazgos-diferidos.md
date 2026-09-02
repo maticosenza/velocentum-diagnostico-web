@@ -8,9 +8,11 @@ de una ronda: en la auditoría del handoff y en el preflight del gate del
 Estado al 2026-09-02, después de la auditoría del preflight (veredicto
 APROBADO CON CORRECCIONES) y de la migración de la política de UPDATE:
 **H-7 corregido**, **H-8 mitigado parcialmente**, **H-9 parcialmente
-encaminado**; **H-6**, **H-10**, **H-11** y **H-12** quedan abiertos,
+encaminado**; **H-6**, **H-10**, **H-11**, **H-12** y **H-13** quedan abiertos,
 ordenados, con dueño humano. H-11 y H-12 entraron por esa auditoría: los dos
-estaban reportados en el handoff del preflight, pero sin ID.
+estaban reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la
+propia migración: aplicarla a mano deja la puerta abierta a que el cambio
+vuelva duplicado desde Lovable.
 
 ---
 
@@ -96,7 +98,8 @@ preflight, ninguna escritura del usuario podía pasar y el gate quedaba
 bloqueado. La migración del 2026-09-02 (autorizada como excepción, alcance
 exclusivo a esa política) la crea **con chequeo de propiedad**,
 `auth.uid() = creado_por` en `USING` y en `WITH CHECK`, el mismo criterio que
-ya usaba el INSERT de esa tabla. Deliberadamente **no** copia el `USING true`
+ya usaba el INSERT de esa tabla. **Aplicada y verificada** ese mismo día en el
+panel Cloud: `diagnostico` pasó de 3 a 4 políticas. Deliberadamente **no** copia el `USING true`
 de las otras: habría sido sumarle un cuarto punto a H-9 mientras se lo empieza
 a cerrar.
 
@@ -162,3 +165,38 @@ alguien lo importa, revienta en runtime, no en compilación.
 edit it directly": borrarlo es una decisión de Matías, y probablemente haya que
 tomarla del lado de Lovable, no del repo. Queda registrado para que la próxima
 persona que lo vea sepa que la orfandad es deliberada y conocida.
+
+## H-13 · La migración de la política puede volver duplicada desde Lovable · abierto
+
+Está verificado que **Lovable escribe migraciones al repo**: las cinco
+anteriores las commiteó `gpt-engineer-app[bot]` junto con `types.ts`
+regenerado. No está verificado el sentido contrario —que Lovable *no* lea
+migraciones que le lleguen por el repo—; simplemente no se lo observó. La
+dirección del flujo es una **inferencia**, no un hecho probado, y H-13 vale
+igual bajo cualquiera de las dos lecturas.
+
+El riesgo concreto: la política de UPDATE de `diagnostico` se aplicó a mano
+desde el panel Cloud el 2026-09-02. Si Lovable genera **su propia** migración
+por ese mismo cambio y la commitea a `main`, van a existir **dos archivos
+creando la misma política**, y en **dos ramas ya divergidas**: la escrita a
+mano vive en `feat/bv4-rebranding`, que no se pushea, y la generada viviría en
+`main`.
+
+El `DROP POLICY IF EXISTS` con el que empieza el SQL escrito a mano **mitiga el
+fallo de ejecución, no la duplicación**. Son dos problemas distintos:
+
+- *Ejecución*: reconstruir la base desde cero corriendo las dos migraciones en
+  orden de timestamp no rompe, porque la segunda dropea antes de crear. Eso el
+  `DROP` sí lo resuelve.
+- *Duplicación*: el historial de migraciones queda con dos registros para un
+  solo cambio, en dos ramas que hay que reconciliar a mano. Eso el `DROP` no lo
+  toca. Y si la versión generada por Lovable tuviera **otro contenido** —por
+  ejemplo `USING true`, que es lo que hacen las otras políticas de la base—,
+  en una reconstrucción gana **la de timestamp más alto**, en silencio.
+
+Qué hacer cuando `main` y la rama converjan: mirar
+`supabase/migrations/` buscando una segunda migración que toque
+`"Usuarios autenticados pueden editar diagnosticos"`, comparar su contenido
+contra el archivo escrito a mano, y quedarse con una sola. La decisión de cuál
+es de Matías. **No se resuelve por adelantado**: hoy no existe todavía esa
+segunda migración, y adivinar su forma sería inventar.
