@@ -119,8 +119,9 @@ export const generarPropuesta = createServerFn({ method: "POST" })
     // escritura sólo reemplaza la propuesta redactada por el modelo, nunca
     // la columna entera (misma columna JSON, dos claves independientes).
     const aGuardar = combinarContenidoGuardado({ propuestaCruda: propuesta, paquetesCrudo });
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error: errorGuardar } = await supabaseAdmin
+    // La escritura va por el mismo cliente autenticado que la lectura: sujeto
+    // a RLS, no service role. Ver `docs/bv4-f2a-gate-navegador.md`, 0-bis.
+    const { error: errorGuardar } = await supabase
       .from("diagnostico")
       .update({ propuesta: aGuardar as unknown as never })
       .eq("id", data.diagnosticoId);

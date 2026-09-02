@@ -10,6 +10,50 @@ pasos, en orden, y qué hay que comparar al final.
 
 ---
 
+## 0-bis · Prerrequisitos de entorno
+
+Esta sección se agregó **después** de que el gate frenara en el primer intento
+(registrado como **H-7** en `docs/bv4-hallazgos-diferidos.md`: el documento se
+escribió sin declarar un solo prerrequisito). El `.env` local no se toca ni se
+commitea, y **ningún valor de variable se escribe acá ni en ningún artefacto**:
+sólo los nombres.
+
+**Hacen falta, y ya están en el `.env` local:**
+
+| Variable | Quién la lee | Para qué |
+| --- | --- | --- |
+| `SUPABASE_URL` | `auth-middleware.ts:36` | servidor: arma el cliente autenticado |
+| `SUPABASE_PUBLISHABLE_KEY` | `auth-middleware.ts:37` | servidor: ídem, más el `apikey` de cada request |
+| `VITE_SUPABASE_URL` | `client.ts:33` | navegador: cliente del usuario |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `client.ts:34` | navegador: ídem |
+
+Sin las dos primeras, el middleware corta con
+`Missing Supabase environment variable(s): …` **antes** de tocar la base, y se
+cae todo el paso 5 en adelante.
+
+**No hace falta, y no la va a haber:**
+
+- `SUPABASE_SERVICE_ROLE_KEY`. El backend es Lovable Cloud, que por diseño no
+  expone service role keys. Hasta el preflight del 2026-09-02, los tres server
+  functions comerciales escribían con `supabaseAdmin` (service role, saltea
+  RLS) y por eso el flujo era **irreproducible en local**: la lectura pasaba y
+  la escritura tiraba excepción. Hoy leen y escriben con el cliente autenticado
+  del middleware, sujeto a RLS, y la clave dejó de ser necesaria.
+
+**Consecuencia a tener presente durante el gate:** ahora las políticas de RLS
+aplican de verdad. Si un guardado falla, el primer sospechoso es la política de
+la tabla `diagnostico`, no el código. Está registrado como **H-9** y se trata
+aparte.
+
+**Ni una ni otra cosa:**
+
+- `ANTHROPIC_API_KEY` sólo la lee `propuesta.functions.ts:45`, para la propuesta
+  redactada por el modelo. La cadena documental lee de `diagnostico.propuesta`
+  únicamente la clave `paquetes` (`from-diagnostico.ts:123`), así que los cuatro
+  PDFs del gate no dependen de ella.
+- `SUPABASE_PROJECT_ID` y `VITE_SUPABASE_PROJECT_ID` están en el `.env` y no las
+  lee ningún archivo de `src/`.
+
 ## 0 · Antes de empezar: conmutar el motor a v2 (F-3, registrado)
 
 El bloque `commercial-selection` y los dos perfiles de PDF viven en la cadena
