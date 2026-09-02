@@ -38,3 +38,4 @@ dist-ssr
 # BV4: ZIP de artefactos para auditoría externa, generado desde un worktree
 # limpio del commit candidato (scripts/empaquetar-artefactos.mjs).
 artefactos/
+.env
