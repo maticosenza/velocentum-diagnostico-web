@@ -26,7 +26,7 @@
  * cantidad, ambos grupos de recurrencia, impuesto y ruta B2C/B2B).
  */
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
@@ -50,6 +50,9 @@ import {
   type SobreComercialV2,
 } from "../../../lib/seleccion-comercial-v2";
 import { ETAPAS_ROADMAP_V2, renglonDePlan } from "../../../lib/reparto-roadmap-v2";
+import { formatMoneda } from "../../../lib/format";
+import { textoMonedaV2 } from "../../semantica-v2/estado";
+import type { ValorV2 } from "../../templates/velocentum-v2/types";
 
 const require = createRequire(import.meta.url);
 GlobalWorkerOptions.workerSrc = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
@@ -325,4 +328,233 @@ describe("RONDA 3 · el plan 30/60/90 impreso en los cuatro PDFs", () => {
       }
     }
   });
+});
+
+/**
+ * BV4 · gate de F2a — COMPARACIÓN POR CONTENIDO, no por bytes.
+ *
+ * El criterio viejo ("SHA-256 del descargado = SHA-256 del pipeline") era
+ * inejecutable: la fecha del diagnóstico la genera la app al vuelo
+ * (`diagnosticos.nuevo.tsx:279`, `new Date()`), no hay campo editable, y viaja
+ * al PDF impreso (`velocentum-v2/shared.ts:55` → `document.tsx:1908` y `1942`).
+ * Distinta fecha, distintos bytes, siempre. Está registrado como **H-14**.
+ *
+ * Lo que sí se puede comparar es el CONTENIDO. Estos puntos de control salen
+ * del modelo —la fuente de verdad— y se buscan en el texto extraído de los dos
+ * PDFs, el del pipeline y el descargado del navegador. Cubren los ocho puntos
+ * del prompt del 2026-09-03: las líneas del catálogo con sus cantidades, los
+ * precios unitarios y totales por línea, los dos grupos de totales con
+ * subtotal/impuesto/total, la ausencia de un total que los sume, la moneda y
+ * el porcentaje fiscal, los agregados incluidos, el plan 30/60/90 con sus tres
+ * etiquetas y cada acción, y el nivel elegido.
+ *
+ * Queda FUERA de la comparación, a propósito y declarado en
+ * `docs/bv4-f2a-gate-navegador.md`:
+ *
+ *  - **la fecha del diagnóstico**, por lo de arriba. Es variable por diseño y
+ *    correcta de los dos lados: el pipeline usa una fija para ser
+ *    reproducible, la app la del día porque es la de un diagnóstico real.
+ *
+ * El determinismo del render se sigue probando aparte, por doble corrida, en
+ * el primer `describe` de este archivo. No lo reemplaza esto.
+ */
+
+/** Directorio con los PDFs bajados del navegador. Sin él no hay gate que correr. */
+const DIR_NAVEGADOR = process.env["VELOCENTUM_F2A_NAVEGADOR_DIR"];
+
+/** Un dato que el PDF tiene que imprimir, con el nombre que se lee si falta. */
+type PuntoDeControl = { etiqueta: string; texto: string };
+
+/**
+ * `formatMoneda` usa `Intl`, que separa el símbolo con un espacio duro; el
+ * extractor colapsa todo espacio en uno normal. Sin normalizar la aguja igual
+ * que el pajar, `includes` no encuentra un solo importe.
+ */
+const normalizar = (texto: string) => texto.replace(/\s+/g, " ").trim();
+
+function bloqueComercialDe(caso: (typeof CASOS)[number]) {
+  const bloque = modeloDe(caso.datos, caso.sobre)
+    .sections.flatMap((s) => s.blocks)
+    .find((b) => b.type === "commercial-selection");
+  if (!bloque || bloque.type !== "commercial-selection")
+    throw new Error("falta el bloque comercial");
+  return bloque;
+}
+
+function puntosDeControl(caso: (typeof CASOS)[number]): PuntoDeControl[] {
+  const bloque = bloqueComercialDe(caso);
+  const money = (valor: ValorV2) => textoMonedaV2(valor, bloque.moneda);
+  const puntos: PuntoDeControl[] = [];
+
+  // 8 · el nivel elegido.
+  puntos.push({ etiqueta: "nivel", texto: `Nivel: ${bloque.nivel}` });
+
+  // 1 y 2 · las líneas seleccionadas, con cantidad, unitario, recurrencia y
+  // total. El renglón se arma igual que en `document.tsx:1731-1738`; el total
+  // va pegado atrás porque el extractor une los dos `Text` con un espacio.
+  for (const linea of bloque.lineas) {
+    puntos.push({
+      etiqueta: `línea ${linea.lineaId} · nombre`,
+      texto: `${linea.nombre}${linea.ruta ? ` — ${linea.ruta}` : ""}`,
+    });
+    puntos.push({
+      etiqueta: `línea ${linea.lineaId} · cantidad, unitario, recurrencia y total`,
+      texto:
+        (linea.cantidad === null ? "" : `${linea.cantidad} ${linea.unidad} · `) +
+        (linea.precioUnitario ? `unitario ${money(linea.precioUnitario)} · ` : "") +
+        `${linea.recurrencia === "mensual" ? "mensual" : "pago único"} ${money(linea.totalLinea)}`,
+    });
+  }
+
+  // 6 · los agregados incluidos, con su alcance.
+  for (const agregado of bloque.agregados) {
+    puntos.push({
+      etiqueta: `agregado ${agregado.nombre}`,
+      texto: agregado.alcance ? `${agregado.nombre} — ${agregado.alcance}` : agregado.nombre,
+    });
+  }
+
+  // 3 y 5 · los dos grupos, cada uno con subtotal neto, impuesto y total. El
+  // importe lleva la moneda adentro y el impuesto el porcentaje fiscal.
+  for (const grupo of bloque.grupos) {
+    puntos.push({
+      etiqueta: `grupo ${grupo.id} · título y subtotal neto`,
+      texto: `${grupo.titulo} Subtotal neto: ${money(grupo.subtotalNeto)}`,
+    });
+    if (grupo.impuesto) {
+      puntos.push({
+        etiqueta: `grupo ${grupo.id} · impuesto (porcentaje fiscal) y total`,
+        texto: `Impuesto (${grupo.porcentajeImpuesto} %): ${money(grupo.impuesto)} ${money(grupo.total)}`,
+      });
+    }
+  }
+
+  // 7 · el plan 30/60/90: las tres etiquetas y cada acción impresa tal cual.
+  for (const etapa of contextoDe(caso.datos, caso.sobre).roadmapV2!) {
+    puntos.push({ etiqueta: `plan ${etapa.id} · etiqueta`, texto: etapa.etiqueta });
+    for (const accion of etapa.acciones) {
+      puntos.push({ etiqueta: `plan ${etapa.id} · acción`, texto: accion });
+    }
+  }
+
+  return puntos.map((p) => ({ ...p, texto: normalizar(p.texto) }));
+}
+
+/** Los puntos que el texto NO trae, nombrados para que el fallo se lea. */
+function faltantes(texto: string, puntos: PuntoDeControl[]): string[] {
+  return puntos.filter((p) => !texto.includes(p.texto)).map((p) => `${p.etiqueta} → «${p.texto}»`);
+}
+
+/**
+ * 4 · los totales que no pueden existir: los que sumen los dos grupos, tanto
+ * el neto como el que lleva impuesto (Q10, `document.tsx:1754-1755`).
+ */
+function totalesCombinadosProhibidos(caso: (typeof CASOS)[number]): string[] {
+  const bloque = bloqueComercialDe(caso);
+  const sumar = (valores: ValorV2[]) =>
+    valores.reduce((acc, v) => acc + (v.estado === "disponible" ? v.valor : NaN), 0);
+  const neto = sumar(bloque.grupos.map((g) => g.subtotalNeto));
+  const conImpuesto = sumar(bloque.grupos.map((g) => g.total));
+  if (!Number.isFinite(neto) || !Number.isFinite(conImpuesto)) {
+    throw new Error("algún grupo no tiene total disponible: el caso no sirve de gate");
+  }
+  return [neto, conImpuesto].map((v) => normalizar(formatMoneda(v, bloque.moneda)));
+}
+
+/** 1 · las líneas del catálogo que esta propuesta NO cotiza, y no deben salir. */
+function nombresNoSeleccionados(caso: (typeof CASOS)[number]): string[] {
+  const cotizadas = new Set(bloqueComercialDe(caso).lineas.map((l) => l.lineaId));
+  return LINEAS_V2_IDS.filter((id) => !cotizadas.has(id)).map(
+    (id) => lineaV2(id as LineaId).nombre,
+  );
+}
+
+const MATRIZ = CASOS.flatMap((caso) => PERFILES.map((perfil) => ({ id: caso.id, perfil, caso })));
+
+async function textoDelPipeline(caso: (typeof CASOS)[number], perfil: PdfProfileV2) {
+  const { buffer } = await exportarDocumentModelV2(modeloDe(caso.datos, caso.sobre), perfil);
+  return textoDelPdf(buffer);
+}
+
+/**
+ * El PDF que bajó Matías. Se espera con el mismo nombre que escribe el
+ * pipeline —`<caso>-propuesta-<perfil>.pdf`— porque la descarga del navegador
+ * no distingue perfil en el nombre (`export-client.ts:35-39`) y hay que
+ * renombrar las dos igual.
+ */
+async function textoDelNavegador(caso: (typeof CASOS)[number], perfil: PdfProfileV2) {
+  const archivo = join(DIR_NAVEGADOR!, `${caso.id}-propuesta-${perfil}.pdf`);
+  return textoDelPdf(new Uint8Array(await readFile(archivo)));
+}
+
+describe("GATE F2a · los puntos de control del contenido, sobre el PDF del pipeline", () => {
+  it.each(MATRIZ)(
+    "$id · $perfil — imprime todo lo que el modelo prescribe",
+    async ({ caso, perfil }) => {
+      const texto = await textoDelPipeline(caso, perfil);
+      expect(faltantes(texto, puntosDeControl(caso))).toEqual([]);
+    },
+    600_000,
+  );
+
+  it.each(MATRIZ)(
+    "$id · $perfil — no imprime un total que sume los dos grupos",
+    async ({ caso, perfil }) => {
+      const texto = await textoDelPipeline(caso, perfil);
+      for (const prohibido of totalesCombinadosProhibidos(caso))
+        expect(texto).not.toContain(prohibido);
+    },
+    600_000,
+  );
+
+  it.each(MATRIZ)(
+    "$id · $perfil — no imprime ninguna línea que no esté cotizada",
+    async ({ caso, perfil }) => {
+      const texto = await textoDelPipeline(caso, perfil);
+      for (const nombre of nombresNoSeleccionados(caso)) expect(texto).not.toContain(nombre);
+    },
+    600_000,
+  );
+
+  it("la fecha es el único campo variable que llega al PDF, y por eso es la única exclusión", () => {
+    for (const caso of CASOS) {
+      const modelo = modeloDe(caso.datos, caso.sobre);
+      // `diagnosticId` y `diagnosticVersion` viajan en `source` pero no se
+      // imprimen: `document.tsx` sólo lee `clientName`, `documentKind`,
+      // `diagnosticDate` y `version`, y esa última es el sufijo del
+      // `templateId` (`shared.ts:43`), no la versión del diagnóstico.
+      expect(modelo.metadata.date).toBe("2026-08-31");
+      expect(modelo.source.diagnosticVersion).toBe(1);
+      expect(modelo.templateId.endsWith("v2")).toBe(true);
+    }
+  });
+});
+
+/**
+ * El gate propiamente dicho. Sin `VELOCENTUM_F2A_NAVEGADOR_DIR` no hay nada
+ * que comparar y vitest lo saltea a la vista, en vez de pasar en falso.
+ */
+describe.skipIf(!DIR_NAVEGADOR)("GATE F2a · el PDF del navegador contra el del pipeline", () => {
+  it.each(MATRIZ)(
+    "$id · $perfil — dice exactamente lo mismo",
+    async ({ caso, perfil }) => {
+      const [navegador, pipeline] = await Promise.all([
+        textoDelNavegador(caso, perfil),
+        textoDelPipeline(caso, perfil),
+      ]);
+      const puntos = puntosDeControl(caso);
+
+      // El pipeline primero: si falla acá, el problema no es lo descargado.
+      expect(faltantes(pipeline, puntos)).toEqual([]);
+      expect(faltantes(navegador, puntos)).toEqual([]);
+
+      for (const prohibido of totalesCombinadosProhibidos(caso)) {
+        expect(navegador).not.toContain(prohibido);
+      }
+      for (const nombre of nombresNoSeleccionados(caso)) {
+        expect(navegador).not.toContain(nombre);
+      }
+    },
+    600_000,
+  );
 });

@@ -5,14 +5,16 @@ específico de la ronda 3 de F2a. Este archivo recoge lo que apareció **fuera**
 de una ronda: en la auditoría del handoff y en el preflight del gate del
 2026-09-02. Cada uno con ID, para que nadie lo redescubra ni lo tape.
 
-Estado al 2026-09-02, después de la auditoría del preflight (veredicto
-APROBADO CON CORRECCIONES) y de la migración de la política de UPDATE:
-**H-7 corregido**, **H-8 mitigado parcialmente**, **H-9 parcialmente
-encaminado**; **H-6**, **H-10**, **H-11**, **H-12** y **H-13** quedan abiertos,
-ordenados, con dueño humano. H-11 y H-12 entraron por esa auditoría: los dos
-estaban reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la
-propia migración: aplicarla a mano deja la puerta abierta a que el cambio
-vuelva duplicado desde Lovable.
+Estado al 2026-09-03, después de la auditoría del preflight (veredicto
+APROBADO CON CORRECCIONES), de la migración de la política de UPDATE y del
+primer intento de correr el gate de F2a de punta a punta: **H-7 y H-14
+corregidos**, **H-8 mitigado parcialmente**, **H-9 parcialmente encaminado**;
+**H-6**, **H-10**, **H-11**, **H-12**, **H-13**, **H-15** y **H-16** quedan
+abiertos, ordenados, con dueño humano. H-11 y H-12 entraron por esa auditoría:
+los dos estaban reportados en el handoff del preflight, pero sin ID. H-13 lo
+abrió la propia migración: aplicarla a mano deja la puerta abierta a que el
+cambio vuelva duplicado desde Lovable. H-14, H-15 y H-16 los abrió el intento
+de correr el gate: el documento no se había ejecutado nunca.
 
 ---
 
@@ -200,3 +202,106 @@ Qué hacer cuando `main` y la rama converjan: mirar
 contra el archivo escrito a mano, y quedarse con una sola. La decisión de cuál
 es de Matías. **No se resuelve por adelantado**: hoy no existe todavía esa
 segunda migración, y adivinar su forma sería inventar.
+
+## H-14 · El gate de F2a pedía una igualdad imposible y cargaba a ciegas · corregido
+
+`docs/bv4-f2a-gate-navegador.md` pedía, hasta el 2026-09-03, que el SHA-256 del
+PDF descargado del navegador fuera igual al del pipeline. **No podía pasar
+nunca.** La app genera la fecha del diagnóstico al vuelo
+(`diagnosticos.nuevo.tsx:279`, `new Date().toISOString().slice(0, 10)`), no hay
+campo editable para fijarla, y esa fecha se imprime en la portada
+(`velocentum-v2/shared.ts:55` → `document.tsx:1908` y `1942`). El fixture del
+pipeline la tiene clavada en `2026-08-31`. Distinta fecha, distintos bytes,
+distinto hash, aunque todo lo demás se cargue perfecto.
+
+Además el documento no declaraba **ningún valor**: el paso 9 decía "cargar
+precios en las líneas marcadas" sin decir cuáles, y la sección "Si no
+coinciden" recién nombraba `SOBRE_SNAKE` / `SOBRE_TITAN` como fuente de verdad
+*después* de que el gate fallara. Quien lo corría cargaba a ciegas y se
+enteraba al final.
+
+**Es el mismo patrón de H-7**: el documento se escribió sin ejecutarlo de punta
+a punta. H-7 fue la variante de entorno (ningún prerrequisito declarado), H-14
+es la variante de criterio y de datos. Las dos veces el defecto no estaba en lo
+probado sino en la prueba, y las dos veces apareció recién al intentar correrlo.
+
+Corregido el 2026-09-03: el criterio pasa a ser **comparación por contenido
+extraído del PDF**, los valores de los dos casos quedan declarados en el
+documento, y la única exclusión —la fecha— queda escrita y justificada. La
+comparación vive en `generar-propuestas-f2a.test.ts` y reusa el extractor
+`textoDelPdf` que ya usaba el gate del plan 30/60/90. La prueba de determinismo
+por doble corrida, que era lo que el hash intentaba probar, se queda como está.
+
+## H-15 · En modo B el formulario sólo captura el margen del producto principal · abierto
+
+`diagnosticos.nuevo.tsx:891` decide qué campos se muestran por producto:
+
+```ts
+const conMontos = modo === "A" || n === 1;
+```
+
+En **modo B** ("Solo conversado"), del producto 2 en adelante sólo se pide
+nombre y porcentaje de facturación. El motor, en cambio, acepta costo y precio
+de los cinco (`calculo-diagnostico.ts:360-405`, `productosCargados`; los del producto 2 en
+`:372-373`), y los
+fixtures de regresión traen los tres: `casoSnakeStore` da
+`margenes_producto = [0.6589, 0.6012, 0.6459, null, null]`.
+
+No es una regresión de esta rama: `conMontos` entró en `645ed85`
+(2026-08-17, `gpt-engineer-app[bot]`), el commit que partió el formulario en
+modos A y B. La limitación nació con el modo B.
+
+Ojo con el atajo de verificación: `git log -S "producto_2_costo" --
+src/routes/ src/components/` vuelve vacío, pero **eso no prueba nada**. El
+formulario arma los nombres de campo por interpolación
+(`` `producto_${n}_costo` ``, `:888`), así que el literal nunca estuvo en esos
+archivos; la misma búsqueda con `producto_1_costo` también vuelve vacía, y ese
+campo sí existe y siempre existió. Comprobado el 2026-09-03.
+
+Alcance real, medido y no supuesto: se renderizaron los cuatro PDFs con los
+costos y precios de los productos 2 y 3 vaciados y se comparó el texto extraído
+contra el de los fixtures completos. **La única diferencia es un número**: la
+cobertura del catálogo, de `60%` a `30%` en Snake Store y a `20%` en Titan Web.
+Los márgenes por producto no se imprimen en ningún lado. La consecuencia
+grande está aguas arriba, no en el PDF: en una llamada sin acceso al panel sólo
+se puede calcular el margen del producto principal, y la cobertura del catálogo
+cae con él.
+
+No es un problema del gate —que se corre en modo A, donde el caso entra
+completo— y por eso **no se excluye nada** de la comparación por esto. **Va a
+F2b**: hay que decidir si modo B tiene que poder capturar costo y precio de más
+de un producto, o si la limitación es correcta y lo que falta es que el
+documento lo diga.
+
+## H-16 · Dos observaciones de interfaz del 2026-09-03 · una confirmada, otra no reproducida
+
+Las dos salieron de intentar correr el gate a mano. Las dos van a F2b. Se
+registran con lo que dice el código, no sólo con lo observado.
+
+**a) No se puede volver a la pantalla de selección de modo A/B. Confirmado.**
+`diagnosticos.nuevo.tsx:310` muestra esa pantalla sólo con `modo === null`, y
+el único lugar que vuelve a tocar el modo después de elegirlo es `cambiarModo`
+(`:211-221`), que cambia de A a B y de B a A pero **nunca vuelve a `null`**.
+Elegido el modo, la pantalla de selección no se vuelve a ver en esa sesión de
+formulario.
+
+**b) Los toggles de canal minorista/mayorista no vuelven a "sin responder".
+No se pudo reproducir en el código.** `CampoSiNo` sí vuelve a `null`:
+`campos-formulario.tsx:252` hace `onChange(value === o.v ? null : o.v)`, o sea
+que clickear el botón que ya está marcado lo limpia. Y los dos handlers de
+estos campos pasan el valor tal cual (`:542` y `:548`), sin coercionar — a
+diferencia de `¿Vende en Mercado Libre?` (`:536`), que hace `v === true` y por
+eso ese sí queda atrapado en `false`. Queda anotado como **observación no
+reproducida**: puede ser un problema de affordance —con `null` ningún botón
+está resaltado, así que no se ve que el click "apagó" la respuesta— y no de
+comportamiento. **No se cambió nada por esto.** Antes de tocar código hay que
+reproducirlo con pasos exactos.
+
+Lo que sí quedó confirmado del punto b es la **asimetría semántica**, y es la
+que importa: el texto de ayuda de minorista dice que sin responder se asume que
+sí, y para minorista es cierto (`mayorista.ts:58`: `!== false`, así que `null` y
+`true` son lo mismo). Para mayorista **no** hay texto que lo diga y el
+comportamiento es el opuesto (`mayorista.ts:59` y `:66`: `=== true`, así que
+`null` equivale a **No**). Dos campos vecinos, misma apariencia, `null` con
+significado opuesto. Está declarado en `docs/bv4-f2a-gate-navegador.md`,
+sección 1, para que quien corra el gate no lo adivine.
