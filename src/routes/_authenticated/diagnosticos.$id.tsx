@@ -188,6 +188,9 @@ function DetalleDiagnostico() {
   const margenBloqueado = contradiccion?.bloquea === true;
   const total = margenBloqueado ? 0 : (data.oportunidad_total ?? 0);
   const conservador = Math.round(total * 0.6);
+  // `oportunidad_total` sólo suma fugas con monto finito: si alguna quedó sin
+  // calcular por datos faltantes, un total en 0 no es un cero real.
+  const fugasSinCalcular = fugas.filter((f) => f.calculable === false);
 
   const acciones = (
     <div className="flex items-center gap-3">
@@ -244,6 +247,7 @@ function DetalleDiagnostico() {
         <NumeroPrincipal
           medicionRota={medicionRota}
           margenBloqueado={margenBloqueado}
+          fugasSinCalcular={fugasSinCalcular}
           total={total}
           conservador={conservador}
         />
@@ -538,11 +542,13 @@ function AvisoContradiccion({
 function NumeroPrincipal({
   medicionRota,
   margenBloqueado,
+  fugasSinCalcular,
   total,
   conservador,
 }: {
   medicionRota: boolean;
   margenBloqueado: boolean;
+  fugasSinCalcular: Fuga[];
   total: number;
   conservador: number;
 }) {
@@ -575,6 +581,41 @@ function NumeroPrincipal({
               es demasiado grande. Con esa diferencia, cualquier monto que pongamos acá sería falso.
               Arreglar la medición es el primer problema a resolver: sin eso, no hay diagnóstico
               económico confiable.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Un total en 0 con fugas sin calcular no es "la oportunidad es cero", es
+  // "todavía no sabemos cuánto es". Mismo criterio de estado que la cadena v2
+  // (`evidencia_faltante` en src/documents/semantica-v2/estado.ts): no se
+  // publica número, se nombra el dato que falta. Si el 0 sale de fugas todas
+  // calculables, es un cero real y se muestra como tal.
+  if (total === 0 && fugasSinCalcular.length > 0) {
+    const faltantes = [...new Set(fugasSinCalcular.flatMap((f) => f.faltantes))].map(
+      (c) => ETIQUETAS_CAMPO[c] ?? c,
+    );
+    const lista =
+      faltantes.length > 1
+        ? `${faltantes.slice(0, -1).join(", ")} y ${faltantes[faltantes.length - 1]}`
+        : faltantes[0];
+
+    return (
+      <section className="rounded-lg border border-border bg-card px-10 py-14">
+        <div className="flex items-start gap-3">
+          <EstadoPunto estado="sin_datos" className="mt-3 size-3.5" />
+          <div>
+            <h2 className="text-[30px] font-medium leading-9 text-foreground">
+              Todavía no podemos valorizar la oportunidad
+            </h2>
+            <p className="mt-4 max-w-2xl text-[16px] leading-7 text-muted-foreground">
+              {lista
+                ? `Falta ${lista} para realizar este cálculo.`
+                : "Faltan datos para realizar este cálculo."}{" "}
+              Sin eso, las fugas detectadas no se pueden valorizar: el rango está pendiente, no en
+              cero. El resto del diagnóstico sigue en pie.
             </p>
           </div>
         </div>
