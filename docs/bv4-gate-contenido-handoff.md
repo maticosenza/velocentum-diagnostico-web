@@ -30,3 +30,16 @@
    todo; +13 nuevas y 4 que sólo corren con los PDFs del navegador).
    `tsc --noEmit` limpio, `vite build` limpio con los mismos cinco warnings.
 10. Commit candidato **local**, sin push. Falta que Matías corra el gate.
+
+## 2026-09-05 · Resultado de la corrida
+
+1. Gate corrido de punta a punta en el navegador, por primera vez completo:
+   `Tests  24 passed (24)`, **cero salteadas**.
+2. Los cuatro casos de "el PDF del navegador contra el del pipeline" —Snake
+   Store y Titan Web B1, pantalla e impresión— en verde.
+3. Snake Store en **TRACCIÓN / ARS**; Titan Web B1 en **ESCALA / USD**; los dos
+   con impuesto 21 % confirmado y cargados en **modo A**.
+4. Motor revertido a `"v1"` (`motor-activo.ts:19`), `git status --short` vacío.
+5. Enmiendas del día: **C-1** (contrato maestro, gate de salida de F2a),
+   **C-2** (el `cp` que faltaba en la sección 6, registrado como **H-17**) y
+   **C-3** (si el gate falla, el motor queda en `"v2"` hasta leer el resultado).

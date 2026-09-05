@@ -335,18 +335,33 @@ extractor de texto (`textoDelPdf`, sobre `pdfjs-dist`) que ya usaba el gate del
 plan 30/60/90.
 
 ```bash
-# 1. Los cuatro descargados, con estos nombres exactos:
+# 1. Llevar los cuatro descargados al directorio que lee el gate. Ya están
+#    renombrados por los pasos 17, 18 y 21; acá sólo se copian.
 mkdir -p /tmp/f2a-navegador
-ls /tmp/f2a-navegador
-#   snake-store-propuesta-pantalla.pdf
-#   snake-store-propuesta-impresion.pdf
-#   titan-web-b1-propuesta-pantalla.pdf
-#   titan-web-b1-propuesta-impresion.pdf
+cp ~/Downloads/snake-store-propuesta-pantalla.pdf \
+   ~/Downloads/snake-store-propuesta-impresion.pdf \
+   ~/Downloads/titan-web-b1-propuesta-pantalla.pdf \
+   ~/Downloads/titan-web-b1-propuesta-impresion.pdf \
+   /tmp/f2a-navegador/
 
-# 2. El gate
+# 2. Verificar que están los cuatro, con estos nombres exactos:
+ls /tmp/f2a-navegador
+#   snake-store-propuesta-impresion.pdf
+#   snake-store-propuesta-pantalla.pdf
+#   titan-web-b1-propuesta-impresion.pdf
+#   titan-web-b1-propuesta-pantalla.pdf
+
+# 3. El gate
 VELOCENTUM_F2A_NAVEGADOR_DIR=/tmp/f2a-navegador \
   npx vitest run src/documents/renderers/pdf-v2/generar-propuestas-f2a.test.ts
 ```
+
+**`cp` y no `mv`, a propósito:** si el gate falla y hay que repetirlo, los
+originales siguen en `~/Downloads`. Si el navegador guarda las descargas en
+otra carpeta, cambiá el origen del `cp`; lo que no cambia son los cuatro
+nombres de destino, que son los que el gate busca. Hasta el 2026-09-05 este
+bloque no tenía el `cp`: creaba el directorio vacío, lo listaba vacío y el gate
+moría con `ENOENT`. Registrado como **H-17**.
 
 **Qué se espera:** `Tests  24 passed (24)`. Sin la variable de entorno los
 cuatro casos del gate se saltean a la vista —`20 passed | 4 skipped`— en vez de
@@ -438,3 +453,11 @@ git checkout -- src/documents/motor-activo.ts
 git status --short          # vacío
 grep -n 'MOTOR_DOCUMENTAL_ACTIVO' src/documents/motor-activo.ts   # "v1"
 ```
+
+**Primero se lee el resultado del gate, después se revierte.** El "revertir
+SIEMPRE al terminar" del bloque de la sección 0 vale cuando el gate **pasa**.
+Si el gate **falla**, el motor se deja en `"v2"` hasta haber leído la salida y
+haber podido reproducir el fallo en el navegador: revertir antes obliga a
+rehacer el flujo entero de las secciones 1 a 4 para volver a mirar lo mismo.
+Revertido queda igual, después, y el commit candidato nunca lleva `"v2"` (CE-1
+del contrato maestro).

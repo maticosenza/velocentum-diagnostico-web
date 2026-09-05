@@ -5,16 +5,17 @@ específico de la ronda 3 de F2a. Este archivo recoge lo que apareció **fuera**
 de una ronda: en la auditoría del handoff y en el preflight del gate del
 2026-09-02. Cada uno con ID, para que nadie lo redescubra ni lo tape.
 
-Estado al 2026-09-03, después de la auditoría del preflight (veredicto
-APROBADO CON CORRECCIONES), de la migración de la política de UPDATE y del
-primer intento de correr el gate de F2a de punta a punta: **H-7 y H-14
-corregidos**, **H-8 mitigado parcialmente**, **H-9 parcialmente encaminado**;
-**H-6**, **H-10**, **H-11**, **H-12**, **H-13**, **H-15** y **H-16** quedan
-abiertos, ordenados, con dueño humano. H-11 y H-12 entraron por esa auditoría:
-los dos estaban reportados en el handoff del preflight, pero sin ID. H-13 lo
-abrió la propia migración: aplicarla a mano deja la puerta abierta a que el
-cambio vuelva duplicado desde Lovable. H-14, H-15 y H-16 los abrió el intento
-de correr el gate: el documento no se había ejecutado nunca.
+Estado al 2026-09-05, después de la auditoría del preflight (veredicto
+APROBADO CON CORRECCIONES), de la migración de la política de UPDATE y de las
+dos corridas del gate de F2a: **H-7, H-14 y H-17 corregidos**, **H-8 mitigado
+parcialmente**, **H-9 parcialmente encaminado**; **H-6**, **H-10**, **H-11**,
+**H-12**, **H-13**, **H-15** y **H-16** quedan abiertos, ordenados, con dueño
+humano. H-11 y H-12 entraron por esa auditoría: los dos estaban reportados en
+el handoff del preflight, pero sin ID. H-13 lo abrió la propia migración:
+aplicarla a mano deja la puerta abierta a que el cambio vuelva duplicado desde
+Lovable. H-14, H-15 y H-16 los abrió el primer intento de correr el gate
+(2026-09-03): el documento no se había ejecutado nunca. H-17 lo abrió la
+primera corrida completa (2026-09-05), que sí llegó hasta el final.
 
 ---
 
@@ -305,3 +306,24 @@ comportamiento es el opuesto (`mayorista.ts:59` y `:66`: `=== true`, así que
 `null` equivale a **No**). Dos campos vecinos, misma apariencia, `null` con
 significado opuesto. Está declarado en `docs/bv4-f2a-gate-navegador.md`,
 sección 1, para que quien corra el gate no lo adivine.
+
+## H-17 · El bloque de comandos del gate creaba un directorio vacío · CORREGIDO 2026-09-05
+
+La sección 6 de `docs/bv4-f2a-gate-navegador.md` tenía `mkdir -p
+/tmp/f2a-navegador`, un `ls` de ese directorio y los cuatro nombres esperados
+como comentario, pero **no tenía el paso que llevaba los archivos ahí**. Quien
+lo corriera al pie de la letra creaba el directorio vacío, lo listaba vacío —
+sin que el `ls` fallara— y recién moría después, en la corrida del gate, con un
+`ENOENT` sobre el primer PDF. Los cuatro descargados estaban todo el tiempo en
+`~/Downloads`, ya renombrados por los pasos 17, 18 y 21.
+
+**Es el mismo patrón de H-7 y de H-14**: el documento se escribió sin
+ejecutarlo de punta a punta. H-7 fue la variante de entorno, H-14 la de criterio
+y de datos, H-17 la de comandos — un bloque de bash que se lee bien y no hace lo
+que dice hacer. Las tres veces el defecto estuvo en la prueba, no en lo probado,
+y las tres veces apareció recién al intentar correrla. La corrida del 2026-09-05
+es la primera que llegó hasta el final, y por eso pudo encontrarlo.
+
+Corregido con un `cp` explícito desde `~/Downloads` con los cuatro nombres
+completos, dejando el `ls` después como verificación. `cp` y no `mv`: si el gate
+falla y hay que repetirlo, los originales tienen que seguir donde estaban.
