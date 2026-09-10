@@ -2,20 +2,28 @@
 
 Hermano de `docs/bv4-f2a-hallazgos-diferidos.md`, que cubre H-1 a H-5 y es
 específico de la ronda 3 de F2a. Este archivo recoge lo que apareció **fuera**
-de una ronda: en la auditoría del handoff y en el preflight del gate del
-2026-09-02. Cada uno con ID, para que nadie lo redescubra ni lo tape.
+de una ronda, sea cual sea su origen: la auditoría del handoff y el preflight
+del gate del 2026-09-02, las corridas del gate, y la auditoría del formulario
+de carga del 2026-09-10. Cada uno con ID, para que nadie lo redescubra ni lo
+tape.
 
-Estado al 2026-09-05, después de la auditoría del preflight (veredicto
-APROBADO CON CORRECCIONES), de la migración de la política de UPDATE y de las
-dos corridas del gate de F2a: **H-7, H-14 y H-17 corregidos**, **H-8 mitigado
-parcialmente**, **H-9 parcialmente encaminado**; **H-6**, **H-10**, **H-11**,
-**H-12**, **H-13**, **H-15** y **H-16** quedan abiertos, ordenados, con dueño
-humano. H-11 y H-12 entraron por esa auditoría: los dos estaban reportados en
-el handoff del preflight, pero sin ID. H-13 lo abrió la propia migración:
-aplicarla a mano deja la puerta abierta a que el cambio vuelva duplicado desde
-Lovable. H-14, H-15 y H-16 los abrió el primer intento de correr el gate
-(2026-09-03): el documento no se había ejecutado nunca. H-17 lo abrió la
-primera corrida completa (2026-09-05), que sí llegó hasta el final.
+Estado al 2026-09-10, después de la auditoría del preflight (veredicto
+APROBADO CON CORRECCIONES), de la migración de la política de UPDATE, de las
+dos corridas del gate de F2a y de la auditoría del formulario de carga del
+2026-09-10: **H-7, H-14 y H-17 corregidos**, **H-8 mitigado parcialmente**,
+**H-9 parcialmente encaminado**; **H-6**, **H-10**, **H-11**, **H-12**,
+**H-13**, **H-15**, **H-16** y **H-18 a H-27** quedan abiertos, ordenados, con
+dueño humano. H-11 y H-12 entraron por esa auditoría: los dos estaban
+reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la propia
+migración: aplicarla a mano deja la puerta abierta a que el cambio vuelva
+duplicado desde Lovable. H-14, H-15 y H-16 los abrió el primer intento de
+correr el gate (2026-09-03): el documento no se había ejecutado nunca. H-17 lo
+abrió la primera corrida completa (2026-09-05), que sí llegó hasta el final.
+H-18 a H-27 los abrió la auditoría del formulario de carga del 2026-09-10
+(`diagnosticos.nuevo.tsx`, `campos-formulario.tsx`, `bloque-canales.tsx`,
+`diagnostico-form.ts`, cruzados contra lo que el motor consume): son del
+formulario, no del motor, que ya estaba auditado. Ninguno está corregido.
+Los diez están ordenados por impacto en una llamada real.
 
 ---
 
@@ -327,3 +335,234 @@ es la primera que llegó hasta el final, y por eso pudo encontrarlo.
 Corregido con un `cp` explícito desde `~/Downloads` con los cuatro nombres
 completos, dejando el `ls` después como verificación. `cp` y no `mv`: si el gate
 falla y hay que repetirlo, los originales tienen que seguir donde estaban.
+
+## H-18 · Cambiar de modo borra datos sin confirmación y la pantalla promete lo contrario · abierto
+
+Dispara con un clic en "cambiar" del encabezado del formulario
+(`diagnosticos.nuevo.tsx:384`), que llama a `cambiarModo` directo, sin
+confirmación.
+
+`diagnosticos.nuevo.tsx:211-221` pisa con el valor inicial todo lo listado en
+`CAMPOS_EXCLUSIVOS` del modo anterior (`diagnostico-form.ts:668-682`). De A a
+B se pierden `facturacion_pixel`, `capi_estado`, `conjuntos_activos`,
+`presupuesto_diario`, `visitas_mensuales` y los cinco `csv_*`
+(`csv_gasto_total`, `csv_frecuencia_promedio`, `csv_ctr_global`,
+`csv_conjuntos_bajo_gasto`, `csv_dias_periodo`). De B a A se pierden
+`tiene_analytics`, `numeros_meta_coinciden`, `gasto_diario` y
+`cantidad_campanas`. Volver al modo original no los restaura: `cambiarModo`
+sólo escribe `DATOS_INICIALES[campo]`.
+
+La pantalla de elección de modo dice "Podés cambiarlo después sin perder lo
+cargado" (`diagnosticos.nuevo.tsx:315`).
+
+Consecuencia: una importación entera del CSV de Meta (`CargaCsvMeta`,
+`diagnosticos.nuevo.tsx:970-986`) desaparece con un clic, y el motor recalcula
+sin bloque Cuenta ni delta de medición.
+
+## H-19 · En modo B el bloque Web nunca genera funnel, aunque la pantalla lo muestre completo · abierto
+
+Visitas mensuales sólo se pide en modo A (`diagnosticos.nuevo.tsx:1021`,
+`{modo === "A" && <CampoNumero label="Visitas mensuales" .../>}`). La
+completitud de Web en modo B se calcula sin visitas
+(`diagnostico-form.ts:645`: `["agregados_carrito", "checkouts_iniciados",
+"carritos_abandonados"]`), así que el bloque llega a 3/3 y tilde verde.
+
+`funnel.ts:201-205`: con `visitas === null` el estado es `sin_datos` y la
+función retorna antes de usar agregados o checkouts. `funnel.ts:408`: en
+`sin_datos`, `tramosFunnel` devuelve `[]`. `calculo-diagnostico.ts:957-959`:
+la conversión de tienda (`crTienda`) queda `null` sin visitas.
+`calculo-diagnostico.ts:1167-1172`: el estado del bloque web queda
+`sin_datos`.
+
+Los tres campos que B sí pide sólo sirven para la validación de coherencia en
+vivo (`funnel.ts:186-199`, cadena visitas ≥ carrito ≥ checkout ≥ compras
+sobre las etapas presentes). Ninguna oportunidad de navegación, carrito ni
+checkout existe en modo B.
+
+Se combina con H-18: un diagnóstico que empezó en A, cargó visitas y pasó a B
+las pierde (`visitas_mensuales` está en `CAMPOS_EXCLUSIVOS.A`,
+`diagnostico-form.ts:674`).
+
+## H-20 · En modo B el bloque Cuenta pide dos campos y no produce nada · abierto
+
+Modo B pide gasto diario y cantidad de campañas
+(`diagnosticos.nuevo.tsx:1002-1016`). `cantidad_campanas` no lo lee ningún
+módulo: grep de `\bcantidad_campanas\b` en `src` fuera de tests, fixtures y el
+propio formulario devuelve cero lectores.
+
+El estado del bloque Cuenta exige `conjuntos_activos > 0`
+(`calculo-diagnostico.ts:1153-1163`) y la fuga por sobrefragmentación lo pide
+como faltante (`calculo-diagnostico.ts:1261`, `faltantes(datos,
+["conjuntos_activos"])`). Modo B nunca pide conjuntos activos (sólo aparece en
+el bloque de modo A, `diagnosticos.nuevo.tsx:988-992`), y al pasar de A a B se
+borran (H-18).
+
+`gasto_diario` entra como respaldo de `presupuesto_diario`
+(`calculo-diagnostico.ts:1000-1004`) y de ahí sólo llega a
+`inversion_actual_mensual` (`calculo-diagnostico.ts:1012` y `:1131`); todo lo
+demás que usa `presupuestoDiario` (`:1008-1009`, `:1154-1160`, `:1262`)
+necesita además los conjuntos.
+
+Consecuencia: en modo B, Cuenta es siempre `sin_datos` y la sobrefragmentación
+queda retenida con un faltante que el formulario no ofrece cargar.
+
+## H-21 · Ocultar la pestaña Mercado Libre no apaga sus datos en el motor · abierto
+
+`diagnosticos.nuevo.tsx:171-177` (`bloquesVisibles`) sólo filtra la
+visibilidad del bloque `mercado_libre` según `vende_mercado_libre`. El único
+efecto asociado (`:179-182`) cambia de pestaña; ningún efecto ni handler limpia
+campos `ml_*` al pasar el toggle a "No".
+
+`vende_mercado_libre` tiene cero lecturas en `calculo-diagnostico.ts` y en
+`canales.ts`. Los campos de la pestaña oculta sí se leen:
+`ml_inversion_product_ads` en `calculo-diagnostico.ts:562`
+(`inversionProductAds`), `ml_ventas_product_ads` en `:813` y `:985`,
+`ml_pct_facturacion` como respaldo del porcentaje del canal en
+`canales.ts:548` (`pctCanal`), que a su vez decide `estadoCanal`
+(`canales.ts:552-555`), `coberturaCanales` (`:565-568`) y `canalPrincipal`
+(`:589-595`). La inversión publicitaria total suma Product Ads sin condición
+(`calculo-diagnostico.ts:578-583`).
+
+Sólo la propuesta respeta el toggle: `propuesta.ts:438` (clips) y `:483`
+(Product Ads) chequean `vende_mercado_libre`.
+
+Consecuencia: con "No" en "¿Vende en Mercado Libre?", MER, inversión total,
+cobertura de canales y canal principal siguen contando lo que se cargó antes
+de ocultar la pestaña.
+
+## H-22 · El porcentaje de Mercado Libre se pide por dos caminos que pueden desacordar · abierto
+
+Pestaña Mercado Libre: `ml_pct_facturacion`, `CampoPorcentaje` sin `maximo`
+(`diagnosticos.nuevo.tsx:1190-1194`). Pestaña Canales: `canal_ml_pct`,
+`CampoPorcentaje` con `maximo={100}` (`bloque-canales.tsx:94-100`).
+
+`canales.ts:545-549` (`pctCanal`): gana `canal_ml_pct`; `ml_pct_facturacion`
+es respaldo sólo cuando el primero es `null`. Pero `bloque-canales.tsx:96`
+muestra únicamente `datos[c.pct]` (`canal_ml_pct`), mientras que el pie de
+cobertura y el texto "declarado / no aplica / sin datos"
+(`bloque-canales.tsx:163-192`, vía `coberturaCanales`, `canalPrincipal` y
+`estadoCanal`) usan `pctCanal`.
+
+Consecuencia con 30 en la pestaña ML y el campo de Canales vacío: Canales
+muestra el campo vacío y abajo "Mercado Libre: declarado", cobertura 30%.
+Consecuencia con 150 en la pestaña ML (sin tope): `canalesSuperan100`
+(`canales.ts:575-577`) es verdadero, `faltantesMargen` retiene el margen
+(`calculo-diagnostico.ts:541-543`) y el aviso rojo "Los porcentajes suman más
+de 100" aparece en Canales (`bloque-canales.tsx:179-183`), donde el campo
+causante no está.
+
+## H-23 · Los productos "quitados" siguen entrando al cálculo y a la suma en pantalla · abierto
+
+"Quitar" sólo baja `cantidad_productos` (`diagnosticos.nuevo.tsx:870`,
+`set("cantidad_productos", Math.max(1, cantidad - 1))`); no borra nombre,
+costo, precio ni porcentaje del producto que desaparece de la lista
+(`:886`, el render itera hasta `cantidadProductosDe(datos)`).
+
+`productosCargados` lee los cinco productos sin mirar `cantidad_productos`
+(`calculo-diagnostico.ts:360-405`; `cantidad_productos` tiene cero referencias
+en `calculo-diagnostico.ts`). `coberturaProductos` también
+(`calculo-diagnostico.ts:412-418`), y de ella depende que se publique el
+margen total (`:897-898`, `:904`, `:918`). "Suma de la lista" en pantalla suma
+los cinco porcentajes (`diagnosticos.nuevo.tsx:923-929`).
+
+Consecuencia: un producto 4 cargado y luego quitado sigue pesando en el margen
+por canal, puede completar el 100% de cobertura del catálogo y hace que la
+suma en pantalla no coincida con las filas visibles.
+
+## H-24 · La barra de progreso cuenta menos bloques de los que lista · abierto
+
+`diagnosticos.nuevo.tsx:355-358` cuenta como denominador sólo los bloques con
+`camposPorBloque(modo, b.id).length > 0`, y `:438` imprime
+"{bloquesCompletos} de {bloquesConCampos} bloques completos". Medición en modo
+B devuelve lista vacía (`diagnostico-form.ts:622`, `modo === "A" ?
+["facturacion_pixel", "capi_estado"] : []`) y Mayorista siempre
+(`diagnostico-form.ts:601`, `mayorista: []`). La lista de navegación, en
+cambio, itera `bloquesVisibles` completo (`diagnosticos.nuevo.tsx:448`).
+
+Confirmado por configuración:
+
+| Modo | ML | Mayorista | Bloques listados | La barra dice "de" |
+|---|---|---|---|---|
+| B | no | no | 8 | 7 |
+| B | sí | no | 9 | 8 |
+| A | sí | no | 9 | 9 |
+| A | sí | sí | 10 | 9 |
+
+La observación original ("0 de 7" con 8 listados en modo B; "9" y 9 en modo A)
+queda confirmada por esas líneas. Los bloques sin campos además aparecen sin
+contador ni tilde en la navegación (`diagnosticos.nuevo.tsx:475`,
+`tieneCampos && (...)`).
+
+## H-25 · Envío e inversión se piden en Economía y otra vez en Canales; el motor elige uno sin avisar · abierto
+
+**Envío.** Economía pide `absorbe_costo_envio`, `costo_envio_promedio`,
+`envio_bruto` y `envio_cobrado_comprador` (`diagnosticos.nuevo.tsx:648-695`);
+Canales pide "Envío neto del canal" (`canal_tienda_envio_neto` /
+`canal_ml_envio_neto`, `bloque-canales.tsx:138-143`).
+`calculo-diagnostico.ts:699-702`: si `absorbe_costo_envio === false` el envío
+del canal se ignora y vale 0 aunque esté cargado; si no, el del canal gana
+sobre el compartido (`numeroCanal(d, canal, "envio_neto") ??
+envioNetoVendedor(d)`). El recuadro "Envío neto del vendedor" de Economía
+(`diagnosticos.nuevo.tsx:683-685`) muestra sólo `envioNetoVendedor(datos)`,
+que no lee los campos de canal (`calculo-diagnostico.ts:426-438`).
+
+**Inversión.** Economía pide `inversion_meta` e `inversion_google`
+(`diagnosticos.nuevo.tsx:838-847`); Canales pide "Inversión publicitaria del
+canal" (`canal_tienda_inversion`, `bloque-canales.tsx:144-148`).
+`calculo-diagnostico.ts:579` y `:598`: el de canal gana
+(`numeroCanal(d, "tienda_propia", "inversion") ?? inversionMetaGoogle(d)`).
+Las dependencias de la fuga de gasto no rentable siguen nombrando
+`inversion_meta` e `inversion_google` (`calculo-diagnostico.ts:1252`).
+
+Consecuencia: el número que ve el vendedor en Economía no es el que usa el
+motor cuando Canales tiene un valor distinto, y nada en pantalla dice cuál
+ganó.
+
+## H-26 · Veintiún campos se piden y ningún módulo fuera del formulario los lee · abierto
+
+Grep de cada campo del modelo (`DatosDiagnostico`, `diagnostico-form.ts`)
+contra `src` excluyendo tests, fixtures, `diagnostico-form.ts` y
+`diagnosticos.nuevo.tsx`. Sin ningún lector:
+
+- Medición: `tiene_pixel` (`diagnosticos.nuevo.tsx:556-560` y `:585-589`),
+  `capi_estado` (`:566-571`), `tiene_analytics` (`:590-594`),
+  `numeros_meta_coinciden` (`:595-599`).
+- Cuenta: `cantidad_campanas` (`:1009-1014`), `csv_gasto_total`,
+  `csv_frecuencia_promedio`, `csv_ctr_global`, `csv_conjuntos_bajo_gasto`,
+  `csv_dias_periodo` (los cinco se escriben en `:979-983`).
+- Productos: `reparto_pauta` (`:947-964`).
+- Web: `retargeting_abandono` (`:1053-1057`), `retencion_secuencia_contactos`
+  (`:1085-1090`).
+- Mercado Libre: `ml_productos_publicados` (`:1195-1199`).
+- Mayorista: `mayorista_pct_catalogo_apto` (`:1233-1238`),
+  `mayorista_precio_lista` (`:1239-1243`), `mayorista_tiene_escalas_volumen`
+  (`:1244-1249`), `mayorista_tipo_comprador` (`:1250-1255`),
+  `mayorista_condiciones_pago` (`:1256-1261`), `mayorista_canal_usado`
+  (`:1262-1267`), `mayorista_ticket_inicial` (`:1357-1361`).
+
+Consecuencia concreta: Medición en modo A exige `capi_estado` para llegar al
+100% (`diagnostico-form.ts:622`) y nadie lo usa. Los cinco campos del CSV se
+guardan en `datos` (`diagnosticos.nuevo.tsx:280`) y no alimentan ningún
+derivado. Sólo `mayorista_tiene_escalas_volumen` avisa en su ayuda que es
+contextual (`diagnosticos.nuevo.tsx:1248`); los otros veinte se piden como si
+contaran.
+
+## H-27 · Dos textos en pantalla dicen algo distinto de lo que hace el motor · abierto
+
+**Carritos abandonados.** La ayuda del campo dice "Es referencia: la
+oportunidad se calcula con el embudo" (`diagnosticos.nuevo.tsx:1045`). El
+motor lo usa como base de la fuga "Recuperación de carritos abandonados"
+(`calculo-diagnostico.ts:1329-1419`: `carritosBase = d.carritos_abandonados`,
+`carritosAdicionales = carritosBase * mejora`, `:1369`), y con cero o vacío
+esa fuga directamente no existe (`:1329`, `finito(...) && > 0`). El embudo
+(`funnel.ts`) no lee `carritos_abandonados`.
+
+**Origen del dato por bloque.** `ORIGEN_DATOS` no distingue modo
+(`diagnostico-form.ts:693-707`) y se muestra tal cual bajo el título de cada
+pestaña (`diagnosticos.nuevo.tsx:494`, `{ORIGEN_DATOS[bloque]}`). En modo B,
+Medición dice "Events Manager, pestaña Resumen. Ojo que Meta solo guarda unos
+dos meses de historial." (`diagnostico-form.ts:695-696`) y Cuenta dice "Meta
+Ads Manager: filtrá el mes, activá 'Con entrega', desglosá por conjunto de
+anuncios y exportá." (`:701-702`), mientras la descripción del propio modo B
+dice "Sin acceso al panel. Los datos salen de lo que cuenta el prospecto."
+(`diagnostico-form.ts:14`).
