@@ -3,16 +3,17 @@
 Hermano de `docs/bv4-f2a-hallazgos-diferidos.md`, que cubre H-1 a H-5 y es
 específico de la ronda 3 de F2a. Este archivo recoge lo que apareció **fuera**
 de una ronda, sea cual sea su origen: la auditoría del handoff y el preflight
-del gate del 2026-09-02, las corridas del gate, y la auditoría del formulario
-de carga del 2026-09-10. Cada uno con ID, para que nadie lo redescubra ni lo
-tape.
+del gate del 2026-09-02, las corridas del gate, la auditoría del formulario
+de carga del 2026-09-10 y la auditoría del motor de cálculo del 2026-09-10.
+Cada uno con ID, para que nadie lo redescubra ni lo tape.
 
 Estado al 2026-09-10, después de la auditoría del preflight (veredicto
 APROBADO CON CORRECCIONES), de la migración de la política de UPDATE, de las
-dos corridas del gate de F2a y de la auditoría del formulario de carga del
-2026-09-10: **H-7, H-14 y H-17 corregidos**, **H-8 mitigado parcialmente**,
-**H-9 parcialmente encaminado**; **H-6**, **H-10**, **H-11**, **H-12**,
-**H-13**, **H-15**, **H-16** y **H-18 a H-27** quedan abiertos, ordenados, con
+dos corridas del gate de F2a, de la auditoría del formulario de carga del
+2026-09-10 y de la auditoría del motor de cálculo del 2026-09-10: **H-7, H-14
+y H-17 corregidos**, **H-8 mitigado parcialmente**, **H-9 parcialmente
+encaminado**; **H-6**, **H-10**, **H-11**, **H-12**, **H-13**, **H-15**,
+**H-16**, **H-18 a H-27** y **H-28 a H-37** quedan abiertos, ordenados, con
 dueño humano. H-11 y H-12 entraron por esa auditoría: los dos estaban
 reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la propia
 migración: aplicarla a mano deja la puerta abierta a que el cambio vuelva
@@ -23,7 +24,14 @@ H-18 a H-27 los abrió la auditoría del formulario de carga del 2026-09-10
 (`diagnosticos.nuevo.tsx`, `campos-formulario.tsx`, `bloque-canales.tsx`,
 `diagnostico-form.ts`, cruzados contra lo que el motor consume): son del
 formulario, no del motor, que ya estaba auditado. Ninguno está corregido.
-Los diez están ordenados por impacto en una llamada real.
+Los diez están ordenados por impacto en una llamada real. H-28 a H-37 los
+abrió la auditoría del motor de cálculo del 2026-09-10
+(`calculo-diagnostico.ts`, `contradiccion.ts`, `mayorista.ts`, `funnel.ts`,
+`canales.ts`, `dinero.ts`, `impacto-economico.ts`; sin entrar al formulario,
+los documentos ni la base): son del motor. Ninguno está corregido. Cuatro de
+ellos (H-28, H-29, H-30 y H-34) tienen diseño de arreglo, sin aprobar y sin
+aplicar, en `docs/bv4-motor-arreglos-propuestos.md`. Los diez están
+ordenados por impacto en una llamada comercial real.
 
 ---
 
@@ -566,3 +574,51 @@ Ads Manager: filtrá el mes, activá 'Con entrega', desglosá por conjunto de
 anuncios y exportá." (`:701-702`), mientras la descripción del propio modo B
 dice "Sin acceso al panel. Los datos salen de lo que cuenta el prospecto."
 (`diagnostico-form.ts:14`).
+
+## H-28 · La conversión de tienda y el funnel mezclan ventas de Mercado Libre con visitas de la tienda · abierto
+
+`src/lib/calculo-diagnostico.ts:952-959` calcula pedidos como facturación total sobre ticket y los divide por visitas de tienda. `src/lib/funnel.ts:121-129` hace lo mismo para las compras del funnel: cae a `facturacion_mensual` completa cuando no hay `canal_tienda_facturacion`, ignorando el porcentaje declarado del canal, que sí usa `facturacionCanal` en la línea 602. Entrada: mix 40% tienda / 60% ML, facturación 10M, ticket 20k, 20k visitas. Salida: `cr_tienda` 0,025 y 500 compras en el funnel, cuando la tienda factura 4M y tiene 200 pedidos. El usuario ve una conversión de tienda 2,5 veces inflada, un estado de funnel más verde de lo real y fugas de funnel valorizadas sobre compras de otro canal.
+
+Diseño de arreglo (sin aprobar, sin aplicar): `docs/bv4-motor-arreglos-propuestos.md`, arreglo 1.
+
+## H-29 · Inversión publicitaria parcial se publica como total · abierto
+
+`calculo-diagnostico.ts:566-583`: si Meta está cargado y Product Ads (o Google) es null, el desconocido se suma como 0. Eso alimenta `mer_actual` (989-992), el estado de economía (1145-1150), `contribucion_marginal` (994-997) y la fuga por gasto no rentable (1212). Entrada: mix 40/60, `inversion_meta` 1M, `ml_inversion_product_ads` null. Salida: `inversion_publicitaria_total` 1M, MER 10, economía verde, sin fuga de gasto. Variante 2b: `inversion_meta` 0 y Google null da `hay_inversion_publicitaria: false` ("declaró que no invierte") con Google sin relevar. El usuario ve un MER y un resultado marginal que solo cubren una parte del gasto.
+
+Diseño de arreglo (sin aprobar, sin aplicar): `docs/bv4-motor-arreglos-propuestos.md`, arreglo 2, incluido el análisis del caso Titan Web B1.
+
+## H-30 · Retención asimétrica en el canal: MER retenido, resultado después de publicidad publicado · abierto
+
+`calculo-diagnostico.ts:802` exige inversión conocida para el MER del canal, pero la línea 808 hace `contribucionAntes - (inversion ?? 0)`. Entrada: ML con 6M de facturación y sin inversión cargada. Salida: `mer: null`, `resultado_despues_publicidad: 2.700.000`, idéntico a `contribucion_antes_publicidad`. El usuario lee "resultado después de publicidad" como si el canal no gastara nada en pauta.
+
+Diseño de arreglo (sin aprobar, sin aplicar): `docs/bv4-motor-arreglos-propuestos.md`, arreglo 3.
+
+## H-31 · Margen retenido por cobertura: se publica la muestra pero las fugas piden un campo que no existe · abierto
+
+`faltantesMargen` (533-550) no revisa productos ni cobertura, y `margenDeCanal` devuelve `margen: null` con `faltantes: []` cuando no hay productos (849). El motor solo expande `margen_contribucion` para los tramos del funnel (1193-1195); gasto no rentable (1216), carrito (1344) y recompra (1459) lo dejan como está. Entrada: todos los campos cargados, un solo producto con 60% de facturación. Salida: `margen_muestra: 0.5` publicado, `margen_contribucion: null`, y seis fugas no calculables cuyo único faltante es `margen_contribucion`. Entrada 4b: sin productos cargados, canal con `faltantes: []`. El usuario ve un margen del 50% en pantalla y al lado "falta el margen"; no hay ningún dato que pueda ir a pedirle al cliente porque lo que falta es `producto_N_pct_facturacion`, que no aparece.
+
+## H-32 · Cupón declarado sin porcentaje se valoriza como si no hubiera cupón · abierto
+
+`calculo-diagnostico.ts:1375-1378` y `1491-1494`: `retencion_usa_cupon === true` con `retencion_cupon_pct` null da `cuponPct = null`, y la contribución por carrito se calcula sin descuento. Entrada: 100 carritos, 5% actual, 15% objetivo, cupón sí, porcentaje vacío. Salida: 100.000 de oportunidad; con cupón del 20% da 60.000. El usuario ve la oportunidad de recuperación y de recompra sobreestimada, con `confianza: "media"`, y ningún faltante.
+
+## H-33 · Costo de campaña de recompra ausente se toma como cero · abierto
+
+`calculo-diagnostico.ts:1503-1505`: `recompra_costo_campana_mensual` null pasa a 0 y se resta nada. Entrada: los cinco campos mínimos de recompra cargados, costo null. Salida: 2.000.000, igual que declarando costo 0, confianza "media", y `recompra_costo_campana_mensual` listado como dependencia como si se hubiera usado. El usuario lee una oportunidad neta de campaña que en realidad es bruta.
+
+## H-34 · Porcentajes de producto que suman más de 100 se declaran cobertura completa · abierto
+
+`coberturaProductos` (412-418) recorta a 100 con `Math.min`, y la línea 898 lee eso como cobertura explícita del 100%. `canalesSuperan100` bloquea el caso análogo en canales; en productos no hay bloqueo. Entrada: dos productos con 60% y 60%. Salida: `cobertura_productos: 100`, `margen_contribucion: 0.575` publicado como total, pesos 0,5 y 0,5. El usuario ve un margen total respaldado por un mix imposible.
+
+Diseño de arreglo (sin aprobar, sin aplicar): `docs/bv4-motor-arreglos-propuestos.md`, arreglo 7.
+
+## H-35 · Una fuga que da cero real desaparece de la lista, igual que una no evaluada · abierto
+
+`calculo-diagnostico.ts:1196` descarta tramos con monto 0; 1235 es un `else if` sin `else` (MER por encima del breakeven no genera fuga); 1368 y 1483 omiten carrito y recompra cuando la mejora no es positiva. Entrada: inversión 100k con MER 100, recompra actual 40% contra objetivo 30%. Salida: `fugas` contiene solo sobrefragmentación. El usuario no distingue "gasto rentable, revisado" de "no se pudo evaluar el gasto".
+
+## H-36 · Pixel en cero explícito se lee como ausencia de dato · abierto
+
+`calculo-diagnostico.ts:867-874` exige `facturacion_pixel > 0`. Entrada: `facturacion_pixel` 0 con `inversion_meta` 1M. Salida: `delta_medicion: null`, medición `sin_datos`, sin hallazgo de riesgo. El usuario ve "sin datos" en medición para una cuenta que invierte y cuyo Pixel no atribuye nada.
+
+## H-37 · Mayorista: contribución negativa publicada y recupero de CAC con un faltante falso · abierto
+
+`src/lib/mayorista.ts:169-170` publica un margen negativo cuando el precio real está debajo del costo; 193 lo multiplica por el ticket y publica una contribución por pedido negativa; 273-275 entonces retiene el recupero de CAC agregando `mayorista_ticket_recompra` a faltantes aunque el ticket esté cargado. Entrada: costos unitarios que superan `mayorista_precio_venta_real`. El usuario ve una contribución por pedido en negativo y, al lado, "falta el ticket de recompra".
