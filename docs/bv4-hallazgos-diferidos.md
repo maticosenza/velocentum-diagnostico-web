@@ -16,7 +16,7 @@ dos corridas del gate de F2a, de la auditoría del formulario de carga del
 auditoría de las salidas del 2026-09-11: **H-7, H-14 y H-17 corregidos**,
 **H-8 mitigado parcialmente**, **H-9 parcialmente encaminado**; **H-6**,
 **H-10**, **H-11**, **H-12**, **H-13**, **H-15**, **H-16**, **H-18 a H-27**,
-**H-28 a H-37** y **H-38 a H-48** quedan abiertos, ordenados, con dueño
+**H-28 a H-37**, **H-38 a H-48** y **H-49** quedan abiertos, ordenados, con dueño
 humano. H-11 y H-12 entraron por esa auditoría: los dos estaban
 reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la propia
 migración: aplicarla a mano deja la puerta abierta a que el cambio vuelva
@@ -41,7 +41,9 @@ v2: `build-context.ts`, `escenarios-90d.ts`, `resumen-comercial.ts`,
 `estado.ts`, `document-renderer.tsx`, plantillas `velocentum-v2`): son de lo
 que ve el vendedor en pantalla y de lo que recibiría el prospecto en los
 documentos, no del formulario ni del motor. H-48 se verificó aparte, con
-grep, el mismo día. Ninguno está corregido. H-38 no es un bug con arreglo
+grep, el mismo día. H-49 lo abrió el 2026-09-11 el intento de llevar al
+listado el arreglo de `ac3b3f2`: es el pendiente que la sección 4 de
+`docs/bv4-estado-2026-09-10.md` había dejado sin ID. Ninguno está corregido. H-38 no es un bug con arreglo
 obvio: requiere una decisión de producto sobre qué "oportunidad" es la
 oficial. Aclaración que atraviesa a varios: `src/documents/motor-activo.ts:19`
 tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`, así que todo lo referido a la cadena
@@ -710,6 +712,23 @@ Es presupuesto diario de Meta por 30 (`calculo-diagnostico.ts:1000-1004, 1012`).
 Verificado aparte con grep el 2026-09-11, fuera del reporte. `src/routes/_authenticated/diagnosticos.$id.tsx:90-96` define `EXPLICACION_FUGA` (justo después de `ETIQUETAS_CAMPO`, que arranca en `:75`) con cuatro claves: `conversion` (`:91`), `gasto_no_rentable` (`:93`), `fatiga_creativa` (`:94`) y `sobrefragmentacion` (`:95`). Los ids que el motor emite hoy en `src/lib/calculo-diagnostico.ts` son cinco: `gasto_no_rentable` (`:1220, :1239`), `sobrefragmentacion` (`:1266, :1290`), `recuperacion_carrito` (`:1350, :1389`), `recompra` (`:1465, :1509`) y `medicion` (`:1546`). No hay ningún `id: "conversion"` ni `id: "fatiga_creativa"` en `src/lib`; los tests lo confirman explícitamente (`calculo-diagnostico.test.ts:256, :272, :458` verifican que esos dos ids no aparecen). El mapa se consume en `:773` con `f.detalle ?? EXPLICACION_FUGA[f.id] ?? ""`. Es el mismo patrón de claves muertas que H-40 describe para `CLAVES_FUGA` en `propuesta-seccion.tsx:11-16` (allí las muertas son `conversion` y `carritos_abandonados`).
 
 Observación secundaria, del mismo grep: además de las dos claves muertas, faltan explicaciones para `medicion`, `recompra` y `recuperacion_carrito`. Tres de las cinco fugas vigentes no tienen entrada en el mapa, así que cuando el motor no trae `detalle` esas tres salen sin texto explicativo en pantalla (el `?? ""` de `:773` imprime vacío).
+
+---
+
+## H-49 · El listado muestra "$ 0" cuando el total es cero por fugas sin calcular, y no tiene con qué distinguirlo del cero real · abierto
+
+Es el pendiente que `docs/bv4-estado-2026-09-10.md` (sección 4) dejó sin ID al registrar `ac3b3f2`. Verificado el 2026-09-11 al intentar arreglarlo. `src/routes/_authenticated/index.tsx:188-190` imprime `formatARS(f.oportunidad_total)` siempre que el valor sea un número. Un `oportunidad_total` en 0 porque ninguna fuga pudo calcularse es un número, así que el listado muestra "$ 0" para el mismo caso que el detalle ya distingue desde `ac3b3f2` (`diagnosticos.$id.tsx:596`, guard `total === 0 && fugasSinCalcular.length > 0`).
+
+La causa no está en la celda: está en lo que la pantalla pide. La query del listado (`index.tsx:70-80`) selecciona `id, fecha, version, oportunidad_id, oportunidad_total` más nombre, vertical y estado de la oportunidad. No trae `fugas`, ni `derivados`, ni `estados_bloque`. El detalle distingue el caso filtrando la columna jsonb `fugas` por `calculable === false` (`diagnosticos.$id.tsx:193`); esa columna es lo único que lo marca. En la tabla `diagnostico` (`supabase/migrations/20260816212403_*.sql:62-74`) no hay ninguna columna que diga "pendiente": `oportunidad_total numeric NOT NULL DEFAULT 0` no distingue cero real de cero por ignorancia, y las cuatro migraciones posteriores que tocan la tabla tampoco agregan una.
+
+Opciones evaluadas el 2026-09-11, ninguna aplicada:
+
+1. **Ampliar la query para traer `fugas`** y replicar en la celda el criterio del detalle. Es la única que reproduce la distinción exacta con lo que hay en la base. Costo: trae un jsonb completo por fila para pintar una celda, en la pantalla que lista todos los diagnósticos. Descartada por ese costo.
+2. **Traer `fugas` pero pedir sólo lo necesario** con un select anidado. PostgREST no filtra dentro de un jsonb en el select, así que en la práctica es la opción 1 con otro nombre. Descartada por lo mismo.
+3. **No tocar la query y mostrar "—" para todo `oportunidad_total === 0`.** Elimina el "$ 0" engañoso, pero también oculta el cero real, que es justamente la distinción que el detalle conserva y que se quiere conservar. Descartada: rompe el criterio.
+4. **Columna derivada al guardar** (un booleano tipo "oportunidad pendiente", calculado por el motor cuando persiste el diagnóstico) y que el listado la lea. Es la solución correcta: el listado lee un dato ya derivado en vez de recalcular desde las fugas. **Toca la persistencia** (migración, escritura al guardar, tipos), y el contrato maestro lo prohíbe sin decisión explícita. Es la que queda pendiente de esa decisión.
+
+Mientras tanto el listado queda como está, con "$ 0" para ese caso, y la query sin cambios. El detalle sí lo distingue.
 
 ---
 
