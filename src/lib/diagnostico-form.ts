@@ -681,6 +681,52 @@ export const CAMPOS_EXCLUSIVOS: Record<Modo, (keyof DatosDiagnostico)[]> = {
   B: ["tiene_analytics", "numeros_meta_coinciden", "gasto_diario", "cantidad_campanas"],
 };
 
+/**
+ * Valores exclusivos del modo inactivo que quedan guardados aparte mientras el otro
+ * modo está en uso. Nunca viven en `datos`: el motor lee por presencia, así que un
+ * campo oculto pero con valor alimentaría el cálculo sin que se vea en pantalla.
+ */
+export type DatosEstacionados = Partial<DatosDiagnostico>;
+
+/** Campos exclusivos de `modo` que tienen un valor cargado. */
+export function camposExclusivosCargados(datos: DatosDiagnostico, modo: Modo) {
+  return CAMPOS_EXCLUSIVOS[modo].filter((campo) => estaCompleto(datos[campo]));
+}
+
+/**
+ * Prepara el cambio de `desde` a su modo opuesto: saca de `datos` lo exclusivo de
+ * `desde` (lo que tenía valor queda en `estacionados`) y vuelve a poner lo que estaba
+ * estacionado del modo destino. Lo compartido no se toca.
+ */
+export function estacionarAlCambiarModo(
+  datos: DatosDiagnostico,
+  desde: Modo,
+  estacionadosDestino: DatosEstacionados,
+): { datos: DatosDiagnostico; estacionados: DatosEstacionados } {
+  const destino: Modo = desde === "A" ? "B" : "A";
+  const copia = { ...datos } as Record<string, unknown>;
+  const estacionados: Record<string, unknown> = {};
+  for (const campo of CAMPOS_EXCLUSIVOS[desde]) {
+    if (estaCompleto(datos[campo])) estacionados[campo] = datos[campo];
+    copia[campo] = DATOS_INICIALES[campo];
+  }
+  for (const campo of CAMPOS_EXCLUSIVOS[destino]) {
+    if (campo in estacionadosDestino) copia[campo] = estacionadosDestino[campo];
+  }
+  return { datos: copia as DatosDiagnostico, estacionados: estacionados as DatosEstacionados };
+}
+
+/** Deja sólo campos exclusivos de `modo` con valor: sanea lo que viene del borrador. */
+export function sanearEstacionados(crudo: unknown, modo: Modo): DatosEstacionados {
+  if (!crudo || typeof crudo !== "object") return {};
+  const salida: Record<string, unknown> = {};
+  for (const campo of CAMPOS_EXCLUSIVOS[modo]) {
+    const valor = (crudo as Record<string, unknown>)[campo];
+    if (estaCompleto(valor)) salida[campo] = valor;
+  }
+  return salida as DatosEstacionados;
+}
+
 export const CLAVE_BORRADOR = "velocentum:borrador-diagnostico";
 
 export const ESTADOS_CAPI = [

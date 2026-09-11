@@ -5,6 +5,16 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { formatARS, formatPorcentaje } from "@/lib/format";
@@ -20,7 +30,6 @@ import { CargaCsvMeta } from "@/components/carga-csv-meta";
 import { BloqueCanales } from "@/components/bloque-canales";
 import {
   BLOQUES,
-  CAMPOS_EXCLUSIVOS,
   RELACIONES_FIN_DESC,
   CANTIDAD_CAMPANAS,
   CLAVE_BORRADOR,
@@ -32,11 +41,15 @@ import {
   PLANES_POR_PLATAFORMA,
   PLATAFORMAS,
   VERTICALES,
+  camposExclusivosCargados,
   camposPorBloque,
   cantidadProductosDe,
   contarCompletos,
+  estacionarAlCambiarModo,
+  sanearEstacionados,
   type BloqueId,
   type DatosDiagnostico,
+  type DatosEstacionados,
   type Modo,
   type NotasDiagnostico,
 } from "@/lib/diagnostico-form";
@@ -76,7 +89,13 @@ export const Route = createFileRoute("/_authenticated/diagnosticos/nuevo")({
   component: NuevoDiagnostico,
 });
 
-type Borrador = { modo: Modo; datos: DatosDiagnostico; notas: NotasDiagnostico };
+type Borrador = {
+  modo: Modo;
+  datos: DatosDiagnostico;
+  notas: NotasDiagnostico;
+  /** Exclusivos del modo inactivo, guardados aparte al cambiar de modo. */
+  estacionados: DatosEstacionados;
+};
 
 function leerBorrador(): Borrador | null {
   if (typeof window === "undefined") return null;
@@ -89,6 +108,7 @@ function leerBorrador(): Borrador | null {
       modo: parsed.modo,
       datos: { ...DATOS_INICIALES, ...(parsed.datos ?? {}) },
       notas: parsed.notas ?? {},
+      estacionados: sanearEstacionados(parsed.estacionados, parsed.modo === "A" ? "B" : "A"),
     };
   } catch {
     return null;
@@ -105,6 +125,10 @@ function NuevoDiagnostico() {
   const [modo, setModo] = useState<Modo | null>(null);
   const [datos, setDatos] = useState<DatosDiagnostico>(DATOS_INICIALES);
   const [notas, setNotas] = useState<NotasDiagnostico>({});
+  // Valores exclusivos del modo inactivo. Fuera de `datos` a propósito: el motor lee por
+  // presencia y los tomaría en el cálculo aunque no se vean en pantalla.
+  const [estacionados, setEstacionados] = useState<DatosEstacionados>({});
+  const [dialogo, setDialogo] = useState<"cambio_modo" | "guardar" | null>(null);
   const [bloque, setBloque] = useState<BloqueId>("identificacion");
   const [guardadoEn, setGuardadoEn] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -151,6 +175,7 @@ function NuevoDiagnostico() {
       setModo(b.modo);
       setDatos(b.datos);
       setNotas(b.notas);
+      setEstacionados(b.estacionados);
     }
   }, [desde]);
 
@@ -158,11 +183,14 @@ function NuevoDiagnostico() {
   useEffect(() => {
     if (!modo || desde) return;
     const t = setTimeout(() => {
-      window.localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({ modo, datos, notas }));
+      window.localStorage.setItem(
+        CLAVE_BORRADOR,
+        JSON.stringify({ modo, datos, notas, estacionados }),
+      );
       setGuardadoEn(new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }));
     }, 3000);
     return () => clearTimeout(t);
-  }, [modo, datos, notas, desde]);
+  }, [modo, datos, notas, estacionados, desde]);
 
   const set = useCallback(<K extends keyof DatosDiagnostico>(k: K, v: DatosDiagnostico[K]) => {
     setDatos((prev) => ({ ...prev, [k]: v }));
@@ -178,7 +206,8 @@ function NuevoDiagnostico() {
 
   useEffect(() => {
     if (bloque === "mercado_libre" && !datos.vende_mercado_libre) setBloque("identificacion");
-    if (bloque === "mayorista" && datos.venta_mayorista_activa !== true) setBloque("identificacion");
+    if (bloque === "mayorista" && datos.venta_mayorista_activa !== true)
+      setBloque("identificacion");
   }, [bloque, datos.vende_mercado_libre, datos.venta_mayorista_activa]);
 
   // Atajos: Alt+1..8 salta a una pestaña, Alt+←/→ se mueve de a una
@@ -207,17 +236,31 @@ function NuevoDiagnostico() {
     return () => window.removeEventListener("keydown", onKey);
   }, [modo, bloque, bloquesVisibles]);
 
-  /** Cambia de modo conservando todo lo compartido y limpiando lo exclusivo del modo viejo. */
+  /**
+   * Cambia de modo conservando lo compartido. Lo exclusivo del modo viejo que tenga valor
+   * se estaciona (no se pierde: vuelve al regresar a ese modo) y lo que estaba estacionado
+   * del modo nuevo se restaura.
+   */
   function cambiarModo(nuevo: Modo) {
     const anterior: Modo = nuevo === "A" ? "B" : "A";
-    setDatos((prev) => {
-      const copia = { ...prev };
-      for (const campo of CAMPOS_EXCLUSIVOS[anterior]) {
-        (copia as Record<string, unknown>)[campo] = DATOS_INICIALES[campo];
-      }
-      return copia;
-    });
+    const resultado = estacionarAlCambiarModo(datos, anterior, estacionados);
+    setDatos(resultado.datos);
+    setEstacionados(resultado.estacionados);
     setModo(nuevo);
+    setDialogo(null);
+  }
+
+  /** Si hay exclusivos cargados, pide confirmación antes de estacionarlos. Si no, cambia directo. */
+  function pedirCambioModo() {
+    if (!modo) return;
+    if (camposExclusivosCargados(datos, modo).length === 0) cambiarModo(modo === "A" ? "B" : "A");
+    else setDialogo("cambio_modo");
+  }
+
+  /** Si hay algo estacionado, avisa que no se incluye antes de guardar. Si no, guarda directo. */
+  function pedirGuardar() {
+    if (Object.keys(estacionados).length > 0) setDialogo("guardar");
+    else void guardar();
   }
 
   const desvioMedicion = useMemo(() => {
@@ -312,7 +355,7 @@ function NuevoDiagnostico() {
       <>
         <PageHeader
           title="Nuevo diagnóstico"
-          description="Elegí cómo va a ser la llamada. Podés cambiarlo después sin perder lo cargado."
+          description="Elegí cómo va a ser la llamada. Podés cambiarlo después. Lo compartido se conserva; lo exclusivo de cada modo se guarda aparte y vuelve si volvés a ese modo."
           actions={
             <Button asChild size="sm" variant="outline">
               <Link to="/">Cancelar</Link>
@@ -342,6 +385,10 @@ function NuevoDiagnostico() {
   }
 
   const otroModo: Modo = modo === "A" ? "B" : "A";
+  const aEstacionar = camposExclusivosCargados(datos, modo);
+  const cantidadEstacionados = Object.keys(estacionados).length;
+  const incluyeCsv = (campos: string[]) => campos.some((c) => c.startsWith("csv_"));
+  const contarDatos = (n: number) => `${n} ${n === 1 ? "dato" : "datos"}`;
   const indiceBloque = bloquesVisibles.findIndex((b) => b.id === bloque);
   const bloqueAnterior = indiceBloque > 0 ? bloquesVisibles[indiceBloque - 1] : undefined;
   const bloqueSiguiente =
@@ -381,7 +428,7 @@ function NuevoDiagnostico() {
             Modo {modo} · {modo === "A" ? "pantalla compartida" : "solo conversado"}
             <button
               type="button"
-              onClick={() => cambiarModo(otroModo)}
+              onClick={pedirCambioModo}
               className="font-medium underline underline-offset-2"
             >
               cambiar
@@ -420,11 +467,25 @@ function NuevoDiagnostico() {
           <Button asChild size="sm" variant="outline">
             <Link to="/">Cancelar</Link>
           </Button>
-          <Button size="sm" onClick={() => void guardar()} disabled={guardando}>
+          <Button size="sm" onClick={pedirGuardar} disabled={guardando}>
             {guardando ? "Guardando…" : origen ? "Guardar versión nueva" : "Guardar diagnóstico"}
           </Button>
         </div>
       </header>
+
+      {cantidadEstacionados > 0 && (
+        <p
+          role="status"
+          className="border-b border-border bg-violet-soft px-8 py-3 text-[13px] leading-5 text-violet"
+        >
+          {contarDatos(cantidadEstacionados)} del modo {otroModo}{" "}
+          {cantidadEstacionados === 1 ? "quedó guardado" : "quedaron guardados"} aparte
+          {incluyeCsv(Object.keys(estacionados)) ? ", incluida la importación del CSV de Meta" : ""}
+          . {cantidadEstacionados === 1 ? "Vuelve" : "Vuelven"} si volvés al modo {otroModo}. No{" "}
+          {cantidadEstacionados === 1 ? "entra" : "entran"} en el cálculo ni se{" "}
+          {cantidadEstacionados === 1 ? "guarda" : "guardan"} con el diagnóstico.
+        </p>
+      )}
 
       <div className="border-b border-border bg-card px-8 py-4">
         <div className="flex items-center gap-4">
@@ -1475,7 +1536,7 @@ function NuevoDiagnostico() {
                 size="lg"
                 className="h-12 min-w-40 text-[15px]"
                 disabled={guardando}
-                onClick={() => void guardar()}
+                onClick={pedirGuardar}
               >
                 {guardando
                   ? "Guardando…"
@@ -1493,6 +1554,62 @@ function NuevoDiagnostico() {
           )}
         </div>
       </div>
+
+      <AlertDialog
+        open={dialogo === "cambio_modo"}
+        onOpenChange={(abierto) => !abierto && setDialogo(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cambiar a modo {otroModo}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hay {contarDatos(aEstacionar.length)} exclusivos del modo {modo} cargados
+              {incluyeCsv(aEstacionar) ? ", incluida la importación del CSV de Meta" : ""}. Se
+              guardan aparte y vuelven si volvés al modo {modo}. Mientras estés en modo {otroModo}{" "}
+              no entran en el cálculo ni se guardan con el diagnóstico.
+              {cantidadEstacionados > 0 &&
+                ` También vuelven los ${contarDatos(cantidadEstacionados)} del modo ${otroModo} que estaban guardados aparte.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Quedarme en modo {modo}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => cambiarModo(otroModo)}>
+              Cambiar a modo {otroModo}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={dialogo === "guardar"}
+        onOpenChange={(abierto) => !abierto && setDialogo(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Se guarda en modo {modo}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Los {contarDatos(cantidadEstacionados)} del modo {otroModo} que quedaron guardados
+              aparte
+              {incluyeCsv(Object.keys(estacionados))
+                ? ", incluida la importación del CSV de Meta,"
+                : ""}{" "}
+              no se incluyen en este diagnóstico. Si los necesitás, volvé al modo {otroModo} antes
+              de guardar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Volver</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setDialogo(null);
+                void guardar();
+              }}
+            >
+              Guardar igual
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
