@@ -4,17 +4,20 @@ Hermano de `docs/bv4-f2a-hallazgos-diferidos.md`, que cubre H-1 a H-5 y es
 específico de la ronda 3 de F2a. Este archivo recoge lo que apareció **fuera**
 de una ronda, sea cual sea su origen: la auditoría del handoff y el preflight
 del gate del 2026-09-02, las corridas del gate, la auditoría del formulario
-de carga del 2026-09-10 y la auditoría del motor de cálculo del 2026-09-10.
-Cada uno con ID, para que nadie lo redescubra ni lo tape.
+de carga del 2026-09-10, la auditoría del motor de cálculo del 2026-09-10 y
+la auditoría de las salidas del 2026-09-11 (pantalla de detalle, listado,
+propuesta IA y cadena documental v2). Cada uno con ID, para que nadie lo
+redescubra ni lo tape.
 
-Estado al 2026-09-10, después de la auditoría del preflight (veredicto
+Estado al 2026-09-11, después de la auditoría del preflight (veredicto
 APROBADO CON CORRECCIONES), de la migración de la política de UPDATE, de las
 dos corridas del gate de F2a, de la auditoría del formulario de carga del
-2026-09-10 y de la auditoría del motor de cálculo del 2026-09-10: **H-7, H-14
-y H-17 corregidos**, **H-8 mitigado parcialmente**, **H-9 parcialmente
-encaminado**; **H-6**, **H-10**, **H-11**, **H-12**, **H-13**, **H-15**,
-**H-16**, **H-18 a H-27** y **H-28 a H-37** quedan abiertos, ordenados, con
-dueño humano. H-11 y H-12 entraron por esa auditoría: los dos estaban
+2026-09-10, de la auditoría del motor de cálculo del 2026-09-10 y de la
+auditoría de las salidas del 2026-09-11: **H-7, H-14 y H-17 corregidos**,
+**H-8 mitigado parcialmente**, **H-9 parcialmente encaminado**; **H-6**,
+**H-10**, **H-11**, **H-12**, **H-13**, **H-15**, **H-16**, **H-18 a H-27**,
+**H-28 a H-37** y **H-38 a H-48** quedan abiertos, ordenados, con dueño
+humano. H-11 y H-12 entraron por esa auditoría: los dos estaban
 reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la propia
 migración: aplicarla a mano deja la puerta abierta a que el cambio vuelva
 duplicado desde Lovable. H-14, H-15 y H-16 los abrió el primer intento de
@@ -31,7 +34,21 @@ abrió la auditoría del motor de cálculo del 2026-09-10
 los documentos ni la base): son del motor. Ninguno está corregido. Cuatro de
 ellos (H-28, H-29, H-30 y H-34) tienen diseño de arreglo, sin aprobar y sin
 aplicar, en `docs/bv4-motor-arreglos-propuestos.md`. Los diez están
-ordenados por impacto en una llamada comercial real.
+ordenados por impacto en una llamada comercial real. H-38 a H-47 los abrió
+la auditoría de las salidas del 2026-09-11 (`diagnosticos.$id.tsx`,
+`index.tsx`, `propuesta-seccion.tsx`, `propuesta.ts`, y la cadena documental
+v2: `build-context.ts`, `escenarios-90d.ts`, `resumen-comercial.ts`,
+`estado.ts`, `document-renderer.tsx`, plantillas `velocentum-v2`): son de lo
+que ve el vendedor en pantalla y de lo que recibiría el prospecto en los
+documentos, no del formulario ni del motor. H-48 se verificó aparte, con
+grep, el mismo día. Ninguno está corregido. H-38 no es un bug con arreglo
+obvio: requiere una decisión de producto sobre qué "oportunidad" es la
+oficial. Aclaración que atraviesa a varios: `src/documents/motor-activo.ts:19`
+tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`, así que todo lo referido a la cadena
+v2 describe lo que pasará al activar el interruptor, no lo que el prospecto
+recibe hoy. Los seis hallazgos menores y las cuatro sospechas sin verificar
+de esa auditoría no llevan ID: quedan al final del archivo, en la sección
+"Auditoría de salidas 2026-09-11: fuera del registro".
 
 ---
 
@@ -622,3 +639,102 @@ Diseño de arreglo (sin aprobar, sin aplicar): `docs/bv4-motor-arreglos-propuest
 ## H-37 · Mayorista: contribución negativa publicada y recupero de CAC con un faltante falso · abierto
 
 `src/lib/mayorista.ts:169-170` publica un margen negativo cuando el precio real está debajo del costo; 193 lo multiplica por el ticket y publica una contribución por pedido negativa; 273-275 entonces retiene el recupero de CAC agregando `mayorista_ticket_recompra` a faltantes aunque el ticket esté cargado. Entrada: costos unitarios que superan `mayorista_precio_venta_real`. El usuario ve una contribución por pedido en negativo y, al lado, "falta el ticket de recompra".
+
+---
+
+## Auditoría de las salidas · 2026-09-11 · H-38 a H-48
+
+Fuente: reporte de la auditoría de las salidas del 2026-09-11, registrado verbatim (evidencia archivo:línea y corridas tal como vinieron). Nota de alcance del reporte, textual: "`src/documents/motor-activo.ts:19` tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`. Hoy el botón "Ver documentos" y la descarga sirven las plantillas v1 (`build-document.ts:289-299`). Los hallazgos sobre la cadena v2 describen lo que el prospecto va a recibir cuando se active el interruptor. No audité v1." Esa nota se repite al pie del encabezado de cada hallazgo que la necesita (H-38, H-39, H-43, H-44). Las referencias `:NNN` sin archivo siguen la convención del reporte: apuntan al último archivo nombrado en la misma oración o, en los hallazgos del detalle, a `diagnosticos.$id.tsx`. Ninguno de los once está corregido.
+
+Advertencia de transcripción: el texto del hallazgo 1 (H-38) llegó con el render roto en el tramo que va desde la primera cita de archivo hasta "Corrida A" (los signos `$` se interpretaron como fórmula y partieron el texto letra por letra). Se reconstruyó carácter por carácter; el resto de los hallazgos llegó limpio.
+
+## H-38 · El mismo diagnóstico tiene tres "oportunidades" que no coinciden ni en número ni en concepto · abierto, requiere decisión de producto
+
+> Nota de alcance (verbatim del reporte): `src/documents/motor-activo.ts:19` tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`. Hoy el botón "Ver documentos" y la descarga sirven las plantillas v1 (`build-document.ts:289-299`). Lo que este hallazgo dice sobre la cadena v2 describe lo que el prospecto va a recibir cuando se active el interruptor. La cadena v1 no fue auditada.
+
+El detalle suma todas las fugas con monto, contribución de funnel y ahorro de pauta juntos, y lo llama "Oportunidad mensual estimada" con un piso de 0,6 (`diagnosticos.$id.tsx:189-190, 629-638`; motor `calculo-diagnostico.ts:1642-1645, 1686-1687`). La proyección y la propuesta v2 encabezan con contribución incremental acumulada a 90 días del escenario conservador, sólo impactos de contribución, con rampa 25/50/75 (`escenarios-90d.ts:310-311, 324-326`; `resumen-comercial.ts:145-155`; `build-context.ts:1114-1121`; renderer `document-renderer.tsx:338-343`). La regla documental prohíbe sumar contribución con ahorro (`escenarios-90d.ts:11-13`). La propuesta IA recibe el total mensual mezclado (`propuesta.ts:578`). Corrida A: el vendedor ve en pantalla "$ 7.199.999 a $ 11.999.999" mensual y el prospecto lee "$ 13.327.086" a 90 días, rango hasta "$ 20.879.101", con un ahorro de "$ 4.500.000" aparte. La palabra "conservador" significa 0,6 en la pantalla y una curva de adopción en el PDF.
+
+**No es un bug con arreglo obvio.** Las tres cifras salen de tres definiciones distintas de "oportunidad", cada una coherente consigo misma. Resolverlo exige una decisión de producto: cuál es la cifra oficial que ve el vendedor, cuál lee el prospecto, y si ambas tienen que coincidir o basta con que se llamen distinto. Hasta esa decisión no hay arreglo que aplicar.
+
+## H-39 · Un solo campo de recompra cargado deja la propuesta sin cifra, mientras el detalle muestra el rango completo · abierto
+
+> Nota de alcance (verbatim del reporte): `src/documents/motor-activo.ts:19` tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`. Hoy el botón "Ver documentos" y la descarga sirven las plantillas v1 (`build-document.ts:289-299`). Lo que este hallazgo dice sobre la cadena v2 describe lo que el prospecto va a recibir cuando se active el interruptor. La cadena v1 no fue auditada.
+
+Cualquier dato de recompra crea la fuga recompra no calculable con un impacto retenido (`calculo-diagnostico.ts:1441-1480`). Un impacto retenido retiene el agregado entero de contribución (`impacto-economico.ts:186-189`, `escenarios-90d.ts:311`). Corrida B, sólo `recompra_tiene_secuencia_postventa: false`: el detalle sigue diciendo "$ 7.199.999 a $ 11.999.999" con cuatro fugas valorizadas; la propuesta v2 imprime en el encabezado "No se muestra hasta validar: Sin los cinco datos mínimos de recompra, la oportunidad queda como recomendación cualitativa." (`estado.ts:35-41`, `document-renderer.tsx:336-343`), sin redacción del rango y sin nota puente. Mismo mecanismo con recuperación de carrito no calculable (`calculo-diagnostico.ts:1338-1364`). El motivo es texto interno y lo lee el prospecto.
+
+## H-40 · La propuesta IA del detalle pega montos a los hallazgos por palabra clave, y la clave "mer" atrapa cualquier título con "Mercado", "comercial" o "número" · abierto
+
+`propuesta-seccion.tsx:11-16, 22-30` busca claves por id de fuga. Los ids `conversion` y `carritos_abandonados` ya no existen en el motor; para los tramos de funnel cae a la etiqueta "Fuga por carrito", que ningún título redactado contiene. Corrida F, con gasto no rentable presente: "Publicaciones de Mercado Libre sin clips" y "Estrategia comercial sin foco" reciben `gasto_no_rentable`, y el vendedor ve "$ 2.015.067" al lado de clips (`:117-125`). "Carritos que no llegan al checkout" y "Pocas visitas llegan a agregar al carrito" no reciben monto en ninguna corrida.
+
+## H-41 · Con algo calculable, el titular del detalle muestra un total parcial sin marcarlo, y la IA lo recibe como cifra cerrada · abierto
+
+El aviso de "rango pendiente" sólo dispara con total en cero (`diagnosticos.$id.tsx:596`). Con total mayor a cero y fugas pendientes, `:626-644` imprime el rango sin ninguna marca; las pendientes recién aparecen al pie de la lista de fugas (`:793-802`). Corrida B lo reproduce. El listado hace lo mismo (`index.tsx:188-191`). La IA recibe `oportunidad_total` y sólo las fugas calculables (`propuesta.ts:578-580`) con la orden de no mencionar faltantes (`:626-627`), así que redacta la cifra como completa.
+
+## H-42 · Identificadores internos crudos en el titular y en la lista de faltantes · abierto
+
+`diagnosticos.$id.tsx:75-88` traduce 12 nombres; el motor emite al menos 19 ids en faltantes más los de `faltantesMargen` (`calculo-diagnostico.ts:533-550`, `canales.ts:580-583`). Con margen negativo el motor agrega `margen_negativo` (`calculo-diagnostico.ts:1608-1619`) y el titular queda "Falta margen de contribución, margen_negativo y CPA objetivo para realizar este cálculo." (`:596-616`, corrida C). En fugas, "No se pudo calcular. Faltan: margen de contribución, margen_negativo." (`:797-798`); el detalle explicativo del motor (`:1616`) no se imprime ahí. Con contradicción confirmada: "Faltan: margen_en_contradiccion" (`:1590`). Corrida D: "Faltan: margen de contribución, canal_tienda_pct, canal_ml_pct".
+
+## H-43 · En la propuesta v2, lo que falta validar se imprime como acciones del plan, como sección propia y como alcance de cada servicio · abierto
+
+> Nota de alcance (verbatim del reporte): `src/documents/motor-activo.ts:19` tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`. Hoy el botón "Ver documentos" y la descarga sirven las plantillas v1 (`build-document.ts:289-299`). Lo que este hallazgo dice sobre la cadena v2 describe lo que el prospecto va a recibir cuando se active el interruptor. La cadena v1 no fue auditada.
+
+Cada restricción entra como acción de los días 61 a 90 y en "Resultado: Avance sobre … la restricción "Cobertura de canales parcial"" (`build-context.ts:533-538`, `document-renderer.tsx:534-535`). Corrida H: acciones de la etapa 90 son "Meta Ads" y "Cobertura de canales parcial"; corrida D: "Mix de canales inconsistente". La sección "Qué falta validar" va en la propuesta (`templates/velocentum-v2/propuesta.ts:115`, `shared.ts:112-121`) con textos como "El cálculo legado puede existir, pero la rentabilidad no se publica hasta confirmar si el vendedor absorbe el costo y cuál es el neto." (`build-context.ts:287-289`) y "El mix conocido cubre 0% de la facturación." (`:269`). Los servicios viajan con `alcance: []` siempre (`:619`) y "Qué vamos a trabajar" imprime "Alcance a validar" en cada tarjeta (`document-renderer.tsx:554`, template `:97`).
+
+## H-44 · Cobertura de canales: 120 % en el detalle, 100 % en el documento · abierto
+
+> Nota de alcance (verbatim del reporte): `src/documents/motor-activo.ts:19` tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`. Hoy el botón "Ver documentos" y la descarga sirven las plantillas v1 (`build-document.ts:289-299`). Lo que este hallazgo dice sobre la cadena v2 describe lo que el prospecto va a recibir cuando se active el interruptor. La cadena v1 no fue auditada.
+
+El detalle imprime `cobertura_canales` crudo y sólo avisa por debajo de 100 (`diagnosticos.$id.tsx:1026, 1036`). El contexto documental recorta a 100 (`build-context.ts:149-151, 881`) y agrega la restricción (`:258-264`). Corrida D: pantalla "Cobertura declarada 120%" sin aviso; documento "Cobertura de canales 100%", "Confianza media" y en la misma página "Los porcentajes declarados por canal superan el 100%".
+
+## H-45 · "Inversión actual mensual" no es la inversión actual del negocio · abierto
+
+Es presupuesto diario de Meta por 30 (`calculo-diagnostico.ts:1000-1004, 1012`). El detalle la titula así en `:915` y dos filas arriba muestra "Inversión publicitaria total", que es Meta más Google más Product Ads declarados (`:871-877`, motor `:578-583`). Corrida F: "$ 1.980.000" y "$ 25.000.000" en la misma pantalla. La lectura textual de presupuesto compara la primera contra el piso (`:337-343`).
+
+## H-46 · Duplicados y derivados triviales en el detalle · abierto
+
+- "MER tienda propia" y "MER Mercado Libre" (`:857-861`) repiten "MER del canal" de cada tarjeta (`:1085`); misma fórmula en `:974-981` y `:801-802`. "ROAS de Product Ads" aparece en `:862-869` y en `:1098-1103`.
+- "Pedidos mensuales estimados" (`:878`), "Compras semanales estimadas" (`:920`, es pedidos ÷ 4,3 en `:1015`) y "Compras estimadas" del funnel (`:969`, misma división cuando no hay facturación por canal, `funnel.ts:121-129`).
+- Conjuntos activos y sostenibles en el semáforo (`:672-675`) y en presupuesto (`:916-919`).
+- Breakeven ROAS en el semáforo (`:667`), en el respaldo (`:703`), en economía (`:851`) y por canal (`:1104`). "CPA objetivo" y "ROAS objetivo" (`:854-855`) son breakeven con reserva (`:944-949`); "Reserva aplicada" (`:853`) es la constante de configuración (`:943`).
+- "Origen de la comisión" (`:1077-1080`) y "Evidencia" (`:1081`) leen el mismo campo `comision_evidencia`.
+
+## H-47 · Filas y secciones que salen vacías casi siempre, y métricas que en una llamada no dicen nada · abierto
+
+- Quien no vende en Mercado Libre ve "—" y "Sin datos" en `:861-869` y una tarjeta de Mercado Libre siempre presente con "No aplica" o "Sin datos" (`:1013-1014, 1044-1070`); `derivados.canales` trae dos entradas siempre (`calculo-diagnostico.ts:879`).
+- La sección de funnel se muestra con estado `sin_datos` porque `:949` sólo oculta `no_aplica`: sin visitas, ocho filas en "—" (`funnel.ts:201-205`). En modo B es siempre así (H-19).
+- "Margen total (negocio completo)" (`:846`) exige 100 % explícito de productos y de canales (`:897-918`); las dos fixtures reales lo dejan en "—".
+- Para una llamada: "Reserva aplicada", "Piso teórico mensual (optimizando por compra, un conjunto)" (`:903-906`), "Supuestos usados (confianza: media)" con cuatro frases fijas (`calculo-diagnostico.ts:1041-1055`), "Comisión provisional: es un benchmark…" (`:1105-1110`), "Vigencia de la regla" (`:1082-1084`) y la marca "Estimación parcial: faltan etapas intermedias del funnel" (`:735-741`).
+
+## H-48 · `EXPLICACION_FUGA` en el detalle tiene claves para ids de fuga que el motor ya no emite · abierto
+
+Verificado aparte con grep el 2026-09-11, fuera del reporte. `src/routes/_authenticated/diagnosticos.$id.tsx:90-96` define `EXPLICACION_FUGA` (justo después de `ETIQUETAS_CAMPO`, que arranca en `:75`) con cuatro claves: `conversion` (`:91`), `gasto_no_rentable` (`:93`), `fatiga_creativa` (`:94`) y `sobrefragmentacion` (`:95`). Los ids que el motor emite hoy en `src/lib/calculo-diagnostico.ts` son cinco: `gasto_no_rentable` (`:1220, :1239`), `sobrefragmentacion` (`:1266, :1290`), `recuperacion_carrito` (`:1350, :1389`), `recompra` (`:1465, :1509`) y `medicion` (`:1546`). No hay ningún `id: "conversion"` ni `id: "fatiga_creativa"` en `src/lib`; los tests lo confirman explícitamente (`calculo-diagnostico.test.ts:256, :272, :458` verifican que esos dos ids no aparecen). El mapa se consume en `:773` con `f.detalle ?? EXPLICACION_FUGA[f.id] ?? ""`. Es el mismo patrón de claves muertas que H-40 describe para `CLAVES_FUGA` en `propuesta-seccion.tsx:11-16` (allí las muertas son `conversion` y `carritos_abandonados`).
+
+Observación secundaria, del mismo grep: además de las dos claves muertas, faltan explicaciones para `medicion`, `recompra` y `recuperacion_carrito`. Tres de las cinco fugas vigentes no tienen entrada en el mapa, así que cuando el motor no trae `detalle` esas tres salen sin texto explicativo en pantalla (el `?? ""` de `:773` imprime vacío).
+
+---
+
+## Auditoría de salidas 2026-09-11: fuera del registro
+
+Lo que sigue viene del mismo reporte y no lleva ID. Queda acá para que no se pierda. Vale la misma nota de alcance: `motor-activo.ts:19` está en `"v1"`; lo que hable de la cadena v2 describe lo que pasará al activarla.
+
+### Seis hallazgos verificados de menor impacto
+
+Verbatim del reporte: "Quedaron afuera 6 hallazgos verificados de menor impacto:"
+
+1. Semáforo Economía en amarillo con un texto que compara sólo contra breakeven (`:667` vs `calculo-diagnostico.ts:1145-1150`).
+2. "Conversión de la tienda" 0,22 % junto a "Conversión global" 0,15 % y "Pedidos 133" junto a "Compras 89" en la corrida E, cuya causa es H-28.
+3. Hallazgos mayoristas en propuesta y documentos (`propuesta.ts:341-434`) sin ninguna sección en el detalle.
+4. `margen_muestra` llega al PDF (`build-context.ts:1013-1019`) pero no a la IA (`propuesta.ts:561`).
+5. "Metodología y supuestos" nunca se imprime porque `metodologia: []` (`build-context.ts:1133`, `shared.ts:143-150`).
+6. Notas de hallazgos que anuncian faltantes van a la IA (`propuesta.ts:305-308, 332`) contra la regla del prompt (`:626-627`).
+
+### Cuatro sospechas sin verificar
+
+Verbatim del reporte:
+
+1. La cadena v1, que es la que hoy recibe el prospecto, puede tener los mismos problemas 6 y 7 (H-43 y H-44). No la leí.
+2. Paridad PDF v2 con web v2: sólo confirmé "Resultado:", "Selección comercial pendiente" y "Sin precio cargado" en `pdf-v2/document.tsx`. El bloque de servicios (`:1650`) lista alcance sin etiqueta de vacío; no sé qué imprime con lista vacía.
+3. La IA podría copiar la instrucción "Redactalo como un único hallazgo…" (`propuesta.ts:164`), que viaja dentro de los datos. Depende del modelo.
+4. Modo B: el semáforo de Medición queda siempre "Sin datos" porque `facturacion_pixel` es exclusivo del modo A. Lo infiero de H-18, no lo corrí.
+
+El inventario de métricas de la pantalla de detalle que acompañaba al reporte no se registra acá: está en `docs/bv4-inventario-metricas-detalle.md`, tal como vino, sin juicio.
