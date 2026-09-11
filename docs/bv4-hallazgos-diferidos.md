@@ -363,7 +363,7 @@ Corregido con un `cp` explícito desde `~/Downloads` con los cuatro nombres
 completos, dejando el `ls` después como verificación. `cp` y no `mv`: si el gate
 falla y hay que repetirlo, los originales tienen que seguir donde estaban.
 
-## H-18 · Cambiar de modo borra datos sin confirmación y la pantalla promete lo contrario · abierto
+## H-18 · Cambiar de modo borra datos sin confirmación y la pantalla promete lo contrario · CORREGIDO 2026-09-11
 
 Dispara con un clic en "cambiar" del encabezado del formulario
 (`diagnosticos.nuevo.tsx:384`), que llama a `cambiarModo` directo, sin
@@ -385,6 +385,20 @@ cargado" (`diagnosticos.nuevo.tsx:315`).
 Consecuencia: una importación entera del CSV de Meta (`CargaCsvMeta`,
 `diagnosticos.nuevo.tsx:970-986`) desaparece con un clic, y el motor recalcula
 sin bloque Cuenta ni delta de medición.
+
+**Corregido el 2026-09-11 en `c18c49c`.** Se evaluó "ocultar sin borrar" y se
+descartó: el motor lee por presencia, no por modo (`calculo-diagnostico.ts:1000-1004`,
+`presupuesto_diario` pisa a `gasto_diario`), así que un campo oculto con valor
+alimentaría el cálculo sin que se vea. En su lugar, `cambiarModo` mueve lo
+exclusivo con valor a un estado aparte (`estacionados`), fuera de `datos`, y lo
+restaura al volver al modo original (`estacionarAlCambiarModo`,
+`diagnostico-form.ts`). Si hay exclusivos cargados, "cambiar" pide confirmación
+con la cantidad; al guardar con algo estacionado, avisa que no se incluye sin
+bloquear. El borrador persiste lo estacionado. El texto de la pantalla de
+elección ahora dice lo que pasa. Ver H-50 para la misma incoherencia en los
+productos 2 a 5, que este arreglo no cubre. La lógica de estacionar y restaurar
+está cubierta por tests (`diagnostico-form.test.ts`), pero los diálogos y el
+aviso no se probaron en el navegador al momento de escribir esto.
 
 ## H-19 · En modo B el bloque Web nunca genera funnel, aunque la pantalla lo muestre completo · abierto
 
@@ -729,6 +743,50 @@ Opciones evaluadas el 2026-09-11, ninguna aplicada:
 4. **Columna derivada al guardar** (un booleano tipo "oportunidad pendiente", calculado por el motor cuando persiste el diagnóstico) y que el listado la lea. Es la solución correcta: el listado lee un dato ya derivado en vez de recalcular desde las fugas. **Toca la persistencia** (migración, escritura al guardar, tipos), y el contrato maestro lo prohíbe sin decisión explícita. Es la que queda pendiente de esa decisión.
 
 Mientras tanto el listado queda como está, con "$ 0" para ese caso, y la query sin cambios. El detalle sí lo distingue.
+
+## H-50 · Costo y precio de los productos 2 a 5 se ocultan en modo B pero no se borran, y el motor los usa igual · abierto
+
+Encontrado el 2026-09-11 al diseñar el arreglo de H-18. Es la misma
+incoherencia por presencia que H-18 tenía en los campos exclusivos, en un
+lugar que `CAMPOS_EXCLUSIVOS` no cubre. Va junto a H-15, que documenta la
+limitación de captura; este hallazgo es sobre lo que pasa con lo ya cargado.
+
+`diagnosticos.nuevo.tsx:952` decide si se muestran costo y precio por
+producto:
+
+```ts
+const conMontos = modo === "A" || n === 1;
+```
+
+y `:961` los renderiza sólo si `conMontos`. En **modo B**, del producto 2 al
+5 los campos `producto_N_costo` y `producto_N_precio` no se ven, pero:
+
+- **No están en `CAMPOS_EXCLUSIVOS`** (`diagnostico-form.ts:668-682`), así que
+  cambiar de modo no los toca: ni los borraba antes de `c18c49c` ni los
+  estaciona ahora. Quedan en `datos` con el valor que tuvieran.
+- **El motor los lee por presencia**: `productosCargados`
+  (`calculo-diagnostico.ts:360-405`) toma `producto_2_costo` y
+  `producto_2_precio` en `:372-373`, y lo mismo para 3, 4 y 5 en `:379-394`.
+  Con eso calcula margen por producto y cobertura del catálogo (`:413`).
+
+Dos formas de disparar:
+
+1. Cargar costo y precio de los productos 2 y 3 en modo A, cambiar a modo B
+   y guardar. El diagnóstico queda en modo B con márgenes de tres productos
+   que el vendedor no vio en pantalla al guardar. La confirmación de H-18 no
+   los cuenta, porque no son exclusivos.
+2. "Editar y recalcular" un diagnóstico de modo A que tenga los cinco
+   productos con montos, con la nueva versión en modo B. La pantalla muestra
+   sólo nombre y porcentaje del producto 2 en adelante; el motor calcula con
+   los costos heredados. Si el vendedor corrige el precio del producto 2 en
+   la llamada, no tiene dónde escribirlo.
+
+Es exactamente el caso que se descartó para H-18: un valor oculto que sigue
+alimentando el cálculo. No se toca en esta sesión. Las salidas posibles son
+las de H-15: o modo B captura montos de todos los productos (y `conMontos`
+desaparece), o los montos de los productos 2 a 5 entran en
+`CAMPOS_EXCLUSIVOS.A` y se estacionan como el resto. Cualquiera de las dos
+cambia la cobertura del catálogo en modo B, que H-15 ya midió.
 
 ---
 
