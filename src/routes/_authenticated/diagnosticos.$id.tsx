@@ -608,7 +608,7 @@ function NumeroPrincipal({
           <EstadoPunto estado="sin_datos" className="mt-3 size-3.5" />
           <div>
             <h2 className="text-[30px] font-medium leading-9 text-foreground">
-              Todavía no podemos valorizar la oportunidad
+              Faltan datos para valorizar la oportunidad
             </h2>
             <p className="mt-4 max-w-2xl text-[16px] leading-7 text-muted-foreground">
               {lista
