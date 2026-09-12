@@ -727,6 +727,28 @@ export function sanearEstacionados(crudo: unknown, modo: Modo): DatosEstacionado
   return salida as DatosEstacionados;
 }
 
+/**
+ * Si el formulario tiene algo cargado: algún campo distinto de `DATOS_INICIALES`, una nota
+ * con texto o algo estacionado. Compara contra los iniciales y no contra null porque varios
+ * arrancan con valor (`false`, `cantidad_productos: 3`, `"excluyentes"`). Elegir modo solo
+ * no cuenta.
+ */
+export function hayDatosCargados(
+  datos: DatosDiagnostico,
+  notas: NotasDiagnostico,
+  estacionados: DatosEstacionados,
+) {
+  if (Object.keys(estacionados).length > 0) return true;
+  if (Object.values(notas).some((nota) => estaCompleto(nota))) return true;
+  return (Object.keys(DATOS_INICIALES) as (keyof DatosDiagnostico)[]).some((campo) => {
+    const valor = datos[campo];
+    const inicial = DATOS_INICIALES[campo];
+    if (typeof valor === "string" && typeof inicial === "string")
+      return valor.trim() !== inicial.trim();
+    return JSON.stringify(valor) !== JSON.stringify(inicial);
+  });
+}
+
 export const CLAVE_BORRADOR = "velocentum:borrador-diagnostico";
 
 export const ESTADOS_CAPI = [

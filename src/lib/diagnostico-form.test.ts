@@ -4,6 +4,7 @@ import {
   DATOS_INICIALES,
   camposExclusivosCargados,
   estacionarAlCambiarModo,
+  hayDatosCargados,
   sanearEstacionados,
   type DatosDiagnostico,
 } from "./diagnostico-form";
@@ -86,5 +87,28 @@ describe("sanearEstacionados", () => {
         "A",
       ),
     ).toEqual({ presupuesto_diario: 1000 });
+  });
+});
+
+describe("hayDatosCargados", () => {
+  it("un formulario recién abierto no tiene datos, aunque los iniciales traigan valores", () => {
+    expect(hayDatosCargados(DATOS_INICIALES, {}, {})).toBe(false);
+  });
+
+  it("strings con sólo espacios y notas vacías no cuentan", () => {
+    expect(
+      hayDatosCargados({ ...DATOS_INICIALES, nombre_tienda: "   " }, { medicion: "  " }, {}),
+    ).toBe(false);
+  });
+
+  it("cuenta cualquier campo distinto del inicial, incluidos booleanos y números por defecto", () => {
+    expect(hayDatosCargados({ ...DATOS_INICIALES, nombre_tienda: "Tienda" }, {}, {})).toBe(true);
+    expect(hayDatosCargados({ ...DATOS_INICIALES, vende_mercado_libre: true }, {}, {})).toBe(true);
+    expect(hayDatosCargados({ ...DATOS_INICIALES, cantidad_productos: 5 }, {}, {})).toBe(true);
+  });
+
+  it("una nota o algo estacionado cuentan aunque los datos estén vacíos", () => {
+    expect(hayDatosCargados(DATOS_INICIALES, { medicion: "no tiene pixel" }, {})).toBe(true);
+    expect(hayDatosCargados(DATOS_INICIALES, {}, { presupuesto_diario: 1000 })).toBe(true);
   });
 });

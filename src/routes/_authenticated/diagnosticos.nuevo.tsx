@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, Keyboard } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ import {
   cantidadProductosDe,
   contarCompletos,
   estacionarAlCambiarModo,
+  hayDatosCargados,
   sanearEstacionados,
   type BloqueId,
   type DatosDiagnostico,
@@ -95,7 +96,24 @@ type Borrador = {
   notas: NotasDiagnostico;
   /** Exclusivos del modo inactivo, guardados aparte al cambiar de modo. */
   estacionados: DatosEstacionados;
+  /** ISO del último autoguardado. Los borradores anteriores a este campo no lo traen. */
+  guardadoEn: string | null;
 };
+
+/** "hoy a las 14:05" o "el 11/09 a las 14:05", para el aviso de borrador retomado. */
+function describirMomento(iso: string): string | null {
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return null;
+  // 24 horas: con "p. m." el punto final de la frase queda doble.
+  const hora = fecha.toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  if (fecha.toDateString() === new Date().toDateString()) return `hoy a las ${hora}`;
+  const dia = fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+  return `el ${dia} a las ${hora}`;
+}
 
 function leerBorrador(): Borrador | null {
   if (typeof window === "undefined") return null;
@@ -109,6 +127,7 @@ function leerBorrador(): Borrador | null {
       datos: { ...DATOS_INICIALES, ...(parsed.datos ?? {}) },
       notas: parsed.notas ?? {},
       estacionados: sanearEstacionados(parsed.estacionados, parsed.modo === "A" ? "B" : "A"),
+      guardadoEn: typeof parsed.guardadoEn === "string" ? parsed.guardadoEn : null,
     };
   } catch {
     return null;
@@ -128,13 +147,21 @@ function NuevoDiagnostico() {
   // Valores exclusivos del modo inactivo. Fuera de `datos` a propósito: el motor lee por
   // presencia y los tomaría en el cálculo aunque no se vean en pantalla.
   const [estacionados, setEstacionados] = useState<DatosEstacionados>({});
-  const [dialogo, setDialogo] = useState<"cambio_modo" | "guardar" | null>(null);
+  const [dialogo, setDialogo] = useState<
+    "cambio_modo" | "guardar" | "descartar_salir" | "descartar_reiniciar" | null
+  >(null);
   const [bloque, setBloque] = useState<BloqueId>("identificacion");
   const [guardadoEn, setGuardadoEn] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [origen, setOrigen] = useState<Origen | null>(null);
   const [cargandoOrigen, setCargandoOrigen] = useState(Boolean(desde));
+  // Al recuperar un borrador con datos, avisa de quién es: puede ser de la llamada anterior.
+  const [retomado, setRetomado] = useState<{ guardadoEn: string | null } | null>(null);
+  // Corta el autoguardado una vez descartado o guardado el borrador: un timer pendiente no
+  // tiene que volver a escribirlo entre el removeItem y el desmontaje. Se rehabilita al
+  // elegir modo.
+  const descartado = useRef(false);
 
   // Precarga desde un diagnóstico existente (editar y recalcular)
   useEffect(() => {
@@ -176,18 +203,27 @@ function NuevoDiagnostico() {
       setDatos(b.datos);
       setNotas(b.notas);
       setEstacionados(b.estacionados);
+      if (hayDatosCargados(b.datos, b.notas, b.estacionados)) {
+        setRetomado({ guardadoEn: b.guardadoEn });
+      }
     }
   }, [desde]);
 
   // Autoguardado del borrador cada 3 segundos
   useEffect(() => {
-    if (!modo || desde) return;
+    if (!modo || desde || descartado.current) return;
     const t = setTimeout(() => {
-      window.localStorage.setItem(
-        CLAVE_BORRADOR,
-        JSON.stringify({ modo, datos, notas, estacionados }),
-      );
-      setGuardadoEn(new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }));
+      if (descartado.current) return;
+      const ahora = new Date();
+      const borrador: Borrador = {
+        modo,
+        datos,
+        notas,
+        estacionados,
+        guardadoEn: ahora.toISOString(),
+      };
+      window.localStorage.setItem(CLAVE_BORRADOR, JSON.stringify(borrador));
+      setGuardadoEn(ahora.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }));
     }, 3000);
     return () => clearTimeout(t);
   }, [modo, datos, notas, estacionados, desde]);
@@ -263,6 +299,49 @@ function NuevoDiagnostico() {
     else void guardar();
   }
 
+  function borrarBorrador() {
+    descartado.current = true;
+    window.localStorage.removeItem(CLAVE_BORRADOR);
+  }
+
+  /**
+   * En "Editar y recalcular" vuelve al original sin tocar el borrador, que es de otro flujo.
+   * En uno nuevo, si hay algo cargado pide confirmación; si no, descarta y sale.
+   */
+  function pedirCancelar() {
+    if (desde) {
+      void navigate({ to: "/diagnosticos/$id", params: { id: desde } });
+      return;
+    }
+    if (modo && hayDatosCargados(datos, notas, estacionados)) setDialogo("descartar_salir");
+    else descartarYSalir();
+  }
+
+  function descartarYSalir() {
+    borrarBorrador();
+    setDialogo(null);
+    void navigate({ to: "/" });
+  }
+
+  /** Descarta y vuelve a la elección de modo sin salir de la pantalla. */
+  function descartarYReiniciar() {
+    borrarBorrador();
+    setModo(null);
+    setDatos(DATOS_INICIALES);
+    setNotas({});
+    setEstacionados({});
+    setBloque("identificacion");
+    setGuardadoEn(null);
+    setRetomado(null);
+    setError(null);
+    setDialogo(null);
+  }
+
+  function elegirModo(nuevo: Modo) {
+    descartado.current = false;
+    setModo(nuevo);
+  }
+
   const desvioMedicion = useMemo(() => {
     const real = datos.facturacion_mensual;
     const pixel = datos.facturacion_pixel;
@@ -331,7 +410,7 @@ function NuevoDiagnostico() {
         .single();
       if (errDiag || !diagnostico) throw errDiag ?? new Error("No se pudo guardar el diagnóstico.");
 
-      if (!origen) window.localStorage.removeItem(CLAVE_BORRADOR);
+      if (!origen) borrarBorrador();
       void navigate({ to: "/diagnosticos/$id", params: { id: diagnostico.id } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar. Probá de nuevo.");
@@ -357,8 +436,8 @@ function NuevoDiagnostico() {
           title="Nuevo diagnóstico"
           description="Elegí cómo va a ser la llamada. Podés cambiarlo después. Lo compartido se conserva; lo exclusivo de cada modo se guarda aparte y vuelve si volvés a ese modo."
           actions={
-            <Button asChild size="sm" variant="outline">
-              <Link to="/">Cancelar</Link>
+            <Button size="sm" variant="outline" onClick={pedirCancelar}>
+              Cancelar
             </Button>
           }
         />
@@ -368,7 +447,7 @@ function NuevoDiagnostico() {
               <button
                 key={m.value}
                 type="button"
-                onClick={() => setModo(m.value)}
+                onClick={() => elegirModo(m.value)}
                 className="rounded-xl border border-border bg-card p-10 text-left transition-colors hover:border-violet"
               >
                 <p className="text-[12px] uppercase tracking-wide text-muted-foreground">
@@ -405,7 +484,9 @@ function NuevoDiagnostico() {
   const avance = bloquesConCampos === 0 ? 0 : (bloquesCompletos / bloquesConCampos) * 100;
 
   const verticalLabel = VERTICALES.find((v) => v.value === datos.vertical)?.label ?? "";
-  const subtitulo = [datos.nombre_tienda.trim(), verticalLabel].filter(Boolean).join(" · ");
+  const nombreTienda = datos.nombre_tienda.trim();
+  const subtitulo = [nombreTienda, verticalLabel].filter(Boolean).join(" · ");
+  const momentoRetomado = retomado?.guardadoEn ? describirMomento(retomado.guardadoEn) : null;
   const bloqueActual = bloquesVisibles.find((b) => b.id === bloque);
 
   return (
@@ -464,14 +545,37 @@ function NuevoDiagnostico() {
             </Tooltip>
           </TooltipProvider>
 
-          <Button asChild size="sm" variant="outline">
-            <Link to="/">Cancelar</Link>
+          <Button size="sm" variant="outline" onClick={pedirCancelar}>
+            Cancelar
           </Button>
           <Button size="sm" onClick={pedirGuardar} disabled={guardando}>
             {guardando ? "Guardando…" : origen ? "Guardar versión nueva" : "Guardar diagnóstico"}
           </Button>
         </div>
       </header>
+
+      {retomado && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-violet-soft px-8 py-3 text-[13px] leading-5 text-violet"
+        >
+          <p>
+            {nombreTienda
+              ? `Seguís con el borrador de ${nombreTienda}`
+              : "Seguís con un borrador que todavía no tiene nombre de tienda"}
+            {momentoRetomado ? `, guardado ${momentoRetomado}` : ""}. Si es de otro prospecto,
+            empezá de cero.
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setRetomado(null)}>
+              Seguir con este
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setDialogo("descartar_reiniciar")}>
+              Empezar de cero
+            </Button>
+          </div>
+        </div>
+      )}
 
       {cantidadEstacionados > 0 && (
         <p
@@ -1606,6 +1710,34 @@ function NuevoDiagnostico() {
               }}
             >
               Guardar igual
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={dialogo === "descartar_salir" || dialogo === "descartar_reiniciar"}
+        onOpenChange={(abierto) => !abierto && setDialogo(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {nombreTienda
+                ? `¿Descartar lo cargado de ${nombreTienda}?`
+                : "¿Descartar lo cargado?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {nombreTienda ? "" : "Todavía no tiene nombre de tienda. "}Se borra el borrador con
+              todo lo cargado y no se puede recuperar.
+              {dialogo === "descartar_reiniciar" && " Después elegís el modo de la llamada nueva."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Seguir cargando</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={dialogo === "descartar_salir" ? descartarYSalir : descartarYReiniciar}
+            >
+              {dialogo === "descartar_salir" ? "Descartar y salir" : "Descartar y empezar de cero"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
