@@ -3,7 +3,7 @@
  * Todos los parámetros salen de la tabla `configuracion`; nunca hay valores fijos acá.
  */
 
-import type { DatosDiagnostico } from "./diagnostico-form";
+import { cantidadProductosDe, type DatosDiagnostico, type Modo } from "./diagnostico-form";
 import { DECIMALES_TASA, ratioPesos, redondear, restarPesos, sumarDecimal } from "./dinero";
 import {
   CANALES,
@@ -356,8 +356,25 @@ export type ProductoCargado = {
 /** Cantidad máxima de productos que soporta la lista (fase 5: de uno a cinco). */
 export const MAX_PRODUCTOS = 5;
 
-/** Devuelve los productos que tienen costo y precio válidos cargados. */
-export function productosCargados(d: DatosDiagnostico) {
+/**
+ * En modo B el formulario pide costo y precio sólo del producto principal
+ * (`diagnosticos.nuevo.tsx`, `conMontos`). Del 2 al 5 los montos quedan ocultos
+ * pero pueden seguir en `datos` (cargados en modo A, o heredados al editar):
+ * el motor no los lee (H-50).
+ */
+export function montosVisibles(modo: Modo, indice: number): boolean {
+  return modo === "A" || indice === 1;
+}
+
+/**
+ * Devuelve los productos que tienen costo y precio válidos cargados, sólo entre
+ * los que el usuario declaró: los primeros `cantidad_productos` de la lista
+ * (H-23; "Quitar" baja la cantidad) y, en modo B, con montos sólo del
+ * principal (H-50). `modo` por defecto "A", el mismo default de la columna
+ * `diagnostico.modo`: sin modo no se descarta ningún monto.
+ */
+export function productosCargados(d: DatosDiagnostico, modo: Modo = "A") {
+  const declarados = cantidadProductosDe(d);
   const crudos = [
     {
       indice: 1,
@@ -395,7 +412,14 @@ export function productosCargados(d: DatosDiagnostico) {
       pct: d.producto_5_pct_facturacion,
     },
   ];
-  return crudos.filter((p) => finito(p.costo) && finito(p.precio) && (p.precio as number) > 0) as {
+  return crudos.filter(
+    (p) =>
+      p.indice <= declarados &&
+      montosVisibles(modo, p.indice) &&
+      finito(p.costo) &&
+      finito(p.precio) &&
+      (p.precio as number) > 0,
+  ) as {
     indice: number;
     nombre: string;
     costo: number;
@@ -409,8 +433,8 @@ export function productosCargados(d: DatosDiagnostico) {
  * los productos con costo y precio cargados. Misma fórmula que usaba el adaptador
  * documental (fase 5: ahora vive acá, fuente única, y el adaptador la reutiliza).
  */
-export function coberturaProductos(d: DatosDiagnostico): number {
-  const suma = productosCargados(d).reduce(
+export function coberturaProductos(d: DatosDiagnostico, modo: Modo = "A"): number {
+  const suma = productosCargados(d, modo).reduce(
     (total, p) => total + (finito(p.pct) && (p.pct as number) > 0 ? (p.pct as number) : 0),
     0,
   );
@@ -855,9 +879,14 @@ function margenDeCanal(
 
 // ---------------------------------------------------------------- cálculo
 
+/**
+ * `modo` decide qué productos entran (ver `productosCargados`). Por defecto "A",
+ * como la columna `diagnostico.modo`; el formulario pasa siempre el suyo.
+ */
 export function calcularDiagnostico(
   datos: DatosDiagnostico,
   cfg: ConfiguracionCalculo,
+  modo: Modo = "A",
 ): ResultadoCalculo {
   const d = datos;
 
@@ -875,7 +904,7 @@ export function calcularDiagnostico(
 
   // --- Margen por canal. Cada canal se calcula con sus propias comisiones,
   // su propio ticket y su propio envío: no hay contaminación entre canales.
-  const cargados = productosCargados(d);
+  const cargados = productosCargados(d, modo);
   const canalesCalc: CanalDerivado[] = CANALES.map((c) => margenDeCanal(d, cfg, c.id, cargados));
   const porId = (id: CanalId) => canalesCalc.find((c) => c.id === id)!;
 
@@ -894,7 +923,7 @@ export function calcularDiagnostico(
   // cobertura parcial, `margen` queda retenido (null) y sólo se publica
   // `margen_muestra`, que sigue representando lo que sí se pudo calcular
   // sobre la evidencia cargada, sin exigir cobertura total.
-  const coberturaProductosPct = coberturaProductos(d);
+  const coberturaProductosPct = coberturaProductos(d, modo);
   const hayCoberturaProductosCompleta = coberturaProductosPct >= 100;
 
   if (!hayCanales) {

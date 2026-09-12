@@ -391,7 +391,7 @@ function NuevoDiagnostico() {
       }
 
       const cfg = await cargarConfiguracion();
-      const resultado = calcularDiagnostico(datos, cfg);
+      const resultado = calcularDiagnostico(datos, cfg, modo);
 
       const { data: diagnostico, error: errDiag } = await supabase
         .from("diagnostico")
@@ -1088,13 +1088,11 @@ function NuevoDiagnostico() {
                   );
                 })}
                 {(() => {
-                  const pcts = [
-                    datos.producto_1_pct_facturacion,
-                    datos.producto_2_pct_facturacion,
-                    datos.producto_3_pct_facturacion,
-                    datos.producto_4_pct_facturacion,
-                    datos.producto_5_pct_facturacion,
-                  ].filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+                  // Sólo las filas visibles: lo que quedó debajo de la lista no se suma (H-23).
+                  const pcts = Array.from(
+                    { length: cantidadProductosDe(datos) },
+                    (_, i) => datos[`producto_${i + 1}_pct_facturacion` as keyof DatosDiagnostico],
+                  ).filter((v): v is number => typeof v === "number" && Number.isFinite(v));
                   if (pcts.length === 0) return null;
                   const suma = pcts.reduce((a, b) => a + b, 0);
                   const excede = suma > 100;

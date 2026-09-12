@@ -13,6 +13,7 @@ import {
 } from "./diagnostico-form";
 import { calcularDiagnostico, coberturaProductos, productosCargados } from "./calculo-diagnostico";
 import type { ConfiguracionCalculo } from "./calculo-diagnostico";
+import { casoSnakeStore, configuracionRegresionFase2, esperadosFase2 } from "./fixtures-casos";
 
 function datosCon(overrides: Partial<DatosDiagnostico>): DatosDiagnostico {
   return { ...DATOS_INICIALES, ...overrides };
@@ -89,6 +90,7 @@ describe("camposPorBloque(\"productos\"): la cantidad de productos define lo req
 describe("productosCargados: reconoce hasta cinco productos", () => {
   it("carga los cinco cuando los cinco tienen costo y precio", () => {
     const d = datosCon({
+      cantidad_productos: 5,
       producto_1_nombre: "P1",
       producto_1_costo: 100,
       producto_1_precio: 200,
@@ -140,6 +142,7 @@ describe("coberturaProductos: qué porcentaje del catálogo está analizado", ()
 
   it("cinco productos que suman 100% dan cobertura completa", () => {
     const d = datosCon({
+      cantidad_productos: 5,
       producto_1_nombre: "P1",
       producto_1_costo: 100,
       producto_1_precio: 200,
@@ -178,6 +181,7 @@ describe("calcularDiagnostico: margen ponderado con hasta cinco productos", () =
   it("pondera los cinco productos por su participación declarada", () => {
     const d: DatosDiagnostico = {
       ...base,
+      cantidad_productos: 5,
       producto_1_nombre: "P1",
       producto_1_costo: 10000,
       producto_1_precio: 20000,
@@ -216,6 +220,7 @@ describe("calcularDiagnostico: margen ponderado con hasta cinco productos", () =
   it("el cuarto y quinto producto participan del breakeven y la comisión por producto", () => {
     const d: DatosDiagnostico = {
       ...base,
+      cantidad_productos: 4,
       producto_1_nombre: "P1",
       producto_1_costo: 10000,
       producto_1_precio: 20000,
@@ -247,5 +252,81 @@ describe("calcularDiagnostico: margen ponderado con hasta cinco productos", () =
     // 60% queda retenido. El de la muestra sí se calcula sobre lo cargado.
     expect(r.derivados.margen_contribucion).toBeNull();
     expect(typeof r.derivados.margen_muestra).toBe("number");
+  });
+});
+
+describe("H-23 · sólo entran los productos que siguen en la lista", () => {
+  it("un producto quitado con datos no entra ni al margen ni a la cobertura", () => {
+    // Snake con la lista bajada a 1: los productos 2 y 3 siguen en `datos`.
+    const d = { ...casoSnakeStore, cantidad_productos: 1 };
+    expect(productosCargados(d).map((p) => p.indice)).toEqual([1]);
+    expect(coberturaProductos(d)).toBe(30);
+    const r = calcularDiagnostico(d, configuracionRegresionFase2);
+    expect(r.derivados.margenes_producto).toEqual([
+      esperadosFase2.snakeStore.margenesProducto[0],
+      null,
+      null,
+      null,
+      null,
+    ]);
+    expect(r.derivados.pesos_producto).toEqual([1, null, null, null, null]);
+    expect(r.derivados.margen_muestra).toBe(esperadosFase2.snakeStore.margenesProducto[0]);
+  });
+
+  it("un producto 4 quitado no completa el 100% de cobertura", () => {
+    const d = datosCon({
+      cantidad_productos: 3,
+      producto_1_costo: 100,
+      producto_1_precio: 200,
+      producto_1_pct_facturacion: 60,
+      producto_4_costo: 100,
+      producto_4_precio: 200,
+      producto_4_pct_facturacion: 40,
+    });
+    expect(coberturaProductos(d)).toBe(60);
+    expect(coberturaProductos({ ...d, cantidad_productos: 4 })).toBe(100);
+  });
+
+  it("sin cantidad_productos guardada se leen los tres de antes de la fase 5", () => {
+    const d = { ...casoSnakeStore } as Partial<DatosDiagnostico>;
+    delete d.cantidad_productos;
+    expect(productosCargados(d as DatosDiagnostico).map((p) => p.indice)).toEqual([1, 2, 3]);
+  });
+
+  it("Snake tal como está en el fixture (cantidad 3) no cambia", () => {
+    expect(casoSnakeStore.cantidad_productos).toBe(3);
+    expect(coberturaProductos(casoSnakeStore)).toBe(60);
+  });
+});
+
+describe("H-50 · en modo B los montos de los productos 2 a 5 no entran", () => {
+  it("Snake en modo B: sólo el principal tiene margen y la cobertura es la suya", () => {
+    expect(productosCargados(casoSnakeStore, "B").map((p) => p.indice)).toEqual([1]);
+    expect(coberturaProductos(casoSnakeStore, "B")).toBe(30);
+    const r = calcularDiagnostico(casoSnakeStore, configuracionRegresionFase2, "B");
+    expect(r.derivados.cobertura_productos).toBe(30);
+    expect(r.derivados.margenes_producto).toEqual([
+      esperadosFase2.snakeStore.margenesProducto[0],
+      null,
+      null,
+      null,
+      null,
+    ]);
+  });
+
+  it("los mismos datos en modo A (el default) siguen dando los tres márgenes", () => {
+    const r = calcularDiagnostico(casoSnakeStore, configuracionRegresionFase2);
+    expect(r.derivados.margenes_producto).toEqual(esperadosFase2.snakeStore.margenesProducto);
+    expect(calcularDiagnostico(casoSnakeStore, configuracionRegresionFase2, "A")).toEqual(r);
+  });
+
+  it("en modo B el porcentaje del producto 2 sin montos no suma cobertura", () => {
+    const d = datosCon({
+      producto_1_costo: 100,
+      producto_1_precio: 200,
+      producto_1_pct_facturacion: 70,
+      producto_2_pct_facturacion: 30,
+    });
+    expect(coberturaProductos(d, "B")).toBe(70);
   });
 });

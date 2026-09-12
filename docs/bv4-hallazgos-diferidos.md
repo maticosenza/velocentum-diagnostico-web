@@ -16,8 +16,8 @@ dos corridas del gate de F2a, de la auditoría del formulario de carga del
 auditoría de las salidas del 2026-09-11: **H-7, H-14 y H-17 corregidos**,
 **H-8 mitigado parcialmente**, **H-9 parcialmente encaminado**; **H-6**,
 **H-10**, **H-11**, **H-12**, **H-13**, **H-15**, **H-16** (sólo el punto b:
-el a se resolvió el 2026-09-12), **H-19 a H-27**,
-**H-28 a H-37**, **H-38, H-39 y H-41 a H-48**, **H-49**, **H-50**, **H-52**, **H-53** y **H-54** quedan abiertos, ordenados, con dueño
+el a se resolvió el 2026-09-12), **H-19 a H-22 y H-24 a H-27**,
+**H-28 a H-37**, **H-38, H-39 y H-41 a H-48**, **H-49**, **H-52**, **H-53** y **H-54** quedan abiertos, ordenados, con dueño
 humano; **H-51** queda en pausa por una decisión de producto. H-11 y H-12 entraron por esa auditoría: los dos estaban
 reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la propia
 migración: aplicarla a mano deja la puerta abierta a que el cambio vuelva
@@ -27,7 +27,7 @@ abrió la primera corrida completa (2026-09-05), que sí llegó hasta el final.
 H-18 a H-27 los abrió la auditoría del formulario de carga del 2026-09-10
 (`diagnosticos.nuevo.tsx`, `campos-formulario.tsx`, `bloque-canales.tsx`,
 `diagnostico-form.ts`, cruzados contra lo que el motor consume): son del
-formulario, no del motor, que ya estaba auditado. Sólo H-18 está corregido (`c18c49c`, 2026-09-11).
+formulario, no del motor, que ya estaba auditado. Están corregidos H-18 (`c18c49c`, 2026-09-11) y H-23 (2026-09-12).
 Los diez están ordenados por impacto en una llamada real. H-28 a H-37 los
 abrió la auditoría del motor de cálculo del 2026-09-10
 (`calculo-diagnostico.ts`, `contradiccion.ts`, `mayorista.ts`, `funnel.ts`,
@@ -506,7 +506,7 @@ Consecuencia con 150 en la pestaña ML (sin tope): `canalesSuperan100`
 de 100" aparece en Canales (`bloque-canales.tsx:179-183`), donde el campo
 causante no está.
 
-## H-23 · Los productos "quitados" siguen entrando al cálculo y a la suma en pantalla · abierto
+## H-23 · Los productos "quitados" siguen entrando al cálculo y a la suma en pantalla · CORREGIDO 2026-09-12
 
 "Quitar" sólo baja `cantidad_productos` (`diagnosticos.nuevo.tsx:870`,
 `set("cantidad_productos", Math.max(1, cantidad - 1))`); no borra nombre,
@@ -523,6 +523,20 @@ los cinco porcentajes (`diagnosticos.nuevo.tsx:923-929`).
 Consecuencia: un producto 4 cargado y luego quitado sigue pesando en el margen
 por canal, puede completar el 100% de cobertura del catálogo y hace que la
 suma en pantalla no coincida con las filas visibles.
+
+**Corregido el 2026-09-12, junto con H-50.** Los números de línea de arriba son
+de antes de H-18: hoy "Quitar" está en `diagnosticos.nuevo.tsx:1038` y el
+render en `:1054`. `productosCargados` recibe el modo y sólo lee los primeros
+`cantidadProductosDe(d)` productos; `coberturaProductos` hereda el filtro, y
+con ella el margen total. "Suma de la lista" suma sólo las filas visibles. Un
+diagnóstico guardado sin `cantidad_productos` (anterior a la fase 5) lee 3,
+que es lo que `cantidadProductosDe` ya devolvía y lo que esa versión del
+formulario tenía. Los fixtures de regresión no cambian: `casoSnakeStore` y
+`casoTitanWebB1` heredan `cantidad_productos: 3` de `DATOS_INICIALES` y cargan
+tres productos, así que su cobertura sigue en 60%. Cambiaron cuatro tests de
+`producto-dinamico.test.ts` que cargaban los productos 4 y 5 sin declarar la
+cantidad (heredaban 3), que es justo el estado que este arreglo deja afuera:
+ahora declaran 5, o 4.
 
 ## H-24 · La barra de progreso cuenta menos bloques de los que lista · abierto
 
@@ -760,7 +774,7 @@ Opciones evaluadas el 2026-09-11, ninguna aplicada:
 
 Mientras tanto el listado queda como está, con "$ 0" para ese caso, y la query sin cambios. El detalle sí lo distingue.
 
-## H-50 · Costo y precio de los productos 2 a 5 se ocultan en modo B pero no se borran, y el motor los usa igual · abierto
+## H-50 · Costo y precio de los productos 2 a 5 se ocultan en modo B pero no se borran, y el motor los usa igual · CORREGIDO 2026-09-12
 
 Encontrado el 2026-09-11 al diseñar el arreglo de H-18. Es la misma
 incoherencia por presencia que H-18 tenía en los campos exclusivos, en un
@@ -803,6 +817,30 @@ las de H-15: o modo B captura montos de todos los productos (y `conMontos`
 desaparece), o los montos de los productos 2 a 5 entran en
 `CAMPOS_EXCLUSIVOS.A` y se estacionan como el resto. Cualquiera de las dos
 cambia la cobertura del catálogo en modo B, que H-15 ya midió.
+
+**Corregido el 2026-09-12, junto con H-23, por una tercera vía: el motor lee
+según el modo.** `calcularDiagnostico(datos, cfg, modo)` y
+`productosCargados(d, modo)` descartan los montos de los productos 2 a 5 en
+modo B (`montosVisibles`, la misma regla que `conMontos` en el formulario). No
+se estaciona nada: los valores quedan en `datos`, no entran al cálculo mientras
+el modo sea B y vuelven a verse y a contar en modo A. El formulario pasa su
+modo al guardar. `modo` es opcional y por defecto "A", como la columna
+`diagnostico.modo`, así que los tests y el gate de F2a (que no pasan modo)
+calculan igual que antes.
+
+En modo B la cobertura del catálogo pasa a ser la del producto principal, que
+es lo que H-15 había medido vaciando los montos a mano (Snake Store: de 60% a
+30%). H-15 sigue abierto: la decisión de si modo B tiene que capturar más
+montos no cambia.
+
+Lo que no pasa por el motor y lee productos de `datos` no recibe el modo, y no
+hace falta: `productos_muestra` en `build-context.ts` sólo se usa por su
+`.estado`, que no cambia mientras el principal esté cargado, y el hallazgo
+`mix_producto` (`propuesta.ts`) cruza cada producto con
+`derivados.margenes_producto`, que en modo B trae `null` del 2 al 5, así que
+no puede disparar con un producto que el motor no usó. Los diagnósticos ya
+guardados conservan los derivados con los que se guardaron: el cambio aplica
+al próximo "Guardar".
 
 ## H-51 · Cerrar sesión no borra el borrador del formulario, y la clave es una sola por navegador · en pausa, requiere decisión de producto
 
