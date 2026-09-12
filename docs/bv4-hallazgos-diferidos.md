@@ -50,7 +50,9 @@ diseño del arreglo de H-18. H-51 lo abrió el 2026-09-12 el arreglo de
 "Cancelar" del formulario de carga, y H-52 la verificación de ese arreglo en
 el navegador. H-53 y H-54 salieron el mismo día, al poner H-51 en pausa: son
 lo que su arreglo parcial (`1099ba9`) no cubre. H-55 salió el mismo día del
-análisis previo al arreglo de H-23, y quedó corregido junto con él. H-38 no es un bug con arreglo
+análisis previo al arreglo de H-23, y quedó corregido junto con él. H-56 salió
+el mismo día de la consola del navegador, al no abrir los diagnósticos del
+18/8, y quedó corregido en el commit que lo registra. H-38 no es un bug con arreglo
 obvio: requiere una decisión de producto sobre qué "oportunidad" es la
 oficial. Aclaración que atraviesa a varios: `src/documents/motor-activo.ts:19`
 tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`, así que todo lo referido a la cadena
@@ -1135,6 +1137,81 @@ muestra esos datos al volver a agregar el producto. Quedan a la vista y, por
 H-23, no cuentan mientras estén debajo de la lista, así que no se borran en
 silencio. La lógica está cubierta por tests (`diagnostico-form.test.ts`). El
 diálogo no se probó en el navegador.
+
+## H-56 · El detalle se cae con los diagnósticos guardados antes de que `derivados` tuviera `presupuesto_arranque` · CORREGIDO 2026-09-12
+
+Diagnosticado el 2026-09-12 con la consola del navegador. Los dos
+diagnósticos del 18/8/26 no abrían: la pantalla de detalle mostraba "This
+page didn't load" (uno de los ids: `33eeded6-483e-40a7-80a6-b64147c1bf8a`,
+Snake Store, versión 3). El error:
+
+```
+TypeError: Cannot read properties of undefined (reading 'piso_teorico_compra')
+    at Presupuesto (src/routes/_authenticated/diagnosticos.$id.tsx:1607 en el bundle, :916 en el fuente)
+```
+
+**Causa.** `Presupuesto` hacía `const pa = derivados.presupuesto_arranque`
+sin guarda y después leía `pa.piso_teorico_compra`,
+`pa.arranque_evento_intermedio`, `pa.supuestos` y `pa.confianza`. El tipo
+`Derivados` (`calculo-diagnostico.ts:157-218`) declara
+`presupuesto_arranque` como obligatorio, así que TypeScript no avisa. Pero
+el tipo describe lo que el motor produce hoy, no lo que hay en la base: la
+pantalla lee la columna jsonb `derivados` tal como se guardó
+(`diagnosticos.$id.tsx:147`, `as unknown as FilaDiagnostico`). El campo
+entró en `0b803af` (2026-08-21, "Fase 6: presupuesto de arranque separado del
+piso teórico por compra"). Un diagnóstico guardado antes no lo trae. Por eso
+fallan los del 18/8 y ninguno posterior: la causa es la fecha de guardado, no
+el diagnóstico.
+
+**El problema de fondo.** No hay versionado de `derivados` ni tolerancia a
+formas anteriores: cualquier campo que se agregue al tipo va a faltar en los
+registros viejos. El tipo al 18/8 (`6763ace`, último commit del motor antes
+del 19/8) tiene 22 campos; el actual tiene 40. Faltan 18:
+`envio_neto_vendedor`, `componente_envio`, `costo_financiacion_efectivo`,
+`costo_descuento_efectivo`, `canales`, `cobertura_canales`,
+`cobertura_productos`, `canal_principal`, `margen_muestra`,
+`mer_tienda_propia`, `mer_marketplace`, `roas_product_ads`,
+`inversion_publicitaria_total`, `hay_inversion_publicitaria`,
+`contradiccion_margen`, `presupuesto_arranque`, `funnel` y `mayorista`.
+
+Revisé cada lectura de `derivados` en la pantalla de detalle, incluidas las
+que pasan por `mapearHallazgos` (`propuesta.ts:68-540`) y
+`lecturaPresupuesto` (`calculo-diagnostico.ts:336`). Los escalares pasan por
+`pesos`/`numero`/`pct` (`vista-diagnostico.ts`), que muestran guion con
+`undefined`. `canales`, `cobertura_canales`, `contradiccion_margen`,
+`funnel`, `mayorista` y `margenes_producto` ya tenían guarda (`??`, `?.` o
+`if`). Quedaron cuatro lecturas sin guarda:
+
+1. `presupuesto_arranque` (`Presupuesto`): tiraba la pantalla. Es el error
+   de arriba.
+2. `pesos_producto.filter(...)` (`EconomiaDetalle`): latente. El campo ya
+   existía el 18/8 y la condición previa `cobertura_productos < 100` da
+   `false` con `undefined`, así que hoy no se dispara. Rompería con un
+   registro que tenga cobertura y no tenga pesos.
+3. `cobertura_productos` en la fila "Cobertura del catálogo analizado": no
+   rompe, pero imprimía "—%".
+4. `hay_inversion_publicitaria === null` en "Inversión publicitaria total":
+   no rompe. Con el campo ausente la fila muestra "—" en vez de "Sin datos",
+   porque `inversion_publicitaria_total` tampoco está. Se deja así: un
+   guion es la política de dato ausente de la pantalla.
+
+**Corregido el 2026-09-12, en el mismo commit que abre esta entrada.** Sólo
+la pantalla (`diagnosticos.$id.tsx`), sin tocar el motor, los fixtures ni
+los datos. Sin versionado ni migración: eso queda para otra conversación.
+`Presupuesto` toma `presupuesto_arranque ?? {}` y `supuestos ?? []`. Con el
+campo ausente, el piso teórico sale "—", el arranque "Sin datos" (lo mismo
+que ya mostraba con `arranque_evento_intermedio` en `null`), el bloque de
+supuestos no aparece y la lectura de presupuesto sigue, porque sólo usa campos
+que ya existían el 18/8. `pesos_producto ?? []` cubre el punto 2, y la fila de
+cobertura muestra "—" sin el "%". Verificado en el navegador (vite local,
+`:8080`) con `33eeded6-…`: la pantalla abre sin errores en consola y la
+sección de presupuesto muestra los guiones descritos. El otro diagnóstico del
+18/8 no se abrió porque su id no estaba en el reporte.
+
+Fuera de alcance, sin revisar: la cadena documental ("Ver documentos") lee
+`derivados` de esos mismos registros por su cuenta (`build-context.ts`) y no
+se verificó si tolera la forma del 18/8. `presupuesto_arranque` no se lee
+fuera del detalle.
 
 ---
 

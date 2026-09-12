@@ -859,7 +859,11 @@ function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: Da
         <Fila label="Margen total (negocio completo)" value={pct(derivados.margen_contribucion)} />
         <Fila
           label="Cobertura del catálogo analizado"
-          value={`${numero(derivados.cobertura_productos, 0)}%`}
+          value={
+            typeof derivados.cobertura_productos === "number"
+              ? `${numero(derivados.cobertura_productos, 0)}%`
+              : GUION
+          }
         />
         <Fila label="Breakeven ROAS" value={numero(derivados.breakeven_roas)} />
         <Fila label="CPA breakeven" value={pesos(derivados.cpa_breakeven)} />
@@ -891,7 +895,7 @@ function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: Da
         <Fila label="Pedidos mensuales estimados" value={numero(derivados.pedidos_mensuales, 0)} />
       </dl>
       {derivados.cobertura_productos < 100 &&
-        derivados.pesos_producto.filter((p) => p !== null).length > 1 && (
+        (derivados.pesos_producto ?? []).filter((p) => p !== null).length > 1 && (
           <p className="border-t border-border px-7 py-6 text-[13px] leading-6 text-muted-foreground">
             El catálogo relevado cubre el {numero(derivados.cobertura_productos, 0)}% de la
             facturación declarada como participación de producto: los márgenes de arriba ponderan
@@ -906,7 +910,10 @@ function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: Da
 
 function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosDiagnostico }) {
   const lectura = lecturaPresupuesto(derivados);
-  const pa = derivados.presupuesto_arranque;
+  // H-56: un diagnóstico guardado antes de la fase 6 (2026-08-21) no trae
+  // `presupuesto_arranque` en `derivados`, aunque el tipo lo declare.
+  const pa: Partial<Derivados["presupuesto_arranque"]> = derivados.presupuesto_arranque ?? {};
+  const supuestos = pa.supuestos ?? [];
   return (
     <section className="rounded-lg border border-border bg-card">
       <header className="border-b border-border px-7 py-5">
@@ -932,13 +939,13 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
         />
         <Fila label="Compras semanales estimadas" value={numero(derivados.pedidos_semanales, 1)} />
       </dl>
-      {pa.supuestos.length > 0 && (
+      {supuestos.length > 0 && (
         <div className="border-t border-border px-7 py-6">
           <p className="text-[13px] font-medium text-foreground">
-            Supuestos usados (confianza: {pa.confianza})
+            Supuestos usados (confianza: {pa.confianza ?? GUION})
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-5 text-muted-foreground">
-            {pa.supuestos.map((s) => (
+            {supuestos.map((s) => (
               <li key={s}>{s}</li>
             ))}
           </ul>
