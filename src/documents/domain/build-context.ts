@@ -271,7 +271,15 @@ function restriccionesDocumento(args: {
     });
   }
 
-  if (args.coberturaProductos < 100) {
+  // `coberturaProductos` llega recortada a 100: el mix imposible se lee del motor.
+  if (args.resultado.derivados.cobertura_productos > 100) {
+    restricciones.push({
+      id: "mix_productos_invalido",
+      etiqueta: "Mix de productos inconsistente",
+      detalle: "Los porcentajes de facturación declarados por producto superan el 100%.",
+      bloquea: ["rentabilidad", "escenario", "escalamiento"],
+    });
+  } else if (args.coberturaProductos < 100) {
     restricciones.push({
       id: "cobertura_productos_parcial",
       etiqueta: "Muestra de productos parcial",

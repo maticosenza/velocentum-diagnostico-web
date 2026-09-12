@@ -432,13 +432,20 @@ export function productosCargados(d: DatosDiagnostico, modo: Modo = "A") {
  * Cobertura del catálogo analizado: qué porcentaje de la facturación representan
  * los productos con costo y precio cargados. Misma fórmula que usaba el adaptador
  * documental (fase 5: ahora vive acá, fuente única, y el adaptador la reutiliza).
+ * No se recorta a 100: una suma mayor es un mix imposible (`productosSuperan100`),
+ * no una cobertura completa.
  */
 export function coberturaProductos(d: DatosDiagnostico, modo: Modo = "A"): number {
   const suma = productosCargados(d, modo).reduce(
     (total, p) => total + (finito(p.pct) && (p.pct as number) > 0 ? (p.pct as number) : 0),
     0,
   );
-  return Math.max(0, Math.min(100, suma));
+  return redondear(suma, 4) ?? 0;
+}
+
+/** Los porcentajes de producto no pueden superar el total de la facturación. */
+export function productosSuperan100(d: DatosDiagnostico, modo: Modo = "A"): boolean {
+  return coberturaProductos(d, modo) > 100;
 }
 
 /**
@@ -553,8 +560,15 @@ export function participacionesIncompatibles(d: DatosDiagnostico): boolean {
   return relacion === "excluyentes" && participacionesSuperan100(d);
 }
 
+/** Campos de porcentaje de los productos del cálculo que tienen uno cargado. */
+function camposPctProductosCargados(d: DatosDiagnostico, modo: Modo): string[] {
+  return productosCargados(d, modo)
+    .filter((p) => finito(p.pct) && (p.pct as number) > 0)
+    .map((p) => `producto_${p.indice}_pct_facturacion`);
+}
+
 /** Campos que impiden calcular el margen de contribución. */
-export function faltantesMargen(d: DatosDiagnostico): string[] {
+export function faltantesMargen(d: DatosDiagnostico, modo: Modo = "A"): string[] {
   const faltan: string[] = [];
   if (envioNetoVendedor(d) === null) faltan.push("envio_neto_vendedor");
   if (!finito(d.ticket_promedio) || (d.ticket_promedio as number) <= 0) {
@@ -564,6 +578,9 @@ export function faltantesMargen(d: DatosDiagnostico): string[] {
   faltan.push(...costoDescuento(d).faltan);
   if (canalesSuperan100(d)) {
     for (const c of Object.values(CAMPOS_PCT_CANAL)) if (!faltan.includes(c)) faltan.push(c);
+  }
+  if (productosSuperan100(d, modo)) {
+    for (const c of camposPctProductosCargados(d, modo)) if (!faltan.includes(c)) faltan.push(c);
   }
   if (participacionesIncompatibles(d)) {
     for (const c of ["financiacion_pct_ventas", "descuento_pct_ventas"]) {
@@ -582,6 +599,7 @@ export function faltantesMargen(d: DatosDiagnostico): string[] {
  *    tengan) y, si el mix de canales no llega a 100, los porcentajes de canal.
  *  - Ningún producto en el cálculo: los campos del producto principal, más lo
  *    que ya impide el margen (`faltantesMargen` y los faltantes de los canales).
+ *  - Porcentajes de producto que suman más de 100: esos porcentajes.
  * Cualquier otro caso devuelve vacío y el llamador conserva `margen_contribucion`.
  */
 export function faltantesMargenTotal(
@@ -597,7 +615,11 @@ export function faltantesMargenTotal(
     if (!faltan.includes(c)) faltan.push(c);
   };
   if (enCalculo.length === 0)
-    for (const c of [...faltantesMargen(d), ...faltantesCanales]) agregar(c);
+    for (const c of [...faltantesMargen(d, modo), ...faltantesCanales]) agregar(c);
+
+  if (productosSuperan100(d, modo)) {
+    for (const c of camposPctProductosCargados(d, modo)) agregar(c);
+  }
 
   if (coberturaProductos(d, modo) < 100) {
     const campo = (n: number, sufijo: string) => `producto_${n}_${sufijo}`;
@@ -666,24 +688,49 @@ export function inversionMetaGoogle(d: DatosDiagnostico): number | null {
 }
 
 /**
+ * El canal no aporta inversión aunque no tenga una cargada: está en "no aplica",
+ * o está ausente y los canales declarados ya cubren el 100% del mix.
+ */
+function canalSinPauta(d: DatosDiagnostico, canal: CanalId): boolean {
+  const estado = estadoCanal(d, canal);
+  return estado === "no_aplica" || (estado === "ausente" && coberturaCanales(d) === 100);
+}
+
+/**
  * Inversión publicitaria del negocio: Meta más Google más Product Ads.
  * Sin ningún dato cargado devuelve null: no sabemos, no afirmamos.
+ * Con canales declarados, cada componente cuenta si está cargado, cuenta cero
+ * si su canal no tiene pauta (`canalSinPauta`), y si no, retiene el total: la
+ * inversión de un canal que participa no se asume en cero. Sin canales
+ * declarados se suma lo que haya.
  */
 export function inversionPublicitariaTotal(d: DatosDiagnostico): number | null {
   const propia = numeroCanal(d, "tienda_propia", "inversion") ?? inversionMetaGoogle(d);
   const ads = inversionProductAds(d);
-  if (propia === null && ads === null) return null;
-  return (propia ?? 0) + (ads ?? 0);
+  if (!hayCanalesDeclarados(d)) {
+    if (propia === null && ads === null) return null;
+    return (propia ?? 0) + (ads ?? 0);
+  }
+  const tienda = propia ?? (canalSinPauta(d, "tienda_propia") ? 0 : null);
+  const ml = ads ?? (canalSinPauta(d, "mercado_libre") ? 0 : null);
+  if (tienda === null || ml === null) return null;
+  return tienda + ml;
 }
 
 /**
  * ¿El negocio invierte en publicidad? Considera los tres frentes.
  * null cuando no hay ningún dato cargado; false sólo con ceros explícitos.
+ * Meta en cero con Google sin cargar (o al revés) no es "declaró que no
+ * invierte": con la suma en cero queda null.
  */
 export function hayInversionPublicitaria(d: DatosDiagnostico): boolean | null {
   const total = inversionPublicitariaTotal(d);
   if (total === null) return null;
-  return total > 0;
+  if (total > 0) return true;
+  const metaGoogleIncompleto =
+    numeroCanal(d, "tienda_propia", "inversion") === null &&
+    finito(d.inversion_meta) !== finito(d.inversion_google);
+  return metaGoogleIncompleto && !canalSinPauta(d, "tienda_propia") ? null : false;
 }
 
 /** Inversión publicitaria del perímetro de un canal. */
@@ -896,10 +943,13 @@ function margenDeCanal(
     facturacion !== null && inversion !== null && inversion > 0 ? facturacion / inversion : null;
 
   // Tres números separados que nunca se mezclan. La inversión publicitaria se
-  // resta una sola vez, acá: NO entra en el margen de contribución.
+  // resta una sola vez, acá: NO entra en el margen de contribución. Sin la
+  // inversión del canal no hay resultado neto de pauta, igual que el MER; un
+  // cero explícito sigue siendo cero.
   const contribucionAntes =
     facturacion !== null && margenExacto !== null ? facturacion * margenExacto : null;
-  const resultadoDespues = contribucionAntes !== null ? contribucionAntes - (inversion ?? 0) : null;
+  const resultadoDespues =
+    contribucionAntes !== null && inversion !== null ? contribucionAntes - inversion : null;
 
   // ROAS de la pauta: sólo lo atribuido. Sin ventas atribuidas queda sin datos,
   // aunque el MER del canal sí se calcule.
@@ -992,9 +1042,10 @@ export function calcularDiagnostico(
   // sólo cuenta participaciones declaradas (> 0), nunca las asume. Con
   // cobertura parcial, `margen` queda retenido (null) y sólo se publica
   // `margen_muestra`, que sigue representando lo que sí se pudo calcular
-  // sobre la evidencia cargada, sin exigir cobertura total.
+  // sobre la evidencia cargada, sin exigir cobertura total. Una suma mayor a
+  // 100 es un mix imposible y también retiene el total.
   const coberturaProductosPct = coberturaProductos(d, modo);
-  const hayCoberturaProductosCompleta = coberturaProductosPct >= 100;
+  const hayCoberturaProductosCompleta = coberturaProductosPct === 100;
 
   if (!hayCanales) {
     // Diagnóstico sin mix declarado: se mantiene el cálculo de canal único
@@ -1320,7 +1371,7 @@ export function calcularDiagnostico(
   for (const t of tramosFunnel(funnel, cfg, margen)) {
     const faltan = [...t.faltantes];
     if (margen === null && faltan.includes("margen_contribucion")) {
-      for (const f of faltantesMargen(datos)) if (!faltan.includes(f)) faltan.push(f);
+      for (const f of faltantesMargen(datos, modo)) if (!faltan.includes(f)) faltan.push(f);
     }
     if (t.calculable && t.monto === 0) continue;
     fugas.push({

@@ -207,6 +207,9 @@ describe("bloqueo por contradicción crítica", () => {
     canal_tienda_facturacion: 50_000_000,
     ticket_promedio: 225226,
     costo_envio_promedio: 11000,
+    // Un solo producto al 100%: los productos 2 y 3 de Titan (20% cada uno)
+    // sumarían 140%, un mix imposible que ya no cuenta como cobertura completa.
+    cantidad_productos: 1,
     producto_1_costo: 40000,
     producto_1_precio: 180000,
     producto_1_pct_facturacion: 100,
