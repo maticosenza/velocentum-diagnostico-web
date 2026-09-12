@@ -71,6 +71,9 @@ import { evaluarFunnel } from "@/lib/funnel";
 export const Route = createFileRoute("/_authenticated/diagnosticos/nuevo")({
   validateSearch: (search: Record<string, unknown>): { desde?: string } =>
     typeof search["desde"] === "string" ? { desde: search["desde"] as string } : {},
+  // Editar y nuevo son la misma ruta: sin esto el router reusa el componente y el estado del
+  // diagnóstico de origen sobrevive al pasar de uno a otro (H-52). Cambiar `desde` lo remonta.
+  remountDeps: ({ search }) => ({ desde: search.desde ?? null }),
   head: () => ({
     meta: [
       { title: "Nuevo diagnóstico · Velocentum · Diagnóstico e-commerce" },
