@@ -681,13 +681,38 @@ export function inversionProductAds(d: DatosDiagnostico): number | null {
   return finito(d.ml_inversion_product_ads) ? d.ml_inversion_product_ads : null;
 }
 
-/** Inversión en pauta de tienda propia: Meta más Google. */
-export function inversionMetaGoogle(d: DatosDiagnostico): number | null {
-  if (!finito(d.inversion_meta) && !finito(d.inversion_google)) return null;
+/**
+ * Monto de Meta o Google leído junto a su pregunta Sí/No: el cargado cuenta;
+ * sin monto, "no pauta" cuenta cero y el resto no se sabe.
+ */
+function montoPauta(monto: number | null, pauta: boolean | null | undefined): number | null {
+  if (finito(monto)) return monto;
+  return pauta === false ? 0 : null;
+}
+
+/**
+ * Meta o Google con "sí pauta" y sin monto: no relevado, que no es lo mismo que
+ * no pautar. Sin respuesta (diagnósticos guardados antes de la pregunta) no
+ * retiene nada.
+ */
+function pautaSinRelevar(d: DatosDiagnostico): boolean {
   return (
-    (finito(d.inversion_meta) ? d.inversion_meta : 0) +
-    (finito(d.inversion_google) ? d.inversion_google : 0)
+    (d.pauta_meta === true && !finito(d.inversion_meta)) ||
+    (d.pauta_google === true && !finito(d.inversion_google))
   );
+}
+
+/**
+ * Inversión en pauta de tienda propia: Meta más Google. Un frente sin monto
+ * cuenta cero si se respondió que no pauta, y retiene la suma si se respondió
+ * que sí. Sin respuesta, se suma lo que haya.
+ */
+export function inversionMetaGoogle(d: DatosDiagnostico): number | null {
+  if (pautaSinRelevar(d)) return null;
+  const meta = montoPauta(d.inversion_meta, d.pauta_meta);
+  const google = montoPauta(d.inversion_google, d.pauta_google);
+  if (meta === null && google === null) return null;
+  return (meta ?? 0) + (google ?? 0);
 }
 
 /**
@@ -705,10 +730,13 @@ function canalSinPauta(d: DatosDiagnostico, canal: CanalId): boolean {
  * Con canales declarados, cada componente cuenta si está cargado, cuenta cero
  * si su canal no tiene pauta (`canalSinPauta`), y si no, retiene el total: la
  * inversión de un canal que participa no se asume en cero. Sin canales
- * declarados se suma lo que haya.
+ * declarados se suma lo que haya. En los dos casos, Meta o Google con "sí
+ * pauta" y sin monto retiene el total: no relevado no es cero.
  */
 export function inversionPublicitariaTotal(d: DatosDiagnostico): number | null {
-  const propia = numeroCanal(d, "tienda_propia", "inversion") ?? inversionMetaGoogle(d);
+  const delCanal = numeroCanal(d, "tienda_propia", "inversion");
+  if (delCanal === null && pautaSinRelevar(d)) return null;
+  const propia = delCanal ?? inversionMetaGoogle(d);
   const ads = inversionProductAds(d);
   if (!hayCanalesDeclarados(d)) {
     if (propia === null && ads === null) return null;
@@ -724,15 +752,18 @@ export function inversionPublicitariaTotal(d: DatosDiagnostico): number | null {
  * ¿El negocio invierte en publicidad? Considera los tres frentes.
  * null cuando no hay ningún dato cargado; false sólo con ceros explícitos.
  * Meta en cero con Google sin cargar (o al revés) no es "declaró que no
- * invierte": con la suma en cero queda null.
+ * invierte": con la suma en cero queda null, salvo que el frente vacío tenga
+ * respondido que no pauta.
  */
 export function hayInversionPublicitaria(d: DatosDiagnostico): boolean | null {
   const total = inversionPublicitariaTotal(d);
   if (total === null) return null;
   if (total > 0) return true;
+  const resuelto = (monto: number | null, pauta: boolean | null | undefined) =>
+    finito(monto) || pauta === false;
   const metaGoogleIncompleto =
     numeroCanal(d, "tienda_propia", "inversion") === null &&
-    finito(d.inversion_meta) !== finito(d.inversion_google);
+    resuelto(d.inversion_meta, d.pauta_meta) !== resuelto(d.inversion_google, d.pauta_google);
   return metaGoogleIncompleto && !canalSinPauta(d, "tienda_propia") ? null : false;
 }
 

@@ -170,6 +170,14 @@ export type DatosDiagnostico = {
 
   inversion_meta: number | null;
   inversion_google: number | null;
+  /**
+   * ¿Pauta en Meta? / ¿Pauta en Google? (Identificación). Triestado: `false` es
+   * "no pauta" y cuenta cero aunque el monto quede vacío; `true` sin monto es
+   * "no relevado" y retiene la inversión total. null o ausente (los
+   * diagnósticos guardados antes de la pregunta) se comporta como antes.
+   */
+  pauta_meta?: boolean | null;
+  pauta_google?: boolean | null;
 
   // Productos (compartido; en modo B sólo el principal lleva costo y precio)
   /** Cuántos productos de la lista (1 a 5) están en juego en este diagnóstico. */
@@ -345,7 +353,12 @@ export type DatosDiagnostico = {
    * Los porcentajes de comisión de canal se cargan en porcentaje (16,94), no en tasa.
    */
   canal_tienda_pct?: number | null;
-  canal_tienda_no_aplica?: boolean;
+  /**
+   * Respuesta a "¿Tiene tienda propia?" (Identificación), invertida: `true` es
+   * que no tiene. null es sin responder; el motor sólo mira `true`, así que
+   * null, `false` y ausente dan el mismo cálculo.
+   */
+  canal_tienda_no_aplica?: boolean | null;
   canal_tienda_facturacion?: number | null;
   canal_tienda_ticket?: number | null;
   canal_tienda_comision_pct?: number | null;
@@ -410,6 +423,8 @@ export const DATOS_INICIALES: DatosDiagnostico = {
 
   inversion_meta: null,
   inversion_google: null,
+  pauta_meta: null,
+  pauta_google: null,
   cantidad_productos: 3,
   producto_1_nombre: "",
   producto_1_costo: null,
@@ -504,7 +519,7 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   ml_tiene_clips: null,
 
   canal_tienda_pct: null,
-  canal_tienda_no_aplica: false,
+  canal_tienda_no_aplica: null,
   canal_tienda_facturacion: null,
   canal_tienda_ticket: null,
   canal_tienda_comision_pct: null,
@@ -568,7 +583,15 @@ export function notasVisibles(notas: NotasDiagnostico | null | undefined) {
 }
 
 const CAMPOS_COMUNES: Record<BloqueId, (keyof DatosDiagnostico)[]> = {
-  identificacion: ["nombre_tienda", "vertical", "plataforma", "plan_plataforma"],
+  identificacion: [
+    "nombre_tienda",
+    "vertical",
+    "plataforma",
+    "plan_plataforma",
+    "canal_tienda_no_aplica",
+    "pauta_meta",
+    "pauta_google",
+  ],
   medicion: [],
   canales: ["canal_tienda_pct", "canal_ml_pct"],
   economia: [

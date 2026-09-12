@@ -701,6 +701,14 @@ function NuevoDiagnostico() {
                   />
                 )}
                 <CampoSiNo
+                  label="¿Tiene tienda propia?"
+                  value={
+                    datos.canal_tienda_no_aplica == null ? null : !datos.canal_tienda_no_aplica
+                  }
+                  onChange={(v) => set("canal_tienda_no_aplica", v === null ? null : !v)}
+                  ayuda="Si es que no, en Canales la tienda propia queda como que no vende en ese canal."
+                />
+                <CampoSiNo
                   label="¿Vende en Mercado Libre?"
                   value={datos.vende_mercado_libre}
                   onChange={(v) => set("vende_mercado_libre", v === true)}
@@ -717,6 +725,18 @@ function NuevoDiagnostico() {
                   value={datos.venta_mayorista_activa}
                   onChange={(v) => set("venta_mayorista_activa", v)}
                   ayuda="Si es que sí, se habilita la pestaña de Mayorista. Minorista, Mayorista y Mixto son la misma combinación de estos dos canales."
+                />
+                <CampoSiNo
+                  label="¿Pauta en Meta?"
+                  value={datos.pauta_meta ?? null}
+                  onChange={(v) => set("pauta_meta", v)}
+                  ayuda="Si es que no, la inversión en Meta cuenta cero aunque el monto quede vacío. Si es que sí, cargá el monto en Economía: sin él, la inversión total no se calcula."
+                />
+                <CampoSiNo
+                  label="¿Pauta en Google?"
+                  value={datos.pauta_google ?? null}
+                  onChange={(v) => set("pauta_google", v)}
+                  ayuda="Si es que no, la inversión en Google cuenta cero aunque el monto quede vacío. Si es que sí, cargá el monto en Economía: sin él, la inversión total no se calcula."
                 />
               </div>
             )}
