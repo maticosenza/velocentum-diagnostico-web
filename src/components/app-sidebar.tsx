@@ -4,6 +4,17 @@ import { LayoutList, FilePlus2, PanelLeftClose, PanelLeft, LogOut } from "lucide
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { CLAVE_BORRADOR, borradorConDatos } from "@/lib/diagnostico-form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import logoVelocentum from "@/assets/velocentum-icon.png";
 
 const items = [
@@ -16,14 +27,37 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  // Borrador con datos que se va a descartar al cerrar sesión, mientras se confirma.
+  const [descartar, setDescartar] = useState<{ nombreTienda: string } | null>(null);
+
+  /**
+   * El borrador del formulario vive en localStorage con una clave sin usuario: si sobrevive,
+   * quien entre después en este navegador lo retoma (H-51). Si tiene algo cargado pide
+   * confirmación, con el mismo criterio que Cancelar; si no, cierra directo.
+   */
+  function pedirCerrarSesion() {
+    let crudo: string | null = null;
+    try {
+      crudo = window.localStorage.getItem(CLAVE_BORRADOR);
+    } catch {
+      // Sin acceso a localStorage no hay borrador que proteger.
+    }
+    const borrador = borradorConDatos(crudo);
+    if (borrador) setDescartar(borrador);
+    else void cerrarSesion();
+  }
 
   async function cerrarSesion() {
+    setDescartar(null);
+    window.localStorage.removeItem(CLAVE_BORRADOR);
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    await navigate({ to: "/auth", replace: true });
+    // Otra vez: si el formulario estaba abierto, un autoguardado pendiente pudo reescribirlo
+    // mientras se esperaba a Supabase. Fuera de la ruta privada ya no queda quién lo escriba.
+    window.localStorage.removeItem(CLAVE_BORRADOR);
   }
-
 
   const isActive = (url: string, exact: boolean) =>
     exact ? pathname === url : pathname.startsWith(url);
@@ -81,7 +115,7 @@ export function AppSidebar() {
       <div className="space-y-1 border-t border-border p-3">
         <button
           type="button"
-          onClick={cerrarSesion}
+          onClick={pedirCerrarSesion}
           title="Cerrar sesión"
           className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
@@ -89,7 +123,6 @@ export function AppSidebar() {
           {!collapsed && <span>Cerrar sesión</span>}
         </button>
         <button
-
           type="button"
           onClick={() => setCollapsed((v) => !v)}
           className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -103,6 +136,32 @@ export function AppSidebar() {
           {!collapsed && <span>Contraer</span>}
         </button>
       </div>
+
+      <AlertDialog
+        open={descartar !== null}
+        onOpenChange={(abierto) => !abierto && setDescartar(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {descartar?.nombreTienda
+                ? `¿Cerrar sesión y descartar el borrador de ${descartar.nombreTienda}?`
+                : "¿Cerrar sesión y descartar el borrador?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {descartar?.nombreTienda ? "" : "Todavía no tiene nombre de tienda. "}Hay un
+              diagnóstico sin guardar en este navegador. Al cerrar sesión se borra, para que no lo
+              retome quien entre después, y no se puede recuperar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Volver</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void cerrarSesion()}>
+              Cerrar sesión y descartar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </aside>
   );
 }

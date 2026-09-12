@@ -751,6 +751,30 @@ export function hayDatosCargados(
 
 export const CLAVE_BORRADOR = "velocentum:borrador-diagnostico";
 
+/**
+ * Si el borrador guardado tiene algo cargado, con el mismo criterio que `hayDatosCargados`:
+ * devuelve el nombre de tienda (vacío si todavía no tiene) para el aviso. `null` si no hay
+ * borrador, está vacío o no se puede leer. Recibe el texto crudo de `CLAVE_BORRADOR`.
+ */
+export function borradorConDatos(crudo: string | null): { nombreTienda: string } | null {
+  if (!crudo) return null;
+  try {
+    const parsed = JSON.parse(crudo) as {
+      modo?: unknown;
+      datos?: Partial<DatosDiagnostico>;
+      notas?: NotasDiagnostico;
+      estacionados?: unknown;
+    };
+    if (parsed.modo !== "A" && parsed.modo !== "B") return null;
+    const datos = { ...DATOS_INICIALES, ...(parsed.datos ?? {}) };
+    const estacionados = sanearEstacionados(parsed.estacionados, parsed.modo === "A" ? "B" : "A");
+    if (!hayDatosCargados(datos, parsed.notas ?? {}, estacionados)) return null;
+    return { nombreTienda: datos.nombre_tienda.trim() };
+  } catch {
+    return null;
+  }
+}
+
 export const ESTADOS_CAPI = [
   { value: "activa", label: "Activa" },
   { value: "ausente", label: "Ausente" },

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CAMPOS_EXCLUSIVOS,
   DATOS_INICIALES,
+  borradorConDatos,
   camposExclusivosCargados,
   estacionarAlCambiarModo,
   hayDatosCargados,
@@ -110,5 +111,42 @@ describe("hayDatosCargados", () => {
   it("una nota o algo estacionado cuentan aunque los datos estén vacíos", () => {
     expect(hayDatosCargados(DATOS_INICIALES, { medicion: "no tiene pixel" }, {})).toBe(true);
     expect(hayDatosCargados(DATOS_INICIALES, {}, { presupuesto_diario: 1000 })).toBe(true);
+  });
+});
+
+describe("borradorConDatos", () => {
+  const crudo = (borrador: object) => JSON.stringify(borrador);
+
+  it("sin borrador, ilegible o sin modo no hay nada que avisar", () => {
+    expect(borradorConDatos(null)).toBeNull();
+    expect(borradorConDatos("")).toBeNull();
+    expect(borradorConDatos("{no es json")).toBeNull();
+    expect(borradorConDatos("null")).toBeNull();
+    expect(borradorConDatos(crudo({ datos: { nombre_tienda: "Tienda" } }))).toBeNull();
+  });
+
+  it("un borrador con sólo el modo elegido no cuenta", () => {
+    expect(borradorConDatos(crudo({ modo: "A", datos: DATOS_INICIALES, notas: {} }))).toBeNull();
+  });
+
+  it("con datos devuelve el nombre de la tienda, recortado", () => {
+    expect(borradorConDatos(crudo({ modo: "B", datos: { nombre_tienda: "  Tienda  " } }))).toEqual({
+      nombreTienda: "Tienda",
+    });
+  });
+
+  it("una nota sin nombre de tienda cuenta, con el nombre vacío", () => {
+    expect(borradorConDatos(crudo({ modo: "A", notas: { medicion: "sin pixel" } }))).toEqual({
+      nombreTienda: "",
+    });
+  });
+
+  it("lo estacionado cuenta sólo si es del modo inactivo, como al recuperarlo", () => {
+    expect(
+      borradorConDatos(crudo({ modo: "B", estacionados: { presupuesto_diario: 1000 } })),
+    ).toEqual({ nombreTienda: "" });
+    expect(
+      borradorConDatos(crudo({ modo: "A", estacionados: { presupuesto_diario: 1000 } })),
+    ).toBeNull();
   });
 });
