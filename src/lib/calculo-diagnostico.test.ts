@@ -1220,10 +1220,11 @@ describe("mix de canales y comisiones", () => {
     expect(fn.visitas).toBe(50_000);
     expect(fn.agregados_carrito).toBe(5_000);
     expect(fn.checkouts_iniciados).toBe(1_000);
-    expect(fn.compras).toBe(180);
+    // Las compras son de la tienda: el 60% de 9M sobre el ticket de 50.000.
+    expect(fn.compras).toBe(108);
     expect(fn.p_carrito_dado_visita).toBeCloseTo(0.1, 4);
     expect(fn.p_checkout_dado_carrito).toBeCloseTo(0.2, 4);
-    expect(fn.p_compra_dado_checkout).toBeCloseTo(0.18, 4);
+    expect(fn.p_compra_dado_checkout).toBeCloseTo(0.108, 4);
   });
 
   it("suma mayor a 100: se bloquea el cálculo y los campos entran en faltantes", () => {

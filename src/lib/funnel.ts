@@ -14,7 +14,14 @@
  *  - cero, ausente y "no aplica" son tres estados distintos.
  */
 
-import { canalPrincipal, estadoCanal, numeroCanal } from "./canales";
+import {
+  canalPrincipal,
+  estadoCanal,
+  facturacionTiendaPropia,
+  hayCanalesDeclarados,
+  numeroCanal,
+  pctCanal,
+} from "./canales";
 import type { DatosDiagnostico } from "./diagnostico-form";
 import { redondear } from "./dinero";
 import { impactoCalculado, impactoRetenido, type ImpactoEconomico } from "./impacto-economico";
@@ -118,9 +125,9 @@ export function evaluarFunnel(d: DatosDiagnostico, cfg: ConfigFunnel = {}): Funn
   const ticket =
     numeroCanal(d, "tienda_propia", "ticket") ??
     (finito(d.ticket_promedio) && d.ticket_promedio > 0 ? d.ticket_promedio : null);
-  const facturacion =
-    numeroCanal(d, "tienda_propia", "facturacion") ??
-    (finito(d.facturacion_mensual) ? d.facturacion_mensual : null);
+  // La facturación de la tienda, no la del negocio: con canales declarados la
+  // total nunca se compara con las visitas de la tienda.
+  const facturacion = facturacionTiendaPropia(d);
 
   const visitas = valor(d.visitas_mensuales);
   const agregados = valor(d.agregados_carrito);
@@ -201,7 +208,17 @@ export function evaluarFunnel(d: DatosDiagnostico, cfg: ConfigFunnel = {}): Funn
   if (visitas === null || compras === null) {
     const faltan: string[] = [];
     if (visitas === null) faltan.push("visitas_mensuales");
-    if (compras === null) faltan.push("facturacion_mensual", "ticket_promedio");
+    if (compras === null) {
+      // Con canales declarados lo que falta es la facturación de la tienda:
+      // declarada, o derivable de su porcentaje sobre la total.
+      const deFacturacion = !hayCanalesDeclarados(d)
+        ? ["facturacion_mensual"]
+        : [
+            "canal_tienda_facturacion",
+            pctCanal(d, "tienda_propia") === null ? "canal_tienda_pct" : "facturacion_mensual",
+          ];
+      faltan.push(...deFacturacion, "ticket_promedio");
+    }
     return { ...base, estado: "sin_datos", faltantes: faltan };
   }
 

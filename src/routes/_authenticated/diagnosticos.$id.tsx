@@ -96,6 +96,8 @@ const ETIQUETAS_CAMPO: Record<string, string> = {
   ),
   canal_tienda_pct: "% de facturación de la tienda propia",
   canal_ml_pct: "% de facturación de Mercado Libre",
+  // H-28: el funnel pide la facturación de la tienda, no la del negocio.
+  canal_tienda_facturacion: "facturación de la tienda propia",
 };
 
 const EXPLICACION_FUGA: Record<string, string> = {

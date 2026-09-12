@@ -576,6 +576,29 @@ export function canalesSuperan100(d: DatosDiagnostico): boolean {
   return hayCanalesDeclarados(d) && coberturaCanales(d) > 100;
 }
 
+/** Facturación del canal: la declarada o, en su defecto, la derivada del mix. */
+export function facturacionCanal(d: DatosDiagnostico, canal: CanalId): number | null {
+  const propia = numeroCanal(d, canal, "facturacion");
+  if (propia !== null) return propia;
+  const pct = pctCanal(d, canal);
+  if (pct !== null && finito(d.facturacion_mensual) && d.facturacion_mensual > 0) {
+    return (d.facturacion_mensual * pct) / 100;
+  }
+  return null;
+}
+
+/**
+ * Facturación de la tienda propia, la que se compara con sus visitas y su
+ * funnel: la declarada o la derivada del mix. Sólo sin ningún canal declarado
+ * cae a la facturación total (diagnóstico de canal único). Vive acá para que
+ * la usen el motor y `funnel.ts` sin import circular.
+ */
+export function facturacionTiendaPropia(d: DatosDiagnostico): number | null {
+  const tienda = facturacionCanal(d, "tienda_propia");
+  if (tienda !== null) return tienda;
+  return !hayCanalesDeclarados(d) && finito(d.facturacion_mensual) ? d.facturacion_mensual : null;
+}
+
 /** Campos de canal que quedan en falta cuando el mix es imposible. */
 export const CAMPOS_PCT_CANAL: Record<CanalId, string> = {
   tienda_propia: "canal_tienda_pct",

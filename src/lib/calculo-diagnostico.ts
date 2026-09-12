@@ -17,6 +17,8 @@ import {
   entradaPlataforma,
   claveComisionPlataforma,
   estadoCanal,
+  facturacionCanal,
+  facturacionTiendaPropia,
   hayCanalesDeclarados,
   numeroCanal,
   pctCanal,
@@ -56,6 +58,7 @@ export {
   canalPrincipal,
   estadoCanal,
   comisionEfectivaCanal,
+  facturacionCanal,
 };
 export type { CanalId, ComisionMarketplace, ComisionPlataforma } from "./canales";
 export { evaluarFunnel, tramosFunnel, MEJORAS_FUNNEL_DEFECTO };
@@ -739,17 +742,6 @@ export function inversionCanal(d: DatosDiagnostico, canal: CanalId): number | nu
   return numeroCanal(d, canal, "inversion") ?? inversionMetaGoogle(d);
 }
 
-/** Facturación del canal: la declarada o, en su defecto, la derivada del mix. */
-export function facturacionCanal(d: DatosDiagnostico, canal: CanalId): number | null {
-  const propia = numeroCanal(d, canal, "facturacion");
-  if (propia !== null) return propia;
-  const pct = pctCanal(d, canal);
-  if (pct !== null && finito(d.facturacion_mensual) && d.facturacion_mensual > 0) {
-    return (d.facturacion_mensual * pct) / 100;
-  }
-  return null;
-}
-
 // ---------------------------------------------------------------- canales
 
 export type CanalDerivado = {
@@ -1128,14 +1120,25 @@ export function calcularDiagnostico(
       ? d.ticket_promedio / cpaObjetivo
       : null;
 
-  // --- Pedidos y conversión (ya no se cargan: se calculan)
+  // --- Pedidos y conversión (ya no se cargan: se calculan). Los pedidos
+  // mensuales son del negocio. La conversión de tienda compara visitas de
+  // tienda con pedidos de tienda: su facturación sobre su ticket, nunca la
+  // facturación total de un negocio mixto.
   const pedidos =
     finito(d.facturacion_mensual) && finito(d.ticket_promedio) && d.ticket_promedio > 0
       ? d.facturacion_mensual / d.ticket_promedio
       : null;
+  const facturacionTienda = facturacionTiendaPropia(d);
+  const ticketTienda =
+    numeroCanal(d, "tienda_propia", "ticket") ??
+    (finito(d.ticket_promedio) && d.ticket_promedio > 0 ? d.ticket_promedio : null);
+  const pedidosTienda =
+    facturacionTienda !== null && ticketTienda !== null && ticketTienda > 0
+      ? facturacionTienda / ticketTienda
+      : null;
   const crTienda =
-    pedidos !== null && finito(d.visitas_mensuales) && d.visitas_mensuales > 0
-      ? pedidos / d.visitas_mensuales
+    pedidosTienda !== null && finito(d.visitas_mensuales) && d.visitas_mensuales > 0
+      ? pedidosTienda / d.visitas_mensuales
       : null;
 
   // Inversión publicitaria del negocio: Meta, Google y Product Ads. La ausencia
@@ -1147,9 +1150,6 @@ export function calcularDiagnostico(
 
   // MER por perímetro. Nunca se cruza la facturación de un canal con la
   // inversión del otro.
-  const facturacionTienda =
-    facturacionCanal(d, "tienda_propia") ??
-    (!hayCanales && finito(d.facturacion_mensual) ? d.facturacion_mensual : null);
   const facturacionML = facturacionCanal(d, "mercado_libre");
   const merTienda =
     facturacionTienda !== null && inversionPropia !== null && inversionPropia > 0
