@@ -15,8 +15,9 @@ dos corridas del gate de F2a, de la auditoría del formulario de carga del
 2026-09-10, de la auditoría del motor de cálculo del 2026-09-10 y de la
 auditoría de las salidas del 2026-09-11: **H-7, H-14 y H-17 corregidos**,
 **H-8 mitigado parcialmente**, **H-9 parcialmente encaminado**; **H-6**,
-**H-10**, **H-11**, **H-12**, **H-13**, **H-15**, **H-16**, **H-19 a H-27**,
-**H-28 a H-37**, **H-38, H-39 y H-41 a H-48**, **H-49** y **H-50** quedan abiertos, ordenados, con dueño
+**H-10**, **H-11**, **H-12**, **H-13**, **H-15**, **H-16** (sólo el punto b:
+el a se resolvió el 2026-09-12), **H-19 a H-27**,
+**H-28 a H-37**, **H-38, H-39 y H-41 a H-48**, **H-49**, **H-50**, **H-51** y **H-52** quedan abiertos, ordenados, con dueño
 humano. H-11 y H-12 entraron por esa auditoría: los dos estaban
 reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la propia
 migración: aplicarla a mano deja la puerta abierta a que el cambio vuelva
@@ -45,7 +46,9 @@ grep, el mismo día. H-49 lo abrió el 2026-09-11 el intento de llevar al
 listado el arreglo de `ac3b3f2`: es el pendiente que la sección 4 del estado
 del 2026-09-10 (hoy `docs/bv4-estado-2026-09-11.md`) había dejado sin ID. De
 H-38 a H-49 sólo H-40 está corregido (`7948164`, 2026-09-11). H-50 lo abrió el
-diseño del arreglo de H-18. H-38 no es un bug con arreglo
+diseño del arreglo de H-18. H-51 lo abrió el 2026-09-12 el arreglo de
+"Cancelar" del formulario de carga, y H-52 la verificación de ese arreglo en
+el navegador. H-38 no es un bug con arreglo
 obvio: requiere una decisión de producto sobre qué "oportunidad" es la
 oficial. Aclaración que atraviesa a varios: `src/documents/motor-activo.ts:19`
 tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`, así que todo lo referido a la cadena
@@ -322,6 +325,14 @@ el único lugar que vuelve a tocar el modo después de elegirlo es `cambiarModo`
 (`:211-221`), que cambia de A a B y de B a A pero **nunca vuelve a `null`**.
 Elegido el modo, la pantalla de selección no se vuelve a ver en esa sesión de
 formulario.
+
+**Resuelto el 2026-09-12, sin tocar `cambiarModo`.** El camino concreto era el
+borrador: "Cancelar" sólo navegaba al listado, el borrador seguía en
+`localStorage` con `modo`, y al volver se recuperaba con el modo ya elegido.
+Ahora "Cancelar" descarta el borrador (pide confirmación si hay datos
+cargados), y el aviso de borrador retomado tiene "Empezar de cero", que vuelve
+a `modo === null` sin salir de la pantalla. Los números de línea de arriba son
+del 2026-09-03.
 
 **b) Los toggles de canal minorista/mayorista no vuelven a "sin responder".
 No se pudo reproducir en el código.** `CampoSiNo` sí vuelve a `null`:
@@ -791,6 +802,127 @@ las de H-15: o modo B captura montos de todos los productos (y `conMontos`
 desaparece), o los montos de los productos 2 a 5 entran en
 `CAMPOS_EXCLUSIVOS.A` y se estacionan como el resto. Cualquiera de las dos
 cambia la cobertura del catálogo en modo B, que H-15 ya midió.
+
+## H-51 · Cerrar sesión no borra el borrador del formulario, y la clave es una sola por navegador · abierto
+
+Encontrado el 2026-09-12 al arreglar "Cancelar" del formulario de carga. No
+se corrige en esa sesión: el arreglo cae en `app-sidebar.tsx`, fuera de su
+alcance. Sale del código; no lo reproduje en el navegador.
+
+`src/components/app-sidebar.tsx:20-25`:
+
+```ts
+async function cerrarSesion() {
+  await queryClient.cancelQueries();
+  queryClient.clear();
+  await supabase.auth.signOut();
+  navigate({ to: "/auth", replace: true });
+}
+```
+
+Limpia la caché de react-query y la sesión de Supabase, pero no toca
+`localStorage`. El borrador del formulario vive ahí bajo `CLAVE_BORRADOR`
+(`diagnostico-form.ts`, `"velocentum:borrador-diagnostico"`), que es una clave
+fija: no lleva el id del usuario. Ni el autoguardado ni `leerBorrador`
+(`diagnosticos.nuevo.tsx`) miran quién es el usuario.
+
+Cómo se dispara: un vendedor carga parte de una llamada, cierra sesión, y otro
+vendedor entra en el mismo navegador. Al abrir "Nuevo diagnóstico" retoma el
+borrador del primero: prospecto, montos y notas. Desde el 2026-09-12 el aviso
+de borrador retomado al menos lo muestra y ofrece "Empezar de cero", pero los
+datos del prospecto ajeno ya quedaron a la vista.
+
+Salidas posibles, ninguna aplicada:
+
+1. **Borrar `CLAVE_BORRADOR` en `cerrarSesion`**, antes del `signOut`. Es una
+   línea. Pierde el borrador del propio vendedor si cerró sesión sin querer a
+   mitad de una llamada.
+2. **Incluir el id del usuario en la clave.** Cada uno conserva el suyo y nadie
+   ve el de otro. Deja borradores huérfanos en el navegador y toca también
+   `diagnosticos.nuevo.tsx`, que tendría que leer la clave con el usuario.
+
+## H-52 · De "Editar y recalcular" a "Nuevo diagnóstico" el formulario conserva el diagnóstico de origen, y "Guardar" crea la versión sobre el prospecto equivocado · abierto
+
+Encontrado el 2026-09-12 al verificar en el navegador el arreglo de
+"Cancelar". Reproducido en el navegador sin guardar: las consecuencias al
+guardar salen del código. Es más grave que lo que se vino a arreglar esa
+sesión y queda para una sesión propia.
+
+**Causa.** "Editar y recalcular" (`/diagnosticos/nuevo?desde=<id>`) y "Nuevo
+diagnóstico" (`/diagnosticos/nuevo`) son la misma ruta; sólo cambia el search.
+TanStack Router 1.170 no remonta el componente de una ruta cuando cambia el
+search salvo que la ruta o el router declaren `remountDeps`
+(`node_modules/@tanstack/react-router/dist/esm/Match.js:138-146`: sin
+`remountDeps` la key es `undefined`). Ni `src/router.tsx:8-13` ni la ruta lo
+declaran. El link de la barra lateral (`app-sidebar.tsx:11`) va a
+`/diagnosticos/nuevo` sin search, así que el componente sigue montado, pierde
+`desde` y conserva todo su estado.
+
+**Las cinco piezas que sobreviven** (`diagnosticos.nuevo.tsx`, líneas del
+2026-09-12):
+
+1. `origen`: id, `oportunidad_id` y versión del diagnóstico que se estaba
+   editando. Nada lo vuelve a `null`: la precarga (`:166-195`) sale con
+   `if (!desde) return;` (`:168`) sin limpiar.
+2. `modo`, 3. `datos`, 4. `notas` y 5. `estacionados`: los del diagnóstico de
+   origen. Sobreviven sólo si no hay borrador guardado. Si lo hay, la
+   recuperación (`:197-205`, que ahora sí corre porque `desde` desapareció)
+   los reemplaza por los del borrador, pero `origen` sigue intacto.
+
+Quedan también `bloque`, `error` y la hora del encabezado, sin consecuencia.
+
+**Reproducción** (hecha el 2026-09-12 con el diagnóstico de Titan Web,
+`3b10d4f2`):
+
+1. Listado → abrir un diagnóstico → "Editar y recalcular". Esperar a que
+   cargue.
+2. Click en "Nuevo diagnóstico" en la barra lateral.
+3. **Sin borrador:** la URL queda en `/diagnosticos/nuevo`, pero el encabezado
+   sigue diciendo "Editar y recalcular" y el botón "Guardar versión nueva",
+   con los datos de Titan Web. A los 3 segundos el autoguardado (`:212-230`,
+   que ahora sí corre) escribe esos datos en `CLAVE_BORRADOR` como si fueran
+   un diagnóstico nuevo.
+4. **Con un borrador de otro prospecto** (sembrado a mano como
+   `PRUEBA-OTRO-PROSPECTO`, modo B): el formulario muestra ese otro
+   prospecto en modo B, con el encabezado "Editar y recalcular" y el botón
+   "Guardar versión nueva" todavía atados a Titan Web.
+
+**Consecuencia 1: "Guardar" escribe una versión sobre el diagnóstico
+equivocado.** Con `origen` vivo, `guardar()` no crea oportunidad (`:372`, usa
+`origen.oportunidad_id`), inserta `version: origen.version + 1` (`:399`) y
+`origen_diagnostico_id: origen.id` (`:400`), con los `datos` y `notas` que
+estén en pantalla. En el caso 4 queda "Titan Web versión 2" con los números
+de otro prospecto, y ese prospecto no tiene oportunidad propia. Además el
+borrador no se borra (`:413` lo borra sólo `if (!origen)`), así que sobrevive
+a un guardado exitoso.
+
+**Consecuencia 2: la versión nueva se muestra con la identidad del cliente
+anterior.** El nombre que se ve sale de la oportunidad, no de `datos`: el
+listado (`index.tsx:174`, `f.oportunidad?.nombre_tienda`), el título del
+detalle (`diagnosticos.$id.tsx:177`) y el link a la versión anterior
+(`:231-236`). La propuesta de la IA toma de la oportunidad el nombre, la
+vertical y la plataforma (`propuesta.functions.ts:67-69`), así que se
+redactaría para Titan Web con los números del otro prospecto. **Lo que no
+hereda** son la selección comercial y la propuesta ya guardadas: viven en
+`diagnostico.propuesta`, por fila (`seleccion-comercial-v2.functions.ts:55-79`,
+`diagnosticos.$id.tsx:271-296`), y `guardar()` inserta sin esa columna. La
+versión equivocada nace sin selección ni propuesta; lo que arrastra del
+cliente anterior es su identidad.
+
+**Interacción con el arreglo de "Cancelar" del 2026-09-12.** `pedirCancelar`
+decide por `desde`. Con el estado viejo, `desde` ya no está y trata el
+formulario como nuevo: si hay datos pide confirmación con el nombre que esté
+en pantalla y, si se descarta, borra `CLAVE_BORRADOR`. No empeora el caso,
+pero tampoco lo resuelve.
+
+Salidas posibles, ninguna aplicada ni aprobada: declarar en la ruta
+`remountDeps` con `desde`, para que cambiar entre editar y nuevo monte un
+componente limpio, o resetear todo el estado (incluido `origen`) cuando
+`desde` desaparece. La primera es una línea y cubre también cualquier estado
+que se agregue después. Cualquiera de las dos tiene que probarse en el
+navegador con los dos casos de arriba. Hay que revisar además si hay
+versiones guardadas por este camino antes del arreglo, porque en la base no
+se distinguen de las legítimas.
 
 ---
 
