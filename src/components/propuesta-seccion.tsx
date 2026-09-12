@@ -4,30 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { formatARS } from "@/lib/format";
 import { generarPropuesta } from "@/lib/propuesta.functions";
-import type { PropuestaGenerada } from "@/lib/propuesta";
+import { montosDeHallazgos, type PropuestaGenerada } from "@/lib/propuesta";
 import type { Fuga } from "@/lib/calculo-diagnostico";
-
-/** Palabras que asocian un hallazgo redactado con la fuga real del diagnóstico. */
-const CLAVES_FUGA: Record<string, string[]> = {
-  conversion: ["conversión", "conversion", "tasa de conversión"],
-  gasto_no_rentable: ["mer", "breakeven", "gasto no rentable", "rentab"],
-  sobrefragmentacion: ["fragment", "conjuntos", "estructura de cuenta"],
-  carritos_abandonados: ["carrito"],
-};
-
-/**
- * Monto real del diagnóstico asociado a un hallazgo.
- * Nunca se muestran cifras salidas del texto del modelo.
- */
-function montoDeHallazgo(titulo: string, fugas: Fuga[]): Fuga | null {
-  const t = titulo.toLowerCase();
-  for (const f of fugas) {
-    if (f.tipo !== "monto" || typeof f.monto !== "number") continue;
-    const claves = CLAVES_FUGA[f.id] ?? [f.etiqueta.toLowerCase()];
-    if (claves.some((c) => t.includes(c))) return f;
-  }
-  return null;
-}
 
 export function PropuestaSeccion({
   diagnosticoId,
@@ -48,6 +26,8 @@ export function PropuestaSeccion({
   });
 
   const cargando = mutacion.isPending;
+  // Montos reales del diagnóstico por hallazgo. Nunca cifras salidas del texto del modelo.
+  const montos = propuesta ? montosDeHallazgos(propuesta.hallazgos, fugas) : [];
 
   return (
     <section className="rounded-lg border border-border bg-card">
@@ -109,17 +89,20 @@ export function PropuestaSeccion({
 
           <div className="space-y-5">
             {propuesta.hallazgos.map((h, i) => {
-              const fuga = montoDeHallazgo(h.titulo, fugas);
+              const monto = montos[i];
+              const notas = monto
+                ? [monto.alcance, monto.sospechosa ? "orden de magnitud" : null].filter(Boolean)
+                : [];
               return (
                 <article key={`${h.titulo}-${i}`} className="rounded-lg border border-border px-6 py-6">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
                     <h3 className="text-[17px] font-medium text-foreground">{h.titulo}</h3>
-                    {fuga && typeof fuga.monto === "number" && (
+                    {monto && (
                       <p className="text-[20px] font-medium tabular-nums text-foreground">
-                        {formatARS(fuga.monto)}
-                        {fuga.sospechosa && (
+                        {formatARS(monto.monto)}
+                        {notas.length > 0 && (
                           <span className="ml-2 text-[12px] font-normal text-muted-foreground">
-                            orden de magnitud
+                            {notas.join(" · ")}
                           </span>
                         )}
                       </p>

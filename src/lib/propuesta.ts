@@ -42,6 +42,8 @@ export type HallazgoMapeado = {
 export type PropuestaGenerada = {
   resumen: string;
   hallazgos: {
+    /** `id` del hallazgo de `mapearHallazgos` que redacta, copiado por el modelo. null si no trajo uno. */
+    hallazgo_id: string | null;
     titulo: string;
     capa: Capa;
     que_encontramos: string;
@@ -537,6 +539,68 @@ export function mapearHallazgos(
   return h;
 }
 
+/**
+ * Fuga del diagnóstico que respalda cada hallazgo, por id de hallazgo. Refleja
+ * las condiciones de `mapearHallazgos`. Qué fuga va con qué hallazgo lo decide
+ * este mapa, nunca el modelo ni el texto del título (H-40): antes se emparejaba
+ * por palabra en el título y "mer" pegaba con "Mercado" o "comercial".
+ */
+export const FUGA_DE_HALLAZGO: Record<string, string> = {
+  mer_bajo: "gasto_no_rentable",
+  estructura_cuenta: "sobrefragmentacion",
+  funnel_navegacion: "funnel_navegacion",
+  funnel_carrito: "funnel_carrito",
+  funnel_checkout: "funnel_checkout",
+  funnel_combinado: "funnel_combinado",
+  retencion_recuperacion_carrito: "recuperacion_carrito",
+  recompra: "recompra",
+};
+
+/**
+ * Hallazgos cuyo título abarca más que su fuga. El monto se imprime con esta
+ * aclaración: el título habla de carrito y recompra, la fuga es sólo carrito.
+ */
+const ALCANCE_DEL_MONTO: Record<string, string> = {
+  retencion_recuperacion_carrito: "solo recuperación de carrito, sin recompra",
+};
+
+export type MontoHallazgo = {
+  monto: number;
+  sospechosa: boolean;
+  /** Aclaración de qué cubre el monto cuando el hallazgo abarca más. */
+  alcance: string | null;
+};
+
+/**
+ * Monto real del diagnóstico para cada hallazgo redactado, en el mismo orden.
+ * Sin `hallazgo_id`, con un id sin fuga asociada, con la fuga ausente o sin
+ * monto positivo, o con el id repetido en dos hallazgos, no hay monto:
+ * preferimos no mostrar cifra antes que mostrar la de otra fuga.
+ */
+export function montosDeHallazgos(
+  hallazgos: PropuestaGenerada["hallazgos"],
+  fugas: Fuga[],
+): (MontoHallazgo | null)[] {
+  const usos = new Map<string, number>();
+  for (const h of hallazgos) {
+    if (h.hallazgo_id) usos.set(h.hallazgo_id, (usos.get(h.hallazgo_id) ?? 0) + 1);
+  }
+  return hallazgos.map((h) => {
+    const id = h.hallazgo_id;
+    if (!id || usos.get(id) !== 1) return null;
+    const fugaId = FUGA_DE_HALLAZGO[id];
+    if (!fugaId) return null;
+    const f = fugas.find((x) => x.id === fugaId);
+    if (!f || f.tipo !== "monto" || typeof f.monto !== "number") return null;
+    if (!Number.isFinite(f.monto) || f.monto <= 0) return null;
+    return {
+      monto: f.monto,
+      sospechosa: f.sospechosa === true,
+      alcance: ALCANCE_DEL_MONTO[id] ?? null,
+    };
+  });
+}
+
 /** JSON que recibe el modelo. Solo datos ya calculados, nunca cálculos nuevos. */
 export function armarInsumoPropuesta(args: {
   datos: DatosDiagnostico;
@@ -626,12 +690,16 @@ Reglas duras:
 - Nunca menciones que un dato no fue cargado, que un campo llegó vacío o que falta
   información. Si no tenés un dato, simplemente no hables de ese tema.
 - Un hallazgo, un párrafo corto. Qué encontramos, qué significa en plata, qué se hace.
+- En cada hallazgo que devuelvas, "hallazgo_id" es el "id" del hallazgo recibido que estás
+  redactando, copiado tal cual. Si el párrafo no corresponde a exactamente uno de los hallazgos
+  recibidos, poné null.
 
 Devolvé únicamente un objeto JSON, sin markdown ni texto alrededor, con esta forma:
 {
   "resumen": "dos o tres oraciones con la lectura general del negocio",
   "hallazgos": [
-    { "titulo": "...", "capa": "servicio|recomendacion|contexto",
+    { "hallazgo_id": "id del hallazgo recibido o null",
+      "titulo": "...", "capa": "servicio|recomendacion|contexto",
       "que_encontramos": "...", "que_significa": "...",
       "que_hacemos": "...", "servicio": "nombre del servicio o null" }
   ],
@@ -661,6 +729,7 @@ export function normalizarPropuesta(valor: unknown): PropuestaGenerada | null {
             capaCruda === "recomendacion" || capaCruda === "contexto" ? capaCruda : "servicio";
           const servicio = texto(o["servicio"]);
           return {
+            hallazgo_id: texto(o["hallazgo_id"]),
             titulo,
             capa,
             que_encontramos: texto(o["que_encontramos"]) ?? "",
