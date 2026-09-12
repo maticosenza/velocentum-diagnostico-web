@@ -1208,7 +1208,9 @@ describe("mix de canales y comisiones", () => {
       expect(f, id).toBeDefined();
       expect(f!.monto).toBeNull();
       expect(f!.calculable).toBe(false);
-      expect(f!.faltantes).toContain("margen_contribucion");
+      // H-31: el total lo retiene el mix, que cubre el 90%. En vez de
+      // `margen_contribucion`, que no es un campo, se piden los porcentajes de canal.
+      expect(f!.faltantes).toEqual(["canal_tienda_pct", "canal_ml_pct"]);
     }
 
     // El volumen y la estructura del funnel sí se calculan.

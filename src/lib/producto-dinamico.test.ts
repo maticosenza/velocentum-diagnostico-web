@@ -13,7 +13,12 @@ import {
 } from "./diagnostico-form";
 import { calcularDiagnostico, coberturaProductos, productosCargados } from "./calculo-diagnostico";
 import type { ConfiguracionCalculo } from "./calculo-diagnostico";
-import { casoSnakeStore, configuracionRegresionFase2, esperadosFase2 } from "./fixtures-casos";
+import {
+  casoSnakeStore,
+  casoSnakeStoreCoberturaCompleta,
+  configuracionRegresionFase2,
+  esperadosFase2,
+} from "./fixtures-casos";
 
 function datosCon(overrides: Partial<DatosDiagnostico>): DatosDiagnostico {
   return { ...DATOS_INICIALES, ...overrides };
@@ -328,5 +333,128 @@ describe("H-50 · en modo B los montos de los productos 2 a 5 no entran", () => 
       producto_2_pct_facturacion: 30,
     });
     expect(coberturaProductos(d, "B")).toBe(70);
+  });
+});
+
+describe("H-31 · margen retenido por cobertura: se piden campos del formulario", () => {
+  /** Snake con las tres fugas que dependen del margen y no pasan por el funnel. */
+  const conFugas = (d: DatosDiagnostico): DatosDiagnostico => ({
+    ...d,
+    facturacion_mensual: 20_000_000,
+    inversion_meta: 1_000_000,
+    carritos_abandonados: 100,
+    retencion_recuperacion_pct_actual: 5,
+    recompra_compradores_unicos: 500,
+    recompra_tasa_actual_pct: 10,
+    recompra_ventana_dias: 60,
+    recompra_ticket_segunda_compra: 150_000,
+    recompra_tiene_secuencia_postventa: false,
+  });
+  const IDS = ["gasto_no_rentable", "recuperacion_carrito", "recompra"];
+  const faltantesDe = (d: DatosDiagnostico, modo: "A" | "B" = "A") => {
+    const r = calcularDiagnostico(d, configuracionRegresionFase2, modo);
+    return IDS.map((id) => {
+      const f = r.fugas.find((x) => x.id === id);
+      expect(f, id).toBeDefined();
+      return f!.faltantes;
+    });
+  };
+
+  it("Snake (60%): las tres fugas piden los porcentajes de producto, no el margen", () => {
+    const r = calcularDiagnostico(conFugas(casoSnakeStore), configuracionRegresionFase2);
+    expect(r.derivados.margen_contribucion).toBeNull();
+    expect(r.derivados.margen_muestra).not.toBeNull();
+    for (const faltan of faltantesDe(conFugas(casoSnakeStore))) {
+      expect(faltan).not.toContain("margen_contribucion");
+      expect(faltan).toEqual(
+        expect.arrayContaining([
+          "producto_1_pct_facturacion",
+          "producto_2_pct_facturacion",
+          "producto_3_pct_facturacion",
+        ]),
+      );
+    }
+    const gasto = r.fugas.find((x) => x.id === "gasto_no_rentable")!;
+    expect(gasto.faltantes).toEqual([
+      "producto_1_pct_facturacion",
+      "producto_2_pct_facturacion",
+      "producto_3_pct_facturacion",
+    ]);
+  });
+
+  it("un producto del cálculo sin porcentaje: se pide sólo ese porcentaje", () => {
+    const d = conFugas({ ...casoSnakeStore, producto_2_pct_facturacion: null });
+    for (const faltan of faltantesDe(d)) {
+      expect(faltan).toContain("producto_2_pct_facturacion");
+      expect(faltan).not.toContain("producto_1_pct_facturacion");
+      expect(faltan).not.toContain("margen_contribucion");
+    }
+  });
+
+  it("un producto declarado sin montos: se piden su costo y su precio", () => {
+    const d = conFugas({
+      ...casoSnakeStore,
+      cantidad_productos: 4,
+      producto_4_nombre: "Buzo",
+      producto_4_pct_facturacion: 40,
+    });
+    for (const faltan of faltantesDe(d)) {
+      expect(faltan).toEqual(expect.arrayContaining(["producto_4_costo", "producto_4_precio"]));
+      expect(faltan).not.toContain("producto_4_pct_facturacion");
+      expect(faltan).not.toContain("margen_contribucion");
+    }
+  });
+
+  it("en modo B no se piden montos que el formulario no muestra", () => {
+    for (const faltan of faltantesDe(conFugas(casoSnakeStore), "B")) {
+      expect(faltan).toContain("producto_1_pct_facturacion");
+      expect(faltan).not.toContain("producto_2_costo");
+      expect(faltan).not.toContain("producto_2_pct_facturacion");
+    }
+  });
+
+  it("sin productos cargados (4b): se piden los campos del producto principal", () => {
+    const d = conFugas({
+      ...casoSnakeStore,
+      producto_1_costo: null,
+      producto_1_precio: null,
+      producto_1_pct_facturacion: null,
+      producto_2_costo: null,
+      producto_2_precio: null,
+      producto_3_costo: null,
+      producto_3_precio: null,
+    });
+    for (const faltan of faltantesDe(d)) {
+      expect(faltan).toEqual(
+        expect.arrayContaining([
+          "producto_1_costo",
+          "producto_1_precio",
+          "producto_1_pct_facturacion",
+        ]),
+      );
+      expect(faltan).not.toContain("margen_contribucion");
+    }
+  });
+
+  it("con cobertura completa el margen se publica y ninguna fuga lo pide", () => {
+    const r = calcularDiagnostico(
+      conFugas(casoSnakeStoreCoberturaCompleta),
+      configuracionRegresionFase2,
+    );
+    expect(r.derivados.margen_contribucion).not.toBeNull();
+    for (const f of r.fugas) {
+      expect(f.faltantes.some((c) => c.startsWith("producto_"))).toBe(false);
+      expect(f.faltantes).not.toContain("margen_contribucion");
+    }
+  });
+
+  it("si el margen no se calcula por otra causa, se conserva margen_contribucion", () => {
+    // Sin ticket no hay margen de muestra: la causa no es cobertura.
+    const d = conFugas({ ...casoSnakeStore, ticket_promedio: null });
+    const r = calcularDiagnostico(d, configuracionRegresionFase2);
+    expect(r.derivados.margen_muestra).toBeNull();
+    const gasto = r.fugas.find((x) => x.id === "gasto_no_rentable")!;
+    expect(gasto.faltantes).toContain("margen_contribucion");
+    expect(gasto.faltantes.some((c) => c.startsWith("producto_"))).toBe(false);
   });
 });

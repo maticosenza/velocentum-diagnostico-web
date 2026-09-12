@@ -17,7 +17,7 @@ auditoría de las salidas del 2026-09-11: **H-7, H-14 y H-17 corregidos**,
 **H-8 mitigado parcialmente**, **H-9 parcialmente encaminado**; **H-6**,
 **H-10**, **H-11**, **H-12**, **H-13**, **H-15**, **H-16** (sólo el punto b:
 el a se resolvió el 2026-09-12), **H-19 a H-22 y H-24 a H-27**,
-**H-28 a H-37**, **H-38, H-39 y H-41 a H-48**, **H-49**, **H-52**, **H-53** y **H-54** quedan abiertos, ordenados, con dueño
+**H-28 a H-30 y H-32 a H-37**, **H-38, H-39 y H-41 a H-48**, **H-49**, **H-52**, **H-53** y **H-54** quedan abiertos, ordenados, con dueño
 humano; **H-51** queda en pausa por una decisión de producto. H-11 y H-12 entraron por esa auditoría: los dos estaban
 reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la propia
 migración: aplicarla a mano deja la puerta abierta a que el cambio vuelva
@@ -32,7 +32,7 @@ Los diez están ordenados por impacto en una llamada real. H-28 a H-37 los
 abrió la auditoría del motor de cálculo del 2026-09-10
 (`calculo-diagnostico.ts`, `contradiccion.ts`, `mayorista.ts`, `funnel.ts`,
 `canales.ts`, `dinero.ts`, `impacto-economico.ts`; sin entrar al formulario,
-los documentos ni la base): son del motor. Ninguno está corregido. Cuatro de
+los documentos ni la base): son del motor. Sólo H-31 está corregido (2026-09-12). Cuatro de
 ellos (H-28, H-29, H-30 y H-34) tienen diseño de arreglo, sin aprobar y sin
 aplicar, en `docs/bv4-motor-arreglos-propuestos.md`. Los diez están
 ordenados por impacto en una llamada comercial real. H-38 a H-47 los abrió
@@ -654,9 +654,51 @@ Diseño de arreglo (sin aprobar, sin aplicar): `docs/bv4-motor-arreglos-propuest
 
 Diseño de arreglo (sin aprobar, sin aplicar): `docs/bv4-motor-arreglos-propuestos.md`, arreglo 3.
 
-## H-31 · Margen retenido por cobertura: se publica la muestra pero las fugas piden un campo que no existe · abierto
+## H-31 · Margen retenido por cobertura: se publica la muestra pero las fugas piden un campo que no existe · CORREGIDO 2026-09-12
 
 `faltantesMargen` (533-550) no revisa productos ni cobertura, y `margenDeCanal` devuelve `margen: null` con `faltantes: []` cuando no hay productos (849). El motor solo expande `margen_contribucion` para los tramos del funnel (1193-1195); gasto no rentable (1216), carrito (1344) y recompra (1459) lo dejan como está. Entrada: todos los campos cargados, un solo producto con 60% de facturación. Salida: `margen_muestra: 0.5` publicado, `margen_contribucion: null`, y seis fugas no calculables cuyo único faltante es `margen_contribucion`. Entrada 4b: sin productos cargados, canal con `faltantes: []`. El usuario ve un margen del 50% en pantalla y al lado "falta el margen"; no hay ningún dato que pueda ir a pedirle al cliente porque lo que falta es `producto_N_pct_facturacion`, que no aparece.
+
+**Corregido el 2026-09-12, en el motor y no en la pantalla.** Los faltantes
+viajan fuera del detalle (a los impactos retenidos como `dependencias`, a la
+propuesta IA, a cualquier consumidor futuro), y el motor ya expandía
+`margen_contribucion` para el funnel: traducirlo sólo en pantalla dejaba dos
+criterios. `faltantesMargenTotal(d, modo, margenMuestra, faltantesCanales)`
+devuelve los campos del formulario que destraban el total, y
+`calcularDiagnostico` reemplaza con ellos a `margen_contribucion`, en su lugar
+y sin repetir, en las cuatro fugas que lo pedían (tramos del funnel, gasto no
+rentable, recuperación de carrito y recompra). Dos casos:
+
+- **Muestra calculada, total retenido.** La causa es cobertura. Si un
+  producto del cálculo no tiene porcentaje, se pide ese porcentaje. Si uno de
+  la lista tiene nombre o porcentaje pero no montos, se piden sus montos (en
+  modo B sólo los del principal, porque del 2 al 5 no hay dónde cargarlos). Si
+  todos tienen porcentaje y no llegan a 100, se piden los porcentajes de los
+  productos del cálculo, que son los que hay que revisar. Si el mix de canales
+  no llega a 100, se suman los porcentajes de los canales que no están en "no
+  aplica".
+- **Ningún producto en el cálculo** (el caso 4b): los campos del producto
+  principal, más `faltantesMargen` y los faltantes de los canales que alimentan
+  el margen.
+
+En cualquier otro caso (el margen no se calcula por una causa que no es
+cobertura, o es negativo) se conserva `margen_contribucion`: una lista
+incompleta sería peor que la genérica. El detalle traduce los campos nuevos
+(`ETIQUETAS_CAMPO`: "% de facturación del producto N", "costo del producto
+N", "% de facturación de Mercado Libre"…). El resto de los identificadores
+crudos sigue en H-42.
+
+Medido sobre los fixtures, sin cambiarlos. Snake Store no tiene fugas que
+dependan del margen (no carga inversión, carritos ni recompra: sólo
+sobrefragmentación), así que su salida no cambia. Titan Web B1 sí: gasto no
+rentable, por Product Ads, pasa de `margen_contribucion` a
+`producto_1_pct_facturacion`, `producto_2_pct_facturacion` y
+`producto_3_pct_facturacion`. Ojo con ese caso: su margen de muestra es
+negativo (−0,0452), así que completar la cobertura no destraba la cifra, la
+lleva a `margen_negativo`. Lo que pide es correcto (es lo que retiene el
+total), pero no es lo único que falta resolver. Ningún documento imprime
+faltantes, y el gate de F2a sigue verde sin tocarlo. Cambió un test,
+`calculo-diagnostico.test.ts` (mix 60/30): el funnel esperaba
+`margen_contribucion` y ahora recibe `canal_tienda_pct` y `canal_ml_pct`.
 
 ## H-32 · Cupón declarado sin porcentaje se valoriza como si no hubiera cupón · abierto
 

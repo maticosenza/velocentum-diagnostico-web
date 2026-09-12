@@ -85,6 +85,17 @@ const ETIQUETAS_CAMPO: Record<string, string> = {
   cpa_objetivo: "CPA objetivo",
   factor_fatiga: "parámetro de fatiga",
   "umbrales_funnel_web.cr_tienda": "umbral de conversión",
+  // H-31: lo que el motor pide en lugar de "margen de contribución" cuando lo
+  // retiene la cobertura del catálogo o del mix de canales.
+  ...Object.fromEntries(
+    [1, 2, 3, 4, 5].flatMap((n) => [
+      [`producto_${n}_pct_facturacion`, `% de facturación del producto ${n}`],
+      [`producto_${n}_costo`, `costo del producto ${n}`],
+      [`producto_${n}_precio`, `precio del producto ${n}`],
+    ]),
+  ),
+  canal_tienda_pct: "% de facturación de la tienda propia",
+  canal_ml_pct: "% de facturación de Mercado Libre",
 };
 
 const EXPLICACION_FUGA: Record<string, string> = {

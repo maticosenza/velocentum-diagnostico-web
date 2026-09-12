@@ -573,6 +573,76 @@ export function faltantesMargen(d: DatosDiagnostico): string[] {
   return faltan;
 }
 
+/**
+ * Campos del formulario que faltan para publicar el margen TOTAL, cuando la
+ * causa se puede nombrar (H-31). `margen_contribucion` lo calcula el motor: como
+ * faltante no le dice al vendedor qué cargar.
+ *  - Muestra calculada y total retenido: la causa es cobertura. Los porcentajes
+ *    de los productos del cálculo (y los montos de los declarados que no los
+ *    tengan) y, si el mix de canales no llega a 100, los porcentajes de canal.
+ *  - Ningún producto en el cálculo: los campos del producto principal, más lo
+ *    que ya impide el margen (`faltantesMargen` y los faltantes de los canales).
+ * Cualquier otro caso devuelve vacío y el llamador conserva `margen_contribucion`.
+ */
+export function faltantesMargenTotal(
+  d: DatosDiagnostico,
+  modo: Modo,
+  margenMuestra: number | null,
+  faltantesCanales: string[] = [],
+): string[] {
+  const enCalculo = productosCargados(d, modo);
+  if (margenMuestra === null && enCalculo.length > 0) return [];
+  const faltan: string[] = [];
+  const agregar = (c: string) => {
+    if (!faltan.includes(c)) faltan.push(c);
+  };
+  if (enCalculo.length === 0)
+    for (const c of [...faltantesMargen(d), ...faltantesCanales]) agregar(c);
+
+  if (coberturaProductos(d, modo) < 100) {
+    const campo = (n: number, sufijo: string) => `producto_${n}_${sufijo}`;
+    const valor = (n: number, sufijo: string) => d[campo(n, sufijo) as keyof DatosDiagnostico];
+    const numero = (n: number, sufijo: string): number | null => {
+      const v = valor(n, sufijo);
+      return typeof v === "number" && Number.isFinite(v) ? v : null;
+    };
+    const incluidos = new Set(enCalculo.map((p) => p.indice));
+    const deProductos: string[] = [];
+    for (let n = 1; n <= cantidadProductosDe(d); n++) {
+      const pct = numero(n, "pct_facturacion");
+      const sinPct = pct === null || pct <= 0;
+      if (incluidos.has(n)) {
+        if (sinPct) deProductos.push(campo(n, "pct_facturacion"));
+        continue;
+      }
+      // Sin montos a la vista (modo B, del 2 al 5) no hay nada que pedirle al vendedor.
+      if (!montosVisibles(modo, n)) continue;
+      const nombre = valor(n, "nombre");
+      const declarado =
+        !sinPct || (typeof nombre === "string" && nombre.trim() !== "") || enCalculo.length === 0;
+      if (!declarado) continue;
+      if (numero(n, "costo") === null) deProductos.push(campo(n, "costo"));
+      const precio = numero(n, "precio");
+      if (precio === null || precio <= 0) deProductos.push(campo(n, "precio"));
+      if (sinPct) deProductos.push(campo(n, "pct_facturacion"));
+      if (enCalculo.length === 0) break;
+    }
+    // Todo lo del cálculo ya tiene porcentaje y no llega a 100: lo que hay que
+    // revisar son esos porcentajes (o sumar productos a la lista).
+    if (deProductos.length === 0) {
+      for (const p of enCalculo) deProductos.push(campo(p.indice, "pct_facturacion"));
+    }
+    for (const c of deProductos) agregar(c);
+  }
+
+  if (hayCanalesDeclarados(d) && !canalesSuperan100(d) && coberturaCanales(d) < 100) {
+    for (const c of CANALES) {
+      if (estadoCanal(d, c.id) !== "no_aplica") agregar(CAMPOS_PCT_CANAL[c.id]);
+    }
+  }
+  return faltan;
+}
+
 // ---------------------------------------------------------------- inversión publicitaria
 
 /**
@@ -948,6 +1018,36 @@ export function calcularDiagnostico(
     }
   }
 
+  // H-31: con el total retenido, las fugas que dependen del margen piden los
+  // campos que lo destraban en vez de `margen_contribucion`, si se pueden nombrar.
+  const canalesDelMargen = hayCanales
+    ? canalesDeclarados(d)
+        .filter((c) => c.pct > 0)
+        .map((c) => porId(c.id))
+    : [porId("tienda_propia")];
+  const causasMargen =
+    margen === null
+      ? faltantesMargenTotal(
+          d,
+          modo,
+          margenMuestra,
+          canalesDelMargen.flatMap((c) => c.faltantes),
+        )
+      : [];
+  /** Reemplaza `margen_contribucion` por `causasMargen`, en su lugar y sin repetir. */
+  const conCausasDelMargen = (faltan: string[]): string[] => {
+    if (causasMargen.length === 0 || !faltan.includes("margen_contribucion")) return faltan;
+    const salida: string[] = [];
+    for (const f of faltan) {
+      if (f !== "margen_contribucion") {
+        if (!salida.includes(f)) salida.push(f);
+        continue;
+      }
+      for (const c of causasMargen) if (!salida.includes(c) && !faltan.includes(c)) salida.push(c);
+    }
+    return salida;
+  };
+
   const margenesProducto = canalMuestra.margenes_producto_exactos.map((m) => red(m, 4));
   const pesosProducto = canalMuestra.pesos_producto;
   const componenteEnvio = canalMuestra.componente_envio;
@@ -1229,7 +1329,7 @@ export function calcularDiagnostico(
       tipo: "monto",
       monto: t.monto,
       calculable: t.calculable,
-      faltantes: faltan,
+      faltantes: conCausasDelMargen(faltan),
       detalle: t.detalle,
       confianza: t.confianza,
       usa_margen: true,
@@ -1242,7 +1342,7 @@ export function calcularDiagnostico(
     const faltan: string[] = [];
     if (!finito(d.facturacion_mensual) || d.facturacion_mensual <= 0)
       faltan.push("facturacion_mensual");
-    if (breakevenRoas === null) faltan.push("margen_contribucion");
+    if (breakevenRoas === null) faltan.push(...conCausasDelMargen(["margen_contribucion"]));
     if (faltan.length > 0 || mer === null) {
       if (mer === null && faltan.length === 0) faltan.push("facturacion_mensual");
       fugas.push({
@@ -1370,8 +1470,10 @@ export function calcularDiagnostico(
     if (!finito(d.ticket_promedio) || (d.ticket_promedio as number) <= 0) {
       faltan.push("ticket_promedio");
     }
-    if (margen === null && !faltan.includes("margen_contribucion")) {
-      faltan.push("margen_contribucion");
+    if (margen === null) {
+      for (const c of conCausasDelMargen(["margen_contribucion"])) {
+        if (!faltan.includes(c)) faltan.push(c);
+      }
     }
 
     if (faltan.length > 0) {
@@ -1485,8 +1587,10 @@ export function calcularDiagnostico(
       if (ticketSegunda === null) faltan.push("recompra_ticket_segunda_compra");
       if (tieneSecuencia === null) faltan.push("recompra_tiene_secuencia_postventa");
       if (tasaObjetivoRecompra === null) faltan.push("recompra_esperada");
-      if (margen === null && !faltan.includes("margen_contribucion")) {
-        faltan.push("margen_contribucion");
+      if (margen === null) {
+        for (const c of conCausasDelMargen(["margen_contribucion"])) {
+          if (!faltan.includes(c)) faltan.push(c);
+        }
       }
 
       if (faltan.length > 0) {
