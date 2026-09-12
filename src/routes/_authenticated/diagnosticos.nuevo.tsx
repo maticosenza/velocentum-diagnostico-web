@@ -44,6 +44,8 @@ import {
   camposExclusivosCargados,
   camposPorBloque,
   cantidadProductosDe,
+  productoTieneDatos,
+  quitarUltimoProducto,
   contarCompletos,
   estacionarAlCambiarModo,
   hayDatosCargados,
@@ -151,7 +153,7 @@ function NuevoDiagnostico() {
   // presencia y los tomaría en el cálculo aunque no se vean en pantalla.
   const [estacionados, setEstacionados] = useState<DatosEstacionados>({});
   const [dialogo, setDialogo] = useState<
-    "cambio_modo" | "guardar" | "descartar_salir" | "descartar_reiniciar" | null
+    "cambio_modo" | "guardar" | "descartar_salir" | "descartar_reiniciar" | "quitar_producto" | null
   >(null);
   const [bloque, setBloque] = useState<BloqueId>("identificacion");
   const [guardadoEn, setGuardadoEn] = useState<string | null>(null);
@@ -1035,7 +1037,12 @@ function NuevoDiagnostico() {
                         variant="outline"
                         size="sm"
                         disabled={cantidad <= 1}
-                        onClick={() => set("cantidad_productos", Math.max(1, cantidad - 1))}
+                        onClick={() =>
+                          // Con datos pide confirmar: quitar ahora los borra (H-55).
+                          productoTieneDatos(datos, cantidad)
+                            ? setDialogo("quitar_producto")
+                            : setDatos(quitarUltimoProducto)
+                        }
                       >
                         Quitar
                       </Button>
@@ -1711,6 +1718,42 @@ function NuevoDiagnostico() {
               }}
             >
               Guardar igual
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={dialogo === "quitar_producto"}
+        onOpenChange={(abierto) => !abierto && setDialogo(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {(() => {
+                const n = cantidadProductosDe(datos);
+                const nombre = String(
+                  datos[`producto_${n}_nombre` as keyof DatosDiagnostico] ?? "",
+                ).trim();
+                return nombre
+                  ? `¿Quitar el producto ${n}, ${nombre}?`
+                  : `¿Quitar el producto ${n}?`;
+              })()}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Se borra lo que tiene cargado: nombre, costo, precio y porcentaje de la facturación.
+              Deja de contar en el margen y en la cobertura del catálogo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Dejarlo</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setDatos(quitarUltimoProducto);
+                setDialogo(null);
+              }}
+            >
+              Quitar y borrar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

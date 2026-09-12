@@ -664,6 +664,32 @@ export function contarCompletos(datos: DatosDiagnostico, modo: Modo, bloque: Blo
   };
 }
 
+/** Los cuatro campos del producto `n` de la lista. */
+export function camposDeProducto(n: number): (keyof DatosDiagnostico)[] {
+  return (["nombre", "costo", "precio", "pct_facturacion"] as const).map(
+    (sufijo) => `producto_${n}_${sufijo}` as keyof DatosDiagnostico,
+  );
+}
+
+/** Si el producto `n` tiene algo cargado, incluidos los montos que modo B no muestra. */
+export function productoTieneDatos(datos: DatosDiagnostico, n: number): boolean {
+  return camposDeProducto(n).some((campo) => estaCompleto(datos[campo]));
+}
+
+/**
+ * "Quitar": baja la lista en uno y vacía el producto que sale (H-55). Bajar sólo
+ * `cantidad_productos` dejaba lo cargado en `datos`, fuera de la vista, y
+ * volvía a aparecer al agregar otro producto.
+ */
+export function quitarUltimoProducto(datos: DatosDiagnostico): DatosDiagnostico {
+  const cantidad = cantidadProductosDe(datos);
+  if (cantidad <= 1) return datos;
+  const copia = { ...datos } as Record<string, unknown>;
+  for (const campo of camposDeProducto(cantidad)) copia[campo] = DATOS_INICIALES[campo];
+  copia["cantidad_productos"] = cantidad - 1;
+  return copia as DatosDiagnostico;
+}
+
 /** Campos que NO se conservan al cambiar de modo (son exclusivos del otro modo). */
 export const CAMPOS_EXCLUSIVOS: Record<Modo, (keyof DatosDiagnostico)[]> = {
   A: [

@@ -49,7 +49,8 @@ H-38 a H-49 sólo H-40 está corregido (`7948164`, 2026-09-11). H-50 lo abrió e
 diseño del arreglo de H-18. H-51 lo abrió el 2026-09-12 el arreglo de
 "Cancelar" del formulario de carga, y H-52 la verificación de ese arreglo en
 el navegador. H-53 y H-54 salieron el mismo día, al poner H-51 en pausa: son
-lo que su arreglo parcial (`1099ba9`) no cubre. H-38 no es un bug con arreglo
+lo que su arreglo parcial (`1099ba9`) no cubre. H-55 salió el mismo día del
+análisis previo al arreglo de H-23, y quedó corregido junto con él. H-38 no es un bug con arreglo
 obvio: requiere una decisión de producto sobre qué "oportunidad" es la
 oficial. Aclaración que atraviesa a varios: `src/documents/motor-activo.ts:19`
 tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`, así que todo lo referido a la cadena
@@ -536,7 +537,8 @@ formulario tenía. Los fixtures de regresión no cambian: `casoSnakeStore` y
 tres productos, así que su cobertura sigue en 60%. Cambiaron cuatro tests de
 `producto-dinamico.test.ts` que cargaban los productos 4 y 5 sin declarar la
 cantidad (heredaban 3), que es justo el estado que este arreglo deja afuera:
-ahora declaran 5, o 4.
+ahora declaran 5, o 4. Del lado del formulario, que "Quitar" dejara datos
+cargados debajo de la lista está en H-55.
 
 ## H-24 · La barra de progreso cuenta menos bloques de los que lista · abierto
 
@@ -1102,6 +1104,37 @@ No se arregla hasta la decisión de H-51. Con el borrador persistido, este
 hallazgo desaparece: el dueño lo da la fila. Con el local, la salida es la 2
 de H-51 (usuario en la clave), que deja borradores huérfanos en el
 navegador.
+
+## H-55 · "Quitar" baja la cantidad de productos sin borrar lo cargado ni avisar · CORREGIDO 2026-09-12
+
+Salió del análisis previo al arreglo de H-23 y no estaba registrado. Es la
+causa en el formulario del estado que H-23 describe en el motor. "Quitar"
+(`diagnosticos.nuevo.tsx:1038`) sólo hacía
+`set("cantidad_productos", Math.max(1, cantidad - 1))`: nombre, costo, precio y
+porcentaje del producto que salía de la lista quedaban en `datos`, fuera de la
+vista, se guardaban con el diagnóstico y volvían a aparecer cargados al tocar
+"Agregar producto". Hasta H-23, además, seguían entrando al cálculo.
+
+Aclaración sobre el contexto con que llegó: se lo describió como "el estado
+incoherente que tiene Snake", con tres productos cargados y
+`cantidad_productos = 1`. El fixture no es así: `casoSnakeStore` no declara
+`cantidad_productos`, hereda `3` de `DATOS_INICIALES`
+(`diagnostico-form.ts:413`) y carga tres productos. Es coherente, y por eso
+H-23 no le cambia la cobertura (sigue en 60%). El estado incoherente se armó
+a mano en los tests de H-23 (`{ ...casoSnakeStore, cantidad_productos: 1 }`),
+donde la cobertura baja a 30%, la del producto principal.
+
+**Corregido el 2026-09-12, en el mismo commit que abre esta entrada.**
+`quitarUltimoProducto` (`diagnostico-form.ts`) baja la lista en uno y vacía
+los cuatro campos del producto que sale, incluidos los montos que modo B no
+muestra. Si ese producto tiene algo cargado (`productoTieneDatos`), "Quitar"
+pide confirmación nombrando el producto; si está vacío, quita directo.
+"Agregar producto" no cambió: un estado incoherente que ya exista (un borrador
+o un diagnóstico guardado antes de este cambio, con datos debajo de la lista)
+muestra esos datos al volver a agregar el producto. Quedan a la vista y, por
+H-23, no cuentan mientras estén debajo de la lista, así que no se borran en
+silencio. La lógica está cubierta por tests (`diagnostico-form.test.ts`). El
+diálogo no se probó en el navegador.
 
 ---
 

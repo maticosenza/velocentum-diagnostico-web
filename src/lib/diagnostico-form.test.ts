@@ -6,9 +6,12 @@ import {
   camposExclusivosCargados,
   estacionarAlCambiarModo,
   hayDatosCargados,
+  productoTieneDatos,
+  quitarUltimoProducto,
   sanearEstacionados,
   type DatosDiagnostico,
 } from "./diagnostico-form";
+import { casoSnakeStore } from "./fixtures-casos";
 
 const conDatosA: DatosDiagnostico = {
   ...DATOS_INICIALES,
@@ -18,6 +21,39 @@ const conDatosA: DatosDiagnostico = {
   csv_gasto_total: 30_000,
   csv_dias_periodo: 30,
 };
+
+describe("quitarUltimoProducto (H-55)", () => {
+  it("baja la lista en uno y vacía el producto que sale", () => {
+    const d = quitarUltimoProducto(casoSnakeStore);
+    expect(d.cantidad_productos).toBe(2);
+    expect(d.producto_3_nombre).toBe("");
+    expect(d.producto_3_costo).toBeNull();
+    expect(d.producto_3_precio).toBeNull();
+    expect(d.producto_3_pct_facturacion).toBeNull();
+    // Los que quedan en la lista no se tocan.
+    expect(d.producto_2_nombre).toBe(casoSnakeStore.producto_2_nombre);
+    expect(d.producto_2_costo).toBe(casoSnakeStore.producto_2_costo);
+  });
+
+  it("quitando dos veces no queda nada cargado debajo de la lista", () => {
+    const d = quitarUltimoProducto(quitarUltimoProducto(casoSnakeStore));
+    expect(d.cantidad_productos).toBe(1);
+    expect(productoTieneDatos(d, 2)).toBe(false);
+    expect(productoTieneDatos(d, 3)).toBe(false);
+    expect(productoTieneDatos(d, 1)).toBe(true);
+  });
+
+  it("con un solo producto no hace nada", () => {
+    const d = { ...casoSnakeStore, cantidad_productos: 1 };
+    expect(quitarUltimoProducto(d)).toBe(d);
+  });
+
+  it("productoTieneDatos cuenta los montos aunque modo B no los muestre", () => {
+    const d = { ...DATOS_INICIALES, producto_3_costo: 100 };
+    expect(productoTieneDatos(d, 3)).toBe(true);
+    expect(productoTieneDatos(DATOS_INICIALES, 3)).toBe(false);
+  });
+});
 
 describe("camposExclusivosCargados", () => {
   it("lista sólo los exclusivos del modo que tienen valor", () => {
