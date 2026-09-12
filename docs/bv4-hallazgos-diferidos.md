@@ -15,8 +15,8 @@ dos corridas del gate de F2a, de la auditoría del formulario de carga del
 2026-09-10, de la auditoría del motor de cálculo del 2026-09-10 y de la
 auditoría de las salidas del 2026-09-11: **H-7, H-14 y H-17 corregidos**,
 **H-8 mitigado parcialmente**, **H-9 parcialmente encaminado**; **H-6**,
-**H-10**, **H-11**, **H-12**, **H-13**, **H-15**, **H-16**, **H-18 a H-27**,
-**H-28 a H-37**, **H-38 a H-48** y **H-49** quedan abiertos, ordenados, con dueño
+**H-10**, **H-11**, **H-12**, **H-13**, **H-15**, **H-16**, **H-19 a H-27**,
+**H-28 a H-37**, **H-38, H-39 y H-41 a H-48**, **H-49** y **H-50** quedan abiertos, ordenados, con dueño
 humano. H-11 y H-12 entraron por esa auditoría: los dos estaban
 reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la propia
 migración: aplicarla a mano deja la puerta abierta a que el cambio vuelva
@@ -26,7 +26,7 @@ abrió la primera corrida completa (2026-09-05), que sí llegó hasta el final.
 H-18 a H-27 los abrió la auditoría del formulario de carga del 2026-09-10
 (`diagnosticos.nuevo.tsx`, `campos-formulario.tsx`, `bloque-canales.tsx`,
 `diagnostico-form.ts`, cruzados contra lo que el motor consume): son del
-formulario, no del motor, que ya estaba auditado. Ninguno está corregido.
+formulario, no del motor, que ya estaba auditado. Sólo H-18 está corregido (`c18c49c`, 2026-09-11).
 Los diez están ordenados por impacto en una llamada real. H-28 a H-37 los
 abrió la auditoría del motor de cálculo del 2026-09-10
 (`calculo-diagnostico.ts`, `contradiccion.ts`, `mayorista.ts`, `funnel.ts`,
@@ -42,8 +42,10 @@ v2: `build-context.ts`, `escenarios-90d.ts`, `resumen-comercial.ts`,
 que ve el vendedor en pantalla y de lo que recibiría el prospecto en los
 documentos, no del formulario ni del motor. H-48 se verificó aparte, con
 grep, el mismo día. H-49 lo abrió el 2026-09-11 el intento de llevar al
-listado el arreglo de `ac3b3f2`: es el pendiente que la sección 4 de
-`docs/bv4-estado-2026-09-10.md` había dejado sin ID. Ninguno está corregido. H-38 no es un bug con arreglo
+listado el arreglo de `ac3b3f2`: es el pendiente que la sección 4 del estado
+del 2026-09-10 (hoy `docs/bv4-estado-2026-09-11.md`) había dejado sin ID. De
+H-38 a H-49 sólo H-40 está corregido (`7948164`, 2026-09-11). H-50 lo abrió el
+diseño del arreglo de H-18. H-38 no es un bug con arreglo
 obvio: requiere una decisión de producto sobre qué "oportunidad" es la
 oficial. Aclaración que atraviesa a varios: `src/documents/motor-activo.ts:19`
 tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`, así que todo lo referido a la cadena
@@ -733,7 +735,7 @@ Observación secundaria, del mismo grep: además de las dos claves muertas, falt
 
 ## H-49 · El listado muestra "$ 0" cuando el total es cero por fugas sin calcular, y no tiene con qué distinguirlo del cero real · abierto
 
-Es el pendiente que `docs/bv4-estado-2026-09-10.md` (sección 4) dejó sin ID al registrar `ac3b3f2`. Verificado el 2026-09-11 al intentar arreglarlo. `src/routes/_authenticated/index.tsx:188-190` imprime `formatARS(f.oportunidad_total)` siempre que el valor sea un número. Un `oportunidad_total` en 0 porque ninguna fuga pudo calcularse es un número, así que el listado muestra "$ 0" para el mismo caso que el detalle ya distingue desde `ac3b3f2` (`diagnosticos.$id.tsx:596`, guard `total === 0 && fugasSinCalcular.length > 0`).
+Es el pendiente que el estado del 2026-09-10 (sección 4; hoy `docs/bv4-estado-2026-09-11.md`) dejó sin ID al registrar `ac3b3f2`. Verificado el 2026-09-11 al intentar arreglarlo. `src/routes/_authenticated/index.tsx:188-190` imprime `formatARS(f.oportunidad_total)` siempre que el valor sea un número. Un `oportunidad_total` en 0 porque ninguna fuga pudo calcularse es un número, así que el listado muestra "$ 0" para el mismo caso que el detalle ya distingue desde `ac3b3f2` (`diagnosticos.$id.tsx:596`, guard `total === 0 && fugasSinCalcular.length > 0`).
 
 La causa no está en la celda: está en lo que la pantalla pide. La query del listado (`index.tsx:70-80`) selecciona `id, fecha, version, oportunidad_id, oportunidad_total` más nombre, vertical y estado de la oportunidad. No trae `fugas`, ni `derivados`, ni `estados_bloque`. El detalle distingue el caso filtrando la columna jsonb `fugas` por `calculable === false` (`diagnosticos.$id.tsx:193`); esa columna es lo único que lo marca. En la tabla `diagnostico` (`supabase/migrations/20260816212403_*.sql:62-74`) no hay ninguna columna que diga "pendiente": `oportunidad_total numeric NOT NULL DEFAULT 0` no distingue cero real de cero por ignorancia, y las cuatro migraciones posteriores que tocan la tabla tampoco agregan una.
 
