@@ -17,8 +17,8 @@ auditoría de las salidas del 2026-09-11: **H-7, H-14 y H-17 corregidos**,
 **H-8 mitigado parcialmente**, **H-9 parcialmente encaminado**; **H-6**,
 **H-10**, **H-11**, **H-12**, **H-13**, **H-15**, **H-16** (sólo el punto b:
 el a se resolvió el 2026-09-12), **H-19 a H-27**,
-**H-28 a H-37**, **H-38, H-39 y H-41 a H-48**, **H-49**, **H-50**, **H-51** y **H-52** quedan abiertos, ordenados, con dueño
-humano. H-11 y H-12 entraron por esa auditoría: los dos estaban
+**H-28 a H-37**, **H-38, H-39 y H-41 a H-48**, **H-49**, **H-50**, **H-52**, **H-53** y **H-54** quedan abiertos, ordenados, con dueño
+humano; **H-51** queda en pausa por una decisión de producto. H-11 y H-12 entraron por esa auditoría: los dos estaban
 reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la propia
 migración: aplicarla a mano deja la puerta abierta a que el cambio vuelva
 duplicado desde Lovable. H-14, H-15 y H-16 los abrió el primer intento de
@@ -48,7 +48,8 @@ del 2026-09-10 (hoy `docs/bv4-estado-2026-09-11.md`) había dejado sin ID. De
 H-38 a H-49 sólo H-40 está corregido (`7948164`, 2026-09-11). H-50 lo abrió el
 diseño del arreglo de H-18. H-51 lo abrió el 2026-09-12 el arreglo de
 "Cancelar" del formulario de carga, y H-52 la verificación de ese arreglo en
-el navegador. H-38 no es un bug con arreglo
+el navegador. H-53 y H-54 salieron el mismo día, al poner H-51 en pausa: son
+lo que su arreglo parcial (`1099ba9`) no cubre. H-38 no es un bug con arreglo
 obvio: requiere una decisión de producto sobre qué "oportunidad" es la
 oficial. Aclaración que atraviesa a varios: `src/documents/motor-activo.ts:19`
 tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`, así que todo lo referido a la cadena
@@ -803,7 +804,7 @@ desaparece), o los montos de los productos 2 a 5 entran en
 `CAMPOS_EXCLUSIVOS.A` y se estacionan como el resto. Cualquiera de las dos
 cambia la cobertura del catálogo en modo B, que H-15 ya midió.
 
-## H-51 · Cerrar sesión no borra el borrador del formulario, y la clave es una sola por navegador · abierto
+## H-51 · Cerrar sesión no borra el borrador del formulario, y la clave es una sola por navegador · en pausa, requiere decisión de producto
 
 Encontrado el 2026-09-12 al arreglar "Cancelar" del formulario de carga. No
 se corrige en esa sesión: el arreglo cae en `app-sidebar.tsx`, fuera de su
@@ -832,7 +833,8 @@ borrador del primero: prospecto, montos y notas. Desde el 2026-09-12 el aviso
 de borrador retomado al menos lo muestra y ofrece "Empezar de cero", pero los
 datos del prospecto ajeno ya quedaron a la vista.
 
-Salidas posibles, ninguna aplicada:
+Salidas posibles (la 1 quedó aplicada en `1099ba9`; la 2, frenada por la
+pausa de abajo):
 
 1. **Borrar `CLAVE_BORRADOR` en `cerrarSesion`**, antes del `signOut`. Es una
    línea. Pierde el borrador del propio vendedor si cerró sesión sin querer a
@@ -840,6 +842,26 @@ Salidas posibles, ninguna aplicada:
 2. **Incluir el id del usuario en la clave.** Cada uno conserva el suyo y nadie
    ve el de otro. Deja borradores huérfanos en el navegador y toca también
    `diagnosticos.nuevo.tsx`, que tendría que leer la clave con el usuario.
+
+**En pausa desde el 2026-09-12, por una decisión de producto pendiente:
+borrador persistido contra borrador local.** Con el persistido, el borrador
+pasa a ser una entidad del producto: guardado en la base, varios por usuario
+y visible en el listado junto a los diagnósticos hechos. El local es el de
+hoy: uno por navegador, en `localStorage`. Hasta que se decida no se avanza:
+si entra el persistido, la salida 2 (usuario en la clave) es trabajo tirado.
+
+Lo que ya quedó aplicado antes de la pausa es `1099ba9` (la salida 1, con
+confirmación). `cerrarSesion` (`app-sidebar.tsx:50-60`) borra
+`CLAVE_BORRADOR` antes del `signOut` y otra vez después de navegar a `/auth`;
+si el borrador tiene algo cargado (`borradorConDatos`, en
+`diagnostico-form.ts`) pide confirmación con el nombre de la tienda. Queda
+como mitigación hasta la decisión. Lo cubren sólo los tests unitarios de
+`borradorConDatos`: no se probó en el navegador. Si entra el persistido, hay
+que revisarlo: cerrar sesión ya no tendría nada que descartar y la
+confirmación sobraría.
+
+Lo que `1099ba9` no cubre quedó registrado aparte: H-53 (la sesión muere sin
+pasar por el botón) y H-54 (el borrador no tiene dueño).
 
 ## H-52 · De "Editar y recalcular" a "Nuevo diagnóstico" el formulario conserva el diagnóstico de origen, y "Guardar" crea la versión sobre el prospecto equivocado · abierto
 
@@ -923,6 +945,83 @@ que se agregue después. Cualquiera de las dos tiene que probarse en el
 navegador con los dos casos de arriba. Hay que revisar además si hay
 versiones guardadas por este camino antes del arreglo, porque en la base no
 se distinguen de las legítimas.
+
+## H-53 · Si la sesión muere sin pasar por "Cerrar sesión", el borrador queda vivo · abierto, requiere decisión de producto
+
+Encontrado el 2026-09-12 al poner H-51 en pausa. Sale del código: no lo
+reproduje y **no vi el 401 en la red**. La cadena de abajo sale de leer el
+código, no de observarla. Tampoco verifiqué con qué código de estado rechaza
+el servidor de auth (401 o 403): auth-js decide por el tipo de error, no por
+el número, y la ruta privada redirige ante cualquier error.
+
+`1099ba9` borra `CLAVE_BORRADOR` sólo desde el botón de la barra lateral
+(`app-sidebar.tsx:50-60`). La sesión también termina sin ese botón, cuando el
+servidor de auth la rechaza, y ese camino no pasa por `app-sidebar.tsx`
+(auth-js 2.112.3, `node_modules/@supabase/auth-js/dist/module/GoTrueClient.js`):
+
+1. **Refresh rechazado.** El cliente corre con `autoRefreshToken: true` y
+   guarda la sesión en `localStorage` (`src/integrations/supabase/client.ts:50-53`).
+   Si el refresh falla con un error que no es de red
+   (`!isAuthRetryableFetchError`) y el access token ya venció,
+   `_callRefreshToken` llama a `_removeSession()` (`GoTrueClient.js:4260-4282`).
+2. **Sesión que ya no existe en el servidor.** Si `getUser` falla con
+   `AuthSessionMissingError` (el JWT apunta a una sesión que no está en la
+   base, por ejemplo revocada), también llama a `_removeSession()`
+   (`GoTrueClient.js:2702-2708`).
+3. `_removeSession()` borra sólo las claves propias de auth-js (la sesión, la
+   de `-user` y los verificadores PKCE) y emite `SIGNED_OUT`
+   (`GoTrueClient.js:4386-4403`).
+4. `__root.tsx:137-141` recibe `SIGNED_OUT` y hace `router.invalidate()`;
+   `_authenticated/route.tsx:8-9` vuelve a correr `getUser`, recibe el error y
+   redirige a `/auth`.
+
+En ningún paso se toca `CLAVE_BORRADOR`.
+
+Cómo se dispara: un vendedor carga parte de una llamada y deja la pestaña. La
+sesión muere porque el refresh token vence o se revoca. Al volver cae en
+`/auth`, y quien entre en ese navegador, él u otro, retoma el borrador desde
+"Nuevo diagnóstico".
+
+La diferencia con H-51 es que acá no hay acción del vendedor, así que no hay
+en qué momento preguntarle. Borrar en este camino pierde sin confirmación la
+llamada de alguien a quien sólo se le venció la sesión, que casi siempre es
+el mismo que vuelve a entrar: cambia un problema de privacidad por pérdida
+de datos. Si el borrador tuviera dueño (H-54), no habría que borrarlo.
+
+Salidas posibles, ninguna aplicada, las dos atadas a la decisión de H-51:
+
+1. **Escuchar `SIGNED_OUT` en `__root.tsx` y borrar la clave.** Cubre este
+   camino y también el del botón, pero borra sin preguntar.
+2. **Resolverlo por H-54**: con un borrador que tenga dueño no hay nada que
+   borrar al perder la sesión.
+
+## H-54 · El borrador de localStorage no tiene dueño y cruza entre usuarios del mismo navegador · abierto, requiere decisión de producto
+
+Separado de H-51 el 2026-09-12. El título de H-51 ya lo nombraba ("la clave
+es una sola por navegador"); queda como entrada propia porque no depende de
+cómo termine la sesión. Sale del código; no lo reproduje con dos usuarios.
+
+- `CLAVE_BORRADOR` (`diagnostico-form.ts:752`) es fija,
+  `"velocentum:borrador-diagnostico"`: no lleva el id del usuario.
+- El autoguardado (`diagnosticos.nuevo.tsx:215-232`) escribe `modo`, `datos`,
+  `notas`, `estacionados` y `guardadoEn`, sin ningún campo del usuario.
+- `leerBorrador` (`diagnosticos.nuevo.tsx:121-138`) lee la clave sin mirar
+  quién está logueado, aunque el componente tiene `user` a mano (`:144`).
+  `borradorConDatos` (`diagnostico-form.ts`, de `1099ba9`) tampoco lo mira.
+
+El borrador pasa de un usuario al siguiente por cualquier camino que no
+borre la clave. Hoy la borran sólo cerrar sesión desde el botón (`1099ba9`),
+Cancelar y "Empezar de cero" en un diagnóstico nuevo
+(`diagnosticos.nuevo.tsx:323-331`) y guardar uno nuevo (`:416`); H-53 es un
+camino que no la borra. Quien entra ve el prospecto, los montos y
+las notas del otro. El aviso de borrador retomado muestra el nombre de la
+tienda y ofrece "Empezar de cero", pero para entonces los datos ya
+quedaron a la vista.
+
+No se arregla hasta la decisión de H-51. Con el borrador persistido, este
+hallazgo desaparece: el dueño lo da la fila. Con el local, la salida es la 2
+de H-51 (usuario en la clave), que deja borradores huérfanos en el
+navegador.
 
 ---
 
