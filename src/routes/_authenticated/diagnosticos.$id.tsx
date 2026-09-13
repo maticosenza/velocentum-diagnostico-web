@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,8 +57,24 @@ import { confirmarSeleccionComercialV2 } from "@/lib/seleccion-comercial-v2.func
 import { confirmarPaquetes } from "@/lib/paquetes.functions";
 import { DOCUMENTOS_DISPONIBLES } from "@/documents/build-document";
 import type { Derivados, EstadoBloque, EstadosBloque, Fuga } from "@/lib/calculo-diagnostico";
+import {
+  ETIQUETA_PESTANA,
+  NOMBRE_CANAL,
+  PESTANA_POR_DEFECTO,
+  PESTANAS,
+  pestanaDesdeBusqueda,
+  queFaltaDiagnostico,
+  TITULO_BLOQUE,
+  type Pestana,
+} from "@/lib/pestanas-diagnostico";
+import { Fila, ResumenMetricas, SeccionQueFalta } from "@/components/resumen-diagnostico";
 
 export const Route = createFileRoute("/_authenticated/diagnosticos/$id")({
+  // La pestaña activa vive en la URL para sobrevivir a una recarga.
+  validateSearch: (search: Record<string, unknown>): { pestana?: Pestana } => {
+    const pestana = pestanaDesdeBusqueda(search["pestana"]);
+    return pestana === PESTANA_POR_DEFECTO ? {} : { pestana };
+  },
   head: () => ({
     meta: [
       { title: "Detalle del diagnóstico · Velocentum · Diagnóstico e-commerce" },
@@ -115,6 +132,15 @@ type FilaDiagnostico = {
 
 function DetalleDiagnostico() {
   const { id } = Route.useParams();
+  const { pestana = PESTANA_POR_DEFECTO } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const cambiarPestana = (valor: string) => {
+    const destino = pestanaDesdeBusqueda(valor);
+    void navigate({
+      search: destino === PESTANA_POR_DEFECTO ? {} : { pestana: destino },
+      replace: true,
+    });
+  };
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["diagnostico", id],
@@ -238,64 +264,130 @@ function DetalleDiagnostico() {
         </div>
       )}
 
-      <div className="space-y-10 px-8 py-10">
-        <AvisoContradiccion contradiccion={contradiccion} />
-
-        <NumeroPrincipal
-          medicionRota={medicionRota}
-          margenBloqueado={margenBloqueado}
-          fugasSinCalcular={fugasSinCalcular}
-          total={total}
-          conservador={conservador}
-        />
-
-        <Semaforo estados={estados} derivados={d} datos={datos} perimetro={perimetro} />
-
-        <SeccionNotas notas={data.notas} />
-
-        <SeccionFugas fugas={fugas} />
-
-        <SeccionCanales derivados={d} perimetro={perimetro} />
-
-        {perimetro.funnelWeb && <SeccionFunnel funnel={d.funnel} />}
-
-        <div className="grid gap-8 lg:grid-cols-2">
-          <EconomiaDetalle derivados={d} datos={datos} perimetro={perimetro} />
-          <Presupuesto derivados={d} datos={datos} perimetro={perimetro} />
+      {/* Todas las pestañas quedan montadas (forceMount) y las inactivas se
+          ocultan: cambiar de pestaña no descarta una propuesta recién
+          generada ni una selección comercial recién guardada. */}
+      <Tabs value={pestana} onValueChange={cambiarPestana}>
+        <div className="border-b border-border bg-card px-8 py-3">
+          <TabsList>
+            {PESTANAS.map((p) => (
+              <TabsTrigger key={p} value={p}>
+                {ETIQUETA_PESTANA[p]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
+
+        <TabsContent value="resumen" forceMount className={CLASE_PESTANA}>
+          <AvisoContradiccion contradiccion={contradiccion} />
+
+          <NumeroPrincipal
+            medicionRota={medicionRota}
+            margenBloqueado={margenBloqueado}
+            fugasSinCalcular={fugasSinCalcular}
+            total={total}
+            conservador={conservador}
+          />
+
+          <ResumenMetricas derivados={d} perimetro={perimetro} />
+
+          <SeccionFugasConMonto fugas={fugas} />
+
+          <SeccionQueFalta falta={queFaltaDiagnostico(fugas, estados, perimetro)} />
+        </TabsContent>
+
+        <TabsContent value="detalle" forceMount className={CLASE_PESTANA}>
+          <Semaforo estados={estados} derivados={d} datos={datos} perimetro={perimetro} />
+
+          <SeccionNotas notas={data.notas} />
+
+          <SeccionFugasSinMonto fugas={fugas} />
+
+          <SeccionCanales derivados={d} perimetro={perimetro} />
+
+          {perimetro.funnelWeb && <SeccionFunnel funnel={d.funnel} />}
+
+          <div className="grid gap-8 lg:grid-cols-2">
+            <EconomiaDetalle derivados={d} datos={datos} perimetro={perimetro} />
+            <Presupuesto derivados={d} datos={datos} perimetro={perimetro} />
+          </div>
+        </TabsContent>
 
         {(() => {
           const { propuestaCruda, paquetesCrudo } = separarContenidoGuardado(data.propuesta);
           return (
             <>
-              <PropuestaSeccion
-                diagnosticoId={data.id}
-                propuestaGuardada={normalizarPropuesta(propuestaCruda)}
-                fugas={fugas}
-              />
+              <TabsContent value="propuesta" forceMount className={CLASE_PESTANA}>
+                <PropuestaSeccion
+                  diagnosticoId={data.id}
+                  propuestaGuardada={normalizarPropuesta(propuestaCruda)}
+                  fugas={fugas}
+                />
+              </TabsContent>
 
-              <SeccionSeleccionComercial
-                diagnosticoId={data.id}
-                datos={datos}
-                derivados={d}
-                estados={estados}
-                fugas={fugas}
-                sobreGuardado={normalizarSobreComercialV2(paquetesCrudo)}
-              />
+              <TabsContent value="proyeccion" forceMount className={CLASE_PESTANA}>
+                <SeccionProyeccion diagnosticoId={data.id} />
+              </TabsContent>
 
-              <SeccionPaquetes
-                diagnosticoId={data.id}
-                datos={datos}
-                derivados={d}
-                estados={estados}
-                fugas={fugas}
-                paquetesGuardados={escaleraConfirmadaDesdeColumna(paquetesCrudo)}
-              />
+              <TabsContent value="comercial" forceMount className={CLASE_PESTANA}>
+                <SeccionSeleccionComercial
+                  diagnosticoId={data.id}
+                  datos={datos}
+                  derivados={d}
+                  estados={estados}
+                  fugas={fugas}
+                  sobreGuardado={normalizarSobreComercialV2(paquetesCrudo)}
+                />
+
+                <SeccionPaquetes
+                  diagnosticoId={data.id}
+                  datos={datos}
+                  derivados={d}
+                  estados={estados}
+                  fugas={fugas}
+                  paquetesGuardados={escaleraConfirmadaDesdeColumna(paquetesCrudo)}
+                />
+              </TabsContent>
             </>
           );
         })()}
-      </div>
+      </Tabs>
     </>
+  );
+}
+
+const CLASE_PESTANA = "mt-0 space-y-10 px-8 py-10 data-[state=inactive]:hidden";
+
+/**
+ * La pantalla no tiene proyección propia: la línea de base y los escenarios a
+ * 90 días se arman sólo como documento. La pestaña lo dice en vez de quedar
+ * en blanco, y lleva al documento.
+ */
+function SeccionProyeccion({ diagnosticoId }: { diagnosticoId: string }) {
+  const documento = DOCUMENTOS_DISPONIBLES.find((doc) => doc.tipoDocumento === "proyeccion_90d");
+  return (
+    <EmptyState
+      title="Esta pantalla todavía no muestra proyección"
+      description={
+        documento
+          ? `La proyección a 90 días se arma como documento: ${documento.descripcion.charAt(0).toLowerCase()}${documento.descripcion.slice(1)}`
+          : "La proyección a 90 días todavía no está disponible."
+      }
+      {...(documento
+        ? {
+            action: (
+              <Button asChild size="sm" variant="outline">
+                <Link
+                  to="/documentos/$id/$slug"
+                  params={{ id: diagnosticoId, slug: documento.slug }}
+                >
+                  Ver {documento.etiqueta.toLowerCase()}
+                </Link>
+              </Button>
+            ),
+          }
+        : {})}
+    />
   );
 }
 
@@ -665,17 +757,17 @@ function Semaforo({
   const todas: { id: keyof EstadosBloque; titulo: string; dato: string }[] = [
     {
       id: "medicion",
-      titulo: "Medición",
+      titulo: TITULO_BLOQUE.medicion,
       dato: `Desvío Pixel vs. facturación real: ${pct(derivados.delta_medicion)}`,
     },
     {
       id: "economia",
-      titulo: "Economía",
+      titulo: TITULO_BLOQUE.economia,
       dato: `MER ${numero(derivados.mer_actual)} contra breakeven ${numero(derivados.breakeven_roas)}`,
     },
     {
       id: "cuenta",
-      titulo: "Cuenta",
+      titulo: TITULO_BLOQUE.cuenta,
       dato: `${numero(datos.conjuntos_activos, 0)} conjuntos activos · sostenibles ${numero(
         derivados.conjuntos_sostenibles,
         1,
@@ -683,7 +775,7 @@ function Semaforo({
     },
     {
       id: "funnel_web",
-      titulo: "Funnel web",
+      titulo: TITULO_BLOQUE.funnel_web,
       dato: `Conversión de la tienda: ${
         typeof derivados.cr_tienda === "number"
           ? formatPorcentaje(derivados.cr_tienda * 100, 2)
@@ -692,7 +784,7 @@ function Semaforo({
     },
     {
       id: "creativos",
-      titulo: "Contenido",
+      titulo: TITULO_BLOQUE.creativos,
       dato: datos.frecuencia_creativos?.trim()
         ? `Creativos nuevos: ${datos.frecuencia_creativos}`
         : "Sin datos de contenido",
@@ -749,14 +841,18 @@ function MarcaParcial() {
   );
 }
 
-function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
-  const [expandido, setExpandido] = useState(false);
-
-  const conMonto = fugas
+function fugasConMonto(fugas: Fuga[]): Fuga[] {
+  return fugas
     .filter((f) => f.tipo === "monto" && typeof f.monto === "number")
     .sort((a, b) => (b.monto ?? 0) - (a.monto ?? 0));
-  const riesgos = fugas.filter((f) => f.tipo === "riesgo");
-  const noCalculables = fugas.filter((f) => f.calculable === false);
+}
+
+/** Resumen: las fugas valorizadas, de mayor a menor. */
+function SeccionFugasConMonto({ fugas }: { fugas: Fuga[] }) {
+  const [expandido, setExpandido] = useState(false);
+
+  const conMonto = fugasConMonto(fugas);
+  const hayOtras = fugas.some((f) => f.tipo === "riesgo" || f.calculable === false);
 
   const visibles = expandido ? conMonto : conMonto.slice(0, 3);
   const ocultas = conMonto.length - visibles.length;
@@ -767,9 +863,11 @@ function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
         <h2 className="text-[17px] font-medium text-foreground">Fugas detectadas</h2>
       </header>
 
-      {conMonto.length === 0 && riesgos.length === 0 && noCalculables.length === 0 && (
+      {conMonto.length === 0 && (
         <p className="px-7 py-8 text-[14px] text-muted-foreground">
-          No se detectaron fugas con los datos cargados.
+          {hayOtras
+            ? "Ninguna fuga tiene monto con los datos cargados. Los riesgos y las fugas que no se pudieron calcular están en Detalle."
+            : "No se detectaron fugas con los datos cargados."}
         </p>
       )}
 
@@ -786,7 +884,36 @@ function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
             <p className="text-[24px] font-medium tabular-nums text-foreground">{pesos(f.monto)}</p>
           </li>
         ))}
+      </ul>
 
+      {conMonto.length > 3 && (
+        <div className="border-t border-border px-7 py-5">
+          <button
+            type="button"
+            onClick={() => setExpandido((v) => !v)}
+            className="text-[14px] font-medium text-violet underline-offset-4 hover:underline"
+          >
+            {expandido ? "Mostrar solo las tres principales" : `Ver las otras ${ocultas} fugas`}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Detalle: lo que no se valoriza en pesos (riesgos) y lo que no se pudo calcular. */
+function SeccionFugasSinMonto({ fugas }: { fugas: Fuga[] }) {
+  const riesgos = fugas.filter((f) => f.tipo === "riesgo");
+  const noCalculables = fugas.filter((f) => f.calculable === false);
+  if (riesgos.length === 0 && noCalculables.length === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-border bg-card">
+      <header className="border-b border-border px-7 py-5">
+        <h2 className="text-[17px] font-medium text-foreground">Riesgos y fugas sin calcular</h2>
+      </header>
+
+      <ul className="divide-y divide-border">
         {riesgos.map((f) => (
           <li key={f.id} className="flex items-start gap-3 px-7 py-7">
             <EstadoPunto estado="rojo" className="mt-1.5" />
@@ -809,32 +936,11 @@ function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
           </li>
         ))}
       </ul>
-
-      {conMonto.length > 3 && (
-        <div className="border-t border-border px-7 py-5">
-          <button
-            type="button"
-            onClick={() => setExpandido((v) => !v)}
-            className="text-[14px] font-medium text-violet underline-offset-4 hover:underline"
-          >
-            {expandido ? "Mostrar solo las tres principales" : `Ver las otras ${ocultas} fugas`}
-          </button>
-        </div>
-      )}
     </section>
   );
 }
 
 // ---------------------------------------------------------------- 5 · economía
-
-function Fila({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-6 border-b border-border px-7 py-4 last:border-b-0">
-      <dt className="text-[14.5px] text-muted-foreground">{label}</dt>
-      <dd className="text-[16px] font-medium tabular-nums text-foreground">{value}</dd>
-    </div>
-  );
-}
 
 function EconomiaDetalle({
   derivados,
@@ -1027,11 +1133,6 @@ function SeccionFunnel({ funnel }: { funnel: Derivados["funnel"] }) {
 }
 
 // ---------------------------------------------------------------- canales
-
-const NOMBRE_CANAL: Record<string, string> = {
-  tienda_propia: "Tienda propia",
-  mercado_libre: "Mercado Libre",
-};
 
 /**
  * Un benchmark nunca se muestra como comisión verificada: sólo una liquidación
