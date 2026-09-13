@@ -29,7 +29,7 @@ import {
 import { CargaCsvMeta } from "@/components/carga-csv-meta";
 import { BloqueCanales } from "@/components/bloque-canales";
 import {
-  BLOQUES,
+  bloquesAplicables,
   RELACIONES_FIN_DESC,
   CANTIDAD_CAMPANAS,
   CLAVE_BORRADOR,
@@ -237,19 +237,17 @@ function NuevoDiagnostico() {
     setDatos((prev) => ({ ...prev, [k]: v }));
   }, []);
 
+  const { vende_mercado_libre, venta_mayorista_activa, canal_tienda_no_aplica } = datos;
   const bloquesVisibles = useMemo(
     () =>
-      BLOQUES.filter((b) => b.id !== "mercado_libre" || datos.vende_mercado_libre).filter(
-        (b) => b.id !== "mayorista" || datos.venta_mayorista_activa === true,
-      ),
-    [datos.vende_mercado_libre, datos.venta_mayorista_activa],
+      bloquesAplicables({ vende_mercado_libre, venta_mayorista_activa, canal_tienda_no_aplica }),
+    [vende_mercado_libre, venta_mayorista_activa, canal_tienda_no_aplica],
   );
 
+  // La pestaña abierta dejó de aplicar (Mercado Libre, Mayorista o Web): vuelve a Identificación.
   useEffect(() => {
-    if (bloque === "mercado_libre" && !datos.vende_mercado_libre) setBloque("identificacion");
-    if (bloque === "mayorista" && datos.venta_mayorista_activa !== true)
-      setBloque("identificacion");
-  }, [bloque, datos.vende_mercado_libre, datos.venta_mayorista_activa]);
+    if (!bloquesVisibles.some((b) => b.id === bloque)) setBloque("identificacion");
+  }, [bloque, bloquesVisibles]);
 
   // Atajos: Alt+1..8 salta a una pestaña, Alt+←/→ se mueve de a una
   useEffect(() => {
@@ -706,7 +704,7 @@ function NuevoDiagnostico() {
                     datos.canal_tienda_no_aplica == null ? null : !datos.canal_tienda_no_aplica
                   }
                   onChange={(v) => set("canal_tienda_no_aplica", v === null ? null : !v)}
-                  ayuda="Si es que no, en Canales la tienda propia queda como que no vende en ese canal."
+                  ayuda="Si es que no, en Canales la tienda propia queda como que no vende en ese canal y se oculta la pestaña Web."
                 />
                 <CampoSiNo
                   label="¿Vende en Mercado Libre?"

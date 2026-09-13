@@ -565,6 +565,25 @@ export const BLOQUES = [
 
 export type BloqueId = (typeof BLOQUES)[number]["id"];
 
+/**
+ * Pestañas del formulario que aplican a lo que el cliente tiene. Mercado Libre
+ * y Mayorista aparecen con el "sí" de Identificación; Web (el funnel del sitio)
+ * se oculta con el "no" a "¿Tiene tienda propia?". Sin respuesta se ve, como
+ * antes de la pregunta.
+ */
+export function bloquesAplicables(d: {
+  vende_mercado_libre: DatosDiagnostico["vende_mercado_libre"];
+  venta_mayorista_activa: DatosDiagnostico["venta_mayorista_activa"];
+  canal_tienda_no_aplica?: boolean | null | undefined;
+}) {
+  return BLOQUES.filter(
+    (b) =>
+      (b.id !== "mercado_libre" || d.vende_mercado_libre === true) &&
+      (b.id !== "mayorista" || d.venta_mayorista_activa === true) &&
+      (b.id !== "web" || d.canal_tienda_no_aplica !== true),
+  );
+}
+
 /** Notas con contenido, ordenadas y etiquetadas igual que el formulario. */
 export function notasVisibles(notas: NotasDiagnostico | null | undefined) {
   const etiquetas = new Map<string, string>(BLOQUES.map((bloque) => [bloque.id, bloque.label]));

@@ -15,7 +15,18 @@ import {
 import { EstadoPunto, ETIQUETA_ESTADO } from "@/components/estado-punto";
 import { supabase } from "@/integrations/supabase/client";
 import { formatFecha, formatPorcentaje } from "@/lib/format";
-import { etiqueta, GUION, numero, pct, pesos } from "@/lib/vista-diagnostico";
+import {
+  avisoMargenMuestra,
+  bloquesSemaforo,
+  etiqueta,
+  etiquetaCampo,
+  GUION,
+  numero,
+  pct,
+  perimetroVista,
+  pesos,
+  type PerimetroVista,
+} from "@/lib/vista-diagnostico";
 import {
   notasVisibles,
   PASARELAS,
@@ -71,34 +82,6 @@ export const Route = createFileRoute("/_authenticated/diagnosticos/$id")({
 });
 
 // ---------------------------------------------------------------- helpers de vista
-
-const ETIQUETAS_CAMPO: Record<string, string> = {
-  visitas_mensuales: "visitas mensuales",
-  cr_tienda: "tasa de conversión",
-  ticket_promedio: "ticket promedio",
-  margen_contribucion: "margen de contribución",
-  inversion_meta: "inversión en Meta",
-  inversion_google: "inversión en Google",
-  facturacion_mensual: "facturación mensual",
-  conjuntos_activos: "conjuntos activos",
-  presupuesto_diario: "presupuesto diario",
-  cpa_objetivo: "CPA objetivo",
-  factor_fatiga: "parámetro de fatiga",
-  "umbrales_funnel_web.cr_tienda": "umbral de conversión",
-  // H-31: lo que el motor pide en lugar de "margen de contribución" cuando lo
-  // retiene la cobertura del catálogo o del mix de canales.
-  ...Object.fromEntries(
-    [1, 2, 3, 4, 5].flatMap((n) => [
-      [`producto_${n}_pct_facturacion`, `% de facturación del producto ${n}`],
-      [`producto_${n}_costo`, `costo del producto ${n}`],
-      [`producto_${n}_precio`, `precio del producto ${n}`],
-    ]),
-  ),
-  canal_tienda_pct: "% de facturación de la tienda propia",
-  canal_ml_pct: "% de facturación de Mercado Libre",
-  // H-28: el funnel pide la facturación de la tienda, no la del negocio.
-  canal_tienda_facturacion: "facturación de la tienda propia",
-};
 
 const EXPLICACION_FUGA: Record<string, string> = {
   conversion:
@@ -185,6 +168,7 @@ function DetalleDiagnostico() {
   const estados = data.estados_bloque ?? {};
   const fugas = Array.isArray(data.fugas) ? data.fugas : [];
   const medicionRota = estados.medicion === "rojo";
+  const perimetro = perimetroVista(datos, d);
 
   const version = typeof data.version === "number" ? data.version : 1;
   const tienda = data.oportunidad?.nombre_tienda ?? datos.nombre_tienda ?? "Tienda sin nombre";
@@ -265,19 +249,19 @@ function DetalleDiagnostico() {
           conservador={conservador}
         />
 
-        <Semaforo estados={estados} derivados={d} datos={datos} />
+        <Semaforo estados={estados} derivados={d} datos={datos} perimetro={perimetro} />
 
         <SeccionNotas notas={data.notas} />
 
         <SeccionFugas fugas={fugas} />
 
-        <SeccionCanales derivados={d} />
+        <SeccionCanales derivados={d} perimetro={perimetro} />
 
-        <SeccionFunnel funnel={d.funnel} />
+        {perimetro.funnelWeb && <SeccionFunnel funnel={d.funnel} />}
 
         <div className="grid gap-8 lg:grid-cols-2">
-          <EconomiaDetalle derivados={d} datos={datos} />
-          <Presupuesto derivados={d} datos={datos} />
+          <EconomiaDetalle derivados={d} datos={datos} perimetro={perimetro} />
+          <Presupuesto derivados={d} datos={datos} perimetro={perimetro} />
         </div>
 
         {(() => {
@@ -607,9 +591,7 @@ function NumeroPrincipal({
   // publica número, se nombra el dato que falta. Si el 0 sale de fugas todas
   // calculables, es un cero real y se muestra como tal.
   if (total === 0 && fugasSinCalcular.length > 0) {
-    const faltantes = [...new Set(fugasSinCalcular.flatMap((f) => f.faltantes))].map(
-      (c) => ETIQUETAS_CAMPO[c] ?? c,
-    );
+    const faltantes = [...new Set(fugasSinCalcular.flatMap((f) => f.faltantes))].map(etiquetaCampo);
     const lista =
       faltantes.length > 1
         ? `${faltantes.slice(0, -1).join(", ")} y ${faltantes[faltantes.length - 1]}`
@@ -659,16 +641,28 @@ function NumeroPrincipal({
 
 // ---------------------------------------------------------------- 3 · semáforo
 
+/** Columnas en pantalla ancha según cuántas píldoras aplican al perímetro. */
+const COLUMNAS_SEMAFORO: Record<number, string> = {
+  1: "xl:grid-cols-1",
+  2: "xl:grid-cols-2",
+  3: "xl:grid-cols-3",
+  4: "xl:grid-cols-4",
+  5: "xl:grid-cols-5",
+};
+
 function Semaforo({
   estados,
   derivados,
   datos,
+  perimetro,
 }: {
   estados: Partial<EstadosBloque>;
   derivados: Derivados;
   datos: DatosDiagnostico;
+  perimetro: PerimetroVista;
 }) {
-  const tarjetas: { id: keyof EstadosBloque; titulo: string; dato: string }[] = [
+  const aplican = bloquesSemaforo(perimetro);
+  const todas: { id: keyof EstadosBloque; titulo: string; dato: string }[] = [
     {
       id: "medicion",
       titulo: "Medición",
@@ -704,9 +698,11 @@ function Semaforo({
         : "Sin datos de contenido",
     },
   ];
+  // Lo que no aplica al perímetro no se muestra, ni como "Sin datos".
+  const tarjetas = todas.filter((t) => aplican.includes(t.id));
 
   return (
-    <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
+    <section className={cn("grid gap-5 sm:grid-cols-2", COLUMNAS_SEMAFORO[tarjetas.length])}>
       {tarjetas.map((t) => {
         const estado: EstadoBloque = estados[t.id] ?? "sin_datos";
         const sinDatos = estado === "sin_datos";
@@ -807,8 +803,7 @@ function SeccionFugas({ fugas }: { fugas: Fuga[] }) {
           <li key={`nc-${f.id}`} className="px-7 py-6 text-muted-foreground">
             <p className="text-[15px]">{f.etiqueta}</p>
             <p className="mt-0.5 text-[13px] leading-5">
-              No se pudo calcular. Faltan:{" "}
-              {f.faltantes.map((c) => ETIQUETAS_CAMPO[c] ?? c).join(", ")}.
+              No se pudo calcular. Faltan: {f.faltantes.map(etiquetaCampo).join(", ")}.
             </p>
             {f.confianza === "parcial" && <MarcaParcial />}
           </li>
@@ -841,7 +836,15 @@ function Fila({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: DatosDiagnostico }) {
+function EconomiaDetalle({
+  derivados,
+  datos,
+  perimetro,
+}: {
+  derivados: Derivados;
+  datos: DatosDiagnostico;
+  perimetro: PerimetroVista;
+}) {
   return (
     <section className="rounded-lg border border-border bg-card">
       <header className="border-b border-border px-7 py-5">
@@ -871,19 +874,28 @@ function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: Da
         <Fila label="CPA objetivo" value={pesos(derivados.cpa_objetivo)} />
         <Fila label="ROAS objetivo" value={numero(derivados.roas_objetivo)} />
         <Fila label="MER actual (combinado)" value={numero(derivados.mer_actual)} />
-        <Fila
-          label="MER tienda propia (Meta + Google)"
-          value={numero(derivados.mer_tienda_propia)}
-        />
-        <Fila label="MER Mercado Libre (Product Ads)" value={numero(derivados.mer_marketplace)} />
-        <Fila
-          label="ROAS de Product Ads"
-          value={
-            typeof derivados.roas_product_ads === "number"
-              ? numero(derivados.roas_product_ads)
-              : "Sin datos"
-          }
-        />
+        {perimetro.pautaTienda && (
+          <Fila
+            label="MER tienda propia (Meta + Google)"
+            value={numero(derivados.mer_tienda_propia)}
+          />
+        )}
+        {perimetro.productAds && (
+          <>
+            <Fila
+              label="MER Mercado Libre (Product Ads)"
+              value={numero(derivados.mer_marketplace)}
+            />
+            <Fila
+              label="ROAS de Product Ads"
+              value={
+                typeof derivados.roas_product_ads === "number"
+                  ? numero(derivados.roas_product_ads)
+                  : "Sin datos"
+              }
+            />
+          </>
+        )}
         <Fila
           label="Inversión publicitaria total"
           value={
@@ -908,7 +920,15 @@ function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: Da
 
 // ---------------------------------------------------------------- 6 · presupuesto
 
-function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosDiagnostico }) {
+function Presupuesto({
+  derivados,
+  datos,
+  perimetro,
+}: {
+  derivados: Derivados;
+  datos: DatosDiagnostico;
+  perimetro: PerimetroVista;
+}) {
   const lectura = lecturaPresupuesto(derivados);
   // H-56: un diagnóstico guardado antes de la fase 6 (2026-08-21) no trae
   // `presupuesto_arranque` en `derivados`, aunque el tipo lo declare.
@@ -933,10 +953,12 @@ function Presupuesto({ derivados, datos }: { derivados: Derivados; datos: DatosD
           }
         />
         <Fila label="Inversión actual mensual" value={pesos(derivados.inversion_actual_mensual)} />
-        <Fila
-          label="Conjuntos activos vs. sostenibles"
-          value={`${numero(datos.conjuntos_activos, 0)} / ${numero(derivados.conjuntos_sostenibles, 1)}`}
-        />
+        {perimetro.pautaMeta && (
+          <Fila
+            label="Conjuntos activos vs. sostenibles"
+            value={`${numero(datos.conjuntos_activos, 0)} / ${numero(derivados.conjuntos_sostenibles, 1)}`}
+          />
+        )}
         <Fila label="Compras semanales estimadas" value={numero(derivados.pedidos_semanales, 1)} />
       </dl>
       {supuestos.length > 0 && (
@@ -1029,8 +1051,20 @@ function evidenciaLegible(evidencia: string) {
 }
 
 /** Mix de canales: cada canal con su comisión, su margen y su breakeven. */
-function SeccionCanales({ derivados }: { derivados: Derivados }) {
-  const canales = derivados.canales ?? [];
+function SeccionCanales({
+  derivados,
+  perimetro,
+}: {
+  derivados: Derivados;
+  perimetro: PerimetroVista;
+}) {
+  // Un canal en "no aplica" no se pinta: el cliente no vende ahí.
+  const canales = (derivados.canales ?? []).filter(
+    (c) =>
+      c.estado !== "no_aplica" &&
+      (c.id !== "tienda_propia" || perimetro.tiendaPropia) &&
+      (c.id !== "mercado_libre" || perimetro.mercadoLibre),
+  );
   if (canales.length === 0) return null;
   const cobertura = derivados.cobertura_canales ?? 0;
   const principal = derivados.canal_principal;
@@ -1053,7 +1087,7 @@ function SeccionCanales({ derivados }: { derivados: Derivados }) {
             </span>
           </span>
         </div>
-        {cobertura < 100 && (
+        {avisoMargenMuestra(derivados) && (
           <p className="mt-3 text-[13px] text-muted-foreground">
             El mix declarado no llega al 100%: el margen que se muestra es el de la muestra
             declarada, no el del negocio completo.
@@ -1084,9 +1118,7 @@ function SeccionCanales({ derivados }: { derivados: Derivados }) {
                 <span className="text-[14px] tabular-nums">
                   {c.estado === "declarado"
                     ? pct(typeof c.pct === "number" ? c.pct / 100 : null, 1)
-                    : c.estado === "no_aplica"
-                      ? "No aplica"
-                      : "Sin datos"}
+                    : "Sin datos"}
                 </span>
               </div>
 
@@ -1102,7 +1134,9 @@ function SeccionCanales({ derivados }: { derivados: Derivados }) {
                   {c.comision_vigencia && (
                     <Fila label="Vigencia de la regla" value={c.comision_vigencia} />
                   )}
-                  <Fila label="MER del canal" value={numero(c.mer)} />
+                  {(c.id === "mercado_libre" ? perimetro.productAds : perimetro.pautaTienda) && (
+                    <Fila label="MER del canal" value={numero(c.mer)} />
+                  )}
                   <Fila
                     label="Contribución antes de publicidad"
                     value={pesos(c.contribucion_antes_publicidad)}
@@ -1115,7 +1149,7 @@ function SeccionCanales({ derivados }: { derivados: Derivados }) {
                     label="Resultado después de publicidad"
                     value={pesos(c.resultado_despues_publicidad)}
                   />
-                  {c.id === "mercado_libre" && (
+                  {c.id === "mercado_libre" && perimetro.productAds && (
                     <Fila
                       label="ROAS de Product Ads"
                       value={typeof c.roas_pauta === "number" ? numero(c.roas_pauta) : "Sin datos"}
