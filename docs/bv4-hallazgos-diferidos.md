@@ -488,6 +488,15 @@ Consecuencia: con "No" en "¿Vende en Mercado Libre?", MER, inversión total,
 cobertura de canales y canal principal siguen contando lo que se cargó antes
 de ocultar la pestaña.
 
+**Avance 2026-09-12, sigue abierto.** El "No" escribe `canal_ml_no_aplica`
+(`respuestaVendeMercadoLibre`, `diagnostico-form.ts`): `estadoCanal` da
+`no_aplica` y el porcentaje de ML, incluido el respaldo `ml_pct_facturacion`,
+deja de contar para cobertura y canal principal. Product Ads cargado sigue
+sumando a la inversión total. Los diagnósticos guardados antes no traen
+`canal_ml_no_aplica` y se recalculan como antes; la pantalla de detalle igual
+saca la tarjeta de ML con `vende_mercado_libre === false`. Tests en
+`src/lib/detalle-perimetro.test.ts`.
+
 ## H-22 · El porcentaje de Mercado Libre se pide por dos caminos que pueden desacordar · abierto
 
 Pestaña Mercado Libre: `ml_pct_facturacion`, `CampoPorcentaje` sin `maximo`

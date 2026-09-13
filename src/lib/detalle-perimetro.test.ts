@@ -11,10 +11,17 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   calcularDiagnostico,
+  inversionPublicitariaTotal,
   type ConfiguracionCalculo,
   type Derivados,
 } from "./calculo-diagnostico";
-import { DATOS_INICIALES, bloquesAplicables, type DatosDiagnostico } from "./diagnostico-form";
+import { canalPrincipal, coberturaCanales, estadoCanal } from "./canales";
+import {
+  DATOS_INICIALES,
+  bloquesAplicables,
+  respuestaVendeMercadoLibre,
+  type DatosDiagnostico,
+} from "./diagnostico-form";
 import { CASO_1AC7186C as caso } from "./fixtures-caso-1ac7186c";
 import {
   casoSnakeStore,
@@ -41,6 +48,7 @@ const TODO_VISIBLE: PerimetroVista = {
   productAds: true,
   funnelWeb: true,
 };
+const SIN_ML: PerimetroVista = { ...TODO_VISIBLE, mercadoLibre: false, productAds: false };
 const CINCO = ["medicion", "economia", "cuenta", "funnel_web", "creativos"];
 
 const calcular = (d: DatosDiagnostico) => calcularDiagnostico(d, cfg, "A").derivados;
@@ -61,30 +69,37 @@ const titanDosCanales: DatosDiagnostico = {
 describe("Guardados antes de las preguntas: la pantalla se ve como antes", () => {
   const cargado: DatosDiagnostico = { ...DATOS_INICIALES, ...caso.datos };
 
-  it("el caso 1ac7186c muestra todo: dos tarjetas de canal, cinco píldoras, todas las filas", () => {
-    const p = perimetroVista(caso.datos, caso.derivados);
-    expect(p).toEqual(TODO_VISIBLE);
-    expect(bloquesSemaforo(p)).toEqual(CINCO);
+  it("el caso 1ac7186c, guardado con 'No vende en ML', pierde sólo la tarjeta de ML", () => {
+    expect(caso.datos.vende_mercado_libre).toBe(false);
     expect(caso.derivados.canales.map((c) => c.estado)).toEqual(["ausente", "ausente"]);
+    const p = perimetroVista(caso.datos, caso.derivados);
+    expect(p).toEqual(SIN_ML);
+    expect(bloquesSemaforo(p)).toEqual(CINCO);
   });
 
-  it("abierto en el formulario (preguntas en null) da el mismo perímetro", () => {
-    expect(perimetroVista(cargado, caso.derivados)).toEqual(TODO_VISIBLE);
-    expect(perimetroVista(cargado, calcular(cargado))).toEqual(TODO_VISIBLE);
+  it("abierto en el formulario (preguntas nuevas en null) da el mismo perímetro", () => {
+    expect(perimetroVista(cargado, caso.derivados)).toEqual(SIN_ML);
+    expect(perimetroVista(cargado, calcular(cargado))).toEqual(SIN_ML);
+  });
+
+  it("sin responder '¿Vende en Mercado Libre?' se ve todo, como hoy", () => {
+    const sinResponder = { ...cargado, vende_mercado_libre: null };
+    expect(perimetroVista(sinResponder, calcular(sinResponder))).toEqual(TODO_VISIBLE);
   });
 
   it("datos o derivados vacíos o sin canales ni funnel no rompen y muestran todo", () => {
     expect(perimetroVista(null, null)).toEqual(TODO_VISIBLE);
     expect(perimetroVista({} as DatosDiagnostico, {} as Derivados)).toEqual(TODO_VISIBLE);
     const sinCanales = { ...caso.derivados, canales: undefined, funnel: undefined };
-    expect(perimetroVista(caso.datos, sinCanales as unknown as Derivados)).toEqual(TODO_VISIBLE);
+    // 1ac7186c trae el "No vende en ML" guardado: sólo esa tarjeta sale.
+    expect(perimetroVista(caso.datos, sinCanales as unknown as Derivados)).toEqual(SIN_ML);
     expect(avisoMargenMuestra(null)).toBe(false);
     expect(avisoMargenMuestra({} as Derivados)).toBe(false);
   });
 
   it("Sí a las tres preguntas es lo mismo que no responderlas", () => {
     const si = { ...cargado, canal_tienda_no_aplica: false, pauta_meta: true, pauta_google: true };
-    expect(perimetroVista(si, calcular(si))).toEqual(TODO_VISIBLE);
+    expect(perimetroVista(si, calcular(si))).toEqual(perimetroVista(cargado, calcular(cargado)));
   });
 
   it("el formulario muestra Web, y Mercado Libre y Mayorista siguen como antes", () => {
@@ -94,6 +109,7 @@ describe("Guardados antes de las preguntas: la pantalla se ve como antes", () =>
     expect(ids({ ...cargado, canal_tienda_no_aplica: null })).toContain("web");
     expect(ids({ ...cargado, canal_tienda_no_aplica: undefined })).toContain("web");
     expect(ids(cargado)).not.toContain("mercado_libre");
+    expect(ids({ ...cargado, vende_mercado_libre: null })).not.toContain("mercado_libre");
     expect(ids({ ...cargado, vende_mercado_libre: true })).toContain("mercado_libre");
     expect(ids(cargado)).not.toContain("mayorista");
     expect(ids({ ...cargado, venta_mayorista_activa: true })).toContain("mayorista");
@@ -152,6 +168,82 @@ describe("Sin Mercado Libre", () => {
   it("Mercado Libre ausente (no respondido en Canales) sigue a la vista, como hoy", () => {
     const ausente = { ...titanDosCanales, canal_ml_pct: null, canal_ml_no_aplica: false };
     expect(perimetroVista(ausente, calcular(ausente)).mercadoLibre).toBe(true);
+  });
+});
+
+describe("¿Vende en Mercado Libre? escribe canal_ml_no_aplica, como la tienda propia", () => {
+  const conRespuesta = (d: DatosDiagnostico, v: boolean | null): DatosDiagnostico => ({
+    ...d,
+    ...respuestaVendeMercadoLibre(v),
+  });
+
+  it("el formulario arranca sin responder", () => {
+    expect(DATOS_INICIALES.vende_mercado_libre).toBeNull();
+    expect(DATOS_INICIALES.canal_ml_no_aplica).toBe(false);
+  });
+
+  it("No deja ML en no aplica; Sí y sin responder lo sacan", () => {
+    expect(respuestaVendeMercadoLibre(false)).toEqual({
+      vende_mercado_libre: false,
+      canal_ml_no_aplica: true,
+    });
+    expect(respuestaVendeMercadoLibre(true)).toEqual({
+      vende_mercado_libre: true,
+      canal_ml_no_aplica: false,
+    });
+    expect(respuestaVendeMercadoLibre(null)).toEqual({
+      vende_mercado_libre: null,
+      canal_ml_no_aplica: false,
+    });
+    const no = conRespuesta(titanDosCanales, false);
+    expect(estadoCanal(no, "mercado_libre")).toBe("no_aplica");
+    expect(estadoCanal(conRespuesta(no, true), "mercado_libre")).toBe("declarado");
+    expect(estadoCanal(conRespuesta(no, null), "mercado_libre")).toBe("declarado");
+  });
+
+  it("con el No, el porcentaje de ML deja de contar para cobertura y canal principal", () => {
+    const no = conRespuesta(
+      { ...titanDosCanales, canal_ml_pct: null, ml_pct_facturacion: 60 },
+      false,
+    );
+    expect(coberturaCanales(no)).toBe(40);
+    expect(canalPrincipal(no)).toBe("tienda_propia");
+  });
+
+  it("con el No, Product Ads cargado sigue sumando a la inversión (H-21 sigue abierto)", () => {
+    // La tienda en cero explícito para que el total sea sólo Product Ads.
+    const no = conRespuesta({ ...titanDosCanales, pauta_meta: false, pauta_google: false }, false);
+    expect(estadoCanal(no, "mercado_libre")).toBe("no_aplica");
+    expect(inversionPublicitariaTotal(no)).toBe(1_800_000);
+  });
+
+  it("No a los dos canales de venta: el motor deja los dos en no aplica y la pantalla no pinta ninguno", () => {
+    const d = conRespuesta({ ...titanDosCanales, canal_tienda_no_aplica: true }, false);
+    const derivados = calcular(d);
+    expect(derivados.canales.map((c) => c.estado)).toEqual(["no_aplica", "no_aplica"]);
+    const p = perimetroVista(d, derivados);
+    expect(p.tiendaPropia).toBe(false);
+    expect(p.mercadoLibre).toBe(false);
+  });
+
+  it("sin responder se calcula igual que con el false que se guardaba por defecto", () => {
+    const base = { ...titanDosCanales, canal_ml_no_aplica: false };
+    expect(calcularDiagnostico({ ...base, vende_mercado_libre: null }, cfg, "A")).toEqual(
+      calcularDiagnostico({ ...base, vende_mercado_libre: false }, cfg, "A"),
+    );
+  });
+
+  it("guardado con No pero ML declarado con porcentaje: la tarjeta queda, entra en el margen", () => {
+    const d = { ...titanDosCanales, vende_mercado_libre: false, canal_ml_no_aplica: false };
+    const derivados = calcular(d);
+    expect(derivados.canales.find((c) => c.id === "mercado_libre")?.estado).toBe("declarado");
+    expect(perimetroVista(d, derivados).mercadoLibre).toBe(true);
+  });
+
+  it("guardado sin derivados de canales: el No igual saca ML", () => {
+    const d = { ...caso.datos, vende_mercado_libre: false };
+    const sinCanales = { ...caso.derivados, canales: undefined } as unknown as Derivados;
+    expect(perimetroVista(d, sinCanales).mercadoLibre).toBe(false);
   });
 });
 

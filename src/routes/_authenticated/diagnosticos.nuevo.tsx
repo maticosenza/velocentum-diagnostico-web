@@ -30,6 +30,7 @@ import { CargaCsvMeta } from "@/components/carga-csv-meta";
 import { BloqueCanales } from "@/components/bloque-canales";
 import {
   bloquesAplicables,
+  respuestaVendeMercadoLibre,
   RELACIONES_FIN_DESC,
   CANTIDAD_CAMPANAS,
   CLAVE_BORRADOR,
@@ -709,8 +710,10 @@ function NuevoDiagnostico() {
                 <CampoSiNo
                   label="¿Vende en Mercado Libre?"
                   value={datos.vende_mercado_libre}
-                  onChange={(v) => set("vende_mercado_libre", v === true)}
-                  ayuda="Si es que sí, se habilita la pestaña de Mercado Libre."
+                  onChange={(v) =>
+                    setDatos((prev) => ({ ...prev, ...respuestaVendeMercadoLibre(v) }))
+                  }
+                  ayuda="Si es que sí, se habilita la pestaña de Mercado Libre. Si es que no, en Canales Mercado Libre queda como que no vende en ese canal."
                 />
                 <CampoSiNo
                   label="¿Tiene canal minorista activo?"

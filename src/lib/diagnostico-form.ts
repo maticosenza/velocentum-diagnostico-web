@@ -117,7 +117,13 @@ export type DatosDiagnostico = {
   vertical: string;
   plataforma: string;
   plan_plataforma: string;
-  vende_mercado_libre: boolean;
+  /**
+   * ¿Vende en Mercado Libre? (Identificación). Triestado: null es sin
+   * responder y se comporta como el `false` que el formulario guardaba por
+   * defecto antes. Responder escribe también `canal_ml_no_aplica`
+   * (`respuestaVendeMercadoLibre`).
+   */
+  vende_mercado_libre: boolean | null;
   // Medición (compartido)
   tiene_pixel: boolean | null;
   // Medición · modo A (observado en pantalla)
@@ -373,6 +379,7 @@ export type DatosDiagnostico = {
   canal_tienda_moneda?: string;
 
   canal_ml_pct?: number | null;
+  /** Lo escribe "¿Vende en Mercado Libre?": `true` con el "No". También se marca en Canales. */
   canal_ml_no_aplica?: boolean;
   canal_ml_facturacion?: number | null;
   canal_ml_ticket?: number | null;
@@ -396,7 +403,7 @@ export const DATOS_INICIALES: DatosDiagnostico = {
   vertical: "",
   plataforma: "",
   plan_plataforma: "",
-  vende_mercado_libre: false,
+  vende_mercado_libre: null,
   tiene_pixel: null,
   facturacion_pixel: null,
   capi_estado: "",
@@ -582,6 +589,17 @@ export function bloquesAplicables(d: {
       (b.id !== "mayorista" || d.venta_mayorista_activa === true) &&
       (b.id !== "web" || d.canal_tienda_no_aplica !== true),
   );
+}
+
+/**
+ * "¿Vende en Mercado Libre?" escribe `canal_ml_no_aplica`, como "¿Tiene tienda
+ * propia?" escribe `canal_tienda_no_aplica`: "No" deja el canal en no aplica
+ * para el motor; "Sí" y sin responder lo sacan de no aplica.
+ */
+export function respuestaVendeMercadoLibre(
+  v: boolean | null,
+): Pick<DatosDiagnostico, "vende_mercado_libre" | "canal_ml_no_aplica"> {
+  return { vende_mercado_libre: v, canal_ml_no_aplica: v === false };
 }
 
 /** Notas con contenido, ordenadas y etiquetadas igual que el formulario. */

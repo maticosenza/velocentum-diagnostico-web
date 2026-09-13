@@ -142,7 +142,15 @@ export function perimetroVista(
   const d = datos ?? ({} as DatosDiagnostico);
   const der = derivados ?? ({} as Derivados);
   const tiendaPropia = !canalNoAplica(d, der, "tienda_propia");
-  const mercadoLibre = !canalNoAplica(d, der, "mercado_libre");
+  // "No vende en Mercado Libre" también lo saca, aunque el diagnóstico se haya
+  // guardado antes de que la respuesta escribiera `canal_ml_no_aplica`. Salvo
+  // que el canal esté declarado con porcentaje: entra en el margen y no se esconde.
+  const estadoML =
+    (der.canales ?? []).find((c) => c.id === "mercado_libre")?.estado ??
+    estadoCanal(d, "mercado_libre");
+  const mercadoLibre =
+    !canalNoAplica(d, der, "mercado_libre") &&
+    !(d.vende_mercado_libre === false && estadoML !== "declarado");
   return {
     tiendaPropia,
     mercadoLibre,
