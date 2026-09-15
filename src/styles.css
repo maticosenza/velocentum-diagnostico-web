@@ -135,6 +135,16 @@
   --color-texto-sobre-3: var(--texto-sobre-3);
   --color-texto-sobre-4: var(--texto-sobre-4);
   --color-texto-sobre-5: var(--texto-sobre-5);
+  --color-acento-1-suave: var(--acento-1-suave);
+  --color-acento-2-suave: var(--acento-2-suave);
+  --color-acento-3-suave: var(--acento-3-suave);
+  --color-acento-4-suave: var(--acento-4-suave);
+  --color-acento-5-suave: var(--acento-5-suave);
+  --color-acento-1-medio: var(--acento-1-medio);
+  --color-acento-2-medio: var(--acento-2-medio);
+  --color-acento-3-medio: var(--acento-3-medio);
+  --color-acento-4-medio: var(--acento-4-medio);
+  --color-acento-5-medio: var(--acento-5-medio);
 
   /* "violet" es el nombre que ya usaba la pantalla para selección: hoy es el violeta de tokens.css. */
   --color-violet: var(--acento-4);
@@ -202,6 +212,20 @@
   --navy-texto-2: color-mix(in srgb, var(--logo-blanco) 72%, var(--navy));
   --navy-hover: color-mix(in srgb, var(--logo-blanco) 10%, var(--navy));
   --navy-activo: color-mix(in srgb, var(--logo-blanco) 14%, var(--navy));
+
+  /* --- Rebajados de los acentos (DH-4): sobre el fondo crema, no sobre blanco.
+         Suave 8 %: fondo de tarjetas y superficies. Medio 16 %: bordes, filas
+         destacadas y hover; encima del medio va solo tinta. --- */
+  --acento-1-suave: color-mix(in srgb, var(--acento-1) 8%, var(--fondo));
+  --acento-2-suave: color-mix(in srgb, var(--acento-2) 8%, var(--fondo));
+  --acento-3-suave: color-mix(in srgb, var(--acento-3) 8%, var(--fondo));
+  --acento-4-suave: color-mix(in srgb, var(--acento-4) 8%, var(--fondo));
+  --acento-5-suave: color-mix(in srgb, var(--acento-5) 8%, var(--fondo));
+  --acento-1-medio: color-mix(in srgb, var(--acento-1) 16%, var(--fondo));
+  --acento-2-medio: color-mix(in srgb, var(--acento-2) 16%, var(--fondo));
+  --acento-3-medio: color-mix(in srgb, var(--acento-3) 16%, var(--fondo));
+  --acento-4-medio: color-mix(in srgb, var(--acento-4) 16%, var(--fondo));
+  --acento-5-medio: color-mix(in srgb, var(--acento-5) 16%, var(--fondo));
 
   /* --- Roles de la interfaz → paleta --- */
   --radius: 0.375rem;

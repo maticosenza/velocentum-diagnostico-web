@@ -878,7 +878,10 @@ function fugasConMonto(fugas: Fuga[]): Fuga[] {
     .sort((a, b) => (b.monto ?? 0) - (a.monto ?? 0));
 }
 
-/** Resumen: las fugas valorizadas, de mayor a menor. */
+/**
+ * Resumen: las fugas valorizadas, de mayor a menor. La tarjeta va en amarillo
+ * suave, el capítulo de Resumen (DH-3) rebajado (DH-4).
+ */
 function SeccionFugasConMonto({ fugas }: { fugas: Fuga[] }) {
   const [expandido, setExpandido] = useState(false);
 
@@ -889,7 +892,7 @@ function SeccionFugasConMonto({ fugas }: { fugas: Fuga[] }) {
   const ocultas = conMonto.length - visibles.length;
 
   return (
-    <section className="rounded-lg border border-border bg-card">
+    <section className="rounded-lg border border-border bg-acento-5-suave">
       <header className="border-b border-border px-7 py-5">
         <h2 className="text-[17px] font-medium text-foreground">Fugas detectadas</h2>
       </header>

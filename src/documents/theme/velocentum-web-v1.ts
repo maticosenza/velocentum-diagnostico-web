@@ -76,8 +76,15 @@ export const ROLES_WEB_V1 = {
  * interfaz necesita superficies suaves (hover, pestañas, avisos) que la
  * paleta no trae como valor propio. En `styles.css` se escriben como
  * `color-mix(in srgb, <color> <pct>%, <sobre>)` y el test de contraste
- * verifica cada par que se apoya en ellos. El porcentaje de cada uno es el
- * más alto que deja pasar AA a todo el texto que va encima.
+ * verifica cada par que se apoya en ellos. En los seis primeros, el
+ * porcentaje es el más alto que deja pasar AA a todo el texto que va encima.
+ *
+ * Los diez de los acentos son los dos niveles que decidió Matías (DH-4,
+ * 2026-09-15), sobre el fondo crema y no sobre blanco: suave al 8 % para
+ * fondos de tarjeta y superficies, medio al 16 % para bordes, filas
+ * destacadas y hover. Con tinta encima los diez pasan AA con holgura. Encima
+ * de un medio va solo tinta; `--violeta-suave` sigue aparte, al 5 %, porque
+ * la selección lleva texto violeta y al 8 % no llegaría.
  */
 export const REBAJADOS_WEB_V1 = {
   /** Hover, pestañas, rieles: `--muted`, `--accent`, `--secondary`. */
@@ -92,6 +99,18 @@ export const REBAJADOS_WEB_V1 = {
   "--navy-hover": { color: "--logo-blanco", pct: 10, sobre: "--navy" },
   /** Ítem activo sobre navy y filetes sobre navy. */
   "--navy-activo": { color: "--logo-blanco", pct: 14, sobre: "--navy" },
+  /** Acentos, nivel suave: fondo de tarjetas y superficies. */
+  "--acento-1-suave": { color: "--acento-1", pct: 8, sobre: "--fondo" },
+  "--acento-2-suave": { color: "--acento-2", pct: 8, sobre: "--fondo" },
+  "--acento-3-suave": { color: "--acento-3", pct: 8, sobre: "--fondo" },
+  "--acento-4-suave": { color: "--acento-4", pct: 8, sobre: "--fondo" },
+  "--acento-5-suave": { color: "--acento-5", pct: 8, sobre: "--fondo" },
+  /** Acentos, nivel medio: bordes, filas destacadas y hover. Solo tinta encima. */
+  "--acento-1-medio": { color: "--acento-1", pct: 16, sobre: "--fondo" },
+  "--acento-2-medio": { color: "--acento-2", pct: 16, sobre: "--fondo" },
+  "--acento-3-medio": { color: "--acento-3", pct: 16, sobre: "--fondo" },
+  "--acento-4-medio": { color: "--acento-4", pct: 16, sobre: "--fondo" },
+  "--acento-5-medio": { color: "--acento-5", pct: 16, sobre: "--fondo" },
 } as const;
 
 /**

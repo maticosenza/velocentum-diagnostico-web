@@ -56,6 +56,40 @@ const TEXTO: Par[] = [
   ["verde con su par", "--texto-sobre-3", "--acento-3", UMBRAL_AA_TEXTO],
   ["violeta con su par", "--texto-sobre-4", "--acento-4", UMBRAL_AA_TEXTO],
   ["amarillo con su par", "--texto-sobre-5", "--acento-5", UMBRAL_AA_TEXTO],
+  // Rebajados de los acentos (DH-4): tinta sobre los diez.
+  ["tinta sobre azul suave", "--tinta", "--acento-1-suave", UMBRAL_AA_TEXTO],
+  ["tinta sobre bermellón suave", "--tinta", "--acento-2-suave", UMBRAL_AA_TEXTO],
+  ["tinta sobre verde suave", "--tinta", "--acento-3-suave", UMBRAL_AA_TEXTO],
+  ["tinta sobre violeta suave (8 %)", "--tinta", "--acento-4-suave", UMBRAL_AA_TEXTO],
+  ["tinta sobre amarillo suave", "--tinta", "--acento-5-suave", UMBRAL_AA_TEXTO],
+  ["tinta sobre azul medio", "--tinta", "--acento-1-medio", UMBRAL_AA_TEXTO],
+  ["tinta sobre bermellón medio", "--tinta", "--acento-2-medio", UMBRAL_AA_TEXTO],
+  ["tinta sobre verde medio", "--tinta", "--acento-3-medio", UMBRAL_AA_TEXTO],
+  ["tinta sobre violeta medio", "--tinta", "--acento-4-medio", UMBRAL_AA_TEXTO],
+  ["tinta sobre amarillo medio", "--tinta", "--acento-5-medio", UMBRAL_AA_TEXTO],
+  // Las tarjetas en suave llevan también texto de apoyo.
+  ["texto de apoyo sobre azul suave", "--muted-foreground", "--acento-1-suave", UMBRAL_AA_TEXTO],
+  [
+    "texto de apoyo sobre bermellón suave",
+    "--muted-foreground",
+    "--acento-2-suave",
+    UMBRAL_AA_TEXTO,
+  ],
+  ["texto de apoyo sobre verde suave", "--muted-foreground", "--acento-3-suave", UMBRAL_AA_TEXTO],
+  [
+    "texto de apoyo sobre violeta suave (8 %)",
+    "--muted-foreground",
+    "--acento-4-suave",
+    UMBRAL_AA_TEXTO,
+  ],
+  [
+    "texto de apoyo sobre amarillo suave",
+    "--muted-foreground",
+    "--acento-5-suave",
+    UMBRAL_AA_TEXTO,
+  ],
+  // Fugas con monto en amarillo suave: la marca parcial y "Ver las otras" van en violeta.
+  ["fugas: violeta sobre amarillo suave", "--acento-4", "--acento-5-suave", UMBRAL_AA_TEXTO],
   // Navy: navegación y acceso (DH-3).
   ["navegación: blanco sobre navy", "--sidebar-foreground", "--sidebar", UMBRAL_AA_TEXTO],
   [
@@ -146,6 +180,18 @@ describe("contraste — límites medidos que explican el contrato", () => {
   it("el rebajado de superficie suave es el más alto que deja pasar al violeta como texto", () => {
     // Margen medido: 4 % deja al violeta en 4,51:1; con 5 % bajaría de 4,5.
     expect(contrasteRedondeado(color("--primary"), color("--muted"))).toBe(4.51);
+  });
+
+  it("sobre el rebajado medio de un acento va solo tinta (DH-4)", () => {
+    // Al 16 % el texto de apoyo no llega sobre azul, bermellón ni violeta.
+    expect(contrasteRedondeado(color("--texto-2"), color("--acento-1-medio"))).toBe(4.23);
+    expect(contrasteRedondeado(color("--texto-2"), color("--acento-2-medio"))).toBe(4.26);
+    expect(contrasteRedondeado(color("--texto-2"), color("--acento-4-medio"))).toBe(4.18);
+  });
+
+  it("--violeta-suave queda al 5 %: al 8 % el violeta como texto no llegaría", () => {
+    expect(contrasteRedondeado(color("--acento-4"), color("--violeta-suave"))).toBe(4.56);
+    expect(contrasteRedondeado(color("--acento-4"), color("--acento-4-suave"))).toBe(4.37);
   });
 
   it("deja el reporte completo como salida legible", () => {
