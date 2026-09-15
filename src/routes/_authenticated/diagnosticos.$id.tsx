@@ -26,6 +26,8 @@ import {
   pct,
   perimetroVista,
   pesos,
+  vistaPresupuesto,
+  COMPRAS_SEMANALES_POR_CONJUNTO,
   type PerimetroVista,
 } from "@/lib/vista-diagnostico";
 import {
@@ -1040,24 +1042,35 @@ function Presupuesto({
   // `presupuesto_arranque` en `derivados`, aunque el tipo lo declare.
   const pa: Partial<Derivados["presupuesto_arranque"]> = derivados.presupuesto_arranque ?? {};
   const supuestos = pa.supuestos ?? [];
+  // Sin volumen para un conjunto optimizado por compra, manda el arranque por
+  // evento intermedio y el piso por compra baja a referencia.
+  const { sinVolumen, comprasSemanales, notaReferencia } = vistaPresupuesto(derivados);
+  const arranque = pa.arranque_evento_intermedio
+    ? `${pesos(pa.arranque_evento_intermedio.bajo)} – ${pesos(pa.arranque_evento_intermedio.alto)}`
+    : "Sin datos";
   return (
     <section className="rounded-lg border border-border bg-card">
       <header className="border-b border-border px-7 py-5">
         <h2 className="text-[17px] font-medium text-foreground">Presupuesto recomendado</h2>
       </header>
       <dl>
-        <Fila
-          label="Piso teórico mensual (optimizando por compra, un conjunto)"
-          value={pesos(pa.piso_teorico_compra)}
-        />
-        <Fila
-          label="Presupuesto de arranque (optimizando por evento intermedio)"
-          value={
-            pa.arranque_evento_intermedio
-              ? `${pesos(pa.arranque_evento_intermedio.bajo)} – ${pesos(pa.arranque_evento_intermedio.alto)}`
-              : "Sin datos"
-          }
-        />
+        {sinVolumen ? (
+          <Fila
+            label="Presupuesto de arranque recomendado (optimizando por evento intermedio)"
+            value={arranque}
+          />
+        ) : (
+          <>
+            <Fila
+              label="Piso teórico mensual (optimizando por compra, un conjunto)"
+              value={pesos(pa.piso_teorico_compra)}
+            />
+            <Fila
+              label="Presupuesto de arranque (optimizando por evento intermedio)"
+              value={arranque}
+            />
+          </>
+        )}
         <Fila label="Inversión actual mensual" value={pesos(derivados.inversion_actual_mensual)} />
         {perimetro.pautaMeta && (
           <Fila
@@ -1065,8 +1078,31 @@ function Presupuesto({
             value={`${numero(datos.conjuntos_activos, 0)} / ${numero(derivados.conjuntos_sostenibles, 1)}`}
           />
         )}
-        <Fila label="Compras semanales estimadas" value={numero(derivados.pedidos_semanales, 1)} />
+        {!sinVolumen && (
+          <Fila
+            label="Compras semanales estimadas"
+            value={numero(derivados.pedidos_semanales, 1)}
+          />
+        )}
       </dl>
+      {sinVolumen && (
+        <div className="border-t border-border">
+          <p className="px-7 pt-6 text-[13px] font-medium text-foreground">
+            Referencia: optimizando por compra
+          </p>
+          <dl>
+            <Fila
+              label="Piso teórico mensual (un conjunto, sólo referencia)"
+              value={pesos(pa.piso_teorico_compra)}
+            />
+            <Fila
+              label="Compras semanales: hoy / necesarias"
+              value={`${numero(comprasSemanales, 1)} / ${numero(COMPRAS_SEMANALES_POR_CONJUNTO, 0)}`}
+            />
+          </dl>
+          <p className="px-7 pb-6 text-[13px] leading-5 text-muted-foreground">{notaReferencia}</p>
+        </div>
+      )}
       {supuestos.length > 0 && (
         <div className="border-t border-border px-7 py-6">
           <p className="text-[13px] font-medium text-foreground">

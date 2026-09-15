@@ -176,6 +176,56 @@ export function bloquesSemaforo(p: PerimetroVista): (keyof EstadosBloque)[] {
   );
 }
 
+// ---------------------------------------------------------------- presupuesto
+
+/**
+ * Compras semanales que necesita un conjunto optimizado por compra para salir
+ * de aprendizaje. Es la misma heurística de Meta que usa el motor para
+ * `volumen_suficiente` y para el piso (calculo-diagnostico.ts, "50 × CPA objetivo").
+ */
+export const COMPRAS_SEMANALES_POR_CONJUNTO = 50;
+
+export type VistaPresupuesto = {
+  /**
+   * El motor determinó que el negocio no llega a las compras semanales que
+   * necesita un conjunto optimizado por compra. Sólo un `false` explícito lo
+   * activa: sin dato (`null`, o un diagnóstico guardado antes del campo) la
+   * sección se ve como siempre, sin afirmar nada sobre el volumen.
+   */
+  sinVolumen: boolean;
+  /** Compras semanales de hoy, tal como vienen del motor. */
+  comprasSemanales: number | null;
+  /** Por qué el piso por compra queda como referencia. Sólo con `sinVolumen`. */
+  notaReferencia: string | null;
+};
+
+export function vistaPresupuesto(derivados: Derivados | null | undefined): VistaPresupuesto {
+  const d = derivados ?? ({} as Derivados);
+  const sinVolumen = d.volumen_suficiente === false;
+  // Se lee de los derivados. Sólo si no vino se deriva de los pedidos
+  // mensuales, con el mismo divisor que usa el motor (pedidos / 4,3).
+  const comprasSemanales =
+    typeof d.pedidos_semanales === "number" && Number.isFinite(d.pedidos_semanales)
+      ? d.pedidos_semanales
+      : typeof d.pedidos_mensuales === "number" && Number.isFinite(d.pedidos_mensuales)
+        ? Math.round((d.pedidos_mensuales / 4.3) * 10) / 10
+        : null;
+  if (!sinVolumen) return { sinVolumen, comprasSemanales, notaReferencia: null };
+
+  const hoy =
+    comprasSemanales !== null
+      ? `hoy el negocio hace ${numero(comprasSemanales, 1)}`
+      : "hoy el negocio no llega a ese volumen";
+  return {
+    sinVolumen,
+    comprasSemanales,
+    notaReferencia:
+      `Un conjunto optimizado por compra necesita ${COMPRAS_SEMANALES_POR_CONJUNTO} compras por semana para salir de aprendizaje; ${hoy}. ` +
+      "Con menos compras, invertir este monto no le da al algoritmo la señal que necesita para aprender. " +
+      "Queda como referencia de hacia dónde escalar cuando el volumen de compras lo sostenga, no como recomendación para hoy.",
+  };
+}
+
 /**
  * ¿Va el aviso "el margen que se muestra es el de la muestra declarada"? Sólo
  * cuando es cierto: hay mix declarado que no llega al 100% y el motor retuvo el
