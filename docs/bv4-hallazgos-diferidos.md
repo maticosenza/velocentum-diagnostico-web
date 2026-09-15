@@ -821,7 +821,7 @@ Había quedado abierto el punto de "CPA objetivo", "ROAS objetivo" y "Reserva ap
 - Quien no vende en Mercado Libre ve "—" y "Sin datos" en `:861-869` y una tarjeta de Mercado Libre siempre presente con "No aplica" o "Sin datos" (`:1013-1014, 1044-1070`); `derivados.canales` trae dos entradas siempre (`calculo-diagnostico.ts:879`).
 - La sección de funnel se muestra con estado `sin_datos` porque `:949` sólo oculta `no_aplica`: sin visitas, ocho filas en "—" (`funnel.ts:201-205`). En modo B es siempre así (H-19).
 - "Margen total (negocio completo)" (`:846`) exige 100 % explícito de productos y de canales (`:897-918`); las dos fixtures reales lo dejan en "—".
-- Para una llamada: "Reserva aplicada", "Piso teórico mensual (optimizando por compra, un conjunto)" (`:903-906`), "Supuestos usados (confianza: media)" con cuatro frases fijas (`calculo-diagnostico.ts:1041-1055`), "Comisión provisional: es un benchmark…" (`:1105-1110`), "Vigencia de la regla" (`:1082-1084`) y la marca "Estimación parcial: faltan etapas intermedias del funnel" (`:735-741`).
+- Para una llamada ("Reserva aplicada" ya salió de la pantalla en `ccbd98e`): "Piso teórico mensual (optimizando por compra, un conjunto)" (`:903-906`), "Supuestos usados (confianza: media)" con cuatro frases fijas (`calculo-diagnostico.ts:1041-1055`), "Comisión provisional: es un benchmark…" (`:1105-1110`), "Vigencia de la regla" (`:1082-1084`) y la marca "Estimación parcial: faltan etapas intermedias del funnel" (`:735-741`).
 
 ## H-48 · `EXPLICACION_FUGA` en el detalle tiene claves para ids de fuga que el motor ya no emite · abierto
 

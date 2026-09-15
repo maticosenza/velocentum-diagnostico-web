@@ -1,6 +1,6 @@
 # BV4 · Inventario de métricas de la pantalla de detalle
 
-Mapa de la pantalla de detalle (`src/routes/_authenticated/diagnosticos.$id.tsx`) al 2026-09-11, tal como vino con el reporte de la auditoría de las salidas de ese día. Sin juicio: qué muestra cada fila, de dónde sale y cuándo se retiene. Los hallazgos de esa auditoría están en `docs/bv4-hallazgos-diferidos.md` (H-38 a H-48). Las referencias `:NNN` sin archivo apuntan a `diagnosticos.$id.tsx` o, cuando la fila dice "motor", a `calculo-diagnostico.ts`, siguiendo la convención del reporte.
+Mapa de la pantalla de detalle (`src/routes/_authenticated/diagnosticos.$id.tsx`) al 2026-09-11, tal como vino con el reporte de la auditoría de las salidas de ese día, con las dos filas que cambió `ccbd98e` el 2026-09-15: sale "Reserva aplicada" de Economía y "Inversión actual mensual" pasa a "Presupuesto diario de Meta × 30". Sin juicio: qué muestra cada fila, de dónde sale y cuándo se retiene. Los hallazgos de esa auditoría están en `docs/bv4-hallazgos-diferidos.md` (H-38 a H-48). Las referencias `:NNN` sin archivo apuntan a `diagnosticos.$id.tsx` o, cuando la fila dice "motor", a `calculo-diagnostico.ts`, siguiendo la convención del reporte.
 
 ## Inventario del detalle
 
@@ -38,7 +38,6 @@ Mapa de la pantalla de detalle (`src/routes/_authenticated/diagnosticos.$id.tsx`
 | Economía | Margen total | margen_contribucion (:904, 918) | Cobertura de productos < 100 % o de canales < 100 % |
 | Economía | Cobertura del catálogo analizado | coberturaProductos (:412-418) | Nunca; sin porcentajes imprime 0 % |
 | Economía | Breakeven ROAS, CPA breakeven | :937-941 | Margen total nulo o ≤ 0; CPA además sin ticket |
-| Economía | Reserva aplicada | cfg.reserva_default (:943) | Configuración sin valor |
 | Economía | CPA objetivo, ROAS objetivo | :944-949 | Sin CPA breakeven o reserva ≥ 1 |
 | Economía | MER actual, MER tienda, MER ML | :974-992 | Sin facturación del perímetro o inversión ≤ 0 |
 | Economía | ROAS de Product Ads | :984-987 | Sin ventas atribuidas o inversión ≤ 0 → "Sin datos" |
@@ -47,7 +46,7 @@ Mapa de la pantalla de detalle (`src/routes/_authenticated/diagnosticos.$id.tsx`
 | Economía | Nota de muestra parcial | cobertura_productos < 100 y más de un producto con peso (:880-887) | Con un solo producto no aparece |
 | Presupuesto | Piso teórico mensual | piso_teorico_compra = 50 × CPA objetivo × 4,3 (:1011, 1058) | Sin CPA objetivo |
 | Presupuesto | Presupuesto de arranque, rango | arranque_evento_intermedio (:1029-1039) | Sin CPA objetivo → "Sin datos" |
-| Presupuesto | Inversión actual mensual | presupuesto diario × 30 (:1000-1012) | Sin presupuesto ni gasto diario |
+| Presupuesto | Presupuesto diario de Meta × 30 | presupuesto diario × 30 (:1000-1012) | Sin presupuesto ni gasto diario |
 | Presupuesto | Conjuntos activos vs sostenibles | datos.conjuntos_activos, conjuntos_sostenibles (:1007-1010) | Cada mitad en "—" por separado |
 | Presupuesto | Compras semanales estimadas | pedidos ÷ 4,3 (:1015) | Sin pedidos |
 | Presupuesto | Supuestos usados y confianza | presupuesto_arranque.supuestos, .confianza (:1041-1064) | Sin CPA objetivo la lista queda vacía y no se muestra |
