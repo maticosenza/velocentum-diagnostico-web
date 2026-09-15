@@ -7,7 +7,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { CanalDerivado, Derivados } from "@/lib/calculo-diagnostico";
-import type { PerimetroVista } from "@/lib/vista-diagnostico";
+import { numero, type PerimetroVista } from "@/lib/vista-diagnostico";
 import { ResumenMetricas, SeccionQueFalta } from "./resumen-diagnostico";
 
 const TODO: PerimetroVista = {
@@ -103,6 +103,31 @@ describe("Resumen: métricas según el perímetro", () => {
     expect(html).toContain("Sin datos");
     expect(html).toContain("sin métricas para mostrar");
     expect(html).not.toContain("Comisión efectiva");
+  });
+
+  it("Mercado Libre sin participación declarada muestra MER y ROAS de Product Ads de los derivados del negocio", () => {
+    const d = {
+      ...derivados,
+      mer_marketplace: 3.7,
+      roas_product_ads: 8.4,
+      canales: [canal("mercado_libre", { estado: "ausente", mer: null, roas_pauta: null })],
+    } as unknown as Derivados;
+    const html = render(TODO, d);
+    expect(html).toContain("MER del canal");
+    expect(html).toContain(numero(3.7));
+    expect(html).toContain("ROAS de Product Ads");
+    expect(html).toContain(numero(8.4));
+    expect(html).not.toContain("Comisión efectiva");
+    expect(html).not.toContain("sin métricas para mostrar");
+  });
+
+  it("con el canal declarado, MER y ROAS de Product Ads salen de los derivados y no del canal", () => {
+    const d = { ...derivados, mer_marketplace: 3.7, roas_product_ads: 8.4 } as unknown as Derivados;
+    const html = render(TODO, d);
+    expect(html).toContain(numero(3.7));
+    expect(html).toContain(numero(8.4));
+    expect(html).not.toContain(numero(4.1));
+    expect(html).not.toContain(numero(6.2));
   });
 
   it("sin ningún canal lo dice en vez de quedar en blanco", () => {
