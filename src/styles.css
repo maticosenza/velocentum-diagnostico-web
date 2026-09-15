@@ -215,7 +215,8 @@
 
   /* --- Rebajados de los acentos (DH-4): sobre el fondo crema, no sobre blanco.
          Suave 8 %: fondo de tarjetas y superficies. Medio 16 %: bordes, filas
-         destacadas y hover; encima del medio va solo tinta. --- */
+         destacadas y hover; encima del medio va solo tinta. El violeta al 8 %
+         lleva tinta; con texto violeta encima va --violeta-suave (5 %). --- */
   --acento-1-suave: color-mix(in srgb, var(--acento-1) 8%, var(--fondo));
   --acento-2-suave: color-mix(in srgb, var(--acento-2) 8%, var(--fondo));
   --acento-3-suave: color-mix(in srgb, var(--acento-3) 8%, var(--fondo));

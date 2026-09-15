@@ -89,7 +89,7 @@ export const ROLES_WEB_V1 = {
 export const REBAJADOS_WEB_V1 = {
   /** Hover, pestañas, rieles: `--muted`, `--accent`, `--secondary`. */
   "--superficie-suave": { color: "--tinta", pct: 4, sobre: "--fondo" },
-  /** Selección y avisos informativos en violeta. */
+  /** Con texto violeta encima: selección y avisos informativos. Con tinta, `--acento-4-suave`. */
   "--violeta-suave": { color: "--acento-4", pct: 5, sobre: "--fondo" },
   /** Filetes y separadores: decorativos, exentos de 3:1. */
   "--filete": { color: "--tinta", pct: 14, sobre: "--fondo" },
@@ -103,6 +103,7 @@ export const REBAJADOS_WEB_V1 = {
   "--acento-1-suave": { color: "--acento-1", pct: 8, sobre: "--fondo" },
   "--acento-2-suave": { color: "--acento-2", pct: 8, sobre: "--fondo" },
   "--acento-3-suave": { color: "--acento-3", pct: 8, sobre: "--fondo" },
+  /** Con tinta encima. Con texto violeta, `--violeta-suave` (5 %). */
   "--acento-4-suave": { color: "--acento-4", pct: 8, sobre: "--fondo" },
   "--acento-5-suave": { color: "--acento-5", pct: 8, sobre: "--fondo" },
   /** Acentos, nivel medio: bordes, filas destacadas y hover. Solo tinta encima. */
