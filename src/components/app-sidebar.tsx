@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import logotipoBlanco from "@/assets/marca/web-v1/logo/velocentum-logotipo-blanco-tight.png";
+import { LogotipoBlanco } from "@/components/logotipo-blanco";
 import isotipoInterfaz from "@/assets/marca/web-v1/logo/velocentum-v-bicolor-ui.svg";
 
 const items = [
@@ -95,7 +95,7 @@ export function AppSidebar() {
           />
         ) : (
           <div className="min-w-0">
-            <img src={logotipoBlanco} alt="Velocentum" className="block h-[18px] w-auto" />
+            <LogotipoBlanco alto={18} className="block" />
             <p className="mt-2 font-mono text-[11px] leading-4 tracking-[0.04em] text-sidebar-foreground">
               {DESCRIPTOR}
             </p>

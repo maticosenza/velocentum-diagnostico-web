@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MensajeEstado } from "@/components/mensaje-estado";
-import logotipoBlanco from "@/assets/marca/web-v1/logo/velocentum-logotipo-blanco-tight.png";
+import { LogotipoBlanco } from "@/components/logotipo-blanco";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -59,7 +59,7 @@ function PantallaLogin() {
           Anton, en un bloque propio, nunca pegado al logo. */}
       <section className="flex flex-col justify-between gap-12 bg-navy px-8 py-10 text-[var(--logo-blanco)] lg:w-1/2 lg:px-14 lg:py-14">
         <div>
-          <img src={logotipoBlanco} alt="Velocentum" className="block h-7 w-auto" />
+          <LogotipoBlanco alto={28} className="block" />
           <p className="mt-3 font-mono text-[12px] leading-4 tracking-[0.04em]">
             Equipo de crecimiento
           </p>

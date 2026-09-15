@@ -14,8 +14,10 @@ son los assets de la cadena documental v1 (`renderers/pdf/marca.tsx`,
 
 | Archivo | Uso (DH-8) | SHA-256 |
 |---|---|---|
-| `velocentum-logotipo-negro.png` | Wordmark sobre fondos claros. 2117×743, con margen transparente | `7f2d36230abcf2705d86876f327e757e4ce894f99ad562c1fd423e0a5cbca5ed` |
-| `velocentum-logotipo-blanco-tight.png` | Wordmark sobre navy, tinta u oscuros. 1933×299, recortado a la tinta | `4d0f6a4c4f68bb54c3df5a0b19f43387cd2fc54b6f6c8c3cb90a7a419ac26118` |
+| `velocentum-logotipo-negro.svg` | Wordmark sobre fondos claros. viewBox `0 0 2117 743`, con margen transparente | `e558a4a0c3f01e3bd972b17f10d9947f8a0bd8603c2ba5420e650f1e42f21fae` |
+| `velocentum-logotipo-blanco.svg` | Wordmark sobre navy, tinta u oscuros. viewBox `0 0 2117 743`, con margen transparente | `8f5103b47a4ce868271da17057324a33e051fb08e5ec4a269935e24e2004d6b2` |
+| `velocentum-logotipo-negro.png` | Raster del wordmark negro. 2117×743, con margen transparente. Sin uso en la interfaz | `7f2d36230abcf2705d86876f327e757e4ce894f99ad562c1fd423e0a5cbca5ed` |
+| `velocentum-logotipo-blanco-tight.png` | Raster del wordmark blanco. 1933×299, recortado a la tinta. Sin uso en la interfaz | `4d0f6a4c4f68bb54c3df5a0b19f43387cd2fc54b6f6c8c3cb90a7a419ac26118` |
 | `velocentum-v-bicolor.svg` | Isotipo, encuadre cuadrado: portada, redes, exportaciones, favicon | `c18cfbe3c57ac5809e2ba3218338666704b9ef28d987c9f8bd1f8a24caf6ce61` |
 | `velocentum-v-bicolor-ui.svg` | Isotipo, viewBox recortado para espacios chicos | `0b26193055895677f378e25a2ddf8066857d67c945e1ec640b450b532ad22138` |
 | `velocentum-v-fondo-negro.svg` | No es variante de la herramienta (DH-8) | `c7744318ef13811abdd600fb1aaf5aafd0e64ffdb103a743cae2c97d551bd988` |
@@ -26,8 +28,25 @@ son los assets de la cadena documental v1 (`renderers/pdf/marca.tsx`,
 Los degradados de la V (`#FF512C`, `#FC4D27`, `#8139F8`, `#7432E8`) son
 material interno de los SVG y no generan tokens (DH-7).
 
-El wordmark solo existe en PNG; el SVG es dependencia de F3b y no se
-vectoriza por cuenta propia (contrato, "Dependencias verificadas").
+### Wordmark en SVG
+
+Los dos SVG del wordmark los consiguió Matías y llegaron aparte, el
+2026-09-15 (`~/Downloads/`), después de la copia de `.branding-nuevo/`. Se
+copiaron **sin modificar**, con sus nombres originales. Cubren la dependencia
+de F3b que el contrato dejaba abierta ("Dependencias verificadas").
+
+- Usan el mismo lienzo que el PNG negro (2117×743) y la tinta cae en el mismo
+  lugar: unos 97–2022 × 206–502. Las letras son una máscara de paths aplicada
+  a un `rect` de lienzo completo; los dos archivos son idénticos salvo el
+  relleno de ese `rect`, `#000000` en el negro y `#FFFFFF` en el blanco. El
+  negro es negro puro, no la tinta `#141024` de DH-4.
+- La interfaz usa el blanco en la navegación y en el acceso a través de
+  `src/components/logotipo-blanco.tsx`, que lo recorta con un viewBox
+  exterior (`94 204 1933 299`) a la misma caja que tenía el PNG tight, sin
+  tocar el archivo.
+
+Los PNG **no se borran**: pueden hacer falta para redes. Ya no los usa la
+interfaz.
 
 ## Formas onduladas (`formas-onduladas/`)
 
