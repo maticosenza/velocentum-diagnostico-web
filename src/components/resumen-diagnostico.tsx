@@ -56,8 +56,9 @@ function Tarjeta({
 
 /**
  * Resumen: margen y breakeven, y las métricas de los canales que el cliente
- * sí tiene. Los mismos valores, con las mismas etiquetas, que Economía de la
- * tienda y las tarjetas de canal de Detalle.
+ * sí tiene. Es el único lugar de estos números: Detalle no los repite (salvo
+ * la comisión efectiva de ML, que la tarjeta del canal califica, y el breakeven
+ * y la conversión en las píldoras, donde explican el estado).
  */
 export function ResumenMetricas({
   derivados,
@@ -68,6 +69,14 @@ export function ResumenMetricas({
 }) {
   const tienda = canalVisible(derivados, "tienda_propia", perimetro.tiendaPropia);
   const ml = canalVisible(derivados, "mercado_libre", perimetro.mercadoLibre);
+  // MER y ROAS de Product Ads salen de los derivados del negocio, no del canal:
+  // es la misma cuenta, pero existen aunque el canal no tenga participación
+  // declarada, y Economía ya no los muestra.
+  const filasProductAds =
+    perimetro.productAds &&
+    (ml?.estado === "declarado" ||
+      typeof derivados.mer_marketplace === "number" ||
+      typeof derivados.roas_product_ads === "number");
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -107,15 +116,21 @@ export function ResumenMetricas({
 
       {ml && (
         <Tarjeta titulo={NOMBRE_CANAL["mercado_libre"]!} extra={<ParticipacionCanal canal={ml} />}>
-          {ml.estado === "declarado" ? (
+          {ml.estado === "declarado" || filasProductAds ? (
             <dl>
-              <Fila label="Comisión efectiva" value={pct(ml.comision_efectiva, 2)} />
-              {perimetro.productAds && (
+              {ml.estado === "declarado" && (
+                <Fila label="Comisión efectiva" value={pct(ml.comision_efectiva, 2)} />
+              )}
+              {filasProductAds && (
                 <>
-                  <Fila label="MER del canal" value={numero(ml.mer)} />
+                  <Fila label="MER del canal" value={numero(derivados.mer_marketplace)} />
                   <Fila
                     label="ROAS de Product Ads"
-                    value={typeof ml.roas_pauta === "number" ? numero(ml.roas_pauta) : "Sin datos"}
+                    value={
+                      typeof derivados.roas_product_ads === "number"
+                        ? numero(derivados.roas_product_ads)
+                        : "Sin datos"
+                    }
                   />
                 </>
               )}

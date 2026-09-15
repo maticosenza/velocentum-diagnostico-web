@@ -121,11 +121,11 @@ export function etiquetaCampo(id: string): string {
 export type PerimetroVista = {
   tiendaPropia: boolean;
   mercadoLibre: boolean;
-  /** Filas de la pauta de la tienda: MER tienda propia, MER del canal. */
+  /** MER tienda propia, en la tarjeta de la tienda de Resumen. */
   pautaTienda: boolean;
-  /** Estructura de cuenta de Meta: conjuntos activos y sostenibles. */
+  /** Estructura de cuenta de Meta: la píldora de cuenta (conjuntos activos y sostenibles). */
   pautaMeta: boolean;
-  /** MER Mercado Libre, ROAS de Product Ads. */
+  /** MER y ROAS de Product Ads, en la tarjeta de Mercado Libre de Resumen. */
   productAds: boolean;
   funnelWeb: boolean;
 };
@@ -230,7 +230,7 @@ export function vistaPresupuesto(derivados: Derivados | null | undefined): Vista
  * ¿Va el aviso "el margen que se muestra es el de la muestra declarada"? Sólo
  * cuando es cierto: hay mix declarado que no llega al 100% y el motor retuvo el
  * margen total. Sin mix declarado el motor calcula como canal único y publica
- * el total, y la tabla de Economía lo imprime: el aviso la contradecía.
+ * el total, y la tarjeta de Economía de Resumen lo imprime: el aviso la contradecía.
  */
 export function avisoMargenMuestra(derivados: Derivados | null | undefined): boolean {
   const cobertura = derivados?.cobertura_canales ?? 0;

@@ -27,7 +27,6 @@ import {
   perimetroVista,
   pesos,
   vistaPresupuesto,
-  COMPRAS_SEMANALES_POR_CONJUNTO,
   type PerimetroVista,
 } from "@/lib/vista-diagnostico";
 import {
@@ -310,8 +309,8 @@ function DetalleDiagnostico() {
           {perimetro.funnelWeb && <SeccionFunnel funnel={d.funnel} />}
 
           <div className="grid gap-8 lg:grid-cols-2">
-            <EconomiaDetalle derivados={d} datos={datos} perimetro={perimetro} />
-            <Presupuesto derivados={d} datos={datos} perimetro={perimetro} />
+            <EconomiaDetalle derivados={d} datos={datos} />
+            <Presupuesto derivados={d} />
           </div>
         </TabsContent>
 
@@ -756,7 +755,11 @@ function Semaforo({
   perimetro: PerimetroVista;
 }) {
   const aplican = bloquesSemaforo(perimetro);
-  const todas: { id: keyof EstadosBloque; titulo: string; dato: string }[] = [
+  const esNumero = (n: unknown) => typeof n === "number" && Number.isFinite(n);
+  // `parcial`: el número que explica el estado vive sólo en la píldora (no se
+  // repite en Economía ni en Presupuesto), así que sin estado igual se muestra
+  // lo que se sepa en vez de "Sin datos".
+  const todas: { id: keyof EstadosBloque; titulo: string; dato: string; parcial?: boolean }[] = [
     {
       id: "medicion",
       titulo: TITULO_BLOQUE.medicion,
@@ -766,6 +769,7 @@ function Semaforo({
       id: "economia",
       titulo: TITULO_BLOQUE.economia,
       dato: `MER ${numero(derivados.mer_actual)} contra breakeven ${numero(derivados.breakeven_roas)}`,
+      parcial: esNumero(derivados.mer_actual) || esNumero(derivados.breakeven_roas),
     },
     {
       id: "cuenta",
@@ -774,6 +778,7 @@ function Semaforo({
         derivados.conjuntos_sostenibles,
         1,
       )}`,
+      parcial: esNumero(datos.conjuntos_activos) || esNumero(derivados.conjuntos_sostenibles),
     },
     {
       id: "funnel_web",
@@ -800,12 +805,8 @@ function Semaforo({
       {tarjetas.map((t) => {
         const estado: EstadoBloque = estados[t.id] ?? "sin_datos";
         const sinDatos = estado === "sin_datos";
-        // Sin inversión no hay MER para comparar, pero el breakeven sí es un dato útil.
-        const respaldo =
-          t.id === "economia" && typeof derivados.breakeven_roas === "number"
-            ? `Breakeven ROAS ${numero(derivados.breakeven_roas)}`
-            : null;
-        const texto = sinDatos ? (respaldo ?? "Sin datos") : t.dato;
+        const vacio = sinDatos && !t.parcial;
+        const texto = vacio ? "Sin datos" : t.dato;
         return (
           <article
             key={t.id}
@@ -818,7 +819,7 @@ function Semaforo({
             </div>
             <p
               className={
-                sinDatos && !respaldo
+                vacio
                   ? "mt-3 text-[14px] leading-5 text-muted-foreground"
                   : "mt-3 text-[14px] leading-5 text-foreground"
               }
@@ -944,15 +945,12 @@ function SeccionFugasSinMonto({ fugas }: { fugas: Fuga[] }) {
 
 // ---------------------------------------------------------------- 5 · economía
 
-function EconomiaDetalle({
-  derivados,
-  datos,
-  perimetro,
-}: {
-  derivados: Derivados;
-  datos: DatosDiagnostico;
-  perimetro: PerimetroVista;
-}) {
+/**
+ * Lo del negocio completo que no está en Resumen. Margen total y breakeven
+ * viven en Resumen; MER combinado en la píldora de economía; el MER y el ROAS
+ * de cada canal, en la tarjeta del canal de Resumen.
+ */
+function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: DatosDiagnostico }) {
   return (
     <section className="rounded-lg border border-border bg-card">
       <header className="border-b border-border px-7 py-5">
@@ -967,7 +965,6 @@ function EconomiaDetalle({
           label="Margen de la muestra (productos y canal analizados)"
           value={pct(derivados.margen_muestra)}
         />
-        <Fila label="Margen total (negocio completo)" value={pct(derivados.margen_contribucion)} />
         <Fila
           label="Cobertura del catálogo analizado"
           value={
@@ -976,34 +973,10 @@ function EconomiaDetalle({
               : GUION
           }
         />
-        <Fila label="Breakeven ROAS" value={numero(derivados.breakeven_roas)} />
         <Fila label="CPA breakeven" value={pesos(derivados.cpa_breakeven)} />
         <Fila label="Reserva aplicada" value={pct(derivados.reserva, 0)} />
         <Fila label="CPA objetivo" value={pesos(derivados.cpa_objetivo)} />
         <Fila label="ROAS objetivo" value={numero(derivados.roas_objetivo)} />
-        <Fila label="MER actual (combinado)" value={numero(derivados.mer_actual)} />
-        {perimetro.pautaTienda && (
-          <Fila
-            label="MER tienda propia (Meta + Google)"
-            value={numero(derivados.mer_tienda_propia)}
-          />
-        )}
-        {perimetro.productAds && (
-          <>
-            <Fila
-              label="MER Mercado Libre (Product Ads)"
-              value={numero(derivados.mer_marketplace)}
-            />
-            <Fila
-              label="ROAS de Product Ads"
-              value={
-                typeof derivados.roas_product_ads === "number"
-                  ? numero(derivados.roas_product_ads)
-                  : "Sin datos"
-              }
-            />
-          </>
-        )}
         <Fila
           label="Inversión publicitaria total"
           value={
@@ -1018,8 +991,8 @@ function EconomiaDetalle({
         (derivados.pesos_producto ?? []).filter((p) => p !== null).length > 1 && (
           <p className="border-t border-border px-7 py-6 text-[13px] leading-6 text-muted-foreground">
             El catálogo relevado cubre el {numero(derivados.cobertura_productos, 0)}% de la
-            facturación declarada como participación de producto: los márgenes de arriba ponderan
-            sólo esa muestra, sin reescalarla al 100% del catálogo.
+            facturación declarada como participación de producto: el margen de arriba pondera sólo
+            esa muestra, sin reescalarla al 100% del catálogo.
           </p>
         )}
     </section>
@@ -1028,15 +1001,12 @@ function EconomiaDetalle({
 
 // ---------------------------------------------------------------- 6 · presupuesto
 
-function Presupuesto({
-  derivados,
-  datos,
-  perimetro,
-}: {
-  derivados: Derivados;
-  datos: DatosDiagnostico;
-  perimetro: PerimetroVista;
-}) {
+/**
+ * Conjuntos activos y sostenibles viven en la píldora de cuenta; las compras
+ * semanales, en la nota de referencia (son los pedidos mensuales de Economía
+ * ÷ 4,3, así que no llevan fila propia).
+ */
+function Presupuesto({ derivados }: { derivados: Derivados }) {
   const lectura = lecturaPresupuesto(derivados);
   // H-56: un diagnóstico guardado antes de la fase 6 (2026-08-21) no trae
   // `presupuesto_arranque` en `derivados`, aunque el tipo lo declare.
@@ -1044,7 +1014,7 @@ function Presupuesto({
   const supuestos = pa.supuestos ?? [];
   // Sin volumen para un conjunto optimizado por compra, manda el arranque por
   // evento intermedio y el piso por compra baja a referencia.
-  const { sinVolumen, comprasSemanales, notaReferencia } = vistaPresupuesto(derivados);
+  const { sinVolumen, notaReferencia } = vistaPresupuesto(derivados);
   const arranque = pa.arranque_evento_intermedio
     ? `${pesos(pa.arranque_evento_intermedio.bajo)} – ${pesos(pa.arranque_evento_intermedio.alto)}`
     : "Sin datos";
@@ -1072,18 +1042,6 @@ function Presupuesto({
           </>
         )}
         <Fila label="Inversión actual mensual" value={pesos(derivados.inversion_actual_mensual)} />
-        {perimetro.pautaMeta && (
-          <Fila
-            label="Conjuntos activos vs. sostenibles"
-            value={`${numero(datos.conjuntos_activos, 0)} / ${numero(derivados.conjuntos_sostenibles, 1)}`}
-          />
-        )}
-        {!sinVolumen && (
-          <Fila
-            label="Compras semanales estimadas"
-            value={numero(derivados.pedidos_semanales, 1)}
-          />
-        )}
       </dl>
       {sinVolumen && (
         <div className="border-t border-border">
@@ -1094,10 +1052,6 @@ function Presupuesto({
             <Fila
               label="Piso teórico mensual (un conjunto, sólo referencia)"
               value={pesos(pa.piso_teorico_compra)}
-            />
-            <Fila
-              label="Compras semanales: hoy / necesarias"
-              value={`${numero(comprasSemanales, 1)} / ${numero(COMPRAS_SEMANALES_POR_CONJUNTO, 0)}`}
             />
           </dl>
           <p className="px-7 pb-6 text-[13px] leading-5 text-muted-foreground">{notaReferencia}</p>
@@ -1154,7 +1108,7 @@ function SeccionFunnel({ funnel }: { funnel: Derivados["funnel"] }) {
             <Fila label="Visita a carrito" value={pct(funnel.p_carrito_dado_visita, 2)} />
             <Fila label="Carrito a checkout" value={pct(funnel.p_checkout_dado_carrito, 2)} />
             <Fila label="Checkout a compra" value={pct(funnel.p_compra_dado_checkout, 2)} />
-            <Fila label="Conversión global" value={pct(funnel.cr_global, 2)} />
+            {/* La conversión global es la de la tienda: vive en la píldora y en Resumen. */}
           </dl>
           {!funnel.desglosado && funnel.estado === "combinado" && (
             <p className="border-t border-border px-7 py-6 text-[14px] leading-6 text-muted-foreground">
@@ -1171,23 +1125,24 @@ function SeccionFunnel({ funnel }: { funnel: Derivados["funnel"] }) {
 // ---------------------------------------------------------------- canales
 
 /**
- * Un benchmark nunca se muestra como comisión verificada: sólo una liquidación
- * del cliente cuenta como evidencia.
+ * Origen y evidencia de la comisión en una sola fila. Un benchmark nunca se
+ * muestra como comisión verificada: sólo una liquidación real (del cliente o
+ * cargada en configuración) cuenta como evidencia.
  */
 function origenLegible(origen: string | null, evidencia?: string) {
   if (origen === null) return "Sin comisión resuelta";
   if (evidencia === "liquidacion_cliente" || origen === "verificado_cliente")
     return "Verificada con la liquidación del cliente";
+  if (evidencia === "liquidacion_verificada") return "Liquidación real cargada en configuración";
+  if (evidencia === "declarado_cliente")
+    return "Benchmark de configuración, con cargo fijo declarado por el cliente";
   return "Benchmark de configuración";
 }
 
-function evidenciaLegible(evidencia: string) {
-  if (evidencia === "liquidacion_cliente") return "Liquidación del cliente";
-  if (evidencia === "declarado_cliente") return "Cargo declarado por el cliente";
-  return "Sin verificar";
-}
-
-/** Mix de canales: cada canal con su comisión, su margen y su breakeven. */
+/**
+ * Mix de canales: cada canal con su comisión, su margen y su breakeven. El MER
+ * y el ROAS de Product Ads del canal viven en su tarjeta de Resumen.
+ */
 function SeccionCanales({
   derivados,
   perimetro,
@@ -1267,12 +1222,8 @@ function SeccionCanales({
                     label="Origen de la comisión"
                     value={origenLegible(c.comision_origen, c.comision_evidencia)}
                   />
-                  <Fila label="Evidencia" value={evidenciaLegible(c.comision_evidencia)} />
                   {c.comision_vigencia && (
                     <Fila label="Vigencia de la regla" value={c.comision_vigencia} />
-                  )}
-                  {(c.id === "mercado_libre" ? perimetro.productAds : perimetro.pautaTienda) && (
-                    <Fila label="MER del canal" value={numero(c.mer)} />
                   )}
                   <Fila
                     label="Contribución antes de publicidad"
@@ -1286,12 +1237,6 @@ function SeccionCanales({
                     label="Resultado después de publicidad"
                     value={pesos(c.resultado_despues_publicidad)}
                   />
-                  {c.id === "mercado_libre" && perimetro.productAds && (
-                    <Fila
-                      label="ROAS de Product Ads"
-                      value={typeof c.roas_pauta === "number" ? numero(c.roas_pauta) : "Sin datos"}
-                    />
-                  )}
                   <Fila label="Breakeven del canal" value={numero(c.breakeven_roas)} />
                   {c.comision_provisional && (
                     <p className="rounded-md bg-violet-soft px-3 py-2 text-[12.5px] text-violet">
