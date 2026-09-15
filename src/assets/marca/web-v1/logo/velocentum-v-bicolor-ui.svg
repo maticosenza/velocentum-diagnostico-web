@@ -1,0 +1,28 @@
+<!-- VARIANTE DE INTERFAZ. Mismos paths, mismos degradados, misma
+     silueta y misma separación entre las patas que
+     `velocentum-v-bicolor.svg`: lo único que cambia es el viewBox,
+     recortado a la caja de tinta real de la V —x 134.25→1118.77,
+     y 224→1053, medida sobre los propios beziers— más 6 unidades
+     de margen técnico por lado para que el antialias tenga dónde
+     apoyarse. El archivo original NO se toca: sigue siendo el que
+     se usa donde haga falta el encuadre cuadrado.
+     Los degradados son `objectBoundingBox` (el default), así que
+     son relativos a cada path y el recorte no los mueve. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="128.25 218 996.52 841" shape-rendering="geometricPrecision" role="img" aria-labelledby="title desc">
+  <title id="title">Isotipo V bicolor de Velocentum</title>
+  <desc id="desc">V formada por dos patas rectas separadas: bermellón a la izquierda y violeta a la derecha. Encuadre ajustado para interfaz.</desc>
+  <defs>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF512C"/>
+      <stop offset="0.52" stop-color="#FC4D27"/>
+      <stop offset="1" stop-color="#F5451F"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8A3FFC"/>
+      <stop offset="0.52" stop-color="#8139F8"/>
+      <stop offset="1" stop-color="#7432E8"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#orange)" d="M156 224c-11 0-19 7-21 18-2 8 0 16 6 26l434 762c9 16 20 23 31 23 5 0 8-5 8-13V710c0-11-3-20-8-29L372 244c-7-13-18-20-32-20H156Z"/>
+  <path fill="url(#violet)" d="M914 224c-14 0-25 7-32 20L648 681c-7 11-10 20-10 29v330c0 8 4 13 10 13 11 0 22-7 30-23l435-762c5-9 7-18 5-26-2-11-10-18-21-18H914Z"/>
+</svg>

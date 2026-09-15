@@ -7,7 +7,7 @@ import { Font } from "@react-pdf/renderer";
 import { describe, expect, it } from "vitest";
 import { GEIST_MONO_DATA_URIS } from "./geist-mono-datos.generated";
 import { registrarFuentesVelocentum } from "./registrar-fuentes";
-import { VELOCENTUM_CRYSTAL_V1 } from "../velocentum-crystal-v1";
+import { VELOCENTUM_WEB_V1 } from "../velocentum-web-v1";
 import { VELOCENTUM_LIGHT_V1 } from "../velocentum-light-v1";
 
 /**
@@ -93,16 +93,19 @@ describe("Geist Mono: registro en @react-pdf/renderer", () => {
 
 describe("Geist Mono: rol tipográfico en el tema", () => {
   it("lo declara sólo el tema de marca, y v1 sigue sin conocerlo", () => {
-    expect(VELOCENTUM_CRYSTAL_V1.typography.mono).toBe("Geist Mono");
+    expect(VELOCENTUM_WEB_V1.typography.mono).toBe("Geist Mono");
     expect(VELOCENTUM_LIGHT_V1.typography).not.toHaveProperty("mono");
   });
 
-  it("define el rol como dato verificable, no como comentario", () => {
-    expect(VELOCENTUM_CRYSTAL_V1.typography.monoRoles).toEqual([
+  it("define el rol como dato verificable, no como comentario (DH-9)", () => {
+    expect(VELOCENTUM_WEB_V1.typography.monoRoles).toEqual([
       "labels",
       "estados",
       "identificadores",
-      "microcopy-tecnico",
+      "fechas",
+      "categorias",
+      "metricas",
+      "datos-tecnicos",
     ]);
   });
 });

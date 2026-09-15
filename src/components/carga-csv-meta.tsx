@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MensajeEstado } from "@/components/mensaje-estado";
 import { formatARS } from "@/lib/format";
 import { ErrorCsvMeta, leerCsvMeta, type ResumenCsvMeta } from "@/lib/meta-csv";
 
@@ -62,14 +63,14 @@ export function CargaCsvMeta({
       </div>
 
       {error && (
-        <p className="mt-3 text-[13px] text-destructive" role="alert">
+        <MensajeEstado tono="error" className="mt-3 text-[13px]" role="alert">
           {error} Podés seguir cargando los datos a mano.
-        </p>
+        </MensajeEstado>
       )}
 
       {resumen && (
         <div className="mt-4 space-y-3 border-t border-border pt-3">
-          <p className="text-[12px] uppercase tracking-wide text-muted-foreground">
+          <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-muted-foreground">
             Esto leímos del archivo
           </p>
           <dl className="grid gap-2 text-[13px] sm:grid-cols-2">

@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
+import { MensajeEstado } from "@/components/mensaje-estado";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import {
@@ -204,11 +205,10 @@ function VistaPreviaDocumento() {
       </nav>
 
       {errorDescarga && (
-        <div
-          role="alert"
-          className="border-b border-estado-rojo/40 bg-card px-8 py-3 text-[13px] text-estado-rojo"
-        >
-          {errorDescarga}
+        <div role="alert" className="border-b border-border bg-card px-8 py-3">
+          <MensajeEstado tono="error" className="text-[13px]">
+            {errorDescarga}
+          </MensajeEstado>
         </div>
       )}
 
@@ -242,7 +242,7 @@ function TabDocumento({
       params={{ id, slug }}
       aria-current={activo ? "page" : undefined}
       className={cn(
-        "rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
+        "rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors",
         activo
           ? "bg-primary text-primary-foreground"
           : "text-muted-foreground hover:bg-muted hover:text-foreground",

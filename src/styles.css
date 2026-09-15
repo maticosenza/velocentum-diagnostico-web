@@ -5,27 +5,80 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system definition.
+ * Tema de la interfaz: velocentum-web/v1 (BV4 F2b, 2026-09-15).
  *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
+ * Los valores son los de `src/documents/theme/fuente-web-v1/tokens.css`, la
+ * fuente de verdad (DH-4), copiados con sus nombres, más `--navy`, que el
+ * docx pide y tokens.css no trae. `velocentum-web-v1.test.ts` compara este
+ * archivo contra tokens.css y contra el tema en TS, y
+ * `velocentum-web-v1.contraste.test.ts` mide cada par que la pantalla usa,
+ * resolviendo las variables de esta misma hoja.
  *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ * Los roles de shadcn (--background, --primary, …) no tienen valor propio:
+ * apuntan a la paleta. Las superficies suaves son un color de la paleta
+ * rebajado sobre la superficie donde se apoya (color-mix), no tonos nuevos.
+ * Para sumar un color: primero en tokens.css, por decisión humana.
  */
+
+/* --- Fuentes (DH-9): archivos locales con su licencia al lado, sin CDN --- */
+@font-face {
+  font-family: "Anton";
+  src: url("./assets/fuentes/anton/woff2/anton-latin-ext.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Anton";
+  src: url("./assets/fuentes/anton/woff2/anton-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Manrope";
+  src: url("./assets/fuentes/manrope/woff2/manrope-latin-ext.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Manrope";
+  src: url("./assets/fuentes/manrope/woff2/manrope-latin.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./assets/fuentes/geist-mono/woff2/geist-mono-latin-ext.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./assets/fuentes/geist-mono/woff2/geist-mono-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  /* DH-13: tarjetas y medios con los radios de tokens.css. */
+  --radius-lg: var(--r-media);
+  --radius-xl: var(--r-card);
+  --radius-2xl: var(--r-card);
+  --radius-3xl: var(--r-card);
+  --radius-4xl: var(--r-card);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -57,94 +110,154 @@
   --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted-foreground: var(--navy-texto-2);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Paleta con nombre propio, para capítulos (DH-3) y superficies de marca. */
+  --color-fondo: var(--fondo);
+  --color-tinta: var(--tinta);
+  --color-texto-2: var(--texto-2);
+  --color-navy: var(--navy);
+  --color-navy-hover: var(--navy-hover);
+  --color-cielo: var(--cielo);
+  --color-acento-1: var(--acento-1);
+  --color-acento-2: var(--acento-2);
+  --color-acento-3: var(--acento-3);
+  --color-acento-4: var(--acento-4);
+  --color-acento-5: var(--acento-5);
+  --color-texto-sobre-1: var(--texto-sobre-1);
+  --color-texto-sobre-2: var(--texto-sobre-2);
+  --color-texto-sobre-3: var(--texto-sobre-3);
+  --color-texto-sobre-4: var(--texto-sobre-4);
+  --color-texto-sobre-5: var(--texto-sobre-5);
+
+  /* "violet" es el nombre que ya usaba la pantalla para selección: hoy es el violeta de tokens.css. */
+  --color-violet: var(--acento-4);
+  --color-violet-soft: var(--violeta-suave);
+  --color-violet-foreground: var(--texto-sobre-4);
+
+  /* DH-9: Manrope para texto, Anton para display, Geist Mono para labels y datos técnicos. */
+  --font-sans: var(--font-texto);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
 }
 
 :root {
-  --radius: 0.375rem;
-  --background: oklch(0.985 0.002 264);
-  --foreground: oklch(0.22 0.015 265);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.015 265);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.015 265);
-  /* Azul Velocentum #2A1EC9 */
-  --primary: oklch(0.371 0.239 285);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.968 0.004 264);
-  --secondary-foreground: oklch(0.28 0.015 265);
-  --muted: oklch(0.968 0.004 264);
-  --muted-foreground: oklch(0.53 0.017 265);
-  --accent: oklch(0.955 0.012 275);
-  --accent-foreground: oklch(0.32 0.19 285);
+  /* --- tokens.css: superficie y texto --- */
+  --fondo: #FDFCFA;
+  --tinta: #141024;
+  --texto-2: #6B6880;
 
-  --destructive: oklch(0.55 0.2 27);
-  --destructive-foreground: oklch(0.99 0 0);
-  --estado-verde: oklch(0.58 0.13 155);
-  --estado-amarillo: oklch(0.75 0.13 80);
-  --estado-rojo: oklch(0.55 0.2 27);
-  --estado-sin-datos: oklch(0.75 0.01 265);
-  --border: oklch(0.918 0.005 264);
-  --input: oklch(0.918 0.005 264);
-  --ring: oklch(0.371 0.239 285);
-  --chart-1: oklch(0.371 0.239 285);
-  --chart-2: oklch(0.58 0.19 288);
-  --chart-3: oklch(0.65 0.1 250);
-  --chart-4: oklch(0.75 0.06 265);
-  --chart-5: oklch(0.85 0.03 265);
-  --sidebar: oklch(0.978 0.002 264);
-  --sidebar-foreground: oklch(0.22 0.015 265);
-  --sidebar-primary: oklch(0.371 0.239 285);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.955 0.012 275);
-  --sidebar-accent-foreground: oklch(0.32 0.19 285);
-  --sidebar-border: oklch(0.918 0.005 264);
-  --sidebar-ring: oklch(0.371 0.239 285);
+  /* --- tokens.css: cinco acentos con su par de texto obligatorio --- */
+  --acento-1: #1F6BFF;  --texto-sobre-1: #FFFFFF;
+  --acento-2: #F5451F;  --texto-sobre-2: #141024;
+  --acento-3: #00C878;  --texto-sobre-3: #141024;
+  --acento-4: #8A3FFC;  --texto-sobre-4: #FFFFFF;
+  --acento-5: #FFC300;  --texto-sobre-5: #141024;
+
+  /* --- tokens.css: marca. El rosa (--marca) no entra a la herramienta: DH-5. --- */
+  --logo-negro: #000000;
+  --logo-blanco: #FFFFFF;
+
+  /* --- tokens.css: tono de fondo, no acento --- */
+  --cielo: #65AAF5;
+
+  /* --- DH-4: navy entra como token por decisión de Matías; tokens.css no lo trae --- */
+  --navy: #0F2050;
+
+  /* --- tokens.css: tipografía --- */
+  --font-display: 'Anton', Impact, sans-serif;
+  --font-texto:   'Manrope', Arial, sans-serif;
+  --font-mono:    'Geist Mono', monospace;
+
+  /* --- tokens.css: escalas (DH-13) --- */
+  --space-1: 4px;   --space-2: 8px;   --space-3: 16px;
+  --space-4: 24px;  --space-5: 32px;  --space-6: 48px;  --space-7: 64px;
+  --space-section: 100px;
+  --page-gutter: 16px;
+  --control-min-height: 48px;
+  --control-comfort-height: 56px;
+  --max-exterior: 1440px;
+  --max-contenido: 1200px;
+  --medida-parrafo: 650px;
+  --medida-titular: 850px;
+  --r-card: 24px;  --r-media: 16px;  --r-campo: 16px;  --r-pill: 999px;
+  --motion-hover: 180ms;
+  --motion-reveal: 240ms;
+  --motion-stagger: 50ms;
+  --motion-curtain-phase: 300ms;
+  --motion-ease: cubic-bezier(.22,1,.36,1);
+  --layer-content: 0;  --layer-nav: 20;  --layer-menu: 30;
+  --layer-curtain: 50; --layer-cursor: 60;
+
+  /* --- Rebajados: un color de la paleta sobre la superficie donde se apoya --- */
+  --superficie-suave: color-mix(in srgb, var(--tinta) 4%, var(--fondo));
+  --violeta-suave: color-mix(in srgb, var(--acento-4) 5%, var(--fondo));
+  --filete: color-mix(in srgb, var(--tinta) 14%, var(--fondo));
+  --navy-texto-2: color-mix(in srgb, var(--logo-blanco) 72%, var(--navy));
+  --navy-hover: color-mix(in srgb, var(--logo-blanco) 10%, var(--navy));
+  --navy-activo: color-mix(in srgb, var(--logo-blanco) 14%, var(--navy));
+
+  /* --- Roles de la interfaz → paleta --- */
+  --radius: 0.375rem;
+  --background: var(--fondo);
+  --foreground: var(--tinta);
+  --card: var(--logo-blanco);
+  --card-foreground: var(--tinta);
+  --popover: var(--logo-blanco);
+  --popover-foreground: var(--tinta);
+  /* DH-5: el CTA es violeta con texto blanco. */
+  --primary: var(--acento-4);
+  --primary-foreground: var(--texto-sobre-4);
+  --secondary: var(--superficie-suave);
+  --secondary-foreground: var(--tinta);
+  --muted: var(--superficie-suave);
+  --muted-foreground: var(--texto-2);
+  --accent: var(--superficie-suave);
+  --accent-foreground: var(--tinta);
+  /* DH-5: estados como relleno con su par, nunca como texto chico. */
+  --destructive: var(--acento-2);
+  --destructive-foreground: var(--texto-sobre-2);
+  --estado-verde: var(--acento-3);
+  --estado-amarillo: var(--acento-5);
+  --estado-rojo: var(--acento-2);
+  --estado-sin-datos: var(--texto-2);
+  --border: var(--filete);
+  --input: var(--texto-2);
+  --ring: var(--tinta);
+  --chart-1: var(--acento-1);
+  --chart-2: var(--acento-2);
+  --chart-3: var(--acento-3);
+  --chart-4: var(--acento-4);
+  --chart-5: var(--acento-5);
+  /* DH-3: navegación en navy con el logotipo blanco. */
+  --sidebar: var(--navy);
+  --sidebar-foreground: var(--logo-blanco);
+  --sidebar-primary: var(--acento-4);
+  --sidebar-primary-foreground: var(--texto-sobre-4);
+  --sidebar-accent: var(--navy-activo);
+  --sidebar-accent-foreground: var(--logo-blanco);
+  --sidebar-border: var(--navy-activo);
+  --sidebar-ring: var(--logo-blanco);
 }
 
+/* tokens.css: escala responsive. */
+@media (max-width: 809px) {
+  :root { --space-section: 64px; }
+}
 
-.dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --estado-verde: oklch(0.7 0.13 155);
-  --estado-amarillo: oklch(0.8 0.13 80);
-  --estado-rojo: oklch(0.704 0.191 22.216);
-  --estado-sin-datos: oklch(0.55 0.02 265);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+/* tokens.css: movimiento reducido. Los tiempos en cero no alcanzan: la pantalla no
+   tiene sticky, scroll-linked ni tickers, y ningún bloque arranca oculto (DH-13). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-hover: 0ms; --motion-reveal: 0ms;
+    --motion-stagger: 0ms; --motion-curtain-phase: 0ms;
+  }
 }
 
 @layer base {
@@ -152,37 +265,17 @@
     border-color: var(--color-border);
   }
 
+  html {
+    font-family: var(--font-texto);
+    -webkit-font-smoothing: antialiased;
+    /* Anton solo tiene 400: sin síntesis, un peso que no existe no se inventa. */
+    font-synthesis: none;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-  }
-}
-
-/* Tokens propios de Velocentum */
-:root {
-  --violet: oklch(0.58 0.19 288); /* #7B5CFF */
-  --violet-foreground: oklch(0.99 0 0);
-  --violet-soft: oklch(0.96 0.02 288);
-  --surface: oklch(1 0 0);
-}
-
-@theme inline {
-  --color-violet: var(--violet);
-  --color-violet-soft: var(--violet-soft);
-  --color-violet-foreground: var(--violet-foreground);
-  --color-surface: var(--surface);
-  --font-sans: "Inter Tight", "Helvetica Neue", Arial, sans-serif;
-}
-
-@layer base {
-  html {
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  body {
     font-size: 14px;
   }
-  /* Solo dos pesos: regular (400) y medium (500) */
   b,
   strong,
   h1,
@@ -193,7 +286,7 @@
   h6 {
     font-weight: 500;
   }
-  /* Cifras tabulares para tablas y métricas */
+  /* Cifras tabulares para tablas y métricas (Manrope declara tnum). */
   table,
   [data-tabular] {
     font-variant-numeric: tabular-nums;

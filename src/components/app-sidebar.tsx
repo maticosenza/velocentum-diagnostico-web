@@ -15,12 +15,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import logoVelocentum from "@/assets/velocentum-icon.png";
+import logotipoBlanco from "@/assets/marca/web-v1/logo/velocentum-logotipo-blanco-tight.png";
+import isotipoInterfaz from "@/assets/marca/web-v1/logo/velocentum-v-bicolor-ui.svg";
 
 const items = [
   { title: "Diagnósticos", url: "/", icon: LayoutList, exact: true },
   { title: "Nuevo diagnóstico", url: "/diagnosticos/nuevo", icon: FilePlus2, exact: false },
 ];
+
+/** Descriptor de DH-11. Junto al wordmark, "Velocentum" ya lo dice el logo. */
+const DESCRIPTOR = "Equipo de crecimiento";
+
+/** Ítem de la navegación sobre navy (DH-3): blanco, nunca un acento. */
+const CLASE_ITEM =
+  "flex items-center gap-3 rounded-md px-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring";
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -65,21 +73,31 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "flex shrink-0 flex-col border-r border-border bg-sidebar transition-[width] duration-200",
+        "flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200",
         collapsed ? "w-16" : "w-64",
       )}
     >
-      <div className="flex h-16 items-center gap-2.5 border-b border-border px-4">
-        <img
-          src={logoVelocentum}
-          alt="Velocentum"
-          className="size-7 shrink-0 rounded-[6px] object-contain"
-        />
-        {!collapsed && (
+      {/* DH-8 y DH-11: wordmark blanco sobre navy y, debajo, el descriptor del color del
+          logo, alineado al borde de su tinta y fuera de su zona libre (25 % de su alto). */}
+      <div
+        className={cn(
+          "flex h-20 items-center border-b border-sidebar-border",
+          collapsed ? "justify-center px-3" : "px-5",
+        )}
+      >
+        {collapsed ? (
+          // Donde la V va sola, el texto va completo (DH-11): acá, en el nombre accesible.
+          <img
+            src={isotipoInterfaz}
+            alt={`Velocentum · ${DESCRIPTOR}`}
+            title={`Velocentum · ${DESCRIPTOR}`}
+            className="h-6 w-auto"
+          />
+        ) : (
           <div className="min-w-0">
-            <p className="truncate text-[14px] font-medium leading-5 text-foreground">Velocentum</p>
-            <p className="truncate text-[11.5px] leading-4 text-muted-foreground">
-              Diagnóstico e-commerce
+            <img src={logotipoBlanco} alt="Velocentum" className="block h-[18px] w-auto" />
+            <p className="mt-2 font-mono text-[11px] leading-4 tracking-[0.04em] text-sidebar-foreground">
+              {DESCRIPTOR}
             </p>
           </div>
         )}
@@ -87,7 +105,7 @@ export function AppSidebar() {
 
       <nav className="flex-1 space-y-1 p-3">
         {!collapsed && (
-          <p className="px-2 pb-2 pt-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+          <p className="px-2 pb-2 pt-2 font-mono text-[11px] uppercase tracking-[0.08em] text-sidebar-muted-foreground">
             Trabajo
           </p>
         )}
@@ -98,11 +116,13 @@ export function AppSidebar() {
               key={item.url}
               to={item.url}
               title={item.title}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex items-center gap-3 rounded-md px-2.5 py-2.5 text-[14px] transition-colors",
+                CLASE_ITEM,
+                "relative py-2.5 text-[14px]",
                 active
-                  ? "bg-violet-soft font-medium text-violet"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
+                  : "text-sidebar-muted-foreground hover:bg-navy-hover hover:text-sidebar-foreground",
               )}
             >
               <item.icon className="size-[18px] shrink-0" strokeWidth={1.75} />
@@ -112,12 +132,15 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <div className="space-y-1 border-t border-border p-3">
+      <div className="space-y-1 border-t border-sidebar-border p-3">
         <button
           type="button"
           onClick={pedirCerrarSesion}
           title="Cerrar sesión"
-          className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className={cn(
+            CLASE_ITEM,
+            "w-full py-2 text-[13.5px] text-sidebar-muted-foreground hover:bg-navy-hover hover:text-sidebar-foreground",
+          )}
         >
           <LogOut className="size-[18px] shrink-0" strokeWidth={1.75} />
           {!collapsed && <span>Cerrar sesión</span>}
@@ -125,7 +148,10 @@ export function AppSidebar() {
         <button
           type="button"
           onClick={() => setCollapsed((v) => !v)}
-          className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className={cn(
+            CLASE_ITEM,
+            "w-full py-2 text-[13.5px] text-sidebar-muted-foreground hover:bg-navy-hover hover:text-sidebar-foreground",
+          )}
           aria-label={collapsed ? "Expandir barra lateral" : "Contraer barra lateral"}
         >
           {collapsed ? (

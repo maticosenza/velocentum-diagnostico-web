@@ -1,0 +1,104 @@
+/* ===========================================================
+   VELOCENTUM.COM — TOKENS V3
+   Consolidado. Contrastes verificados y recalculados.
+   Integrar DESPUÉS de inspeccionar el repositorio.
+   =========================================================== */
+:root {
+  /* --- SUPERFICIE Y TEXTO --- */
+  --fondo:    #FDFCFA;   /* blanco apenas cálido */
+  --tinta:    #141024;   /* texto principal · 18.1:1 sobre fondo */
+  --texto-2:  #6B6880;   /* texto de apoyo · 5.2:1 sobre fondo */
+
+  /* --- CINCO ACENTOS + PAR DE TEXTO OBLIGATORIO ---
+     `--texto-sobre-X` NO es opcional. Aplica también en hover,
+     footer, chips y estados activos. */
+  --acento-1: #1F6BFF;  --texto-sobre-1: #FFFFFF;  /* azul      · INICIO   4.56:1 */
+  --acento-2: #F5451F;  --texto-sobre-2: #141024;  /* bermellón · MÉTODO   5.09:1 */
+  --acento-3: #00C878;  --texto-sobre-3: #141024;  /* verde     · CASOS    8.44:1 */
+  --acento-4: #8A3FFC;  --texto-sobre-4: #FFFFFF;  /* violeta   · CONTACTO 5.00:1 */
+  --acento-5: #FFC300;  --texto-sobre-5: #141024;  /* amarillo  · ciclos  11.56:1 */
+
+  /* --- MARCA --- */
+  --marca:    #FF1F6B;  --texto-sobre-marca: #141024;  /* rosa · 5.01:1
+     SOLO CTA y estados de interacción. Los links del nav NO se vuelven rosas. */
+  --logo-negro: #000000;
+  --logo-blanco: #FFFFFF;
+
+  /* --- FONDO SUAVE DEL HERO (tono de fondo, no acento) --- */
+  --cielo:    #65AAF5;
+
+  /* --- TIPOGRAFÍA --- */
+  --font-display: 'Anton', Impact, sans-serif;
+  --font-texto:   'Manrope', Arial, sans-serif;
+  --font-mono:    'Geist Mono', monospace;
+
+  /* --- SEPARACIÓN (escala) --- */
+  --space-1: 4px;   --space-2: 8px;   --space-3: 16px;
+  --space-4: 24px;  --space-5: 32px;  --space-6: 48px;  --space-7: 64px;
+  --space-section: 100px;
+  --page-gutter: 16px;
+
+  /* --- DIMENSIONES FUNCIONALES (no son separación) --- */
+  --control-min-height: 48px;
+  --control-comfort-height: 56px;
+  --grid-gap-trabajos: 20px;   /* medido en la referencia */
+
+  /* --- CONTENEDORES --- */
+  --max-exterior: 1440px;
+  --max-contenido: 1200px;
+  --medida-parrafo: 650px;
+  --medida-titular: 850px;
+
+  /* --- RADIOS --- */
+  --r-card: 24px;  --r-media: 16px;  --r-campo: 16px;  --r-pill: 999px;
+
+  /* --- MECÁNICAS (valores observados en la referencia) --- */
+  --sticky-servicios: 56px;
+  --sticky-clientes: 200px;
+  --alto-caso: 80vh;
+  --degradado-borde: 10vh;
+
+  /* --- MOVIMIENTO --- */
+  --motion-hover: 180ms;
+  --motion-reveal: 240ms;
+  --motion-stagger: 50ms;
+  --motion-curtain-phase: 300ms;
+  --motion-ease: cubic-bezier(.22,1,.36,1);
+
+  /* --- CAPAS --- */
+  --layer-content: 0;  --layer-nav: 20;  --layer-menu: 30;
+  --layer-curtain: 50; --layer-cursor: 60;
+}
+
+@media (max-width: 809px) {
+  :root { --space-section: 64px; }
+}
+
+/* ===========================================================
+   MÁSCARA DE BORDE DE SECCIÓN — sintaxis correcta
+   `mask-image: url(...) 50%/cover no-repeat alpha` NO ES VÁLIDO.
+   Van las propiedades separadas, y sobre una capa DECORATIVA:
+   nunca sobre texto, controles ni anillos de foco.
+   =========================================================== */
+.section-edge {
+  background: var(--edge-color, var(--fondo));
+  mask-image: url('/assets/borde-onda.svg');
+  mask-position: center;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  mask-mode: alpha;
+  pointer-events: none;
+}
+
+/* ===========================================================
+   MOVIMIENTO REDUCIDO
+   Los tiempos en cero NO alcanzan: la lógica tiene que apagar
+   sticky y scroll-linked, detener tickers y mostrar el contenido
+   completo. Ningún bloque arranca permanentemente oculto.
+   =========================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-hover: 0ms; --motion-reveal: 0ms;
+    --motion-stagger: 0ms; --motion-curtain-phase: 0ms;
+  }
+}

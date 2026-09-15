@@ -5,7 +5,12 @@
  */
 import { describe, expect, it } from "vitest";
 import type { Fuga } from "./calculo-diagnostico";
-import { PESTANAS, pestanaDesdeBusqueda, queFaltaDiagnostico } from "./pestanas-diagnostico";
+import {
+  ACENTO_PESTANA,
+  PESTANAS,
+  pestanaDesdeBusqueda,
+  queFaltaDiagnostico,
+} from "./pestanas-diagnostico";
 import type { PerimetroVista } from "./vista-diagnostico";
 
 const TODO: PerimetroVista = {
@@ -87,5 +92,22 @@ describe("qué falta para completar el diagnóstico", () => {
   it("sin pauta en Meta no se pide Cuenta", () => {
     const { bloques } = queFaltaDiagnostico([], {}, { ...TODO, pautaMeta: false });
     expect(bloques).not.toContain("Cuenta");
+  });
+});
+
+describe("capítulo de cada pestaña (DH-3)", () => {
+  it("cada pestaña tiene su acento y ninguno se repite: un solo acento por página", () => {
+    const acentos = PESTANAS.map((p) => ACENTO_PESTANA[p]);
+    expect(new Set(acentos).size).toBe(PESTANAS.length);
+  });
+
+  it("sigue la asignación del docx", () => {
+    expect(ACENTO_PESTANA).toEqual({
+      resumen: "amarillo",
+      detalle: "azul",
+      propuesta: "violeta",
+      proyeccion: "verde",
+      comercial: "bermellon",
+    });
   });
 });

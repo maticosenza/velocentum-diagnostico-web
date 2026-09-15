@@ -5,6 +5,7 @@
  * no ensucia la URL.
  */
 
+import type { AcentoWeb } from "@/documents/theme/velocentum-web-v1";
 import type { EstadosBloque, Fuga } from "./calculo-diagnostico";
 import { bloquesSemaforo, etiquetaCampo, type PerimetroVista } from "./vista-diagnostico";
 
@@ -17,6 +18,20 @@ export const ETIQUETA_PESTANA: Record<Pestana, string> = {
   propuesta: "Propuesta",
   proyeccion: "Proyección",
   comercial: "Comercial",
+};
+
+/**
+ * Capítulo de cada pestaña (DH-3): un acento por pestaña, con la asignación
+ * del docx —amarillo datos destacados y prioridades, azul diagnóstico,
+ * violeta recomendaciones y próximos pasos, verde resultados, bermellón
+ * método—. El acento va en el encabezado de la pestaña, no en el cuerpo.
+ */
+export const ACENTO_PESTANA: Record<Pestana, AcentoWeb> = {
+  resumen: "amarillo",
+  detalle: "azul",
+  propuesta: "violeta",
+  proyeccion: "verde",
+  comercial: "bermellon",
 };
 
 export const PESTANA_POR_DEFECTO: Pestana = "resumen";

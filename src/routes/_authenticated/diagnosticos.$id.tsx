@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EncabezadoCapitulo } from "@/components/encabezado-capitulo";
+import { MensajeEstado } from "@/components/mensaje-estado";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +69,7 @@ import {
   queFaltaDiagnostico,
   TITULO_BLOQUE,
   type Pestana,
+  ACENTO_PESTANA,
 } from "@/lib/pestanas-diagnostico";
 import { Fila, ResumenMetricas, SeccionQueFalta } from "@/components/resumen-diagnostico";
 
@@ -280,6 +283,8 @@ function DetalleDiagnostico() {
         </div>
 
         <TabsContent value="resumen" forceMount className={CLASE_PESTANA}>
+          <Capitulo pestana="resumen" />
+
           <AvisoContradiccion contradiccion={contradiccion} />
 
           <NumeroPrincipal
@@ -298,6 +303,8 @@ function DetalleDiagnostico() {
         </TabsContent>
 
         <TabsContent value="detalle" forceMount className={CLASE_PESTANA}>
+          <Capitulo pestana="detalle" />
+
           <Semaforo estados={estados} derivados={d} datos={datos} perimetro={perimetro} />
 
           <SeccionNotas notas={data.notas} />
@@ -319,6 +326,8 @@ function DetalleDiagnostico() {
           return (
             <>
               <TabsContent value="propuesta" forceMount className={CLASE_PESTANA}>
+                <Capitulo pestana="propuesta" />
+
                 <PropuestaSeccion
                   diagnosticoId={data.id}
                   propuestaGuardada={normalizarPropuesta(propuestaCruda)}
@@ -327,10 +336,14 @@ function DetalleDiagnostico() {
               </TabsContent>
 
               <TabsContent value="proyeccion" forceMount className={CLASE_PESTANA}>
+                <Capitulo pestana="proyeccion" />
+
                 <SeccionProyeccion diagnosticoId={data.id} />
               </TabsContent>
 
               <TabsContent value="comercial" forceMount className={CLASE_PESTANA}>
+                <Capitulo pestana="comercial" />
+
                 <SeccionSeleccionComercial
                   diagnosticoId={data.id}
                   datos={datos}
@@ -358,6 +371,17 @@ function DetalleDiagnostico() {
 }
 
 const CLASE_PESTANA = "mt-0 space-y-10 px-8 py-10 data-[state=inactive]:hidden";
+
+/** Encabezado de capítulo de cada pestaña (DH-3): su acento, solo acá, nunca en el cuerpo. */
+function Capitulo({ pestana }: { pestana: (typeof PESTANAS)[number] }) {
+  return (
+    <EncabezadoCapitulo
+      numero={PESTANAS.indexOf(pestana) + 1}
+      titulo={ETIQUETA_PESTANA[pestana]}
+      acento={ACENTO_PESTANA[pestana]}
+    />
+  );
+}
 
 /**
  * La pantalla no tiene proyección propia: la línea de base y los escenarios a
@@ -442,7 +466,9 @@ function SeccionSeleccionComercial({
 
       <div className="px-7 py-7">
         {mutacion.isError && (
-          <p className="mb-4 text-[13px] text-destructive">{(mutacion.error as Error).message}</p>
+          <MensajeEstado tono="error" className="mb-4 text-[13px]">
+            {(mutacion.error as Error).message}
+          </MensajeEstado>
         )}
         {guardado && !mutacion.isPending && (
           <p className="mb-4 text-[13px] text-muted-foreground" role="status">
@@ -522,7 +548,9 @@ function SeccionPaquetes({
 
       <div className="px-7 py-7">
         {mutacion.isError && (
-          <p className="mb-4 text-[13px] text-destructive">{(mutacion.error as Error).message}</p>
+          <MensajeEstado tono="error" className="mb-4 text-[13px]">
+            {(mutacion.error as Error).message}
+          </MensajeEstado>
         )}
         {!editando && confirmada ? (
           <div className="space-y-3">
@@ -561,7 +589,7 @@ function SeccionNotas({ notas }: { notas: NotasDiagnostico | null | undefined })
       <div className="grid gap-4 p-7 md:grid-cols-2">
         {visibles.map((nota) => (
           <article key={nota.bloque} className="rounded-md border border-border px-4 py-3">
-            <h3 className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+            <h3 className="font-mono text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
               {nota.etiqueta}
             </h3>
             <p className="mt-2 whitespace-pre-wrap text-[14px] leading-6 text-foreground">
@@ -645,7 +673,7 @@ function NumeroPrincipal({
   if (margenBloqueado) {
     return (
       <section className="rounded-lg border border-estado-rojo/40 bg-card px-10 py-14">
-        <h2 className="text-[30px] font-medium leading-9 text-foreground">
+        <h2 className="font-display text-[30px] font-normal uppercase leading-[1.1] text-foreground">
           No valorizamos la oportunidad con este margen
         </h2>
         <p className="mt-4 max-w-2xl text-[16px] leading-7 text-muted-foreground">
@@ -663,7 +691,7 @@ function NumeroPrincipal({
         <div className="flex items-start gap-3">
           <EstadoPunto estado="rojo" className="mt-3 size-3.5" />
           <div>
-            <h2 className="text-[30px] font-medium leading-9 text-foreground">
+            <h2 className="font-display text-[30px] font-normal uppercase leading-[1.1] text-foreground">
               No podemos valorizar la oportunidad todavía
             </h2>
             <p className="mt-4 max-w-2xl text-[16px] leading-7 text-muted-foreground">
@@ -695,7 +723,7 @@ function NumeroPrincipal({
         <div className="flex items-start gap-3">
           <EstadoPunto estado="sin_datos" className="mt-3 size-3.5" />
           <div>
-            <h2 className="text-[30px] font-medium leading-9 text-foreground">
+            <h2 className="font-display text-[30px] font-normal uppercase leading-[1.1] text-foreground">
               Faltan datos para valorizar la oportunidad
             </h2>
             <p className="mt-4 max-w-2xl text-[16px] leading-7 text-muted-foreground">
@@ -713,15 +741,15 @@ function NumeroPrincipal({
 
   return (
     <section className="rounded-lg border border-border bg-card px-10 py-14">
-      <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+      <p className="font-mono text-[12px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
         Oportunidad mensual estimada
       </p>
       <p className="mt-6 flex flex-wrap items-baseline gap-x-5 gap-y-2 text-foreground">
-        <span className="text-[56px] font-medium leading-[1.05] tabular-nums sm:text-[72px]">
+        <span className="font-display text-[56px] font-normal leading-[1.05] sm:text-[72px]">
           {pesos(conservador)}
         </span>
         <span className="text-[26px] leading-[1.1] text-muted-foreground">a</span>
-        <span className="text-[56px] font-medium leading-[1.05] tabular-nums sm:text-[72px]">
+        <span className="font-display text-[56px] font-normal leading-[1.05] sm:text-[72px]">
           {pesos(total)}
         </span>
       </p>
@@ -1097,7 +1125,9 @@ function SeccionFunnel({ funnel }: { funnel: Derivados["funnel"] }) {
       </header>
 
       {funnel.estado === "error" ? (
-        <p className="px-7 py-6 text-[15px] leading-6 text-destructive">{funnel.error}</p>
+        <MensajeEstado tono="error" className="px-7 py-6 text-[15px] leading-6">
+          {funnel.error}
+        </MensajeEstado>
       ) : (
         <>
           <dl>

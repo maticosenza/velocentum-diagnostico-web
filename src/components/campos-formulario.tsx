@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MensajeEstado } from "@/components/mensaje-estado";
 import { cn } from "@/lib/utils";
 
 function parseNumero(texto: string): number | null {
@@ -143,10 +144,10 @@ export function CampoPorcentaje({
         <span className="shrink-0 text-[14px] text-muted-foreground">%</span>
       </div>
       {rechazado && (
-        <p className="mt-1 text-[12px] text-destructive">
+        <MensajeEstado tono="error" className="mt-1 text-[12px]">
           Valor fuera de rango: tiene que estar entre {minimo}
           {maximo !== undefined ? ` y ${maximo}` : ""}.
-        </p>
+        </MensajeEstado>
       )}
     </Campo>
   );

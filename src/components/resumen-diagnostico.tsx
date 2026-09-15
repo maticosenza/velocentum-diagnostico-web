@@ -174,7 +174,7 @@ export function SeccionQueFalta({ falta }: { falta: QueFalta }) {
         <div className="grid gap-6 px-7 py-6 md:grid-cols-2">
           {falta.datos.length > 0 && (
             <div>
-              <h3 className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+              <h3 className="font-mono text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
                 Datos por cargar
               </h3>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-[14px] leading-6 text-foreground">
@@ -186,7 +186,7 @@ export function SeccionQueFalta({ falta }: { falta: QueFalta }) {
           )}
           {falta.bloques.length > 0 && (
             <div>
-              <h3 className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+              <h3 className="font-mono text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
                 Bloques del semáforo sin datos
               </h3>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-[14px] leading-6 text-foreground">

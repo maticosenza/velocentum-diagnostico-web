@@ -56,3 +56,29 @@ Verificado con `fontkit` el 2026-08-31, sobre los cuatro archivos:
   declara la feature OpenType `tnum`** y no la necesita: en una
   monoespaciada las cifras ya están alineadas en columna. Es la diferencia
   con Satoshi e Inter, que sí declaran `tnum` porque son proporcionales.
+
+## woff2 para la interfaz (BV4 F2b, 2026-09-15)
+
+`woff2/` suma los dos archivos que usa la interfaz con el tema
+`velocentum-web/v1` (DH-9): labels, estados, identificadores, fechas,
+categorías, métricas y datos técnicos. Los OTF de arriba siguen siendo los
+del pipeline de PDF (`registrar-fuentes.ts`) y no cambian.
+
+Provistos por Matías en `.branding-nuevo/fonts/` y copiados sin modificar.
+Son los subsets `latin` y `latin-ext` de Google Fonts, woff2 **variable**
+(eje `wght` 100–900).
+
+| Archivo | Bytes | SHA-256 |
+|---|---|---|
+| `woff2/geist-mono-latin.woff2` | 23108 | `5f3d6ad60f29d6cb708414ec6887163d63bf197377ef5417d2483ff31ace6c3b` |
+| `woff2/geist-mono-latin-ext.woff2` | 14712 | `745994b5cd950ec201b66526375f057d540847cccfc70f4f24f5f571d26d3923` |
+
+Copyright embebido: "Copyright 2024 The Geist Project Authors
+(https://github.com/vercel/geist-font.git)". Mismo titular y misma licencia
+que `LICENSE.txt`, que ya estaba: el `OFL.txt` de `google/fonts` (commit
+`1ac2012c34919f5fa2675aacf723fa98edb30b5f`) difiere de ese archivo solo en el
+sufijo `.git` de la URL del copyright.
+
+Verificado con `fontkit` el 2026-09-15: entre los dos subsets están los
+quince glyphs exigidos y los diez dígitos; `†` vive en `latin-ext`. Avance
+único de 600/1000 en los dígitos: monoespaciada real.

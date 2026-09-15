@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, Keyboard } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { MensajeEstado } from "@/components/mensaje-estado";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
@@ -454,7 +455,7 @@ function NuevoDiagnostico() {
                 onClick={() => elegirModo(m.value)}
                 className="rounded-xl border border-border bg-card p-10 text-left transition-colors hover:border-violet"
               >
-                <p className="text-[12px] uppercase tracking-wide text-muted-foreground">
+                <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-muted-foreground">
                   Modo {m.value}
                 </p>
                 <p className="mt-2 text-[22px] font-medium leading-7 text-foreground">{m.titulo}</p>
@@ -495,9 +496,9 @@ function NuevoDiagnostico() {
 
   return (
     <>
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border bg-card px-8 py-5">
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border bg-background px-8 py-5">
         <div className="min-w-0">
-          <h1 className="text-[19px] font-medium leading-7 tracking-[-0.01em] text-foreground">
+          <h1 className="font-display text-[30px] font-normal uppercase leading-[1.1] text-foreground">
             {origen ? "Editar y recalcular" : "Nuevo diagnóstico"}
           </h1>
           <p className="mt-1 truncate text-[13px] leading-5 text-muted-foreground">
@@ -634,8 +635,9 @@ function NuevoDiagnostico() {
               >
                 <span
                   className={cn(
-                    "text-[12px] tabular-nums",
-                    activo ? "text-violet/70" : "text-muted-foreground/70",
+                    // Opacidad al 70 % bajaba de 4,5:1 sobre el riel y la selección.
+                    "font-mono text-[12px]",
+                    activo ? "text-violet" : "text-muted-foreground",
                   )}
                 >
                   {i + 1}
@@ -643,7 +645,13 @@ function NuevoDiagnostico() {
                 <span className="min-w-0 flex-1 truncate">{b.label}</span>
                 {tieneCampos &&
                   (completo ? (
-                    <Check className="size-4 shrink-0 text-[var(--estado-verde)]" />
+                    // Verde como relleno con su par tinta (DH-5): como ícono suelto da 2,15:1.
+                    <span
+                      aria-hidden
+                      className="grid size-4 shrink-0 place-items-center rounded-full bg-estado-verde text-texto-sobre-3"
+                    >
+                      <Check className="size-3" strokeWidth={3} />
+                    </span>
                   ) : (
                     <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
                       {completos}/{total}
@@ -877,10 +885,10 @@ function NuevoDiagnostico() {
                         </p>
                       </div>
                       {faltaEnvioCobrado(datos) && (
-                        <p className="text-[12px] text-destructive sm:col-span-2">
+                        <MensajeEstado tono="error" className="text-[12px] sm:col-span-2">
                           Cargaste el envío bruto pero falta cuánto paga el comprador. Ingresá ese
                           importe para poder calcular el margen: no se asume cero.
-                        </p>
+                        </MensajeEstado>
                       )}
                     </>
                   )}
@@ -961,13 +969,13 @@ function NuevoDiagnostico() {
                   </p>
                 )}
                 {costoFinanciacion(datos).faltan.length > 0 && (
-                  <p className="text-[12px] text-destructive sm:col-span-2">
+                  <MensajeEstado tono="error" className="text-[12px] sm:col-span-2">
                     Falta un dato de financiación para calcular el margen: cargá también{" "}
                     {costoFinanciacion(datos).faltan[0] === "financiacion_costo_pct"
                       ? "el costo de la financiación"
                       : "el porcentaje de ventas en cuotas"}
                     . No se asume cero.
-                  </p>
+                  </MensajeEstado>
                 )}
                 <CampoPorcentaje
                   label="Ventas con descuento"
@@ -989,13 +997,13 @@ function NuevoDiagnostico() {
                   </p>
                 )}
                 {costoDescuento(datos).faltan.length > 0 && (
-                  <p className="text-[12px] text-destructive sm:col-span-2">
+                  <MensajeEstado tono="error" className="text-[12px] sm:col-span-2">
                     Falta un dato de descuento para calcular el margen: cargá también{" "}
                     {costoDescuento(datos).faltan[0] === "descuento_pct"
                       ? "el porcentaje de descuento"
                       : "el porcentaje de ventas con descuento"}
                     . No se asume cero.
-                  </p>
+                  </MensajeEstado>
                 )}
                 <div className="sm:col-span-2">
                   <CampoSelect
@@ -1013,17 +1021,17 @@ function NuevoDiagnostico() {
                   />
                 </div>
                 {participacionesIncompatibles(datos) && (
-                  <p className="text-[12px] text-destructive sm:col-span-2">
+                  <MensajeEstado tono="error" className="text-[12px] sm:col-span-2">
                     Las participaciones son incompatibles: declaraste que cuotas y descuento son
                     excluyentes, así que no pueden sumar más de 100% de las ventas. Sin corregirlas
                     no se calcula el margen.
-                  </p>
+                  </MensajeEstado>
                 )}
                 {!participacionesIncompatibles(datos) && participacionesSuperan100(datos) && (
-                  <p className="text-[12px] text-amber-600 sm:col-span-2">
+                  <MensajeEstado tono="advertencia" className="text-[12px] sm:col-span-2">
                     Las participaciones suman más de 100%. Se calcula igual: una misma venta puede
                     tener descuento y además pagarse en cuotas.
-                  </p>
+                  </MensajeEstado>
                 )}
 
                 <CampoPesos
@@ -1251,9 +1259,12 @@ function NuevoDiagnostico() {
                   />
                 </div>
                 {funnelForm.estado === "error" && funnelForm.error && (
-                  <p className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-[13px] text-destructive">
+                  <MensajeEstado
+                    tono="error"
+                    className="rounded-md border border-estado-rojo/40 bg-card px-4 py-3 text-[13px]"
+                  >
                     {funnelForm.error}
-                  </p>
+                  </MensajeEstado>
                 )}
 
                 <div className="border-t border-border pt-5">
@@ -1681,9 +1692,9 @@ function NuevoDiagnostico() {
           </div>
 
           {error && (
-            <p className="mt-4 max-w-4xl text-[14px] text-destructive" role="alert">
+            <MensajeEstado tono="error" className="mt-4 max-w-4xl text-[14px]" role="alert">
               {error}
-            </p>
+            </MensajeEstado>
           )}
         </div>
       </div>

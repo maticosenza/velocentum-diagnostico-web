@@ -8,9 +8,9 @@
  * Reglas que este componente hace cumplir en pantalla:
  *
  *  - **Cero hexadecimales propios.** Todo color sale de los tokens del tema
- *    activo (`bg-card`, `text-foreground`, `border-border`, `text-destructive`,
- *    …), cualquiera sea ese tema. El panel nace token-based sin forzar la
- *    activación de crystal.
+ *    de la interfaz (`bg-card`, `text-foreground`, `border-border`, …), hoy
+ *    `velocentum-web/v1`. Los avisos van con `MensajeEstado`: el color del
+ *    estado en el indicador, nunca en la letra (DH-5).
  *  - **Los totales no se editan.** Se muestran calculados, en elementos de
  *    texto, nunca en un input. El único importe editable es el precio que
  *    carga el vendedor.
@@ -27,6 +27,7 @@
  */
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MensajeEstado } from "@/components/mensaje-estado";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -246,9 +247,9 @@ export function PanelSeleccionComercial({
         </div>
 
         {!fiscal.confirmado && (
-          <p className="mt-3 text-[12px] text-destructive">
+          <MensajeEstado tono="error" className="mt-3 text-[12px]">
             Sin confirmar la configuración fiscal, la exportación de la propuesta queda bloqueada.
-          </p>
+          </MensajeEstado>
         )}
       </div>
 
@@ -470,13 +471,13 @@ export function PanelSeleccionComercial({
       </div>
 
       {totales.lineasSinPrecio.length > 0 && (
-        <p className="text-[12px] text-destructive" role="status">
+        <MensajeEstado tono="error" className="text-[12px]" role="status">
           Subtotales parciales: {totales.lineasSinPrecio.length} línea
           {totales.lineasSinPrecio.length === 1 ? "" : "s"} seleccionada
           {totales.lineasSinPrecio.length === 1 ? "" : "s"} sin precio cargado (
           {totales.lineasSinPrecio.map((id) => lineaV2(id).nombre).join(", ")}). No se cuentan como
           cero.
-        </p>
+        </MensajeEstado>
       )}
 
       <div className="flex flex-wrap items-center gap-4">
@@ -517,7 +518,7 @@ function TarjetaTotales({
 }) {
   return (
     <div className="rounded-lg border border-border bg-card p-5">
-      <h3 className="text-[13px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+      <h3 className="font-mono text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
         {titulo}
       </h3>
       <dl className="mt-3 space-y-2 text-[13px]">

@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
+import { MensajeEstado } from "@/components/mensaje-estado";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -130,9 +131,9 @@ function ListadoDiagnosticos() {
         {isLoading && <p className="text-[13px] text-muted-foreground">Cargando diagnósticos…</p>}
 
         {error && (
-          <p className="text-[13px] text-destructive">
+          <MensajeEstado tono="error" className="text-[13px]">
             No pudimos traer los diagnósticos. Recargá la pantalla.
-          </p>
+          </MensajeEstado>
         )}
 
         {!isLoading && !error && (data?.length ?? 0) === 0 && (
@@ -151,7 +152,7 @@ function ListadoDiagnosticos() {
           <div className="overflow-x-auto rounded-lg border border-border bg-card">
             <table className="w-full text-[14px]">
               <thead>
-                <tr className="border-b border-border text-left text-[12px] uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left font-mono text-[12px] uppercase tracking-[0.06em] text-muted-foreground">
                   <th className="px-5 py-4 font-medium">Tienda</th>
                   <th className="px-5 py-4 font-medium">Vertical</th>
                   <th className="px-5 py-4 font-medium">Fecha</th>
@@ -174,7 +175,7 @@ function ListadoDiagnosticos() {
                         {f.oportunidad?.nombre_tienda ?? "Tienda sin nombre"}
                       </Link>
                       {conVarias.has(f.oportunidad_id) && (
-                        <span className="ml-2 rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                        <span className="ml-2 rounded-full border border-border px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
                           v{f.version ?? 1}
                         </span>
                       )}
@@ -182,7 +183,7 @@ function ListadoDiagnosticos() {
                     <td className="px-5 py-4 text-muted-foreground">
                       {VERTICALES.find((v) => v.value === f.oportunidad?.vertical)?.label ?? "—"}
                     </td>
-                    <td className="px-5 py-4 text-muted-foreground">
+                    <td className="px-5 py-4 font-mono text-[13px] text-muted-foreground">
                       {f.fecha ? formatFecha(f.fecha) : "—"}
                     </td>
                     <td className="px-5 py-4 text-right tabular-nums text-foreground">
@@ -200,7 +201,7 @@ function ListadoDiagnosticos() {
                           setErrorBorrado(null);
                           setAEliminar(f);
                         }}
-                        className="text-[13px] text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
+                        className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                       >
                         Eliminar
                       </button>
@@ -224,9 +225,9 @@ function ListadoDiagnosticos() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           {errorBorrado && (
-            <p className="text-[13px] text-destructive" role="alert">
+            <MensajeEstado tono="error" className="text-[13px]" role="alert">
               {errorBorrado}
-            </p>
+            </MensajeEstado>
           )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={eliminar.isPending}>Cancelar</AlertDialogCancel>

@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import logoVelocentum from "@/assets/velocentum-icon.png";
+import { MensajeEstado } from "@/components/mensaje-estado";
+import logotipoBlanco from "@/assets/marca/web-v1/logo/velocentum-logotipo-blanco-tight.png";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -52,63 +53,72 @@ function PantallaLogin() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-8">
-        <div className="flex items-center gap-2.5">
-          <img src={logoVelocentum} alt="Velocentum" className="size-7 shrink-0 object-contain" />
-          <div>
-            <p className="text-[14px] font-medium leading-5 text-foreground">Velocentum</p>
-            <p className="text-[11.5px] leading-4 text-muted-foreground">Diagnóstico e-commerce</p>
-          </div>
+    <div className="flex min-h-screen flex-col lg:flex-row">
+      {/* DH-3: el acceso es un momento de marca, en navy con el logotipo blanco.
+          DH-11: descriptor debajo del wordmark, fuera de su zona libre; el claim en
+          Anton, en un bloque propio, nunca pegado al logo. */}
+      <section className="flex flex-col justify-between gap-12 bg-navy px-8 py-10 text-[var(--logo-blanco)] lg:w-1/2 lg:px-14 lg:py-14">
+        <div>
+          <img src={logotipoBlanco} alt="Velocentum" className="block h-7 w-auto" />
+          <p className="mt-3 font-mono text-[12px] leading-4 tracking-[0.04em]">
+            Equipo de crecimiento
+          </p>
         </div>
-
-        <h1 className="mt-7 text-[18px] font-medium text-foreground">Ingresá a tu cuenta</h1>
-        <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
-          Herramienta interna. El acceso lo da el administrador del equipo.
+        <p className="max-w-[13ch] font-display text-[44px] font-normal uppercase leading-[1.02] sm:text-[64px]">
+          Estamos en el negocio de hacer crecer negocios
         </p>
+      </section>
 
-        <form onSubmit={onSubmit} className="mt-5 space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-[12px] font-medium">
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="vos@velocentum.com"
-            />
-          </div>
+      <main className="flex flex-1 items-center justify-center bg-background px-4 py-12">
+        <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8">
+          <h1 className="text-[20px] font-semibold text-foreground">Ingresá a tu cuenta</h1>
+          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+            Herramienta interna. El acceso lo da el administrador del equipo.
+          </p>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-[12px] font-medium">
-              Contraseña
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
+          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-[12px] font-medium">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="vos@velocentum.com"
+              />
+            </div>
 
-          {error && (
-            <p role="alert" className="text-[12px] leading-5 text-destructive">
-              {error}
-            </p>
-          )}
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-[12px] font-medium">
+                Contraseña
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
 
-          <Button type="submit" size="sm" className="w-full" disabled={cargando}>
-            {cargando ? "Ingresando…" : "Ingresar"}
-          </Button>
-        </form>
-      </div>
+            {error && (
+              <MensajeEstado tono="error" role="alert" className="text-[12px] leading-5">
+                {error}
+              </MensajeEstado>
+            )}
+
+            <Button type="submit" className="w-full" disabled={cargando}>
+              {cargando ? "Ingresando…" : "Ingresar"}
+            </Button>
+          </form>
+        </div>
+      </main>
     </div>
   );
 }

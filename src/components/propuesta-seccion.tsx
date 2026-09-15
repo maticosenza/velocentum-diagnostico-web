@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
+import { MensajeEstado } from "@/components/mensaje-estado";
 import { formatARS } from "@/lib/format";
 import { generarPropuesta } from "@/lib/propuesta.functions";
 import { montosDeHallazgos, type PropuestaGenerada } from "@/lib/propuesta";
@@ -61,11 +62,11 @@ export function PropuestaSeccion({
 
       {!cargando && mutacion.isError && (
         <div className="px-7 py-8">
-          <p className="text-[14px] text-estado-rojo">
+          <MensajeEstado tono="error" className="text-[14px]">
             {mutacion.error instanceof Error && mutacion.error.message
               ? mutacion.error.message
               : "No pudimos generar la propuesta."}
-          </p>
+          </MensajeEstado>
           <Button
             size="sm"
             variant="outline"

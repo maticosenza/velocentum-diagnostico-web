@@ -44,3 +44,23 @@ export function relacionDeContraste(a: string, b: string): number {
 export function contrasteRedondeado(a: string, b: string): number {
   return Math.round(relacionDeContraste(a, b) * 100) / 100;
 }
+
+/**
+ * `frente` al `proporcion` (0–1) sobre `fondo`, canal por canal en sRGB. Es
+ * lo mismo que calcula `color-mix(in srgb, frente P%, fondo)` en CSS y que
+ * ve el ojo con `frente` a opacidad P sobre `fondo`. Devuelve `#RRGGBB`.
+ */
+export function mezclar(frente: string, fondo: string, proporcion: number): string {
+  const canales = (hex: string) => {
+    luminanciaRelativa(hex); // valida el formato
+    const n = Number.parseInt(hex.trim().replace(/^#/, ""), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  };
+  const f = canales(frente);
+  const b = canales(fondo);
+  return `#${f
+    .map((v, i) => Math.round(v * proporcion + b[i]! * (1 - proporcion)))
+    .map((v) => v.toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase()}`;
+}
