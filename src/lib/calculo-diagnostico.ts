@@ -332,6 +332,8 @@ export function umbralCr(cfg: ConfiguracionCalculo, ticket: number | null): Umbr
 /**
  * Lectura textual del presupuesto. Si el negocio no tiene volumen de compras
  * suficiente, el diagnóstico no es de subinversión sino de falta de señal.
+ * `inversion_actual_mensual` es el presupuesto diario de Meta × 30, no la
+ * inversión publicitaria total (H-45): por eso el texto dice "de Meta".
  */
 export function lecturaPresupuesto(d: Derivados): string | null {
   if (d.volumen_suficiente === false) {
@@ -341,9 +343,9 @@ export function lecturaPresupuesto(d: Derivados): string | null {
   const actual = d.inversion_actual_mensual;
   if (typeof piso !== "number" || typeof actual !== "number") return null;
   if (actual < piso) {
-    return "Subinversión estructural: el presupuesto está por debajo del piso que necesita un solo conjunto para aprender. Hay que consolidar conjuntos o subir el presupuesto.";
+    return "Subinversión estructural: el presupuesto de Meta está por debajo del piso que necesita un solo conjunto para aprender. Hay que consolidar conjuntos o subir el presupuesto.";
   }
-  return "El presupuesto alcanza el piso que necesita un conjunto para aprender. El problema no es de plata, es de estructura de cuenta o de creativo.";
+  return "El presupuesto de Meta alcanza el piso que necesita un conjunto para aprender. El problema no es de plata, es de estructura de cuenta o de creativo.";
 }
 
 // ---------------------------------------------------------------- productos

@@ -1002,7 +1002,6 @@ function EconomiaDetalle({ derivados, datos }: { derivados: Derivados; datos: Da
           }
         />
         <Fila label="CPA breakeven" value={pesos(derivados.cpa_breakeven)} />
-        <Fila label="Reserva aplicada" value={pct(derivados.reserva, 0)} />
         <Fila label="CPA objetivo" value={pesos(derivados.cpa_objetivo)} />
         <Fila label="ROAS objetivo" value={numero(derivados.roas_objetivo)} />
         <Fila
@@ -1069,7 +1068,12 @@ function Presupuesto({ derivados }: { derivados: Derivados }) {
             />
           </>
         )}
-        <Fila label="Inversión actual mensual" value={pesos(derivados.inversion_actual_mensual)} />
+        {/* H-45: es el presupuesto diario de Meta × 30, no la inversión del negocio, que
+            es "Inversión publicitaria total" en Economía. */}
+        <Fila
+          label="Presupuesto diario de Meta × 30"
+          value={pesos(derivados.inversion_actual_mensual)}
+        />
       </dl>
       {sinVolumen && (
         <div className="border-t border-border">
