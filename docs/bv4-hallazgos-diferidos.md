@@ -17,7 +17,7 @@ auditoría de las salidas del 2026-09-11: **H-7, H-14 y H-17 corregidos**,
 **H-8 mitigado parcialmente**, **H-9 parcialmente encaminado**; **H-6**,
 **H-10**, **H-11**, **H-12**, **H-13**, **H-15**, **H-16** (sólo el punto b:
 el a se resolvió el 2026-09-12), **H-19 a H-22 y H-24 a H-27**,
-**H-28 a H-30 y H-32 a H-37**, **H-38, H-39, H-41 a H-45, H-47 y H-48**, **H-49**, **H-52**, **H-53** y **H-54** quedan abiertos, ordenados, con dueño
+**H-28 a H-30 y H-32 a H-37**, **H-38, H-39, H-41 a H-44, H-47 y H-48**, **H-49**, **H-52**, **H-53** y **H-54** quedan abiertos, ordenados, con dueño
 humano; **H-51** queda en pausa por una decisión de producto. H-11 y H-12 entraron por esa auditoría: los dos estaban
 reportados en el handoff del preflight, pero sin ID. H-13 lo abrió la propia
 migración: aplicarla a mano deja la puerta abierta a que el cambio vuelva
@@ -45,7 +45,7 @@ documentos, no del formulario ni del motor. H-48 se verificó aparte, con
 grep, el mismo día. H-49 lo abrió el 2026-09-11 el intento de llevar al
 listado el arreglo de `ac3b3f2`: es el pendiente que la sección 4 del estado
 del 2026-09-10 (hoy `docs/bv4-estado-2026-09-11.md`) había dejado sin ID. De
-H-38 a H-49 están corregidos H-40 (`7948164`, 2026-09-11) y H-46 (`c345230`, 2026-09-15, salvo el punto de "CPA objetivo", "ROAS objetivo" y "Reserva aplicada", que sigue abierto). H-50 lo abrió el
+H-38 a H-49 están corregidos H-40 (`7948164`, 2026-09-11), H-45 (`ccbd98e`, 2026-09-15) y H-46 (`c345230` y `ccbd98e`, 2026-09-15; "CPA objetivo" y "ROAS objetivo" se quedan por decisión de Matías). H-50 lo abrió el
 diseño del arreglo de H-18. H-51 lo abrió el 2026-09-12 el arreglo de
 "Cancelar" del formulario de carga, y H-52 la verificación de ese arreglo en
 el navegador. H-53 y H-54 salieron el mismo día, al poner H-51 en pausa: son
@@ -743,7 +743,7 @@ Diseño de arreglo (sin aprobar, sin aplicar): `docs/bv4-motor-arreglos-propuest
 
 ## Auditoría de las salidas · 2026-09-11 · H-38 a H-48
 
-Fuente: reporte de la auditoría de las salidas del 2026-09-11, registrado verbatim (evidencia archivo:línea y corridas tal como vinieron). Nota de alcance del reporte, textual: "`src/documents/motor-activo.ts:19` tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`. Hoy el botón "Ver documentos" y la descarga sirven las plantillas v1 (`build-document.ts:289-299`). Los hallazgos sobre la cadena v2 describen lo que el prospecto va a recibir cuando se active el interruptor. No audité v1." Esa nota se repite al pie del encabezado de cada hallazgo que la necesita (H-38, H-39, H-43, H-44). Las referencias `:NNN` sin archivo siguen la convención del reporte: apuntan al último archivo nombrado en la misma oración o, en los hallazgos del detalle, a `diagnosticos.$id.tsx`. Al registrarlos no había ninguno de los once corregido; después se corrigieron H-40 (`7948164`, 2026-09-11) y H-46 (`c345230`, 2026-09-15, salvo el punto de "CPA objetivo", "ROAS objetivo" y "Reserva aplicada").
+Fuente: reporte de la auditoría de las salidas del 2026-09-11, registrado verbatim (evidencia archivo:línea y corridas tal como vinieron). Nota de alcance del reporte, textual: "`src/documents/motor-activo.ts:19` tiene `MOTOR_DOCUMENTAL_ACTIVO = "v1"`. Hoy el botón "Ver documentos" y la descarga sirven las plantillas v1 (`build-document.ts:289-299`). Los hallazgos sobre la cadena v2 describen lo que el prospecto va a recibir cuando se active el interruptor. No audité v1." Esa nota se repite al pie del encabezado de cada hallazgo que la necesita (H-38, H-39, H-43, H-44). Las referencias `:NNN` sin archivo siguen la convención del reporte: apuntan al último archivo nombrado en la misma oración o, en los hallazgos del detalle, a `diagnosticos.$id.tsx`. Al registrarlos no había ninguno de los once corregido; después se corrigieron H-40 (`7948164`, 2026-09-11), H-45 (`ccbd98e`, 2026-09-15) y H-46 (`c345230` y `ccbd98e`, 2026-09-15; "CPA objetivo" y "ROAS objetivo" se quedan por decisión de Matías).
 
 Advertencia de transcripción: el texto del hallazgo 1 (H-38) llegó con el render roto en el tramo que va desde la primera cita de archivo hasta "Corrida A" (los signos `$` se interpretaron como fórmula y partieron el texto letra por letra). Se reconstruyó carácter por carácter; el resto de los hallazgos llegó limpio.
 
@@ -787,13 +787,15 @@ Cada restricción entra como acción de los días 61 a 90 y en "Resultado: Avanc
 
 El detalle imprime `cobertura_canales` crudo y sólo avisa por debajo de 100 (`diagnosticos.$id.tsx:1026, 1036`). El contexto documental recorta a 100 (`build-context.ts:149-151, 881`) y agrega la restricción (`:258-264`). Corrida D: pantalla "Cobertura declarada 120%" sin aviso; documento "Cobertura de canales 100%", "Confianza media" y en la misma página "Los porcentajes declarados por canal superan el 100%".
 
-## H-45 · "Inversión actual mensual" no es la inversión actual del negocio · abierto
+## H-45 · "Inversión actual mensual" no es la inversión actual del negocio · CORREGIDO 2026-09-15
 
 Es presupuesto diario de Meta por 30 (`calculo-diagnostico.ts:1000-1004, 1012`). El detalle la titula así en `:915` y dos filas arriba muestra "Inversión publicitaria total", que es Meta más Google más Product Ads declarados (`:871-877`, motor `:578-583`). Corrida F: "$ 1.980.000" y "$ 25.000.000" en la misma pantalla. La lectura textual de presupuesto compara la primera contra el piso (`:337-343`).
 
 Verificado el 2026-09-15: sigue abierto después de `b2c88a5`. Ese commit reordena las filas que rodean a "Inversión actual mensual" en Presupuesto, pero la fila sigue ahí con la misma etiqueta (`diagnosticos.$id.tsx:1044`), el valor sigue siendo presupuesto diario de Meta × 30 (`calculo-diagnostico.ts:1223`) y "Inversión publicitaria total" sigue en la misma pantalla (`diagnosticos.$id.tsx:981`).
 
-## H-46 · Duplicados y derivados triviales en el detalle · CORREGIDO 2026-09-15, salvo CPA objetivo, ROAS objetivo y Reserva aplicada
+**Corregido el 2026-09-15 en `ccbd98e`.** La fila de Presupuesto pasa a llamarse "Presupuesto diario de Meta × 30" (`diagnosticos.$id.tsx:1071-1076`): dice lo que es, una proyección y sólo de Meta, y ya no se confunde con "Inversión publicitaria total" de Economía. El motor no cambia: `inversion_actual_mensual` se sigue calculando igual (`calculo-diagnostico.ts:1225`) y conserva su nombre en los derivados. `lecturaPresupuesto` (`calculo-diagnostico.ts:338-349`) no imprime el valor, pero lo compara contra el piso y decía "el presupuesto", que al lado de la inversión total se leía como toda la pauta; ahora dice "el presupuesto de Meta" en las dos ramas que usan ese valor. La rama de volumen insuficiente no lo usa y queda igual. El test que la cubre (`calculo-diagnostico.test.ts:426`) sigue pasando sin cambios.
+
+## H-46 · Duplicados y derivados triviales en el detalle · CORREGIDO 2026-09-15; CPA objetivo y ROAS objetivo se quedan por decisión de Matías
 
 - "MER tienda propia" y "MER Mercado Libre" (`:857-861`) repiten "MER del canal" de cada tarjeta (`:1085`); misma fórmula en `:974-981` y `:801-802`. "ROAS de Product Ads" aparece en `:862-869` y en `:1098-1103`.
 - "Pedidos mensuales estimados" (`:878`), "Compras semanales estimadas" (`:920`, es pedidos ÷ 4,3 en `:1015`) y "Compras estimadas" del funnel (`:969`, misma división cuando no hay facturación por canal, `funnel.ts:121-129`).
@@ -810,7 +812,9 @@ Cuatro duplicados se conservan a propósito:
 - "Breakeven del canal" (`:1240`) no es duplicado: es otra métrica, 1/margen del canal (`calculo-diagnostico.ts:1015`), no el breakeven del negocio.
 - "Compras estimadas" del funnel (`:1107`) es la compra de la tienda propia (facturación de la tienda sobre ticket, `evaluarFunnel` en `funnel.ts`) y coincide con "Pedidos mensuales estimados" (`:988`) sólo en canal único.
 
-Queda abierto el punto de "CPA objetivo", "ROAS objetivo" y "Reserva aplicada" (verificado el 2026-09-15): `c345230` no los sacó. Siguen en Economía de Detalle (`diagnosticos.$id.tsx:977-979`), al lado de "CPA breakeven" (`:976`). No son duplicados literales, porque cada uno aparece una sola vez en la pantalla: son los derivados triviales del cuarto punto de arriba. Los dos objetivos son breakeven con reserva, y la reserva es la constante de configuración.
+Había quedado abierto el punto de "CPA objetivo", "ROAS objetivo" y "Reserva aplicada" (verificado el 2026-09-15): `c345230` no los sacó. Seguían en Economía de Detalle (`diagnosticos.$id.tsx:977-979`), al lado de "CPA breakeven" (`:976`). No son duplicados literales, porque cada uno aparece una sola vez en la pantalla: son los derivados triviales del cuarto punto de arriba. Los dos objetivos son breakeven con reserva, y la reserva es la constante de configuración.
+
+**Cerrado parcialmente el 2026-09-15 en `ccbd98e`, por decisión de Matías del mismo día.** "Reserva aplicada" sale de la pantalla: es cómo se calculan los otros dos, no una métrica para mostrar. El motor la sigue usando para calcularlos (`derivados.reserva` no cambia). "CPA objetivo" y "ROAS objetivo" se quedan en Economía de Detalle (`diagnosticos.$id.tsx:1005-1006`), al lado de "CPA breakeven": son lo que le dice al cliente a qué apuntar. Con eso no queda nada abierto en H-46.
 
 ## H-47 · Filas y secciones que salen vacías casi siempre, y métricas que en una llamada no dicen nada · abierto
 
